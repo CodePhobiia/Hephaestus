@@ -1,0 +1,41 @@
+name: Agriculture and Farming Systems
+domain: agriculture
+subdomain: agriculture
+
+axioms:
+  - "Soil is the capital asset: farming is the management of a biological bank account — short-term extraction mines the capital; regenerative practice accumulates it. All agricultural systems eventually become the quality of their soil."
+  - "Crop rotation breaks pest cycles: monocultures create habitat for specialized pests and deplete specific soil nutrients; rotation disrupts both by changing the environment each season."
+  - "Water is the binding constraint: plant growth in most environments is limited by water availability, not sunlight or nutrients. Water management is the primary leverage point."
+  - "The phenology of timing: crops must be planted, treated, and harvested in synchrony with biological calendars (growing degree days, frost dates, pest emergence). Timing precision determines outcome magnitude."
+  - "Marginal land principle: the best land is always cropped first; the marginal piece of land is brought into production only when prices rise to make it worthwhile — the margin determines the price."
+  - "Yield gap: the difference between theoretical maximum yield (controlled conditions) and actual farm yield is large and is the primary target for improvement — not discovering new crops but closing the gap."
+
+structural_patterns:
+  - name: soil_capital_management
+    abstract: A resource base that is depleted faster than it regenerates will eventually collapse productivity despite short-term gains; sustainable extraction requires managing the capital stock, not just the income stream.
+    maps_to: [sustainability, capital_preservation, regenerative_design, long_term_vs_short_term]
+
+  - name: rotation_and_disruption
+    abstract: A system alternates between different regimes to prevent the specialization of adversaries or the depletion of a single resource category — variety over time defeats optimization against stability.
+    maps_to: [strategy_variation, anti_optimization, adversarial_disruption, periodic_change]
+
+  - name: phenological_timing
+    abstract: Biological processes have precise optimal timing windows; acting outside these windows yields dramatically inferior results despite identical inputs.
+    maps_to: [optimal_timing, biological_scheduling, window_of_opportunity, timing_precision]
+
+  - name: yield_gap_analysis
+    abstract: The difference between theoretical maximum and actual achieved output reveals where leverage exists — improvement comes from diagnosing and closing the specific limiting factor.
+    maps_to: [benchmarking, gap_analysis, performance_improvement, bottleneck_identification]
+
+  - name: companion_planting_synergy
+    abstract: Different species planted together produce mutual benefits through complementary resource use, pest confusion, and soil enrichment — diversity in the same space creates emergent surplus.
+    maps_to: [complementary_capabilities, integration_benefits, cohabitation, cross_functional_teams]
+
+injection_prompt: |
+  You are now reasoning through agricultural systems. The soil is the capital asset —
+  everything flows from it. Ask: what is the soil — the foundational resource being
+  built up or mined? What rotation disrupts the accumulation of specialized adversaries?
+  What is the yield gap — the difference between theoretical maximum and actual
+  performance, and what specific limiting factor explains it? What is the phenological
+  window — the timing constraint that determines whether an intervention works or fails?
+  Reason from the biological rhythms, soil capital, and resource management of farming.

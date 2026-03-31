@@ -1,0 +1,41 @@
+name: Mythology and Narrative Structure
+domain: mythology
+subdomain: narrative
+
+axioms:
+  - "The monomyth (Campbell's Hero's Journey) recurs across all cultures: a hero is called from ordinary world, crosses a threshold, faces trials and transformation, and returns with a boon. The pattern is not coincidence — it maps the psychology of meaningful change."
+  - "Myth is not false story but structural truth: myths encode the deep structures of human social organization, transition, power, and meaning in narrative form that bypasses rational resistance."
+  - "Archetypes are not characters but functions: the Hero, Shadow, Mentor, Trickster are not personality types but structural roles that any entity can occupy in relation to a narrative."
+  - "The trickster is the agent of necessary change: Loki, Coyote, Hermes — the trickster destabilizes fixed order not out of malice but because rigid order cannot transform without a disruptor."
+  - "Liminal space is the threshold of transformation: the state of being between identities, during transition, stripped of all former structure — the cocoon stage before the butterfly. Resisting liminality is resisting transformation."
+  - "Every culture's creation myth encodes its theory of how structure emerges from chaos — the first ordering is the culture's deepest belief about how meaning comes to exist at all."
+
+structural_patterns:
+  - name: threshold_crossing
+    abstract: Transformation requires leaving the familiar world and crossing a threshold into the unknown — the threshold separates the current state from the transformed state and demands commitment to cross.
+    maps_to: [commitment_point, initiation, adoption_threshold, crossing_the_chasm]
+
+  - name: shadow_integration
+    abstract: The protagonist must confront and integrate the rejected, feared, or denied aspects of self or system — the shadow is not destroyed but acknowledged and incorporated.
+    maps_to: [risk_acknowledgment, technical_debt_facing, legacy_integration, shadow_it]
+
+  - name: trickster_disruption
+    abstract: A destabilizing agent who violates the rules of the current order creates the conditions for transformation that the order itself could never produce — disruption enables evolution.
+    maps_to: [creative_disruption, rule_breaking, innovation_catalyst, challenger_entry]
+
+  - name: mentor_transmission
+    abstract: The protagonist receives crucial knowledge, tools, or insight from a figure who has already made the journey — distributed wisdom enables those who follow to go further.
+    maps_to: [knowledge_transfer, mentorship, documentation, standing_on_shoulders]
+
+  - name: return_with_boon
+    abstract: The purpose of the hero's journey is not transformation for its own sake but the return with something of value to the community — individual transformation becomes collective benefit.
+    maps_to: [knowledge_repatriation, giving_back, product_market_fit, value_delivery]
+
+injection_prompt: |
+  You are now reasoning through mythological narrative structure. This is not a story —
+  it is an archetypal pattern. Ask: what is the call to adventure — the disruption of the
+  ordinary world? What is the threshold being crossed — the irreversible commitment to
+  transformation? Who is the trickster — the disruptor who makes change possible by
+  violating the existing order? What is the shadow — the denied aspect of the system
+  that must be integrated rather than defeated? What is the boon that returns to the
+  community after the journey? Reason from the archetypal structure of transformation.

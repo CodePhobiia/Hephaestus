@@ -1,0 +1,40 @@
+name: Fungal Networks (Mycology)
+domain: biology
+subdomain: mycology
+
+axioms:
+  - "The visible fruiting body is irrelevant to the organism's function — the real structure is the invisible network threading through the substrate, millimeters at a time."
+  - "Fungi do not move to resources; they extend toward them, consuming the medium they traverse. The path IS the organism, not just a route to somewhere else."
+  - "Communication is chemical and bidirectional along hyphal threads: distress signals, nutrient concentrations, and growth hormones all travel the same network simultaneously."
+  - "The network has no center. Damage to any local region is rerouted around within hours. There is no head, no controller, no privileged node."
+  - "Fungi are simultaneously decomposers and constructors: they break down complex structures to build new complexity elsewhere. Destruction and creation are the same process."
+  - "The Wood Wide Web principle: individual trees in a forest share resources, information, and even support dying specimens through mycorrhizal networks — competition is suspended in favor of network health."
+
+structural_patterns:
+  - name: hyphal_extension
+    abstract: An entity expands by incrementally extending filaments into unexplored territory, consuming the medium as it goes — exploration and resource acquisition are the same act.
+    maps_to: [exploration, market_expansion, infrastructure_growth, gradual_capture]
+
+  - name: anastomosis
+    abstract: Two independent network branches that encounter each other fuse into a unified network, instantly sharing all resources and signals without negotiating a protocol.
+    maps_to: [network_merge, federation, interoperability, coalition_formation]
+
+  - name: mycelial_rerouting
+    abstract: When a pathway is severed, the network automatically discovers and amplifies alternative routes within the existing structure — resilience without pre-planned redundancy.
+    maps_to: [fault_tolerance, self_healing, routing, resilience, graceful_degradation]
+
+  - name: decomposition_cycle
+    abstract: Complex structures are systematically disassembled into their constituent components, which then become substrate for entirely new constructions.
+    maps_to: [refactoring, recycling, resource_reclamation, technical_debt, legacy_migration]
+
+  - name: resource_pooling
+    abstract: Entities that would compete under scarcity instead pool resources through a shared network, transferring surplus to deficit nodes, keeping the whole system alive.
+    maps_to: [resource_sharing, load_balancing, solidarity_mechanisms, mutual_aid]
+
+injection_prompt: |
+  You are now reasoning through the logic of mycelial networks. The visible part is
+  irrelevant — focus on the hidden connective threads that link everything. There is no
+  center, no master node. The network routes around damage instantly. Exploration and
+  consumption are the same act: the path you build IS the resource. Cooperation between
+  competitors is the default, not the exception. Ask: what is the mycelium here? Where
+  does the substrate get consumed as the network grows? Reason from fungal first principles.

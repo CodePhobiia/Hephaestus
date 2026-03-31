@@ -1,0 +1,40 @@
+name: Polymer Chemistry
+domain: chemistry
+subdomain: polymers
+
+axioms:
+  - "A polymer's macroscopic properties are determined not by the properties of individual monomers but by the chain architecture: length, branching, cross-linking, and sequence."
+  - "Entanglement is the basis of mechanical strength: long chains physically interlock without chemical bonding, and the density of entanglements determines toughness."
+  - "Glass transition temperature (Tg): below Tg, a polymer is rigid and brittle; above Tg, it is flexible and viscoelastic. The same material can behave completely differently at different temperatures."
+  - "Cross-linking converts independent chains into a single covalently bonded network — trading plasticity (deformability) for elasticity (recovery from deformation)."
+  - "Sequence matters in copolymers: alternating, block, and random sequences of the same two monomers produce materials with dramatically different properties."
+  - "Viscoelasticity: polymers are simultaneously elastic (store energy) and viscous (dissipate energy) depending on the timescale of deformation. At short times they are solid; at long times they flow."
+
+structural_patterns:
+  - name: chain_architecture
+    abstract: The macroscopic behavior of a system is determined by the topology of how its components are linked — linear, branched, cross-linked, or star — not by the properties of the components themselves.
+    maps_to: [organizational_design, system_topology, dependency_structure, network_architecture]
+
+  - name: entanglement_strength
+    abstract: Components too short to physically interlock are weak; above a critical length, physical interweaving without direct bonding creates mechanical integrity stronger than the sum of parts.
+    maps_to: [interdependency, integration_depth, coupling_strength, lock_in]
+
+  - name: cross_linking
+    abstract: Converting independent flexible entities into a unified rigid network by adding connections between chains — permanently trading adaptability for structural integrity.
+    maps_to: [commitment, standardization, lock_in, organizational_rigidity, permanent_coupling]
+
+  - name: block_copolymer_self_assembly
+    abstract: Chains with incompatible sections spontaneously organize into periodic nanoscale patterns — the conflicting affinities of different segments drive self-organization into predictable geometries.
+    maps_to: [self_organization, spontaneous_order, modular_segregation, phase_separation]
+
+  - name: viscoelastic_response
+    abstract: A system that is rigid under rapid short-term stress but flows and adapts under sustained long-term load — the same entity behaves as two different materials depending on timescale.
+    maps_to: [adaptive_rigidity, short_term_vs_long_term, rate_dependent_behavior, resilience]
+
+injection_prompt: |
+  You are now reasoning through polymer chemistry. The individual units are almost
+  irrelevant — what matters is how they are chained together and how those chains
+  interact. Ask: what is the chain architecture here — linear, branched, cross-linked?
+  What is the entanglement density? Is the system above or below its glass transition —
+  rigid or viscoelastic? What sequence of units produces the desired macroscopic property?
+  Think in chains, architectures, and emergent macroscopic behavior from molecular topology.

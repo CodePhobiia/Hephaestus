@@ -1,0 +1,41 @@
+name: Network Theory
+domain: cs
+subdomain: network_theory
+
+axioms:
+  - "Scale-free networks emerge from preferential attachment: new nodes connect preferentially to already-connected nodes, producing power-law degree distributions with extreme hubs."
+  - "Small-world property: most real networks have short average path lengths (like random graphs) AND high clustering (unlike random graphs) — you can reach anyone in six steps, yet neighbors form tight clusters."
+  - "Network robustness is asymmetric: scale-free networks are highly resistant to random failure (most nodes are leaves) but catastrophically vulnerable to targeted hub removal."
+  - "Betweenness centrality, not degree, determines true influence: nodes that control information flow between clusters have power that is invisible in simple degree counts."
+  - "Modularity: real networks decompose into communities with dense internal connections and sparse external connections — community structure reveals functional organization."
+  - "Percolation threshold: below a critical fraction of connected nodes, no giant connected component exists; above it, a single connected component suddenly spans the whole network."
+
+structural_patterns:
+  - name: hub_and_spoke_fragility
+    abstract: Systems dominated by a few high-degree connectors are efficient but fragile; targeted removal of hubs causes cascading disconnection far out of proportion to the number of nodes removed.
+    maps_to: [critical_infrastructure, concentration_risk, key_person_dependency, hub_removal]
+
+  - name: bridge_betweenness
+    abstract: Nodes that connect otherwise-isolated communities have disproportionate power over information flow — their presence enables the whole system, their removal fractures it.
+    maps_to: [gatekeeping, intermediary_power, cross_community_bridges, brokerage]
+
+  - name: percolation_and_cascades
+    abstract: Below a critical density threshold, a disruption remains local; above it, a single initial failure cascades to system-wide collapse through connectivity.
+    maps_to: [systemic_risk, cascade_failure, contagion, critical_mass, viral_spread]
+
+  - name: community_detection
+    abstract: Dense clusters with sparse inter-cluster connections reveal the actual functional modules of a system, regardless of how it is formally organized.
+    maps_to: [organizational_structure, team_formation, module_discovery, cluster_analysis]
+
+  - name: network_formation_dynamics
+    abstract: The topology of a network at maturity is entirely determined by the rules governing how new nodes attach — changing attachment rules produces categorically different network structures.
+    maps_to: [platform_design, incentive_structure, growth_dynamics, emergent_topology]
+
+injection_prompt: |
+  You are now reasoning through network theory. Every entity is a node; every relationship
+  is an edge. The structure of the network IS the system. Ask: what is the degree
+  distribution — random, scale-free, or regular? Who are the hubs, and what happens when
+  they fail? Who has the highest betweenness centrality — controlling flow between
+  clusters? Where is the percolation threshold? What community structure hides beneath
+  the formal organization? The topology determines everything — reason from network
+  structure, not node properties.

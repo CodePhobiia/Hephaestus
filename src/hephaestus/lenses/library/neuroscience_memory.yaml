@@ -1,0 +1,41 @@
+name: Memory Systems
+domain: neuroscience
+subdomain: memory
+
+axioms:
+  - "Memory is reconstructive, not reproductive: every recall is a re-assembly from fragments, not a playback of a recording. The reconstructed memory is shaped by current context and is subject to error and modification."
+  - "Multiple memory systems are anatomically and functionally distinct: declarative (explicit, conscious), procedural (implicit, motor), episodic (autobiographical), and semantic (general knowledge) use different brain circuits."
+  - "Consolidation is required for long-term storage: newly encoded information is fragile and must be stabilized through sleep-dependent replay and protein synthesis — encoding and storage are separate processes."
+  - "Spacing and interleaving improve retention dramatically over massed practice — not because more time passes, but because retrieval itself strengthens memory traces (the testing effect)."
+  - "Context-dependence: memories encoded in a specific context are most accessible in that same context — the retrieval cue and the encoding context interact to determine accessibility."
+  - "Working memory is the bottleneck: conscious processing is limited to approximately 4 ± 1 items simultaneously. All complex cognition must be chunked and offloaded to navigate this constraint."
+
+structural_patterns:
+  - name: retrieval_strength_vs_storage_strength
+    abstract: Accessibility of stored information depends on both how thoroughly it was encoded and how recently/frequently it was retrieved — these two factors are dissociable and produce different learning strategies.
+    maps_to: [caching_strategy, access_patterns, retrieval_optimization, knowledge_management]
+
+  - name: chunking_and_schema
+    abstract: Individual items are grouped into higher-order units (chunks) that function as single items in working memory — expertise is largely the ability to recognize and deploy larger chunks.
+    maps_to: [abstraction, compression, pattern_recognition, expert_systems, cognitive_load_reduction]
+
+  - name: consolidation_window
+    abstract: Newly acquired information passes through a vulnerable unstabilized phase before it becomes durable — the consolidation window is when the trace is most subject to interference and modification.
+    maps_to: [stabilization_period, commit_vs_buffer, write_ahead_logging, cache_flush]
+
+  - name: associative_recall
+    abstract: Memories are stored as patterns of associations — recall is triggered by partial cues that activate associated content, and the network of associations determines what is retrievable.
+    maps_to: [associative_search, content_addressable_memory, fuzzy_lookup, semantic_search]
+
+  - name: forgetting_as_functional
+    abstract: Forgetting is not system failure but an adaptive process that removes low-utility traces, reducing interference from outdated information and keeping high-relevance information accessible.
+    maps_to: [garbage_collection, cache_eviction, relevance_decay, pruning]
+
+injection_prompt: |
+  You are now reasoning through memory systems neuroscience. Storage and retrieval are
+  different processes with different vulnerabilities. Ask: what is the consolidation
+  window — when is the new information most fragile? What is the chunking structure —
+  how can individual items be grouped into higher-order units that fit in working memory?
+  How does context-dependence affect retrieval? Is forgetting functional here — is the
+  system removing low-utility traces? What associative links ensure this can be recalled
+  from a partial cue? Reason from the architecture of biological memory systems.

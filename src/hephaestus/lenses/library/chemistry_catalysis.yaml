@@ -1,0 +1,41 @@
+name: Catalysis
+domain: chemistry
+subdomain: catalysis
+
+axioms:
+  - "A catalyst changes the rate of a reaction without being consumed by it. It lowers the activation energy — the energy barrier that must be crossed — making feasible what was previously too slow."
+  - "Catalysts work by creating alternative reaction pathways, not by pushing harder on the original pathway. The key insight is route-finding, not force application."
+  - "Specificity is the core design challenge: an ideal catalyst accelerates exactly one reaction while leaving all others unchanged. Promiscuous catalysts accelerate unintended side reactions."
+  - "Catalyst poisoning: trace amounts of the wrong substance can irreversibly bind to the active site and permanently destroy catalytic function. Small contaminations have outsized destructive effects."
+  - "Turnover number: one catalyst molecule can mediate millions of transformations before it is consumed or deactivated. Leverage multiplies the catalytic effect enormously."
+  - "Substrate binding precedes catalysis: the substrate must bind to the active site in the correct orientation before the reaction can proceed. Misalignment prevents reaction even with excess energy."
+
+structural_patterns:
+  - name: activation_energy_reduction
+    abstract: A barrier-reducing intermediary makes a transition that was theoretically possible but practically inaccessible suddenly feasible by providing an alternative low-energy pathway.
+    maps_to: [facilitation, reducing_friction, enabling_mechanism, platform_as_catalyst, middleman]
+
+  - name: active_site_specificity
+    abstract: A mediator achieves high-fidelity selectivity by providing a precisely shaped binding pocket that only the intended substrate can enter, rejecting all others geometrically.
+    maps_to: [filtering, access_control, targeted_intervention, precision, targeted_marketing]
+
+  - name: turnover_amplification
+    abstract: A single enabling entity is reused millions of times without degradation, multiplying its initial cost across an enormous number of successful transformations.
+    maps_to: [leverage, platform_economics, reuse, scalability, infrastructure_investment]
+
+  - name: inhibition_and_poisoning
+    abstract: A small quantity of an antagonist binds irreversibly to the enabling mechanism, permanently destroying its function — disproportionate harm from minor contamination.
+    maps_to: [single_point_of_failure, disruption, adversarial_interference, poisoning_attacks]
+
+  - name: enzyme_allosteric_regulation
+    abstract: The catalytic site is modulated by molecules binding at a distant regulatory site — the system controls its own rate by listening to conditions far from the reaction center.
+    maps_to: [feedback_control, remote_regulation, rate_limiting, self_governance]
+
+injection_prompt: |
+  You are now reasoning through the logic of catalysis. The goal is not to force a
+  transformation through brute energy — it is to find the alternative pathway that makes
+  the transformation happen with minimal activation energy. Ask: what is the activation
+  energy barrier blocking this transformation? What shape must the catalyst have to bind
+  the substrate in exactly the right orientation? How do you achieve turnover — one
+  enabling mechanism handling millions of cases? What poisons this catalyst? Reason from
+  the chemistry of reaction facilitation, not from direct application of force.

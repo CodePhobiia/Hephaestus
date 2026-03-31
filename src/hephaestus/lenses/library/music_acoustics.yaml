@@ -1,0 +1,41 @@
+name: Acoustics and Sound
+domain: music
+subdomain: acoustics
+
+axioms:
+  - "Sound is pressure waves in a medium — it is not a property of the source but an interaction between source, medium, and receiver. Remove any one and sound ceases."
+  - "The harmonic series is the physical foundation of timbre: every real sound contains not just its fundamental frequency but an infinite series of overtones at integer multiples, and their relative amplitudes define the sound's character."
+  - "Resonance amplifies: when the driving frequency matches a system's natural frequency, small inputs produce large outputs. Structures can be destroyed by resonance — and amplified by it."
+  - "Acoustic interference: two sound waves in the same medium add algebraically — constructive interference produces amplification; destructive interference produces cancellation. Silence from noise is possible."
+  - "The Doppler effect: relative motion between source and receiver shifts perceived frequency — motion compresses or expands wavefronts, changing pitch independent of source frequency."
+  - "Room acoustics are inseparable from sound: the shape, size, and material of the enclosure determine what the listener hears as profoundly as the source. There is no 'pure' sound, only sound-in-context."
+
+structural_patterns:
+  - name: resonance_amplification
+    abstract: A system's natural frequency can be exploited to produce disproportionately large outputs from small inputs — matching the driving frequency to the receiver's resonant frequency maximizes energy transfer.
+    maps_to: [leverage, viral_coefficient, resonant_communication, frequency_matching]
+
+  - name: destructive_interference
+    abstract: Two identical signals with a phase offset of half a wavelength cancel each other completely — noise can be eliminated by introducing its precise mirror image.
+    maps_to: [noise_cancellation, counter_signal, neutralization, active_suppression]
+
+  - name: harmonic_decomposition
+    abstract: Any complex waveform can be decomposed into a set of pure sinusoidal components — the fingerprint of a system is readable in its spectral signature.
+    maps_to: [feature_decomposition, spectrum_analysis, signature_identification, diagnostic]
+
+  - name: standing_wave_mode
+    abstract: In a bounded medium, only certain frequencies produce stable patterns (standing waves) — the geometry of the container determines which frequencies are amplified and which are suppressed.
+    maps_to: [natural_modes, system_constraints, which_frequencies_survive, container_design]
+
+  - name: acoustic_coupling
+    abstract: Two physically separate resonating systems exchange energy through the medium between them, synchronizing their vibrations when closely enough matched — coupling without contact.
+    maps_to: [entrainment, synchronization, coupling_without_direct_contact, indirect_influence]
+
+injection_prompt: |
+  You are now reasoning through acoustics. Everything is vibration, frequency, and wave
+  interference. Ask: what is the resonant frequency — the condition under which small
+  inputs produce massive outputs? Where does constructive interference amplify and where
+  does destructive interference cancel? What is the harmonic content — what overtones
+  define this system's character? What is the room acoustics — the container shaping
+  what reaches the listener? Can you create active cancellation by introducing the
+  mirror-image signal? Reason from wave physics and resonance dynamics.

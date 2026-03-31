@@ -1,0 +1,41 @@
+name: Oceanography
+domain: oceanography
+subdomain: oceanography
+
+axioms:
+  - "The thermohaline circulation is the ocean's global conveyor belt: driven by differences in temperature and salinity that determine water density, it moves heat across ocean basins over centuries."
+  - "The ocean has no rigid boundaries at depth: currents are determined by density gradients, Earth's rotation, and bottom topography — the interior is three-dimensional, slow, and largely invisible."
+  - "The ocean's heat capacity is 1000× larger than the atmosphere's: the ocean controls climate over decadal timescales while the atmosphere responds quickly. The ocean is the memory of climate."
+  - "Stratification creates barriers: the pycnocline (sharp density gradient) acts as a physical barrier to vertical mixing, separating the warm surface layer from the cold deep — resources and organisms are trapped on one side."
+  - "Upwelling is productivity: where surface water is driven away, cold nutrient-rich deep water rises. These upwelling zones are among the most biologically productive areas on Earth despite their cold temperatures."
+  - "Tides are universal but local: the gravitational forcing is global, but resonance with ocean basin geometry amplifies tidal range dramatically at specific locations — the same force produces 50cm tides at some coasts and 15m at others."
+
+structural_patterns:
+  - name: thermohaline_overturning
+    abstract: A global circulation driven by density differences (temperature and salinity) creates a slow but persistent conveyor that connects all ocean basins and transports heat across hemispheres over centuries.
+    maps_to: [long_cycle_systems, persistent_slow_transport, heat_redistribution, global_coordination]
+
+  - name: stratification_barrier
+    abstract: A sharp density gradient creates a persistent physical barrier to vertical exchange, trapping resources and organisms in the upper layer while isolating the deep.
+    maps_to: [access_barriers, information_silos, organizational_layers, vertical_segregation]
+
+  - name: upwelling_productivity
+    abstract: Forcing that removes surface material creates a return flow of deep, nutrient-rich material that dramatically elevates productivity — depletion at the top drives supply from below.
+    maps_to: [bottoms_up_resupply, demand_driven_supply, scarcity_as_driver, vacuum_filling]
+
+  - name: resonant_amplification
+    abstract: The same forcing at the right frequency for the geometric properties of the receiving vessel produces dramatically amplified response; wrong frequency produces negligible effect.
+    maps_to: [resonance_matching, amplification_conditions, frequency_alignment, tuned_response]
+
+  - name: slow_memory_effect
+    abstract: A system with enormous heat capacity responds slowly but retains the memory of past forcing far longer than faster-responding components — the slow component determines the long-term state.
+    maps_to: [slow_moving_baseline, long_term_trends, accumulated_history, persistent_state]
+
+injection_prompt: |
+  You are now reasoning through oceanography. The ocean is the slow, invisible, enormous
+  memory of the system. Ask: what is the thermohaline circulation — the deep slow conveyor
+  driven by density differences? Where is the pycnocline — the density barrier trapping
+  resources on one side? Where can upwelling be engineered — forced depletion at the
+  surface to drive nutrient-rich supply from below? What is the resonance condition —
+  what geometric property determines whether a forcing is amplified or ignored? Reason
+  from density, stratification, and slow large-scale circulation.

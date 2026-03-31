@@ -1,0 +1,41 @@
+name: Cognitive Psychology
+domain: psychology
+subdomain: cognitive
+
+axioms:
+  - "Dual process theory: System 1 is fast, automatic, associative, and effortless; System 2 is slow, deliberate, rule-following, and effortful. Most decisions are made by System 1, with System 2 providing post-hoc rationalization."
+  - "Cognitive load is finite and shared: every task depletes the same limited pool of executive attention. Adding complexity to one task degrades performance on all concurrent tasks."
+  - "Schemas are both efficiency tools and rigidity traps: organized knowledge structures speed up processing by filling in expected details — but they also cause systematic distortion of inputs that deviate from schema."
+  - "Confirmation bias is ubiquitous: people seek, interpret, and remember information in ways that confirm pre-existing beliefs, while discounting, misinterpreting, and forgetting disconfirming evidence."
+  - "Mental model accuracy determines decision quality: the quality of decisions is bounded by the accuracy of the agent's model of the environment — skill is largely accurate mental modeling."
+  - "Expertise changes representation: novices represent problems in terms of surface features; experts represent them in terms of deep structural principles — the same problem looks different to different skill levels."
+
+structural_patterns:
+  - name: system1_system2_switching
+    abstract: A dual-mode processing architecture alternates between fast heuristic processing (efficient, error-prone) and slow deliberative processing (accurate, resource-intensive) based on triggering conditions.
+    maps_to: [fast_path_slow_path, heuristic_vs_exact, tiered_processing, hot_cold_cognition]
+
+  - name: schema_driven_distortion
+    abstract: Organized prior knowledge structures accelerate processing but actively distort input to fit existing categories — the efficiency gain from schemas is paid for in systematic error on non-standard inputs.
+    maps_to: [model_bias, classification_error, expectation_distortion, pattern_matching_failure]
+
+  - name: cognitive_load_management
+    abstract: The finite capacity of attention is a shared resource — offloading cognitive work to the environment (external aids, automation, simplified interfaces) frees capacity for higher-level processing.
+    maps_to: [cognitive_load_reduction, ux_design, automation, interface_simplification]
+
+  - name: expert_chunking
+    abstract: Expertise converts sequences of decisions into single chunks through practice — what requires multiple deliberate steps for novices is executed as a single automatic pattern by experts.
+    maps_to: [automation_of_expertise, pattern_library, template_matching, procedural_knowledge]
+
+  - name: confirmation_bias_loop
+    abstract: Existing beliefs generate biased search for confirming evidence, which strengthens the belief, which generates more biased search — the loop is self-reinforcing and resistant to disconfirmation.
+    maps_to: [feedback_loops, model_entrenchment, assumption_validation, filter_bubbles]
+
+injection_prompt: |
+  You are now reasoning through cognitive psychology. Decisions emerge from dual processes —
+  fast heuristic System 1 and slow deliberative System 2. Ask: which system is processing
+  this in practice, and what errors does that produce? What schemas are distorting the
+  input to fit existing categories? What cognitive load is this imposing, and how can it
+  be externalized? What confirmation bias loop is entrenching a false model? Expertise
+  is chunk recognition — what chunks do experts see that novices do not? Reason from
+  the architecture of human cognition, not from the rational agent.

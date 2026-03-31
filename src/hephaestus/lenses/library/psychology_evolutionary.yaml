@@ -1,0 +1,41 @@
+name: Evolutionary Psychology
+domain: psychology
+subdomain: evolutionary
+
+axioms:
+  - "The mind is a collection of evolved computational mechanisms (modules) designed by natural selection to solve specific adaptive problems faced by ancestral populations — not a general-purpose rational calculator."
+  - "Environment of evolutionary adaptedness (EEA): psychological mechanisms were designed for conditions in the ancestral environment, not modern conditions. Mismatches between EEA and modernity explain many behavioral pathologies."
+  - "Sexual selection produces sexually dimorphic psychology: pressures on male and female reproductive success were systematically different, producing predictably different preferences, risk tolerance, and competitive strategies."
+  - "Kin selection and Hamilton's rule: altruistic behavior toward relatives is favored when the cost to the helper is less than the benefit to the recipient weighted by their genetic relatedness (C < rB)."
+  - "Costly signaling: behaviors that are genuinely costly to produce (impossible to fake without paying the cost) reliably signal the quality they represent — cheap signals are evolutionarily unstable."
+  - "Reciprocal altruism requires tracking: cooperation with non-kin requires cognitive mechanisms for tracking past interactions, detecting cheaters, and enforcing reciprocity — social intelligence is cheater-detection intelligence."
+
+structural_patterns:
+  - name: eea_mismatch
+    abstract: A system optimized for past environmental conditions produces suboptimal or maladaptive behavior in current conditions — the mechanism is working correctly, but the environment has changed.
+    maps_to: [legacy_design, design_for_past_conditions, misaligned_optimization, technical_debt]
+
+  - name: costly_signaling
+    abstract: Signals that are genuinely expensive to produce serve as credible quality indicators — the cost prevents cheap imitation and makes the signal informative.
+    maps_to: [credibility_mechanisms, quality_signals, commitment_demonstration, proof_of_work]
+
+  - name: cheater_detection
+    abstract: Cognitive systems specialized for detecting violations of social contracts operate with higher accuracy than equivalent abstract logical reasoning — domain matters for reasoning performance.
+    maps_to: [fraud_detection, anomaly_detection, social_contract_enforcement, violation_detection]
+
+  - name: reciprocal_reputation
+    abstract: Cooperation is sustained through the expectation of future interaction, tracking of past behavior, and exclusion of identified cheaters — reputation enables cooperation beyond kin.
+    maps_to: [reputation_systems, trust_building, repeated_interaction, reputation_based_access]
+
+  - name: module_domain_specificity
+    abstract: Cognitive performance is not general but domain-specific — mechanisms that are highly accurate in their evolved domain may fail when applied to structurally similar problems in novel domains.
+    maps_to: [domain_specific_solutions, transfer_limits, narrow_ai, specialization_tradeoffs]
+
+injection_prompt: |
+  You are now reasoning through evolutionary psychology. Human behavior is the output of
+  ancestral adaptations running in modern conditions. Ask: what EEA mismatch is creating
+  the problem — which mechanism was designed for past conditions that no longer apply?
+  What costly signal credibly communicates quality? What cheater-detection mechanism can
+  be leveraged — humans are exquisitely sensitive to social contract violations? What
+  reciprocal reputation system makes cooperation sustainable? Reason from evolved
+  mechanisms running in mismatched environments, not from idealized rationality.

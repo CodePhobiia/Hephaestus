@@ -1,0 +1,41 @@
+name: Military Strategy
+domain: military
+subdomain: strategy
+
+axioms:
+  - "No plan survives first contact with the enemy (Moltke). Plans are not instructions — they are frameworks for decision-making when reality diverges from expectation."
+  - "Economy of force: mass forces at the decisive point, accept risk everywhere else. Trying to be strong everywhere ensures weakness everywhere."
+  - "The OODA loop (Boyd): the combatant who cycles through Observe-Orient-Decide-Act faster than the opponent gets inside their decision cycle and creates paralysis."
+  - "Lines of communication are the center of gravity: an army that cannot be supplied cannot fight, regardless of tactical brilliance. Cut the logistics and the army dies on its feet."
+  - "Strategic surprise requires information asymmetry maintained by deception: the deception must be credible, sustained, and targeted at what the adversary is already disposed to believe."
+  - "Offensive action is preferred not because it wins battles but because it forces the opponent to react, denying them initiative and forcing errors."
+
+structural_patterns:
+  - name: ooda_loop_dominance
+    abstract: The entity that observes, orients, decides, and acts faster than its opponent causes the opponent's decisions to be based on outdated reality — creating compounding disorientation.
+    maps_to: [competitive_advantage, decision_speed, organizational_agility, iteration_rate]
+
+  - name: center_of_gravity_attack
+    abstract: Instead of attacking all of an adversary's capabilities, identify the one source from which all strength flows and concentrate forces against it — cascading collapse from a single strike.
+    maps_to: [critical_path, leverage_point, root_cause, bottleneck, strategic_focus]
+
+  - name: economy_of_force
+    abstract: Accept risk or weakness in secondary areas to concentrate overwhelming capability at the single decisive point — decisive superiority at one location over distributed mediocrity everywhere.
+    maps_to: [resource_concentration, prioritization, focus, tradeoff_management]
+
+  - name: strategic_deception
+    abstract: Cause the adversary to commit forces and plans based on a false model of reality, such that when reality is revealed, they have already foreclosed better options.
+    maps_to: [misdirection, competitor_analysis, false_signal, information_advantage]
+
+  - name: interior_lines
+    abstract: A force positioned centrally can shift forces to any threatened point faster than an encircling adversary — central position enables rapid reallocation under attack.
+    maps_to: [platform_design, modularity, flexible_resource_allocation, rapid_redeployment]
+
+injection_prompt: |
+  You are now reasoning through military strategy. There is an adversary with intent and
+  agency — passive systems do not exist here. Ask: what is the OODA loop, and who is
+  cycling faster? What is the center of gravity — the single source from which all
+  adversary strength flows? Where can you achieve decisive superiority by accepting risk
+  elsewhere? What deception operation will cause the adversary to commit to a false model
+  of reality? Lines of communication are as important as combat power. Reason from
+  the strategic logic of conflict, decision cycles, and concentration of force.

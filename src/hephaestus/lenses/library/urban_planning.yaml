@@ -1,0 +1,41 @@
+name: Urban Planning
+domain: urban_planning
+subdomain: urban_planning
+
+axioms:
+  - "Cities are not designed — they emerge from millions of individual decisions constrained by infrastructure. Urban form is the crystallized history of access, cost, and regulation."
+  - "Mixed use creates vitality: areas with a single function (residential, commercial, industrial) are dead for most of the day; areas with overlapping uses generate continuous activity and mutual support."
+  - "Induced demand: building more road capacity increases car travel until congestion returns to its previous level. Supply in transportation creates its own demand — the same applies to most infrastructure."
+  - "The 15-minute city: when daily needs are accessible within a 15-minute walk or cycle, residents need no car, neighborhoods develop identity, and public space becomes genuinely public."
+  - "Gentrification is a displacement mechanism: investment raises property values, displacing the existing population — the benefits of improvement accrue to property owners, not to the community that created the value."
+  - "Path dependence in infrastructure: once built, urban infrastructure shapes development for generations. Roads, rails, and pipes create attractors that determine where value concentrates."
+
+structural_patterns:
+  - name: mixed_use_activation
+    abstract: Overlapping functions in the same physical space create mutual support and continuous activity — monofunction zones create dead zones; mixed zones create emergent vitality.
+    maps_to: [platform_design, ecosystem_diversity, cross_functional_integration, temporal_coverage]
+
+  - name: induced_demand
+    abstract: Increasing the capacity of a system generates additional demand that fills the new capacity, returning the system to its previous congestion level — supply creates its own demand.
+    maps_to: [capacity_planning, resource_provision, demand_elasticity, Jevons_paradox]
+
+  - name: infrastructure_path_dependence
+    abstract: Once physical infrastructure is built, it shapes the system's development for decades — the initial topology determines which attractors form and where value concentrates.
+    maps_to: [technical_debt, lock_in, architectural_decisions, irreversible_investments]
+
+  - name: accessibility_radius
+    abstract: The fraction of destinations reachable within a time/cost threshold determines the practical utility of a location — value concentrates where accessibility is high.
+    maps_to: [proximity_value, access_design, geographic_coverage, service_radius]
+
+  - name: informal_network
+    abstract: Below the planned formal infrastructure, informal pathways, markets, and networks organize to meet needs the formal system ignores — the informal city carries the population the formal city excludes.
+    maps_to: [shadow_systems, workarounds, informal_markets, underserved_needs]
+
+injection_prompt: |
+  You are now reasoning through urban planning. Every design shapes behavior at city
+  scale for generations. Ask: what is the induced demand effect — does adding capacity
+  here just attract more load until the problem returns? What is the accessibility
+  radius — does this location put necessary resources within reach without a vehicle?
+  What path dependence does this infrastructure create? Where is mixed-use vitality
+  possible — overlapping functions that support each other and generate continuous
+  activity? Reason from the emergent logic of cities, not from top-down design.

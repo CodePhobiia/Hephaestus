@@ -1,0 +1,41 @@
+name: Game Theory
+domain: math
+subdomain: game_theory
+
+axioms:
+  - "Rational agents pursue their individual utility — but rationality in multi-agent systems does not produce collectively optimal outcomes. The prisoner's dilemma is the fundamental paradigm."
+  - "Nash equilibrium is where no player can improve their outcome by unilaterally changing strategy. It is a local stability condition, not a global optimum."
+  - "The folk theorem: in infinitely repeated games, cooperation can be sustained as a Nash equilibrium through threat of punishment — reputation and shadow of the future change everything."
+  - "Information asymmetry fundamentally changes games: hidden information enables signaling, screening, and strategic deception. Private information is strategic leverage."
+  - "Mechanism design (reverse game theory): instead of analyzing outcomes given rules, design the rules to produce desired outcomes from self-interested rational agents."
+  - "Schelling points: in games without communication, agents coordinate on salient focal points that everyone expects everyone else to choose — convention is self-reinforcing."
+
+structural_patterns:
+  - name: prisoners_dilemma
+    abstract: Two agents with individually dominant defection strategies produce collectively suboptimal outcomes; the key is designing incentive structures that make cooperation individually rational.
+    maps_to: [collective_action, incentive_alignment, tragedy_of_commons, coordination_failure]
+
+  - name: mechanism_design
+    abstract: Rather than predicting what rational agents will do given rules, design the rules from the desired outcome — create incentive-compatible mechanisms that make honest behavior the best strategy.
+    maps_to: [system_design, incentive_engineering, auction_design, governance, protocol_design]
+
+  - name: signaling_and_screening
+    abstract: An informed party signals quality through costly actions that would be irrational to take if the signal were false; an uninformed party screens by setting conditions that only the genuinely qualified can meet.
+    maps_to: [trust_signaling, credential_systems, costly_commitment, filtering, authentication]
+
+  - name: repeated_game_cooperation
+    abstract: Cooperation that is impossible in one-shot games becomes sustainable in repeated interaction through reputation effects — the threat of future punishment makes present defection irrational.
+    maps_to: [reputation_systems, long_term_relationships, trust_building, deterrence]
+
+  - name: schelling_focal_point
+    abstract: Without communication, agents coordinate by selecting the most salient, natural, or conventional option — coordination emerges from shared cultural expectations, not negotiation.
+    maps_to: [convention, standards, default_behavior, coordination_without_communication]
+
+injection_prompt: |
+  You are now reasoning through game theory. Every agent has private information and
+  self-interested incentives. Ask: what are the payoff matrices? Where is the Nash
+  equilibrium — and is it collectively optimal? Is this a one-shot or repeated game?
+  If repeated, what punishment mechanisms sustain cooperation? Who has private information
+  and what signals credibly reveal it? Can you design the mechanism — the rules themselves —
+  to produce the desired outcome from self-interested players? Reason from strategic
+  interaction between rational agents with conflicting incentives.

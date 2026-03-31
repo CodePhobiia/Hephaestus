@@ -1,0 +1,41 @@
+name: Plate Tectonics
+domain: geology
+subdomain: tectonics
+
+axioms:
+  - "The surface is not permanent: solid rock moves at centimeters per year, and over geological time this produces mountain ranges, ocean basins, and continents that are unrecognizable over millions of years."
+  - "Plate boundaries concentrate all action: the interior of plates is tectonically quiet; all earthquakes, volcanoes, and mountain building occur at the convergence, divergence, or transform boundaries between plates."
+  - "Subduction creates net destruction: ocean crust is continuously created at mid-ocean ridges and destroyed at subduction zones — the ocean floor is never older than ~200 million years despite the 4.5-billion-year Earth."
+  - "Deep time requires dimensional shifts: intuitions built on human timescales fail completely at geological timescales — rates that appear impossibly slow at human scale produce massive effects over millions of years."
+  - "Isostasy: the crust floats on the mantle like an iceberg in water — remove the ice sheet load and the crust slowly rebounds; add weight and it sinks. Surface elevation reflects crustal thickness and density."
+  - "Seismicity reveals structure: earthquake wave patterns probe the interior of the Earth that is otherwise completely inaccessible — indirect measurement is the only measurement."
+
+structural_patterns:
+  - name: slow_forces_massive_consequences
+    abstract: Processes operating at imperceptibly slow rates over long time horizons accumulate to produce outcomes that appear impossibly large — compounding over time dwarfs instantaneous magnitude.
+    maps_to: [compound_growth, technical_debt_accumulation, slow_decay, long_horizon_investment]
+
+  - name: boundary_concentration
+    abstract: In a system with multiple interacting layers or zones, all significant events concentrate at the boundaries between them — stable interiors are quiet; boundaries are where energy is released.
+    maps_to: [interface_criticality, boundary_conditions, system_integration_points, edge_effects]
+
+  - name: isostatic_equilibrium
+    abstract: A system distributes load by sinking under weight and rebounding when weight is removed — equilibrium is maintained dynamically through continuously adjusting deformation.
+    maps_to: [load_balancing, elastic_response, dynamic_equilibrium, capacity_adjustment]
+
+  - name: indirect_seismic_probing
+    abstract: The invisible interior of a system is revealed through the behavior of signals that traverse it — what cannot be observed directly can be inferred from the distortion of probes.
+    maps_to: [indirect_measurement, inference_from_signal, black_box_testing, probing]
+
+  - name: creation_destruction_cycle
+    abstract: A continuous cycle of creation at one boundary and destruction at another maintains total inventory constant while completely renewing the material — throughput without accumulation.
+    maps_to: [renewal_cycles, cache_replacement, continuous_replenishment, balanced_flux]
+
+injection_prompt: |
+  You are now reasoning through plate tectonics and deep time. Slow continuous forces
+  accumulate into massive outcomes. Ask: where are the plate boundaries — the interfaces
+  where all the action concentrates while the interiors remain stable? What slow
+  accumulation has been building that will produce a sudden release? What is the isostatic
+  load — what is sinking under weight and what will rebound when the weight is removed?
+  What indirect probe reveals the interior structure that cannot be directly observed?
+  Think in geological time: tiny rates, enormous consequences, deep structural change.

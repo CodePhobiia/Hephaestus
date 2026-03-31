@@ -1,0 +1,41 @@
+name: Forestry and Forest Management
+domain: forestry
+subdomain: forestry_management
+
+axioms:
+  - "Sustained yield requires harvest below the rate of regeneration: a forest managed for perpetual production cannot harvest more biomass per period than the forest grows in that period — the interest, not the principal."
+  - "Disturbance is renewal: fire, windthrow, and insect outbreak are not failures but integral parts of the forest cycle — they clear the accumulated fuel load and create conditions for regeneration."
+  - "Stand structure determines resilience: uneven-aged, multi-species forests resist disturbance better than even-aged monocultures because no single pest, disease, or fire event can affect all age and species classes simultaneously."
+  - "The forest is a carbon and water system: the above-ground biomass and below-ground soil organic matter represent enormous carbon stocks; the forest regulates watershed hydrology through evapotranspiration and infiltration."
+  - "Edge effects are ecological hotspots: the transition zone between two different habitats (forest edge, stream bank) has higher biodiversity and productivity than either adjacent habitat — boundaries create richness."
+  - "Forest succession is directional: cleared land progresses from annual weeds through shrubs, pioneer trees, and intermediate forest to climax forest over decades — the endpoint is predictable given climate."
+
+structural_patterns:
+  - name: sustained_yield_management
+    abstract: A system managed for long-term productivity must harvest only the surplus above the rate of regeneration — structural health requires managing the principal, not just the income.
+    maps_to: [sustainable_extraction, capital_management, regenerative_design, long_term_thinking]
+
+  - name: disturbance_renewal
+    abstract: Periodic disruption clears accumulated complexity and fuel loads, creating renewal conditions — preventing all disturbance leads to catastrophic release of accumulated energy.
+    maps_to: [creative_destruction, technical_debt_clearing, controlled_disruption, renewal_cycles]
+
+  - name: uneven_age_structure
+    abstract: Maintaining multiple age and development classes simultaneously creates structural resilience against any single class-specific threat — portfolio diversity across time.
+    maps_to: [portfolio_diversification, age_diversity, resilience_through_variety, multi_horizon]
+
+  - name: edge_ecotone
+    abstract: The boundary between two different systems generates greater complexity and productivity than either system alone — transitions are more productive than stable interiors.
+    maps_to: [boundary_creativity, cross_functional_intersection, interdisciplinary_zones, interface_value]
+
+  - name: succession_trajectory
+    abstract: A system progresses predictably from simple pioneer state through defined successional stages to a complex climax state — the endpoint is predictable, and management consists of managing the trajectory.
+    maps_to: [organizational_maturity, staged_development, predictable_evolution, maturity_model]
+
+injection_prompt: |
+  You are now reasoning through forest management. The forest is a capital asset managed
+  over multi-decade timescales. Ask: what is the sustained yield — what can be harvested
+  without depleting the capital base? What disturbance would be renewing rather than
+  catastrophic — what controlled burn clears the fuel load? What is the stand structure —
+  is this an even-aged monoculture or a multi-species, multi-age resilient forest?
+  Where are the edge ecotones — the boundaries where two different systems meet and
+  create exceptional richness? Reason from long-cycle forestry management principles.

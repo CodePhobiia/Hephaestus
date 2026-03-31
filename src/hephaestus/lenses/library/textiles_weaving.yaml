@@ -1,0 +1,41 @@
+name: Weaving and Textile Structure
+domain: textiles
+subdomain: weaving
+
+axioms:
+  - "Weaving is the interlocking of independent threads at right angles: the warp (lengthwise) provides the structure; the weft (crosswise) provides the binding. The pattern emerges from the sequence of over-under decisions."
+  - "The strength of woven fabric vastly exceeds the strength of the individual threads: the interlocking creates a cooperative load-sharing structure where no single thread bears all the stress."
+  - "Thread count and twist angle determine all properties: density of threads per unit area and the angle at which each thread is twisted define strength, flexibility, porosity, and texture."
+  - "Pattern is encoded in the lifting sequence: the same threads in the same order produce entirely different patterns based solely on which warp threads are raised for each weft pass — sequence is structure."
+  - "Selvedge prevents unraveling: the edge condition is critical — without a reinforced boundary, the interior structure progressively unravels from the periphery inward."
+  - "Tapestry allows discontinuous weft: where standard weaving requires continuous weft thread, tapestry allows local patches of color without threading the entire width — local independence within global constraint."
+
+structural_patterns:
+  - name: warp_weft_interdependence
+    abstract: Two systems of independent elements at right angles, each complete in itself, create a unified fabric through their systematic intersection — neither system alone has the properties of the woven whole.
+    maps_to: [orthogonal_systems, cross_integration, matrix_organization, two_dimensional_structure]
+
+  - name: lifting_sequence_pattern
+    abstract: The same elements in the same positions produce completely different patterns based solely on the sequence of which elements are activated for each pass — pattern is pure sequencing logic.
+    maps_to: [combinatorial_logic, sequencing_as_design, configuration_patterns, state_machine]
+
+  - name: edge_selvedge_integrity
+    abstract: The interior structure can only remain stable if the boundary conditions are properly reinforced — edge integrity determines whole-fabric integrity.
+    maps_to: [boundary_conditions, edge_case_handling, system_boundary_design, closure]
+
+  - name: strength_from_interlocking
+    abstract: Individual components that are individually weak create a load-sharing collective structure through their systematic interlocking — the cooperative geometry creates collective strength.
+    maps_to: [cooperative_strength, collective_resilience, interdependency_as_strength, meshwork]
+
+  - name: local_tapestry_independence
+    abstract: Within a global constraint structure, local patches can be independently designed without threading through the entire system — local autonomy within global coherence.
+    maps_to: [local_autonomy, microservices, modular_independence, bounded_context]
+
+injection_prompt: |
+  You are now reasoning through weaving and textile structure. Everything is threads in
+  two orthogonal directions, and the pattern emerges from the interlocking sequence.
+  Ask: what are the warp threads — the fixed structural members? What are the weft
+  threads — the binding elements that create the pattern through their sequence? What
+  is the selvedge — the boundary that prevents the whole structure from unraveling?
+  What lifting sequence — what pattern of activation — produces the desired outcome?
+  Reason from the geometry of interlocking threads and the power of cooperative structure.

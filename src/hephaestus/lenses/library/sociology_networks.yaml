@@ -1,0 +1,41 @@
+name: Social Network Theory
+domain: sociology
+subdomain: networks
+
+axioms:
+  - "Structural holes (Burt): the most socially powerful position is not the most-connected node but the broker occupying a hole between disconnected groups — the bridge between worlds controls information flow."
+  - "Weak ties are more valuable for information diffusion than strong ties: strong ties cluster into redundant information networks; weak ties bridge to novel information in other clusters."
+  - "Social capital is positional and relational: it is not an individual property but a property of position in a network structure — the same person has different social capital in different structures."
+  - "Homophily: people connect preferentially to similar others (same race, class, religion, opinion) — this produces segregated, redundant information silos and limits cross-group coordination."
+  - "Status hierarchies are self-reinforcing: high-status actors attract more attention and deference, which increases their status — status is created by perception of status."
+  - "Collective action requires bridging and bonding: within-group (bonding) social capital enables coordination; between-group (bridging) capital enables mobilization across boundaries."
+
+structural_patterns:
+  - name: structural_hole_brokerage
+    abstract: The highest-leverage position in a network is not high degree but the location between disconnected groups — the broker who spans structural holes controls information flow and arbitrages across networks.
+    maps_to: [intermediary_power, information_arbitrage, cross_domain_translation, bridge_position]
+
+  - name: weak_tie_bridges
+    abstract: Connections to distant acquaintances (weak ties) carry novel information not available within close networks (strong ties) — information diversity requires network diversity.
+    maps_to: [knowledge_diversity, cross_pollination, external_knowledge, serendipitous_discovery]
+
+  - name: homophily_and_echo_chamber
+    abstract: Preferential connection to similar others creates clusters of high redundancy and low external information flow — diversity of information requires diversity of connections.
+    maps_to: [filter_bubble, echo_chamber, diversity, information_diversity, clustering]
+
+  - name: status_cascade
+    abstract: Status is a self-fulfilling prophecy — high-status actors attract more attention, opportunities, and deference, which further increases status. Entry points to the cascade determine outcomes.
+    maps_to: [reputation_dynamics, compounding_advantage, network_effects, winner_take_most]
+
+  - name: social_contagion
+    abstract: Behaviors, beliefs, and emotions spread through networks via direct contact between connected nodes — the topology of the network determines the pattern and rate of spread.
+    maps_to: [viral_spread, adoption_dynamics, behavior_change, contagion_design]
+
+injection_prompt: |
+  You are now reasoning through social network theory. Power is structural, not
+  individual. Ask: who occupies the structural holes — the bridging positions between
+  otherwise disconnected groups? Where are the weak ties that carry novel information
+  outside the local cluster? What homophily is creating echo chambers and information
+  silos? What status cascade is running, and who is at the entry point? Social capital
+  is positional — the same person has different power in different network structures.
+  Reason from network topology and positional power.

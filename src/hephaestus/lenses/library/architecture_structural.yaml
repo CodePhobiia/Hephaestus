@@ -1,0 +1,41 @@
+name: Structural Architecture
+domain: architecture
+subdomain: structural
+
+axioms:
+  - "Form follows forces: the optimal structural form for any load condition is the one where every element is in pure tension or pure compression with no bending — bending is waste, pure stress is efficiency."
+  - "Load paths are the reality of structure: forces travel through the building along specific paths from where they are applied to where they are supported. Visual dominance and structural dominance may differ radically."
+  - "Redundancy prevents progressive collapse: structures with multiple load paths can lose one element without total failure; statically determinate structures fail completely when any element fails."
+  - "Scale effects change everything: a structure that works perfectly at small scale may fail at large scale because weight grows as the cube of linear dimension while strength grows only as the square."
+  - "Connections are the weakest links: the strength of a structural system is almost always determined by the quality of its joints and connections, not by the strength of its members."
+  - "Pre-stress changes failure modes: applying compression to concrete elements that would otherwise fail in tension (pre-stressed concrete) reframes the failure mode, enabling radically different structural geometries."
+
+structural_patterns:
+  - name: load_path_analysis
+    abstract: Every force applied to a system has a specific path along which it travels to the support — understanding this path reveals where stress concentrates and where structural action is truly happening.
+    maps_to: [critical_path, load_distribution, dependency_analysis, structural_audit]
+
+  - name: redundant_load_paths
+    abstract: A system with multiple independent paths for transferring load survives the failure of any single element — the loss of one path increases stress in others but does not cause total collapse.
+    maps_to: [fault_tolerance, redundancy, graceful_degradation, multi_path_design]
+
+  - name: prestress_reframing
+    abstract: Introducing a controlled internal state (compression) transforms the failure mode of elements that would otherwise fail in a fragile mode — proactive internal state management changes what is possible.
+    maps_to: [preloading, controlled_initial_state, transforming_failure_modes, proactive_management]
+
+  - name: scale_invariance_limits
+    abstract: Solutions optimized for one scale fail catastrophically at another due to the differential scaling of volume (cube) vs. surface area (square) — scaling laws must be respected.
+    maps_to: [scaling_challenges, size_dependent_behavior, architectural_decisions_at_scale]
+
+  - name: joint_criticality
+    abstract: The weakest point in any assembled system is its interfaces and connections, not its components — connection design determines total system strength regardless of component quality.
+    maps_to: [integration_quality, interface_design, api_contracts, handoff_reliability]
+
+injection_prompt: |
+  You are now reasoning through structural architecture. Forces are real and must flow
+  from application point to support along specific paths. Ask: what is the load path —
+  where do the forces actually travel, and does that match where you think the structure
+  is? Where is the single point of failure — the element with no redundant path? What
+  happens at the connections — the joints that are almost always the actual weakest link?
+  Does this solution scale, or does it violate the square-cube law at larger scale?
+  Reason from force equilibrium and load path topology.

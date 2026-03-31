@@ -1,0 +1,42 @@
+name: Fermentation and Food Transformation
+domain: cooking
+subdomain: fermentation
+
+axioms:
+  - "Fermentation is controlled microbial transformation: the goal is to select for beneficial microorganisms and against harmful ones through pH, salt concentration, temperature, and oxygen exclusion."
+  - "Time and temperature are the primary control variables: the same starting material produces radically different products depending on the fermentation conditions — a few degrees or days determines the output."
+  - "The starter culture is inoculation: introducing a robust population of desired organisms early establishes competitive dominance before harmful organisms can establish — first-mover advantage in microbial ecology."
+  - "Maillard reaction and caramelization are non-enzymatic browning: complex flavor and color are produced by the reaction of reducing sugars with amino acids at high temperatures — the transformation cannot be reversed."
+  - "Umami is glutamate: the fifth taste is a specific chemical signal (glutamate) whose concentration is elevated by fermentation, aging, and cooking — depth of flavor is biochemically defined."
+  - "Bitterness serves as a poison warning: bitter compounds trigger aversive responses because they correlate with alkaloids (plant toxins) in the ancestral environment — cultural acquisition overrides the reflex but does not eliminate it."
+
+structural_patterns:
+  - name: controlled_microbial_selection
+    abstract: Creating conditions that favor the desired organism while inhibiting competitors establishes microbial dominance without direct intervention — environment design produces outcome design.
+    maps_to: [ecosystem_engineering, competitive_advantage, platform_design, favorable_conditions]
+
+  - name: starter_culture_inoculation
+    abstract: Introducing a robust initial population of desired organisms before conditions are fully established ensures competitive dominance against later-arriving alternatives.
+    maps_to: [seed_funding, early_mover_advantage, initial_state_setting, bootstrapping]
+
+  - name: time_temperature_transformation
+    abstract: The same inputs produce radically different outputs depending on precise time and temperature conditions — small parameter changes create categorically different products.
+    maps_to: [condition_dependent_outcome, parameter_sensitivity, process_control, precise_conditions]
+
+  - name: irreversible_transformation
+    abstract: Certain transformations cannot be reversed — caramelization, Maillard reaction, protein denaturation. Knowing which transformations are irreversible is critical for process planning.
+    maps_to: [irreversible_decisions, commitment_points, one_way_doors, point_of_no_return]
+
+  - name: patience_as_ingredient
+    abstract: Some of the most complex, nuanced outcomes require nothing but time — aged cheese, sourdough, wine, miso. The human operator cannot accelerate the essential reactions.
+    maps_to: [compounding_processes, patience_as_strategy, long_maturation, slow_accumulation]
+
+injection_prompt: |
+  You are now reasoning through fermentation and food transformation. You are designing
+  conditions for a transformation, not performing it directly. Ask: what is the starter
+  culture — the initial population that establishes competitive dominance? What conditions
+  (pH, temperature, oxygen level) favor the desired transformation and inhibit undesired
+  ones? What is irreversible — the Maillard reaction equivalent that cannot be undone?
+  What can only be achieved with time — the aging process that accelerates for nothing?
+  Reason from controlled transformation, microbial competition, and the chemistry of
+  patient irreversible change.

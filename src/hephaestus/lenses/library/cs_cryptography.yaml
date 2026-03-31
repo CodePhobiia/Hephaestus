@@ -1,0 +1,41 @@
+name: Cryptography
+domain: cs
+subdomain: cryptography
+
+axioms:
+  - "Security through obscurity is not security. The only valid security model assumes the adversary knows everything about the system except the secret keys (Kerckhoffs's principle)."
+  - "Computational asymmetry is the foundation: easy to compute in one direction, computationally infeasible to reverse. Multiplication vs. factorization. Hash vs. pre-image."
+  - "Zero-knowledge proofs: you can prove you know a secret without revealing any information about the secret itself. Knowledge and disclosure are separable."
+  - "Commitment schemes: you can commit to a value before revealing it, such that changing the commitment later is computationally infeasible — binding without immediate disclosure."
+  - "Information-theoretic security (one-time pad): with a truly random key as long as the message, no amount of computation can break the cipher. The only unbreakable security requires pre-shared entropy."
+  - "The adversarial model is the baseline: every protocol must be designed assuming an active adversary who can intercept, modify, replay, and manipulate all messages."
+
+structural_patterns:
+  - name: trapdoor_function
+    abstract: A transformation that is easy to apply but computationally infeasible to reverse without a specific secret piece of information — a one-way gate with a hidden key.
+    maps_to: [access_control, commitment, irreversibility, privilege_escalation, authentication]
+
+  - name: zero_knowledge_proof
+    abstract: Proving possession of knowledge to a skeptic without the skeptic gaining any information about the knowledge itself — verification without disclosure.
+    maps_to: [privacy_preserving_verification, credential_proof, privacy, anonymous_authentication]
+
+  - name: commitment_scheme
+    abstract: Locking in a decision before revealing it, such that the commitment cannot be changed after the fact — binding promise with delayed disclosure.
+    maps_to: [precommitment, sealed_bids, anticheating, fairness, decision_binding]
+
+  - name: key_exchange_under_surveillance
+    abstract: Two parties establish a shared secret over a fully public channel that an eavesdropper who sees every message cannot reconstruct — shared secrets can emerge from public exchange.
+    maps_to: [consensus_under_adversarial_observation, shared_state, negotiation, public_agreement]
+
+  - name: merkle_tree_verification
+    abstract: A tree data structure where any element's membership can be verified with logarithmic overhead using only the root hash — efficient membership proof without full data access.
+    maps_to: [efficient_verification, audit_trail, data_integrity, selective_disclosure]
+
+injection_prompt: |
+  You are now reasoning through cryptography. Assume an active adversary who knows
+  everything except the keys. Ask: what is the trapdoor function — the asymmetry that
+  makes one direction easy and the reverse impossible? Can you achieve zero-knowledge —
+  prove something without revealing the underlying information? What commitment scheme
+  prevents post-hoc modification? How do two parties establish shared state over a fully
+  public adversarial channel? Security is a mathematical property, not a policy. Reason
+  from adversarial first principles and computational asymmetry.

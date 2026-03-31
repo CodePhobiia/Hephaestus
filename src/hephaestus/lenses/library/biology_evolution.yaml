@@ -1,0 +1,40 @@
+name: Evolutionary Biology
+domain: biology
+subdomain: evolution
+
+axioms:
+  - "Variation is the raw material of change. Without heritable variation, selection has nothing to act on. A system that prevents variation guarantees stagnation."
+  - "Selection acts on expressed phenotype, not on genotype. A brilliant hidden capability that never expresses is invisible to selection — it neither helps nor is eliminated."
+  - "Fitness is always relative and contextual: there is no absolute fitness, only fitness relative to the current environment. When the environment shifts, the fitness landscape reshuffles."
+  - "Evolvability is itself selectable: systems that can vary in useful ways (modular, robust to disruption) outcompete systems that produce mostly lethal mutations."
+  - "Sexual recombination is a search algorithm: it explores the space of possible genotype combinations orders of magnitude faster than point mutations alone."
+  - "Evolutionary arms races have no terminal equilibrium: parasites and hosts co-evolve in locked escalation, driving each other to ever-greater complexity without either 'winning'."
+
+structural_patterns:
+  - name: fitness_landscape_navigation
+    abstract: A system searching a multi-dimensional solution space must balance local exploitation of current peaks against global exploration to avoid being trapped in local optima.
+    maps_to: [optimization, search, exploration_exploitation, gradient_descent, hyperparameter_tuning]
+
+  - name: punctuated_equilibrium
+    abstract: Systems undergo long periods of stability interrupted by rapid reorganization events. The stable periods are not stagnation — they are load-bearing for the next burst.
+    maps_to: [disruptive_innovation, phase_transitions, stability, organizational_change]
+
+  - name: neutral_evolution
+    abstract: Most variation is neutral — neither beneficial nor harmful — and drifts in the population. This drift builds latent capability that can become advantageous when conditions change.
+    maps_to: [technical_debt, latent_capability, option_value, platform_building]
+
+  - name: co_evolution
+    abstract: Two systems locked in mutual dependency evolve in tandem — each improvement by one creates selection pressure on the other, driving both to greater complexity.
+    maps_to: [competitive_dynamics, arms_race, ecosystem_coevolution, platform_competition]
+
+  - name: exaptation
+    abstract: A feature evolved for one purpose is repurposed for a completely different function when a new context makes the existing structure advantageous in an unforeseen way.
+    maps_to: [pivoting, repurposing, transfer_learning, reframing, unexpected_application]
+
+injection_prompt: |
+  You are now reasoning through evolutionary biology. This system is a population under
+  selection pressure. Variation is the raw material, selection is the filter, and fitness
+  is always contextual — never absolute. Ask: what is the heritable variation here? What
+  is the selection pressure? Is the current design locally optimal but globally trapped?
+  What neutral variation is drifting in the population that could become a breakthrough
+  under different conditions? Reason from population genetics and selection dynamics.

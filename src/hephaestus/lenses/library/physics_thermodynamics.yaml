@@ -1,0 +1,40 @@
+name: Thermodynamics
+domain: physics
+subdomain: thermodynamics
+
+axioms:
+  - "Entropy always increases in a closed system. Any process that creates local order must export disorder elsewhere — there is no free ordering, only exported disorder."
+  - "Energy is conserved but work extractability degrades irreversibly. High-grade ordered energy (work) converts to low-grade disordered energy (heat) — never the reverse without external input."
+  - "Equilibrium is the death of useful work. A system at equilibrium can perform no work. All useful processes are non-equilibrium processes maintained by continuous energy input."
+  - "The efficiency of any heat engine is bounded by the Carnot limit: maximum efficiency equals the temperature ratio between hot and cold reservoirs. This is a fundamental constraint, not an engineering challenge."
+  - "Phase transitions are qualitative discontinuities: small incremental changes accumulate until a critical point where the system reorganizes discontinuously into a new state."
+  - "Dissipative structures (Prigogine): far from equilibrium, systems spontaneously self-organize into ordered patterns sustained by continuous energy throughput — life is a dissipative structure."
+
+structural_patterns:
+  - name: entropy_gradient
+    abstract: Useful work can only be extracted by exploiting a gradient between a high-potential state and a low-potential sink. When the gradient collapses, all useful extraction stops.
+    maps_to: [value_extraction, competitive_advantage, gradient_descent, opportunity_cost]
+
+  - name: phase_transition
+    abstract: Incremental changes in a control parameter produce no visible effect until a critical threshold is crossed, at which point the system discontinuously reorganizes into a qualitatively new state.
+    maps_to: [tipping_points, market_disruption, organizational_change, threshold_effects]
+
+  - name: dissipative_structure
+    abstract: A system far from equilibrium, driven by continuous throughput, spontaneously generates and maintains complex ordered structure at the cost of increased environmental entropy.
+    maps_to: [organization_design, sustained_innovation, platform_dynamics, energy_cost_of_order]
+
+  - name: carnot_efficiency_bound
+    abstract: No process can exceed a theoretical maximum efficiency determined solely by the ratio between input and output potential — efficiency is bounded by physical law, not engineering.
+    maps_to: [optimization_limits, theoretical_maxima, fundamental_constraints, benchmarking]
+
+  - name: free_energy_minimization
+    abstract: Systems spontaneously evolve toward states that minimize free energy — the balance between internal energy and entropy. The preferred state is the one requiring least maintenance.
+    maps_to: [equilibrium_finding, path_of_least_resistance, natural_convergence, stability]
+
+injection_prompt: |
+  You are now reasoning through thermodynamics. Everything is energy, entropy, and
+  gradient. Ask: what is the entropy gradient being exploited? What dissipative structure
+  is being maintained by continuous energy throughput? Where is the system approaching
+  equilibrium (death of useful work)? What phase transition is imminent as parameters
+  accumulate? There is no free ordering — every local reduction in entropy exports
+  disorder somewhere. Reason from the laws of thermodynamics.

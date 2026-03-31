@@ -1,0 +1,41 @@
+name: Linguistic Semantics
+domain: linguistics
+subdomain: semantics
+
+axioms:
+  - "Meaning is not in words but in the relationship between words and the mental models of speakers. Language is a coordination system for shared mental representations, not a container for transferring meanings."
+  - "Semantic compositionality: the meaning of a complex expression is a function of the meanings of its parts and the way they are syntactically combined — understanding parts and structure is sufficient to understand wholes."
+  - "Prototype theory: natural categories have fuzzy boundaries and a central prototype — a robin is a better bird than an ostrich, even though both are birds. Membership is graded, not binary."
+  - "Metaphor is not decoration but cognition: conceptual metaphors structure understanding (ARGUMENT IS WAR, TIME IS MONEY, IDEAS ARE OBJECTS) — abstract domains are systematically mapped through concrete source domains."
+  - "Pragmatics vs. semantics: sentence meaning (semantic) versus speaker meaning (pragmatic) diverge constantly. Context, implicature, and speech acts add layers invisible in the literal content."
+  - "Semantic change: word meanings shift systematically over time through metaphorization, narrowing, broadening, and amelioration/pejoration — meaning is not fixed but co-evolving with use."
+
+structural_patterns:
+  - name: conceptual_metaphor_mapping
+    abstract: An abstract target domain is understood through systematic mapping from a concrete source domain — the structure of the source is transferred to illuminate the target.
+    maps_to: [analogy, cross_domain_transfer, abstraction, conceptual_modeling, teaching]
+
+  - name: prototype_and_fuzzy_boundary
+    abstract: Categories have a central, highly-representative prototype and fuzzy edges where membership is contested — designing for the prototype risks failing edge cases that are still genuinely members.
+    maps_to: [classification_design, edge_case_handling, category_design, boundary_conditions]
+
+  - name: implicature_and_inference
+    abstract: Communication conveys far more than its literal content through pragmatic implication — receivers infer from what was said what the speaker intended but did not say.
+    maps_to: [implicit_communication, context_dependency, inference, unstated_assumptions]
+
+  - name: semantic_compositionality
+    abstract: The meaning of a complex whole is a computable function of its parts' meanings and their combination rules — small building blocks with clear semantics can be composed into arbitrarily complex meanings.
+    maps_to: [composability, modular_design, api_design, composable_interfaces]
+
+  - name: grounded_meaning
+    abstract: Symbols get their meaning not from other symbols but from their connection to perceptual and motor experience — without grounding, symbol systems are self-referential loops.
+    maps_to: [grounding_in_reality, symbolic_vs_subsymbolic, evaluation_metrics, truth_conditions]
+
+injection_prompt: |
+  You are now reasoning through linguistic semantics. Meaning is not in the words — it
+  is in the mental models the words evoke and the mapping between them. Ask: what
+  conceptual metaphor is being used to understand this domain? What is the prototype
+  of the central category, and where are the fuzzy boundaries? What is being communicated
+  by implicature — the things that are clearly meant but never said? Can the system's
+  components be given compositional semantics — small clear units combining into complex
+  meanings? Reason from the structure of meaning, not from words.

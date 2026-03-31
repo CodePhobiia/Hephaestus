@@ -1,0 +1,41 @@
+name: Perceptual Systems
+domain: neuroscience
+subdomain: perception
+
+axioms:
+  - "Perception is predictive, not reactive: the brain generates a model of the world and then tests it against incoming sensory data — perception is a hallucination corrected by sensory information."
+  - "Change blindness and inattentional blindness: the brain does not process the entire visual field — it processes what it predicts will be important, often missing large changes in unattended regions."
+  - "Weber's law: the just-noticeable difference in a stimulus is proportional to the magnitude of the background stimulus — sensitivity is logarithmic, not linear. 1kg added to 1kg is felt; 1kg added to 100kg is not."
+  - "Perceptual grouping (Gestalt): the visual system actively groups elements into coherent wholes based on proximity, similarity, continuity, closure, and common fate — part perception is prior to whole perception."
+  - "Perceptual constancy: despite enormous variation in retinal input (changes in illumination, distance, viewing angle), perceived properties remain constant — the brain normalizes for context."
+  - "Multi-sensory integration: the brain combines information from multiple senses with weights determined by reliability — the most reliable sense dominates, and conflict between senses creates illusions."
+
+structural_patterns:
+  - name: predictive_coding
+    abstract: The system generates top-down predictions about incoming data and only processes the residual error — unexpected inputs receive full processing; expected inputs pass nearly unnoticed.
+    maps_to: [anomaly_detection, exception_handling, delta_compression, attention_allocation]
+
+  - name: just_noticeable_difference
+    abstract: The minimum detectable change in a signal is proportional to the background magnitude — sensitivity is always relative, never absolute. Small changes on a small background dominate.
+    maps_to: [signal_detection, threshold_design, notification_design, sensitivity_tuning]
+
+  - name: gestalt_completion
+    abstract: The perceptual system fills in missing information to produce coherent wholes from incomplete input — gaps are actively completed using context and prior expectation.
+    maps_to: [pattern_completion, missing_data_handling, inferred_state, graceful_completion]
+
+  - name: perceptual_constancy
+    abstract: The system maintains stable representations of objects despite continuous variation in sensory input by continuously modeling and compensating for irrelevant environmental changes.
+    maps_to: [normalization, context_invariance, robust_representation, noise_removal]
+
+  - name: figure_ground_separation
+    abstract: The visual system segments input into foreground (figure) and background (ground), attending to figure and suppressing ground — this segmentation is active, not passive, and can be wrong.
+    maps_to: [signal_noise_separation, salience, attention_focus, relevance_filtering]
+
+injection_prompt: |
+  You are now reasoning through perceptual neuroscience. Perception is not reception —
+  it is active prediction and error correction. Ask: what predictions is the system
+  making, and where do incoming signals violate those predictions? What is being missed
+  due to change blindness — large changes in unattended regions? What Gestalt groupings
+  are being formed — what is the brain completing that isn't actually there? What changes
+  are below the just-noticeable difference threshold? Reason from predictive processing,
+  top-down modeling, and selective attention.

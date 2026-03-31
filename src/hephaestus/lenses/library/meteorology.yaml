@@ -1,0 +1,41 @@
+name: Meteorology and Atmospheric Dynamics
+domain: meteorology
+subdomain: meteorology
+
+axioms:
+  - "The atmosphere is a heat engine driven by differential solar heating between equator and poles — all weather is the system's attempt to redistribute this energy imbalance."
+  - "Coriolis force from Earth's rotation deflects all moving air masses, producing the systematic patterns (trade winds, westerlies, jet streams) that organize global weather."
+  - "Pressure gradients drive wind: air flows from high to low pressure, but Coriolis deflects it until it flows parallel to pressure contours (geostrophic balance) at altitude."
+  - "Convective instability: when a rising air parcel remains warmer than its surroundings, it continues to rise spontaneously — this positive feedback produces thunderstorms, clouds, and precipitation."
+  - "Weather predictability has a hard limit: the atmosphere is chaotic, and small initial condition errors grow exponentially. Skill in 10-day forecasts approaches zero — not from insufficient models, but from fundamental physics."
+  - "Teleconnections: climate patterns in one region (El Niño) affect weather patterns thousands of kilometers away through atmospheric wave propagation — local conditions are non-locally determined."
+
+structural_patterns:
+  - name: pressure_gradient_wind
+    abstract: Systems always flow from high to low potential, but the flow is deflected by the system's rotation until it moves parallel to the potential contours rather than directly down the gradient.
+    maps_to: [gradient_following, systematic_bias, flow_deflection, equilibrium_flow]
+
+  - name: convective_instability
+    abstract: A perturbation that is self-amplifying under current conditions leads to spontaneous growth and vertical overturning — the system organizes against itself to release the accumulated instability.
+    maps_to: [instability_release, positive_feedback, crisis_eruption, self_organized_criticality]
+
+  - name: chaotic_predictability_horizon
+    abstract: Beyond a finite time horizon determined by the system's sensitivity, prediction skill drops to zero regardless of model quality — there is an intrinsic limit to how far ahead decisions can be made reliably.
+    maps_to: [forecasting_limits, planning_horizon, decision_uncertainty, predictability_decay]
+
+  - name: teleconnection
+    abstract: A change in one region of a system propagates as waves through the medium to affect distant regions with no direct connection — remote correlation without direct causal chain.
+    maps_to: [non_local_effects, second_order_consequences, systemic_risk, distant_coupling]
+
+  - name: frontal_boundary
+    abstract: The interface between air masses with different temperature and moisture produces a sharp boundary that concentrates energy and organizes large-scale weather patterns along its length.
+    maps_to: [interface_effects, boundary_dynamics, transition_zones, contrast_concentration]
+
+injection_prompt: |
+  You are now reasoning through meteorology and atmospheric dynamics. The whole system
+  is driven by one thing: redistributing an energy imbalance. Ask: what is the heat
+  engine — where is the temperature differential that drives circulation? Where is the
+  convective instability — the condition that, once triggered, amplifies itself into a
+  major event? What is the predictability horizon — after which point does forecasting
+  skill collapse regardless of model quality? What teleconnections link this local
+  situation to distant causes? Reason from atmospheric energy dynamics and chaotic flow.

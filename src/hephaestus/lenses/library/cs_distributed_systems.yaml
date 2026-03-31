@@ -1,0 +1,41 @@
+name: Distributed Systems
+domain: cs
+subdomain: distributed_systems
+
+axioms:
+  - "The CAP theorem: a distributed system can guarantee at most two of Consistency, Availability, and Partition tolerance. Network partitions happen; the choice between C and A is always real."
+  - "The two generals problem: no communication protocol over an unreliable channel can guarantee consensus — acknowledgments of acknowledgments extend the problem, not solve it."
+  - "Byzantine fault tolerance: a system with f Byzantine (adversarial/malicious) nodes requires at least 3f+1 total nodes to achieve consensus. Tolerance has a minimum quorum cost."
+  - "Eventually consistent systems trade immediate consistency for availability: all replicas will converge to the same state eventually, but clients may temporarily observe stale data."
+  - "Distributed time is fundamentally different from local time: clocks drift, there is no global 'now,' and causal ordering (happens-before) is the only reliable temporal relationship."
+  - "Idempotency is the engineer's best friend: operations that can be safely retried without side-effects dramatically simplify failure recovery in distributed environments."
+
+structural_patterns:
+  - name: consensus_under_partition
+    abstract: When communication links fail, a system must choose between halting (consistency) or continuing with potentially divergent state (availability) — no third option exists.
+    maps_to: [consistency_tradeoffs, partition_handling, availability_consistency, quorum]
+
+  - name: eventual_convergence
+    abstract: Independent agents with separate state independently arrive at the same result through a defined merge operation, without any synchronization point or central coordinator.
+    maps_to: [distributed_consensus, conflict_resolution, merge_strategies, offline_operation]
+
+  - name: vector_clock_causality
+    abstract: In the absence of global time, causal relationships between events are tracked through logical clocks that capture which events could have influenced which others.
+    maps_to: [dependency_tracking, causal_ordering, version_management, conflict_detection]
+
+  - name: gossip_protocol
+    abstract: Each node periodically shares its state with a small random subset of neighbors; information spreads exponentially through the network without any central broadcast mechanism.
+    maps_to: [epidemic_propagation, rumor_spreading, decentralized_dissemination, information_diffusion]
+
+  - name: idempotent_design
+    abstract: Operations are designed such that applying them multiple times has the same effect as applying them once — making retries on failure equivalent to a single successful execution.
+    maps_to: [fault_tolerance, retry_safety, exactly_once_semantics, safe_repetition]
+
+injection_prompt: |
+  You are now reasoning through distributed systems. There is no global state, no
+  reliable clock, no guaranteed message delivery. Ask: what are the CAP tradeoffs here?
+  Is consistency or availability sacrificed under partition? How does eventual consistency
+  manifest — what is the merge/convergence rule? How is causal ordering tracked without
+  global time? Can operations be made idempotent so retries are safe? There is no single
+  source of truth — reason from the realities of partial failure, network partitions,
+  and eventually consistent coordination.

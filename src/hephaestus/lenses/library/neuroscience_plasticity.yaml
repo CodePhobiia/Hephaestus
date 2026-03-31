@@ -1,0 +1,41 @@
+name: Neural Plasticity
+domain: neuroscience
+subdomain: plasticity
+
+axioms:
+  - "Neurons that fire together wire together (Hebb's rule): synaptic connections strengthen when pre- and post-synaptic neurons are repeatedly co-activated — correlated activity builds structural connectivity."
+  - "Use-dependent plasticity: neural circuits supporting frequently used behaviors expand and strengthen; circuits supporting unused behaviors weaken and are eventually pruned (use it or lose it)."
+  - "Critical periods: there are sensitive developmental windows during which the brain is maximally plastic and experience has outsized effects. After the critical period closes, the same experience has much smaller effects."
+  - "Homeostatic plasticity balances Hebbian plasticity: if activity gets too high, synaptic strengths scale down globally; if too low, they scale up — the system maintains stable operating ranges."
+  - "Representational plasticity: if a body part is lost or a sensory modality deprived, the corresponding brain region is gradually taken over by adjacent regions — function follows use, not anatomy."
+  - "Long-term potentiation (LTP) requires both activity and molecular coincidence detection — the NMDA receptor acts as a coincidence detector, requiring both pre- and post-synaptic activation simultaneously."
+
+structural_patterns:
+  - name: hebbian_learning
+    abstract: Connections that are simultaneously active are strengthened, creating a record of co-occurrence that can later reinstate one element when the other is present.
+    maps_to: [associative_learning, pattern_association, correlation_learning, feature_binding]
+
+  - name: use_dependent_strengthening
+    abstract: Resources, connections, and capabilities that are regularly exercised grow stronger while unused ones atrophy — investment follows use, creating path dependence.
+    maps_to: [path_dependence, skill_development, resource_allocation, capability_building]
+
+  - name: critical_period_windows
+    abstract: There are time windows of maximum susceptibility to experience during which the system is most easily shaped — after they close, the same inputs produce far less structural change.
+    maps_to: [optimal_timing, window_of_opportunity, onboarding_windows, formative_periods]
+
+  - name: homeostatic_regulation
+    abstract: When overall activity levels drift too high or low, global compensatory adjustments restore the system to a target operating range, maintaining stability against drift.
+    maps_to: [self_regulation, feedback_control, set_point_maintenance, stability_restoration]
+
+  - name: competitive_map_reorganization
+    abstract: When one region expands through use, it does so at the expense of neighboring regions — all representations compete for neural real estate, and use determines the winner.
+    maps_to: [competitive_allocation, resource_competition, zero_sum_expansion, territory]
+
+injection_prompt: |
+  You are now reasoning through neural plasticity. Structure follows function, and
+  function follows use. Ask: what Hebbian associations are being formed or reinforced?
+  What is the critical period — the window of maximum plasticity that, once closed,
+  makes change much harder? What is the homeostatic setpoint — how does the system
+  maintain stability against runaway strengthening? What is being pruned through disuse
+  while something else is being strengthened through use? Reason from the principle
+  that structure is the record of past activity, and future structure follows current use.

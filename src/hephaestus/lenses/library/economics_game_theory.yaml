@@ -1,0 +1,41 @@
+name: Economic Game Theory
+domain: economics
+subdomain: game_theory
+
+axioms:
+  - "Auctions are information revelation mechanisms: the right auction format extracts truthful preferences from self-interested bidders who would otherwise hide them."
+  - "Hold-up problem: when parties must make relationship-specific investments before contracting, the investing party is vulnerable to renegotiation once investment is sunk — anticipation reduces investment."
+  - "The market for information is structurally different from markets for goods: selling information destroys its value to the seller; giving it away creates the adverse selection problem."
+  - "Contract incompleteness is the rule: no contract can specify all contingencies. The allocation of residual control rights (who decides under unspecified conditions) determines real power."
+  - "Cheap talk: costless communication is credible only when preferences are aligned. When preferences diverge, cheap talk is disregarded without costly signals to back it."
+  - "Insurance creates moral hazard: insulated parties take more risk than they would bear uninsured — the act of coverage changes the covered behavior."
+
+structural_patterns:
+  - name: mechanism_design_for_truthfulness
+    abstract: Design a process such that each participant's dominant strategy is to reveal their true preferences — truthful reporting becomes optimal when the mechanism is correctly structured.
+    maps_to: [truthful_reporting, incentive_compatible_design, eliciting_information, preference_revelation]
+
+  - name: residual_control_rights
+    abstract: When contracts are incomplete, power belongs to whoever holds the right to decide under circumstances not covered by the contract — allocating these rights determines who truly controls outcomes.
+    maps_to: [governance, power_allocation, decision_authority, platform_control, founder_equity]
+
+  - name: hold_up_and_investment
+    abstract: Parties anticipating future renegotiation underinvest in relationship-specific assets — to encourage investment, commitment mechanisms must make renegotiation costly or impossible.
+    maps_to: [investment_incentives, commitment, contract_design, lock_in, vertical_integration]
+
+  - name: moral_hazard_reduction
+    abstract: When one party's risk is borne by another, the risk-taking party is insulated from consequences — design requires aligning risk exposure with the party controlling the behavior.
+    maps_to: [incentive_alignment, risk_sharing, principal_agent, accountability]
+
+  - name: price_discrimination
+    abstract: Extracting consumer surplus by charging different prices to different segments based on willingness to pay — requires the ability to identify and separate market segments.
+    maps_to: [market_segmentation, value_capture, tiered_pricing, surplus_extraction]
+
+injection_prompt: |
+  You are now reasoning through economic game theory applied to institutional design.
+  Contracts are always incomplete — ask: who holds the residual control rights? Is there
+  a hold-up problem — is some party underinvesting because they fear renegotiation once
+  assets are sunk? What is the mechanism — and does it incentivize truthful behavior?
+  Where does moral hazard emerge — who is taking risks insulated from consequences?
+  Design institutions and incentive structures, not just rules, to produce desired
+  behavior from self-interested participants. Reason from institutional economics.

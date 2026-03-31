@@ -1,0 +1,42 @@
+name: Film Cinematography
+domain: film
+subdomain: cinematography
+
+axioms:
+  - "The camera is a point of view, not a recording device: every choice of lens, angle, distance, and movement is an assertion about what this moment means and how it should be felt."
+  - "Light is the primary material of cinema: it is not merely illumination but structure, mood, and meaning. The cinematographer paints with light — its quality, direction, color temperature, and contrast do narrative work."
+  - "The cut is the primary unit of meaning in cinema: films are not recorded reality but constructed from fragments assembled in sequence. The juxtaposition of images creates meaning that neither image contains alone."
+  - "Mise-en-scène encodes everything visually before a word is spoken: the arrangement of elements within the frame — actors, objects, space, depth — tells the story independently of dialogue."
+  - "The 180-degree rule maintains spatial coherence: crossing the axis of action creates disorientation — the viewer loses their mental model of spatial relationships. Violating it deliberately creates specific disorientation effects."
+  - "Depth of field controls attention: shallow depth of field isolates the subject from context; deep depth of field embeds the subject in environment. Focus is hierarchy — what is in focus is what matters."
+
+structural_patterns:
+  - name: montage_juxtaposition
+    abstract: Meaning is created not in individual elements but in the collision between consecutively presented elements — the gap between them is where the audience's mind creates meaning.
+    maps_to: [juxtaposition, context_setting, sequencing_for_meaning, implied_relationship]
+
+  - name: point_of_view_framing
+    abstract: Every presentation of information encodes an implicit perspective — there is no neutral angle, neutral distance, or neutral presentation. Framing is argument.
+    maps_to: [framing_effects, perspective_selection, narrative_bias, information_architecture]
+
+  - name: depth_of_field_hierarchy
+    abstract: Visual attention and importance are controlled by what is in focus — sharp foreground against soft background creates hierarchy without any explicit label.
+    maps_to: [attention_hierarchy, importance_signaling, salience_control, focus_design]
+
+  - name: lighting_structure
+    abstract: Light direction, quality (hard/soft), color temperature, and contrast are the primary tools for creating mood, spatial structure, and emotional register — identical scenes read completely differently under different light.
+    maps_to: [emotional_design, context_creation, atmosphere, environmental_communication]
+
+  - name: continuity_and_disruption
+    abstract: Coherent spatial and temporal continuity creates the invisible container in which story can happen; deliberate continuity violations break the frame and force conscious attention on the rupture.
+    maps_to: [ux_consistency, jarring_transitions, breaking_the_fourth_wall, deliberate_disruption]
+
+injection_prompt: |
+  You are now reasoning through cinematography. Every choice is a directorial assertion
+  about meaning. Ask: what is the camera angle — what does this viewpoint assert about
+  the subject? What is in focus and what is soft — what is being made important? What
+  is the cut — what juxtaposition creates meaning that neither element contains alone?
+  Where is the light coming from, and what does its quality communicate? Is there a
+  180-degree rule being violated — deliberate disorientation, or is continuity being
+  maintained? Reason from the grammar of visual storytelling and the construction of
+  cinematic meaning.

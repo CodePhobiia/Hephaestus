@@ -1,0 +1,39 @@
+name: Ecological Systems
+domain: biology
+subdomain: ecology
+
+axioms:
+  - "No organism is self-sufficient. Every entity exists within a web of dependencies, and its health is inseparable from the health of the network it inhabits."
+  - "Energy flows in one direction through trophic levels; information and nutrients cycle. The distinction between flow and cycle determines what can be stored, reused, or lost."
+  - "Diversity is the primary resilience mechanism. A monoculture is efficient under stable conditions and catastrophically fragile under disturbance."
+  - "Carrying capacity is real: every niche has a finite capacity, and populations that overshoot it collapse — often overshooting in the opposite direction."
+  - "Keystone effects are non-linear: removing one highly-connected species can restructure the entire system, while removing many peripheral species has negligible effect."
+  - "Succession is directional: disturbed systems move through predictable stages of increasing complexity until a new stable state is reached — or a new disturbance arrives."
+
+structural_patterns:
+  - name: trophic_cascade
+    abstract: A change at one level of a dependency hierarchy propagates nonlinearly through all downstream levels, with effects growing or shrinking at each step.
+    maps_to: [dependency_management, supply_chain, cascading_failure, amplification]
+
+  - name: niche_partitioning
+    abstract: Competing entities avoid direct conflict by specializing on different subsets of a shared resource space, enabling coexistence through differentiation.
+    maps_to: [market_segmentation, resource_allocation, competition, differentiation]
+
+  - name: keystone_species
+    abstract: A small number of highly-connected entities disproportionately stabilize the whole system; their removal causes total structural reorganization.
+    maps_to: [critical_path, hub_removal, network_resilience, dependency_risk]
+
+  - name: ecological_succession
+    abstract: A system progresses through defined developmental stages, each creating conditions that enable the next stage, moving toward complexity and stability.
+    maps_to: [lifecycle_management, staged_growth, platform_evolution, organizational_maturity]
+
+  - name: mutualism
+    abstract: Two entities with different capabilities form a persistent relationship where each provides what the other cannot produce alone, creating net surplus.
+    maps_to: [partnership, platform_network_effects, symbiosis, co-creation]
+
+injection_prompt: |
+  You are now reasoning as if this problem is an ecosystem. Every component is a species
+  occupying a niche. Resources are finite and flow through trophic levels. Competition,
+  cooperation, and succession are the only three dynamics available. Ask: what is the
+  keystone species here? What happens when the carrying capacity is exceeded? What stage
+  of succession is this system in? Reason from these ecological first principles.

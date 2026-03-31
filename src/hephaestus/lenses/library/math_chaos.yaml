@@ -1,0 +1,41 @@
+name: Chaos Theory and Nonlinear Dynamics
+domain: math
+subdomain: chaos
+
+axioms:
+  - "Sensitive dependence on initial conditions: exponentially diverging trajectories from infinitesimally close starting points. Perfect prediction requires infinite precision in measurement — which is never available."
+  - "Deterministic chaos is not randomness: the system follows fixed rules, but those rules produce behavior that appears random and is effectively unpredictable at long time scales."
+  - "Strange attractors: chaotic systems do not wander aimlessly — they are constrained to a fractal attractor in phase space, exploring its structure forever without exactly repeating."
+  - "Period-doubling route to chaos: as a parameter increases, a system undergoes a cascade of period-doublings (1 → 2 → 4 → 8 → …) until chaos emerges at a universal critical ratio (Feigenbaum constant)."
+  - "Self-similarity across scales (fractals): chaotic systems generate patterns that look statistically similar at every level of magnification — scale invariance is a signature of the underlying dynamics."
+  - "Edge of chaos: complex adaptive behavior — most favorable for computation and adaptation — emerges at the boundary between order and chaos, not deep in either regime."
+
+structural_patterns:
+  - name: butterfly_effect
+    abstract: Small, locally negligible perturbations compound exponentially over time, eventually producing system-scale effects that bear no visible relationship to the original cause.
+    maps_to: [amplification, leverage_points, cascading_effects, sensitive_interventions]
+
+  - name: strange_attractor
+    abstract: A system that appears to behave randomly is actually constrained to a bounded region of its state space with a complex fractal structure — constrained chaos, not free randomness.
+    maps_to: [bounded_exploration, constrained_variety, behavioral_envelope, system_identity]
+
+  - name: period_doubling_transition
+    abstract: A system undergoes a universal cascade of increasing oscillation complexity before transitioning to chaos — predictable structure in the approach to unpredictability.
+    maps_to: [scaling_limits, transition_patterns, complexity_emergence, precursor_signals]
+
+  - name: fractal_self_similarity
+    abstract: The same patterns repeat across all scales of observation — understanding the structure at one scale gives insight into all other scales through self-similar scaling laws.
+    maps_to: [scale_invariance, power_laws, hierarchical_structure, multi_scale_analysis]
+
+  - name: edge_of_chaos
+    abstract: Maximum adaptability and computational capacity emerges at the phase transition between order and chaos — both pure order and pure chaos are less capable than their boundary.
+    maps_to: [optimal_operating_point, balance_of_structure_and_flexibility, innovation_zone]
+
+injection_prompt: |
+  You are now reasoning through chaos theory and nonlinear dynamics. Determinism and
+  unpredictability coexist here. Ask: where is the sensitive initial condition — the
+  leverage point where small changes compound exponentially? What strange attractor
+  constrains the system's behavior — it may look random but it is constrained? Is the
+  system at the edge of chaos, where maximum adaptability lives? Are there fractal
+  patterns revealing scale-invariant structure? Reason from nonlinear dynamics:
+  small causes, large effects, bounded chaos, and self-similar structure.

@@ -1,0 +1,41 @@
+name: Music Theory
+domain: music
+subdomain: theory
+
+axioms:
+  - "Tension and resolution are the fundamental dynamic: music creates expectation through harmonic tension and satisfies or subverts that expectation through resolution — manipulation of this expectation IS music."
+  - "Voice leading: the smoothest musical motion moves each voice (line) by the smallest possible interval while maintaining harmonic coherence — efficiency of motion is aesthetic law."
+  - "Counterpoint: multiple independent melodic lines coexist simultaneously, each complete in itself, yet combining into a whole greater than their sum — independence and interdependence coexist."
+  - "The circle of fifths encodes all harmonic relationships: keys separated by a fifth share maximum pitch content and modulate smoothly; distant keys create maximum harmonic contrast."
+  - "Rhythm is hierarchical: pulse, beat, measure, phrase, and section form nested levels of temporal organization — meaning is created by confirming or violating the expectations created at each level."
+  - "Timbre (tone color) carries as much information as pitch — the same note played by a violin and a trumpet creates completely different meanings, emotions, and structural contexts."
+
+structural_patterns:
+  - name: tension_resolution_cycle
+    abstract: A system creates expectation through a state of instability and then satisfies, delays, or violates that expectation — control of the cycle controls the listener's experience.
+    maps_to: [user_engagement, narrative_structure, problem_resolution, anticipation_management]
+
+  - name: counterpoint_independence
+    abstract: Multiple agents pursue their own independent trajectories that are individually coherent while collectively producing emergent harmony — independence enables richer collective output.
+    maps_to: [parallel_processes, independent_agents, multi_threading, division_of_labor]
+
+  - name: harmonic_distance
+    abstract: Some combinations are tonally close (stable, consonant, predictable) while others are far (dissonant, surprising, energizing) — the distance between current state and expectation determines impact.
+    maps_to: [cognitive_distance, surprise_factor, disruption, context_departure]
+
+  - name: motif_development
+    abstract: A brief, memorable initial theme is systematically varied, inverted, augmented, and combined to generate large-scale structure from minimal initial material.
+    maps_to: [core_concept_expansion, design_system, pattern_reuse, structural_generation]
+
+  - name: rhythmic_hierarchy
+    abstract: Temporal organization operates simultaneously at multiple levels — micro (notes), meso (phrases), macro (movements) — and violating expectations at any level creates structured surprise.
+    maps_to: [hierarchical_structure, nested_organization, pacing, temporal_design]
+
+injection_prompt: |
+  You are now reasoning through music theory. Every element exists in relation to
+  expectations it creates and either fulfills or subverts. Ask: what is the harmonic
+  tension — the instability that creates forward motion? What is the resolution — the
+  satisfaction of that tension? Where are the independent voices (counterpoint) that
+  each have their own integrity while combining into a whole? What is the motif — the
+  minimal theme from which large-scale structure is generated? Timing, distance, and
+  the manipulation of expectation are everything. Reason from musical structure.

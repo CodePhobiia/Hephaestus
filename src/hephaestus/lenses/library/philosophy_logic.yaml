@@ -1,0 +1,41 @@
+name: Formal Logic and Philosophy of Reasoning
+domain: philosophy
+subdomain: logic
+
+axioms:
+  - "Validity is formal, not material: an argument is valid if and only if it is impossible for the premises to be true and the conclusion false — validity is independent of whether the premises are actually true."
+  - "Soundness requires both validity and truth: an argument proves its conclusion only if it is both formally valid AND all premises are actually true. Valid arguments with false premises prove nothing about the real world."
+  - "Gödel's incompleteness: any sufficiently powerful consistent formal system contains true statements that cannot be proven within the system, and cannot prove its own consistency from within."
+  - "Modus tollens (contrapositive) is logically equivalent to modus ponens: if 'A implies B' is true, then 'not-B implies not-A' is equally true — working backwards from the negation of the conclusion is as powerful as working forward."
+  - "Modal logic distinguishes possibility and necessity: 'it is possible that P' and 'it is necessary that P' are profoundly different claims requiring different standards of evidence."
+  - "Abduction (inference to the best explanation): the most rational belief in the absence of deductive proof is the hypothesis that best explains the available evidence — this is how science actually works."
+
+structural_patterns:
+  - name: contrapositive_reasoning
+    abstract: Any conditional relationship can be reversed and negated — instead of proving a positive case, proving that the negation of the conclusion implies the negation of the premise establishes the same result.
+    maps_to: [indirect_proof, falsification, working_backward, contradiction_proof]
+
+  - name: abductive_inference
+    abstract: When deductive proof is unavailable, the most rational action is adopting the hypothesis that provides the simplest, most complete explanation of all available evidence.
+    maps_to: [hypothesis_formation, diagnosis, debugging, root_cause_analysis, scientific_reasoning]
+
+  - name: incompleteness_awareness
+    abstract: Every formal system powerful enough to describe interesting phenomena contains questions it cannot answer from within — the limit is not ignorance but structural impossibility.
+    maps_to: [fundamental_limits, system_limitations, external_verification, meta_level_reasoning]
+
+  - name: modal_separation
+    abstract: Possible, probable, and necessary are fundamentally different epistemic categories — confusing them causes systematic reasoning errors that appear convincing but are logically invalid.
+    maps_to: [risk_assessment, epistemic_clarity, confidence_levels, probability_reasoning]
+
+  - name: argument_validity_soundness
+    abstract: Logical structure and factual truth are separable: diagnosing whether a conclusion follows from premises (validity) is independent of whether the premises are true (soundness).
+    maps_to: [structural_analysis, assumption_audit, argument_mapping, independent_verification]
+
+injection_prompt: |
+  You are now reasoning through formal logic and philosophy of argumentation. Validity
+  and truth are separate. Ask: is the structure valid — does the conclusion follow
+  necessarily from the premises? Are the premises actually true — soundness requires
+  both? What is the contrapositive — can you prove this more easily by working from the
+  negation of the conclusion? What are you abducting — inferring to the best explanation
+  without deductive proof? What modal claims are being confused — possible vs. probable
+  vs. necessary? Reason from the structure of arguments, not from their content.

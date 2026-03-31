@@ -1,0 +1,41 @@
+name: Epidemiology and Disease Dynamics
+domain: epidemiology
+subdomain: epidemiology
+
+axioms:
+  - "The basic reproduction number R0 determines outbreak fate: R0 > 1 means each case produces more than one new case on average, causing exponential growth; R0 < 1 means the outbreak extinguishes."
+  - "Herd immunity is collective protection from individual immunity: when enough of the population is immune, even non-immune individuals are protected because transmission chains cannot reach them."
+  - "Exponential growth is invisible until it is undeniable: the early phases of exponential growth appear negligible; the inflection point where it becomes catastrophic is only visible in retrospect."
+  - "Super-spreaders dominate transmission: in most infectious diseases, a small fraction of cases cause the vast majority of subsequent infections — the distribution of secondary cases is highly overdispersed."
+  - "The incubation window creates invisible transmission: the period between infection and symptoms allows disease to spread undetected — symptomatic-based control is always behind the actual spread."
+  - "Intervention timing is asymmetric: early interventions have outsized effect because they prevent exponential growth; late interventions must overcome the momentum of an established epidemic."
+
+structural_patterns:
+  - name: r0_transmission_threshold
+    abstract: The future trajectory of a spreading process is determined by a single ratio — average number of secondary cases per primary case. Above 1, explosion. Below 1, extinction.
+    maps_to: [viral_coefficient, growth_dynamics, network_propagation, adoption_dynamics]
+
+  - name: herd_immunity_threshold
+    abstract: Once a sufficient fraction of the population is immune, the process self-extinguishes even without 100% protection — collective protection from partial individual protection.
+    maps_to: [critical_mass, network_immunity, collective_protection, market_saturation]
+
+  - name: super_spreader_concentration
+    abstract: In highly overdispersed transmission, a small number of events produce a vast majority of outcomes — interventions targeting the fat tail produce outsized results.
+    maps_to: [pareto_principle, fat_tail_events, leverage_targeting, concentration_of_effects]
+
+  - name: intervention_timing_curve
+    abstract: The earlier an intervention is applied relative to the growth curve, the lower the total cost and harm — waiting for visible evidence of exponential growth means the intervention must be orders of magnitude larger.
+    maps_to: [early_intervention, proactive_design, cost_of_delay, prevention_vs_cure]
+
+  - name: contact_tracing_network
+    abstract: Reconstructing the network of transmission events reveals the chains that carry the most risk and identifies the nodes whose isolation would most reduce spread.
+    maps_to: [dependency_mapping, infection_vector_analysis, root_cause_tracing, network_surgery]
+
+injection_prompt: |
+  You are now reasoning through epidemiology. Something is spreading through a population.
+  Ask: what is the R0 — is each event producing more or less than one secondary event?
+  Has the herd immunity threshold been reached? Who are the super-spreaders — the small
+  fraction of nodes producing the vast majority of transmission events? Is the
+  intervention happening before or after the exponential growth inflection point?
+  What does the contact tracing network look like — which chains carry the most risk?
+  Reason from transmission dynamics, network spread, and threshold effects.

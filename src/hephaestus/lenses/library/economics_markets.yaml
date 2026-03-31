@@ -1,0 +1,41 @@
+name: Market Economics
+domain: economics
+subdomain: markets
+
+axioms:
+  - "Prices are information: they aggregate dispersed knowledge about supply, demand, and scarcity that no central planner could replicate. Interference with prices corrupts this information signal."
+  - "Markets clear through marginal incentives: it is the last unit produced and consumed that determines equilibrium price, not the average. Sunk costs are irrelevant; only future marginal costs matter."
+  - "Comparative advantage, not absolute advantage, determines specialization: even if entity A is better at everything, A and B both gain from B specializing in what it is least relatively worse at."
+  - "Market failures arise from externalities, public goods, information asymmetry, and market power — these are the structural conditions under which self-interested behavior produces collectively suboptimal outcomes."
+  - "Liquidity is the prerequisite for market function: without enough participants and transaction volume, price discovery fails and the market seizes."
+  - "Network effects create winner-take-most dynamics: platforms whose value increases with participants naturally concentrate toward dominant positions through self-reinforcing adoption."
+
+structural_patterns:
+  - name: price_discovery
+    abstract: A mechanism through which dispersed private information about supply and demand is aggregated into a single public signal that coordinates behavior without central direction.
+    maps_to: [information_aggregation, collective_valuation, decentralized_coordination, signal_extraction]
+
+  - name: arbitrage_equilibration
+    abstract: When the same value is priced differently in different locations or forms, agents profit by buying low and selling high until the discrepancy is eliminated — price differences self-correct.
+    maps_to: [inconsistency_correction, rebalancing, opportunity_exploitation, equilibration]
+
+  - name: adverse_selection
+    abstract: When buyers cannot assess quality before purchase, low-quality goods drive out high-quality ones as sellers of quality exit rather than accept low prices — the market for lemons.
+    maps_to: [quality_signaling, platform_quality, information_asymmetry, race_to_bottom]
+
+  - name: two_sided_platform_dynamics
+    abstract: A platform creates value by connecting two distinct user groups, each of which is more valuable to the other the larger the other group — cross-side network effects.
+    maps_to: [marketplace_design, platform_business, network_effects, liquidity_bootstrapping]
+
+  - name: creative_destruction
+    abstract: New entrants with superior technology or business models displace incumbents, destroying existing value but creating larger new value — obsolescence is the mechanism of progress.
+    maps_to: [disruption, obsolescence_management, innovation_dynamics, incumbent_response]
+
+injection_prompt: |
+  You are now reasoning through market economics. Prices are signals, not just numbers.
+  Ask: what is the price discovery mechanism — how is dispersed information about value
+  aggregated? Where is adverse selection occurring — poor quality driving out good?
+  What are the network effects — does more participation make this more or less valuable?
+  Where is there an arbitrage opportunity — a price discrepancy that will self-correct?
+  Who has the comparative advantage? Reason from incentives, information, and the
+  self-organizing logic of markets under realistic conditions.

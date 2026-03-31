@@ -1,0 +1,41 @@
+name: Military Intelligence
+domain: military
+subdomain: intelligence
+
+axioms:
+  - "All intelligence is uncertain. The intelligence cycle produces estimates, not facts. The consumer must understand and account for the confidence level, not treat it as ground truth."
+  - "Intelligence collection is multi-source by necessity: no single collection method is complete or reliable. HUMINT, SIGINT, IMINT, and OSINT must be fused and cross-validated."
+  - "Counter-intelligence is symmetric: every collection capability can be identified, exploited, and used against you. Assume the adversary knows you are watching."
+  - "The most dangerous form of intelligence failure is not ignorance but false confidence — believing you understand the adversary's intent when your model is wrong."
+  - "Indicators and warnings: rather than predicting specific events, track observable indicators whose combination suggests preparation for an action — detect intent through behavior."
+  - "Deception degrades intelligence: an adversary who knows your collection methods can feed you false information tailored to appear authentic, creating a false model you cannot distinguish from reality."
+
+structural_patterns:
+  - name: intelligence_cycle
+    abstract: Information collection, processing, analysis, and dissemination form a continuous cycle — actionable understanding is produced not by raw data but by the transformation pipeline.
+    maps_to: [data_pipeline, analytics_workflow, observation_to_decision, information_processing]
+
+  - name: all_source_fusion
+    abstract: Multiple independent, imperfect information streams are combined to produce a coherent picture that no single stream could provide — confidence emerges from convergence, not from any single source.
+    maps_to: [data_fusion, multi_source_validation, triangulation, consensus_building]
+
+  - name: indicators_and_warnings
+    abstract: Instead of predicting specific events, monitor observable behavioral indicators whose combination signals preparation — detect what is coming before it is declared.
+    maps_to: [anomaly_detection, early_warning, predictive_indicators, behavioral_signals]
+
+  - name: denial_and_deception
+    abstract: An adversary actively hides true capabilities and intentions while feeding false information through your collection systems — your data is selectively corrupted, not merely incomplete.
+    maps_to: [adversarial_attacks, data_poisoning, misdirection, security_modeling]
+
+  - name: red_team_analysis
+    abstract: Analysts inhabit the adversary's perspective and model the world as the adversary sees it, generating predictions from that frame — the mirror that reveals your own blindspots.
+    maps_to: [adversarial_simulation, competitive_analysis, perspective_taking, assumption_testing]
+
+injection_prompt: |
+  You are now reasoning through military intelligence. You have incomplete, potentially
+  deceptive information about an intelligent adversary. Ask: what are the observable
+  indicators — the behavioral signals that reveal intent before action? What is your
+  collection coverage, and where are the gaps? Are you being deceived — is your model
+  of the situation exactly what the adversary wants you to believe? Run the red team
+  analysis: assume the adversary is rational and ask what they are planning from their
+  perspective. Intelligence is estimates, not facts. Reason under irreducible uncertainty.

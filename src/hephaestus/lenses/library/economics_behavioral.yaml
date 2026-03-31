@@ -1,0 +1,41 @@
+name: Behavioral Economics
+domain: economics
+subdomain: behavioral
+
+axioms:
+  - "Humans are predictably irrational. Cognitive biases are not random errors — they are systematic, reproducible deviations from rationality that can be predicted and designed around."
+  - "Loss aversion: losses are felt approximately twice as intensely as equivalent gains. The pain of losing $100 overwhelms the pleasure of gaining $100 — asymmetric sensitivity is the norm."
+  - "Choice architecture matters enormously: the same set of options produces radically different choices depending on how they are framed, ordered, and defaulted — decision design is behavior design."
+  - "Present bias (hyperbolic discounting): people discount near-future rewards far more steeply than rational exponential discounting predicts. Immediate rewards dominate; future rewards are systematically underweighted."
+  - "Anchoring: the first number encountered in a decision context exerts disproportionate influence on subsequent estimates, regardless of its relevance — first impressions are cognitive anchors."
+  - "Social proof and herding: under uncertainty, people use others' behavior as a guide to correct action — this creates cascades where early choices by a few determine outcomes for the many."
+
+structural_patterns:
+  - name: default_effect
+    abstract: The option set as the default captures the vast majority of choices — people's tendency to remain with the default is so strong that default-setting is the most powerful design decision.
+    maps_to: [choice_architecture, onboarding_design, default_setting, behavior_change]
+
+  - name: loss_framing
+    abstract: Framing an outcome as the avoidance of a loss rather than the acquisition of an equivalent gain increases uptake significantly — the same value proposition produces different behavior depending on framing.
+    maps_to: [persuasion, framing_effects, communication_design, motivation]
+
+  - name: commitment_device
+    abstract: People voluntarily constrain their future choices to overcome present bias — pre-committing to future behavior while motivation is high to prevent failure when motivation is low.
+    maps_to: [precommitment, self_control, contract_design, goal_setting]
+
+  - name: social_norm_activation
+    abstract: Describing what most similar others do in a situation changes behavior more effectively than rational arguments — social proof activates conformity mechanisms that override individual calculation.
+    maps_to: [norm_design, social_influence, adoption_dynamics, compliance]
+
+  - name: peak_end_rule
+    abstract: People's retrospective evaluation of an experience is determined almost entirely by the peak (most intense) moment and the ending — the duration and average are nearly irrelevant.
+    maps_to: [experience_design, customer_satisfaction, ux_design, memory_management]
+
+injection_prompt: |
+  You are now reasoning through behavioral economics. Humans are not rational agents —
+  they are predictably irrational in specific, systematic ways. Ask: what is the default,
+  and how can it be set to produce the desired behavior? What is the loss framing — is
+  this presented as a loss avoidance or a gain? Where is present bias making people
+  systematically underweight future consequences? What social norm can be activated?
+  What is the peak and end of this experience? Design for actual human psychology, not
+  for the rational agent that does not exist.

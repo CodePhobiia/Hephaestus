@@ -1,0 +1,41 @@
+name: Martial Arts
+domain: martial_arts
+subdomain: martial_arts
+
+axioms:
+  - "Use the opponent's force: the highest principle in many traditions (Aikido, Judo, Jiu-Jitsu) is not generating opposing force but redirecting the opponent's own momentum against them."
+  - "Distance and timing are everything: techniques that are devastating at the correct distance and timing are useless at the wrong distance. Every technique has an optimal range and a dead zone."
+  - "Economy of motion: the most effective techniques use the minimum necessary energy while maximizing output force — excess motion is wasted energy and reveals intention."
+  - "The guard is both defense and offense: a strong defensive posture limits the opponent's attack options while retaining offensive options. Defense and offense are not alternatives but simultaneous states."
+  - "Kuzushi (breaking balance) precedes every technique: no throw or takedown works against a balanced opponent. The prerequisite to applying technique is disrupting the opponent's structural integrity."
+  - "Continuous flow: a blocked technique is the start of the next technique — a practitioner who stops when blocked is less dangerous than one who seamlessly transitions to the next available option."
+
+structural_patterns:
+  - name: force_redirection
+    abstract: Rather than generating opposing force to neutralize an attack, the attack's own energy is redirected to lead it toward a self-defeating conclusion.
+    maps_to: [judo_strategy, momentum_use, redirect_rather_than_oppose, opponent_strength_as_weakness]
+
+  - name: kuzushi_destabilization
+    abstract: Before any decisive technique can be applied, the opponent's structural stability must be disrupted — the prerequisite to applying any finishing move is creating imbalance.
+    maps_to: [precondition_setup, destabilization_first, creating_opportunity, prerequisite_conditions]
+
+  - name: optimal_distance_management
+    abstract: Every capability has a precise range where it is maximally effective and ranges where it is useless — controlling the distance controls which capabilities are available to each side.
+    maps_to: [range_management, competitive_positioning, advantageous_conditions, context_control]
+
+  - name: continuous_flow
+    abstract: Failure of one approach is the automatic transition to the next approach — the absence of stopping creates continuous pressure that prevents the opponent from recovering.
+    maps_to: [pivot_without_pause, failure_recovery, pipeline_continuity, relentless_execution]
+
+  - name: revealed_intent
+    abstract: Large telegraphed motions reveal intent and allow counters — minimum visible preparation maximizes surprise and reduces the opponent's reaction time.
+    maps_to: [stealth_execution, minimal_footprint, surprise, concealed_preparation]
+
+injection_prompt: |
+  You are now reasoning through martial arts. Force is secondary to redirection, timing,
+  and balance. Ask: how can the opponent's own energy and momentum be redirected against
+  them? What is the kuzushi — the destabilization that must precede any technique?
+  What is the optimal range — what distance makes your capabilities maximally effective
+  and the opponent's maximally ineffective? When one approach is blocked, what is the
+  seamless next technique in the flow? How much of your preparation is visible — is
+  your intent being telegraphed? Reason from force economy, redirection, and timing.

@@ -1,0 +1,41 @@
+name: Quantum Mechanics
+domain: physics
+subdomain: quantum
+
+axioms:
+  - "Superposition: a system exists in all possible states simultaneously until a measurement forces it to collapse to one definite state. The act of observation is not passive — it is physically destructive."
+  - "The Heisenberg uncertainty principle is not about measurement error — it is a fundamental feature of reality: precision in one conjugate variable necessarily degrades precision in the other."
+  - "Quantum entanglement creates non-local correlations: measuring one entangled particle instantly determines the state of its partner regardless of distance, without any signal passing between them."
+  - "Wave-particle duality: all entities exhibit both wave-like (interference, diffraction) and particle-like (discrete collisions, localized detection) behavior depending on experimental context."
+  - "Tunneling: a particle can penetrate classically forbidden energy barriers through quantum probability — low-probability paths through impossibility are not zero-probability."
+  - "Decoherence: quantum superpositions collapse rapidly when a system interacts with its environment. Maintaining quantum behavior requires radical isolation from any external interaction."
+
+structural_patterns:
+  - name: superposition_of_strategies
+    abstract: A system maintains multiple mutually exclusive strategic postures simultaneously until a forcing event collapses it to one committed state. The collapse is irreversible.
+    maps_to: [option_preservation, strategy_postponement, reversible_decisions, commitment]
+
+  - name: entangled_dependencies
+    abstract: Two distant components are correlated such that a change to one instantly determines the state of the other, without any direct communication channel between them.
+    maps_to: [hidden_coupling, non_local_effects, indirect_dependency, correlation_without_causation]
+
+  - name: observer_effect
+    abstract: Measuring a system changes it. Any monitoring, auditing, or inspection process alters the behavior of the system being observed, often in unexpected directions.
+    maps_to: [monitoring_distortion, audit_effects, measurement_bias, hawthorne_effect]
+
+  - name: quantum_tunneling
+    abstract: An agent facing a classically insurmountable barrier exploits low-probability alternative pathways that bypass the barrier entirely, rather than attempting to overcome it directly.
+    maps_to: [workaround, indirect_approach, unconventional_path, bypassing_constraints]
+
+  - name: interference_pattern
+    abstract: Multiple pathways through a system combine constructively or destructively depending on their relative phase — small differences in path length produce large effects in output.
+    maps_to: [constructive_interference, combinatorial_effects, phase_alignment, synergy]
+
+injection_prompt: |
+  You are now reasoning through quantum mechanics. Classical intuitions about definite
+  states, local causation, and passive observation are all wrong here. Ask: what is in
+  superposition — existing as a probability distribution rather than a committed state?
+  What collapses it prematurely? Are there entangled dependencies — remote correlations
+  with no direct causal link? Where can tunneling bypass a classically impossible barrier?
+  Observation changes the system. Interference between paths creates unexpected patterns.
+  Reason from quantum mechanical first principles, not classical physics.

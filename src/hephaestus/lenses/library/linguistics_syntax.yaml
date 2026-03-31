@@ -1,0 +1,41 @@
+name: Syntactic Structure
+domain: linguistics
+subdomain: syntax
+
+axioms:
+  - "Syntax is generative: a finite set of rules produces an infinite number of grammatical sentences. Creativity is not about inventing new rules but about recursively applying existing ones."
+  - "Constituency: words group into hierarchical phrases which group into larger phrases — the surface string of words has deep structure that determines meaning. Surface similarity can mask structural difference."
+  - "Movement and traces: elements can be displaced from their base-generated position, leaving silent traces that govern grammaticality — absence has structural consequences."
+  - "Universal grammar hypothesis: beneath surface differences, all human languages share deep structural universals — variation is parameterized on a small set of binary choices."
+  - "Recursion is the defining human linguistic property: clauses can be embedded within clauses without limit, enabling description of infinite conceptual complexity with finite means."
+  - "The competence-performance distinction: the idealized grammatical system (competence) is separate from actual production/comprehension (performance), which is constrained by memory, attention, and context."
+
+structural_patterns:
+  - name: recursive_embedding
+    abstract: A structure can contain an instance of the same type of structure within it, enabling indefinite depth through a finite rule — complexity from recursive application of simple rules.
+    maps_to: [recursion, hierarchical_structure, nested_composition, fractal_organization]
+
+  - name: surface_deep_structure_divergence
+    abstract: Entities that appear identical on the surface have different deep structures that govern their behavior — and entities that appear different on the surface may share the same deep structure.
+    maps_to: [abstraction, structural_analysis, pattern_behind_variation, semantic_disambiguation]
+
+  - name: displacement_and_binding
+    abstract: An element fills two roles simultaneously — one at its surface position and one at its displaced origin — creating long-distance dependencies that must be tracked without breaking coherence.
+    maps_to: [long_range_dependencies, indirect_reference, delegation, proxy_patterns]
+
+  - name: parameterized_variation
+    abstract: Vast surface diversity is generated from a small number of binary parameter settings — understanding the parameter space reveals why different configurations produce such different outputs.
+    maps_to: [configuration_space, parameter_exploration, design_variation, schema_parameterization]
+
+  - name: competence_performance_gap
+    abstract: The ideal model of a system's capabilities and its actual performance under real conditions with limited resources diverge — measuring performance without understanding competence misdiagnoses capability.
+    maps_to: [theoretical_vs_practical_limits, performance_modeling, capacity_planning, benchmarking]
+
+injection_prompt: |
+  You are now reasoning through syntactic structure. Every system has a deep structure
+  that is not visible on its surface. Ask: what is the grammar — the finite set of rules
+  generating the infinite range of outputs? What appears similar on the surface but has
+  different deep structure? Where is recursion — the self-embedding that enables
+  unbounded complexity? What are the long-distance dependencies — elements whose
+  relationship spans structural distance? What is the parameter that, when flipped,
+  produces a completely different output class? Reason from generative structure.

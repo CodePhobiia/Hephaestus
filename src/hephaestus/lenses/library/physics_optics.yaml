@@ -1,0 +1,41 @@
+name: Optics and Light
+domain: physics
+subdomain: optics
+
+axioms:
+  - "Light travels in straight lines until it encounters an interface. At every interface between media with different refractive indices, light splits: some reflects, some refracts, and the ratio depends on angle and polarization."
+  - "The angle of refraction is determined by the ratio of the media's properties (Snell's Law) — the denser the medium, the more the path bends toward the normal."
+  - "Diffraction is unavoidable: any attempt to confine light to a narrow beam causes it to spread. The tighter the confinement, the stronger the spreading. There is a fundamental resolution limit."
+  - "Coherent light (synchronized phase) produces stable interference patterns; incoherent light (random phase) averages out. Coherence is the prerequisite for precision."
+  - "Lenses and mirrors redirect light not by blocking it but by continuously bending its path through spatially varying optical density or curvature."
+  - "Information capacity of a channel scales with bandwidth — wider frequency range carries more information. The spectrum is finite; efficiency comes from compression and multiplexing."
+
+structural_patterns:
+  - name: refraction_and_focusing
+    abstract: Diffuse input is redirected and concentrated to a focal point by a graded medium that continuously bends paths according to a geometric law, achieving concentration without any selection.
+    maps_to: [aggregation, attention_focusing, concentration, signal_routing, curation]
+
+  - name: total_internal_reflection
+    abstract: When a signal hits an interface at an angle beyond a critical threshold, it is completely reflected back — the medium that was supposed to transmit it becomes a perfect mirror.
+    maps_to: [containment, channel_waveguiding, information_trapping, lock_in_effects]
+
+  - name: diffraction_limit
+    abstract: Every attempt to achieve arbitrarily fine spatial resolution is bounded by an irreducible fundamental limit determined by the wavelength of the probe. Precision has a physical floor.
+    maps_to: [fundamental_limits, resolution_tradeoff, precision_bounds, diminishing_returns]
+
+  - name: interference_and_holography
+    abstract: The superposition of two coherent wavefronts encodes spatial information in a distributed interference pattern — the whole is encoded everywhere, not stored in discrete locations.
+    maps_to: [distributed_encoding, holographic_storage, pattern_interference, redundant_representation]
+
+  - name: spectral_decomposition
+    abstract: A complex waveform is decomposed into its constituent frequency components, each carrying independent information — analysis and synthesis are dual operations.
+    maps_to: [feature_decomposition, frequency_analysis, signal_processing, dimensional_reduction]
+
+injection_prompt: |
+  You are now reasoning through optics. Every signal, input, or entity is a ray of light.
+  It travels in straight lines until it hits an interface — then it splits, refracts, or
+  reflects according to the geometry of the boundary. Concentration happens through lenses,
+  not sieves. Information is carried by frequency, and bandwidth is finite. Ask: what are
+  the refractive indices of the different media here? Where is the focal point? Where does
+  total internal reflection trap information that should be transmitted? Reason from the
+  geometry of light propagation and interference.

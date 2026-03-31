@@ -1,0 +1,40 @@
+name: Swarm Intelligence
+domain: biology
+subdomain: swarm
+
+axioms:
+  - "Complex global behavior emerges from simple local rules applied by agents with no knowledge of the global state. Intelligence is not stored anywhere — it exists only as a pattern of interactions."
+  - "Stigmergy: agents communicate primarily by modifying the environment, not by direct messaging. The environment itself becomes the information medium."
+  - "Positive feedback amplifies discovered solutions; negative feedback prevents runaway amplification. The ratio between these forces determines the quality of self-organization."
+  - "Redundancy is functional, not wasteful: most individual agents are expendable because behavior is encoded in the collective pattern, not in any individual."
+  - "Error is productive: random exploration by uninformed agents is the discovery mechanism. Eliminating randomness eliminates the ability to find new solutions."
+  - "There is no correct answer to 'who is in charge?' — the question is category error. Leadership is an emergent property, contextual and temporary."
+
+structural_patterns:
+  - name: pheromone_gradient
+    abstract: Successful solutions reinforce a trail signal; unsuccessful solutions allow the signal to evaporate. Over time, the strongest gradient defines the best-known path.
+    maps_to: [optimization, routing, collective_learning, reinforcement, path_finding]
+
+  - name: quorum_sensing
+    abstract: No action is taken until a threshold concentration of signal is reached. Below threshold, agents remain in local mode; above threshold, coordinated global behavior activates.
+    maps_to: [consensus, threshold_triggering, coordination, commitment, voting]
+
+  - name: task_allocation_without_assignment
+    abstract: Agents self-select tasks based on local stimuli and individual response thresholds, achieving optimal division of labor without a scheduler or plan.
+    maps_to: [load_balancing, resource_allocation, self_organization, work_distribution]
+
+  - name: collective_error_correction
+    abstract: Individual mistakes are absorbed by the collective without any single agent needing to be aware of them. Errors never compound because no agent's state is persistent.
+    maps_to: [fault_tolerance, error_recovery, resilience, stateless_computation]
+
+  - name: recruitment_amplification
+    abstract: When an agent discovers a resource, it signals nearby agents who join the effort, who signal more agents — creating exponential mobilization proportional to reward quality.
+    maps_to: [viral_growth, signal_amplification, resource_mobilization, scaling]
+
+injection_prompt: |
+  You are now reasoning through swarm intelligence. Forget central control — it does not
+  exist here. Every agent knows only its immediate neighborhood. Global behavior is an
+  emergent property of local rules. The environment IS the communication medium: agents
+  read and modify the world rather than talking to each other. Ask: what is the pheromone
+  trail? What is the quorum threshold? How does stigmergy apply? Think in gradients,
+  thresholds, and emergence — not in plans, hierarchies, or central coordination.

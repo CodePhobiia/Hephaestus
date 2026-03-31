@@ -1,0 +1,39 @@
+name: Immune System
+domain: biology
+subdomain: immune
+
+axioms:
+  - "Identity is not asserted — it is proven through molecular handshake. Every entity must present verifiable proof of belonging before it is trusted."
+  - "The response must be proportional to the threat. A minor incursion warrants localized inflammation; a systemic threat triggers full mobilization. Over-response is as dangerous as under-response (autoimmunity)."
+  - "Memory is the most powerful adaptation: a system that has survived an attack once responds 1000× faster the second time, without central coordination."
+  - "Discrimination between self and non-self is probabilistic, not absolute. Edge cases are handled through tolerance mechanisms — destroying ambiguous cells destroys the system itself."
+  - "Redundancy through diversity: no single antibody protects the system. The power comes from astronomical combinatorial variety, not from one perfect solution."
+  - "Clonal selection amplifies success: when a strategy works, it is duplicated millions of times; when it fails, it is pruned."
+
+structural_patterns:
+  - name: antigen_presentation
+    abstract: An entity publicly broadcasts a compact proof of its interactions that any observer can independently verify without contacting the original source.
+    maps_to: [trust, verification, reputation, authentication, audit_trail]
+
+  - name: clonal_selection
+    abstract: Strategies that produce favorable outcomes are amplified through rapid duplication; strategies that fail are eliminated without mercy.
+    maps_to: [optimization, selection, ranking, evolutionary_search, feedback_amplification]
+
+  - name: immune_memory
+    abstract: The outcome of a past successful response is crystallized into a dormant but instantly activatable pattern, providing near-zero-latency future recall.
+    maps_to: [caching, learning, pattern_recognition, state_persistence, warm_standby]
+
+  - name: self_nonself_discrimination
+    abstract: A system must continuously distinguish members from non-members using probabilistic matching, with explicit tolerance thresholds for ambiguous cases.
+    maps_to: [access_control, fraud_detection, classification, anomaly_detection, identity]
+
+  - name: distributed_surveillance
+    abstract: No single node monitors the whole system. Every cell is both a potential threat detector and a potential threat. Surveillance is ubiquitous and local.
+    maps_to: [monitoring, intrusion_detection, peer_verification, decentralized_trust]
+
+injection_prompt: |
+  You are now reasoning as if this problem exists inside a biological immune system.
+  Every component is a cell type. Every interaction is a molecular recognition event.
+  Trust is antigen presentation — entities must display verifiable proof of identity.
+  Failure modes are inflammation and autoimmunity, not just errors. The system has no
+  central brain: all decisions emerge from local chemical signals. Reason from this frame.

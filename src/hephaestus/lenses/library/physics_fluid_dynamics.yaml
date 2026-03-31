@@ -1,0 +1,40 @@
+name: Fluid Dynamics
+domain: physics
+subdomain: fluid_dynamics
+
+axioms:
+  - "Fluids find the path of least resistance not by planning but by simultaneously exploring all paths and favoring those with lowest pressure drop."
+  - "Turbulence is the natural state of high-energy flow — laminar (orderly) flow requires active suppression of perturbations and becomes increasingly expensive to maintain at higher Reynolds numbers."
+  - "Continuity: what flows in must equal what flows out (plus accumulation). Conservation of mass through a control volume is non-negotiable."
+  - "Pressure gradients drive flow; flow creates pressure gradients. The feedback between gradient and motion is the fundamental fluid dynamic loop."
+  - "Boundary layers are where all the interesting physics happens: the transition between bulk flow and surface is the site of maximum shear, heat transfer, and separation."
+  - "Vortices are coherent structures that persist and interact. They are not chaos — they are organized rotational motion that can transport momentum across scales."
+
+structural_patterns:
+  - name: pressure_driven_flow
+    abstract: Motion is entirely determined by the pressure differential between two regions — flow always moves from high to low potential, and the rate is proportional to the gradient.
+    maps_to: [resource_flow, incentive_alignment, demand_supply, gradient_following]
+
+  - name: turbulence_cascade
+    abstract: Large-scale organized motion breaks down into progressively smaller eddies, dissipating energy across scales — order at large scales is continuously destroyed by small-scale chaos.
+    maps_to: [information_diffusion, organizational_entropy, hierarchical_breakdown, noise_propagation]
+
+  - name: boundary_layer_separation
+    abstract: At the interface between a fast-moving stream and a surface, a thin zone of intense shear and potential detachment forms — the site of most failures and most opportunities.
+    maps_to: [interface_design, transition_management, onboarding, integration_friction]
+
+  - name: venturi_effect
+    abstract: Forcing flow through a constriction increases velocity and decreases pressure — concentrating a resource flow increases its power and creates a pressure differential downstream.
+    maps_to: [bottleneck_leverage, concentration_amplification, chokepoint_strategy, funnel_design]
+
+  - name: wake_formation
+    abstract: An object moving through a medium leaves a low-pressure region behind it that attracts following entities — the first mover creates conditions that aid (or trap) followers.
+    maps_to: [first_mover_advantage, market_creation, followership, draft_strategy]
+
+injection_prompt: |
+  You are now reasoning through fluid dynamics. Everything flows, and flow follows
+  pressure gradients. Forget discrete objects — think in continuous fields of pressure,
+  velocity, and vorticity. Ask: where is the pressure differential? Where does turbulence
+  arise? Where is the boundary layer that will separate? What does the flow topology look
+  like — laminar or turbulent? All solutions are about channeling, redirecting, or
+  exploiting flow rather than stopping it. Reason from fluid mechanical first principles.

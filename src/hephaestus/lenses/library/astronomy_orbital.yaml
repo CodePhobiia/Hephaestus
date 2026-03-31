@@ -1,0 +1,41 @@
+name: Orbital Mechanics
+domain: astronomy
+subdomain: orbital
+
+axioms:
+  - "Orbits are free: once established, an object in orbit moves without propulsion — the only cost is changing the orbit. Stationkeeping costs only the perturbations from ideal."
+  - "The Oberth effect: rocket burns are most efficient deep in a gravity well at maximum velocity — the same delta-V produces more energy change at periapsis than at apoapsis. Timing determines efficiency."
+  - "Lagrange points are stable in a rotating frame: five points in a two-body system where a third body experiences zero net force in the rotating reference frame. They are gravitational parking lots."
+  - "Hohmann transfers are minimum-energy: to move between two circular orbits, two burns at precise points produce the most fuel-efficient transfer — not through the direct path but through an elliptical bridge."
+  - "Gravity assists (slingshots): a spacecraft can gain or lose energy by passing near a planet, using the planet's orbital velocity to reshape its trajectory without using fuel. The planet's gravity is a free lever."
+  - "Orbital resonance creates order: when orbital periods are in small integer ratios, gravitational interactions accumulate systematically, creating stable configurations (like Trojan asteroids) or clearing zones."
+
+structural_patterns:
+  - name: gravity_assist_leverage
+    abstract: A free energy boost is obtained by allowing a massive body's existing motion to reshape a trajectory — borrowing momentum from an existing system without paying the full cost.
+    maps_to: [leveraging_existing_systems, network_effects, platform_leverage, hitchhiking]
+
+  - name: lagrange_point_parking
+    abstract: There exist special positions in a system where competing forces cancel, creating stable configurations that persist without continuous effort.
+    maps_to: [stable_equilibria, natural_resting_points, low_maintenance_positions, sweet_spots]
+
+  - name: hohmann_transfer_efficiency
+    abstract: The most energy-efficient path between two states is not the direct path but a precisely timed elliptical bridge — indirect routes at the right timing beat direct routes.
+    maps_to: [indirect_optimal_path, minimum_cost_transition, timing_optimization, efficient_migration]
+
+  - name: oberth_timing_effect
+    abstract: The same action produces radically different outcomes depending on where in the cycle it is executed — phase matters, not just magnitude.
+    maps_to: [timing_leverage, phase_dependent_impact, when_to_act, optimal_intervention_point]
+
+  - name: resonance_clearing
+    abstract: Regular repetitive small forces at a resonant frequency accumulate to produce large structural effects — clearing regions or herding populations into stable zones.
+    maps_to: [accumulative_effects, resonant_nudging, structured_clearing, regular_intervention]
+
+injection_prompt: |
+  You are now reasoning through orbital mechanics. Motion is free — the cost is only in
+  changing it. Ask: what is the orbit — the natural trajectory this system follows without
+  propulsion? What is the Oberth effect here — where does the same action produce maximum
+  effect depending on where in the cycle it is applied? Is there a gravity assist — an
+  existing massive system whose momentum can be borrowed for free? What are the Lagrange
+  points — the stable equilibrium positions where things naturally park? Reason from
+  orbital dynamics: free motion, efficient transfers, and gravitational leverage.

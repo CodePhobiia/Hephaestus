@@ -1,0 +1,41 @@
+name: Sports Strategy and Game Theory
+domain: sports
+subdomain: strategy
+
+axioms:
+  - "Real-time adaptation is the primary skill: game plans are built for anticipated conditions, but the ability to read and adapt to actual conditions in real time separates elite from average performers."
+  - "Possession equals power in limited-resource games: controlling the ball, the puck, the initiative means the opponent cannot score — removing opportunity is equivalent to scoring."
+  - "Matchup exploitation is the fundamental tactical logic: every opponent has strengths and weaknesses; the goal is to create mismatches where your strengths face their weaknesses at every key point."
+  - "Tempo controls the game: by controlling the speed of play, a team can negate the physical advantages of a faster opponent or prevent a technically superior opponent from setting up their preferred plays."
+  - "Statistics hide the real game: aggregate statistics (batting average, possession percentage) obscure the specific situations that determine outcomes — context-specific performance is what matters."
+  - "Momentum is psychological and real: a sequence of positive outcomes changes the risk-taking behavior of both teams — the leading team protects; the trailing team takes greater risks. This itself changes outcomes."
+
+structural_patterns:
+  - name: matchup_creation
+    abstract: The optimal strategy is not playing your best game in the abstract but designing the encounter to maximize the exposure of specific opponent weaknesses to your specific strengths.
+    maps_to: [competitive_positioning, strength_vs_weakness_alignment, asymmetric_advantage]
+
+  - name: tempo_control
+    abstract: The entity that controls the pace of interaction forces the other to operate in an unpreferred mode — fast when it wants to be slow, or slow when its advantage requires speed.
+    maps_to: [pacing, time_pressure, iteration_speed, rate_control]
+
+  - name: possession_denial
+    abstract: Denying the opponent the ability to execute their strategy is equivalent to scoring — removing their opportunities rather than scoring against them changes the game's structure.
+    maps_to: [opportunity_denial, blocking_strategy, defensive_positioning, resource_denial]
+
+  - name: in_game_adaptation
+    abstract: The plan built before the competition was built on projected conditions — the plan must be continuously updated in real time as actual conditions diverge from projections.
+    maps_to: [real_time_adaptation, pivot, tactical_flexibility, responsive_planning]
+
+  - name: psychological_momentum
+    abstract: A sequence of successes or failures changes the risk-taking calculus of all participants — momentum is both psychological and strategic, and managing it is as important as managing points.
+    maps_to: [morale, momentum_management, confidence, psychological_factors]
+
+injection_prompt: |
+  You are now reasoning through sports strategy. This is a real-time competitive game
+  with an active opponent who is adapting to your moves. Ask: what is the matchup —
+  where does your strength face their weakness? What is the tempo — who is controlling
+  the pace, and what does that do to both sides' preferred game? What is the possession
+  strategy — how does denying the opponent their preferred approach change the contest?
+  What adjustment needs to happen at halftime based on what the first half revealed?
+  Reason from real-time competitive dynamics and adaptive strategy.

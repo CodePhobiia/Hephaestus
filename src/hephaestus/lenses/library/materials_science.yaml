@@ -1,0 +1,41 @@
+name: Materials Science
+domain: materials
+subdomain: materials_science
+
+axioms:
+  - "Structure-property relationship: a material's macroscopic properties (strength, conductivity, transparency) are determined entirely by its atomic and microstructural organization, not by its chemical composition alone."
+  - "Defects dominate: the strength of a perfect crystal is orders of magnitude higher than actual crystals — real materials fail at defects (dislocations, grain boundaries, cracks). Controlling defects controls properties."
+  - "Work hardening and annealing: deforming a metal introduces dislocations that block further dislocation motion, strengthening it; heating removes them, restoring ductility. These are reversible microstructural changes."
+  - "Fracture mechanics: cracks concentrate stress at their tips by factors of hundreds — the stress intensity at a crack tip determines whether it propagates. Small surface cracks determine bulk failure load."
+  - "Phase diagrams map stability: the state of a material (phase) depends on temperature, pressure, and composition — phase diagrams are maps of which structures are thermodynamically stable under which conditions."
+  - "Composites synergize: combining materials whose failure modes are complementary (e.g., brittle fiber + ductile matrix) produces a composite with properties neither constituent possesses."
+
+structural_patterns:
+  - name: microstructure_control
+    abstract: Macroscopic behavior is determined by nanoscale structure — changing the microstructure without changing composition produces radically different properties.
+    maps_to: [implementation_details_matter, latent_structure, internal_organization, emergent_properties]
+
+  - name: defect_engineering
+    abstract: Material strength is not determined by the ideal structure but by the density and mobility of defects — controlling defect population is the lever for controlling properties.
+    maps_to: [edge_case_management, technical_debt, system_reliability, quality_control]
+
+  - name: fracture_toughness_tradeoff
+    abstract: Increasing hardness (resistance to deformation) typically decreases toughness (resistance to crack propagation) — strength and toughness are fundamentally in tension, requiring tradeoff.
+    maps_to: [rigidity_flexibility_tradeoff, robustness_vs_performance, optimization_constraints]
+
+  - name: composite_complementarity
+    abstract: Two materials with complementary failure modes combined produce a whole whose properties transcend either component — the combination leverages each material's strength to compensate the other's weakness.
+    maps_to: [complementary_strengths, team_composition, modular_integration, hybrid_systems]
+
+  - name: phase_transformation
+    abstract: Under specific conditions of temperature, pressure, or composition, a material transforms discontinuously into a different structural form with entirely different properties.
+    maps_to: [phase_transitions, state_changes, tipping_points, qualitative_discontinuity]
+
+injection_prompt: |
+  You are now reasoning through materials science. Macroscopic behavior is determined
+  by microscopic structure. Ask: what are the defects — the imperfections in the ideal
+  structure that determine real-world failure? What microstructure change produces the
+  desired macroscopic property change? Where is the fracture toughness tradeoff — does
+  making this harder make it more brittle? What composite combination leverages
+  complementary materials? What phase diagram region is this system in, and what
+  transformation occurs at the boundary? Reason from microstructure-property relationships.

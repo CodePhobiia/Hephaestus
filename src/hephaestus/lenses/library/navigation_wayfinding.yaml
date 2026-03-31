@@ -1,0 +1,42 @@
+name: Navigation and Wayfinding
+domain: navigation
+subdomain: navigation_wayfinding
+
+axioms:
+  - "Dead reckoning: in the absence of external reference, position is estimated by integrating velocity and direction from the last known position. Error accumulates — every increment of time without external fix degrades accuracy."
+  - "Triangulation requires three: two lines of position define an ambiguous fix; three converging lines of position produce a reliable fix. Multiple independent constraints are required to overcome ambiguity."
+  - "The coastline is both guide and danger: land is the navigator's primary reference, but proximity to land is the primary source of maritime risk. The same feature that enables navigation enables catastrophe."
+  - "Landmark navigation: wayfinding proceeds by identifying a sequence of distinctive landmarks and navigating from one to the next — global knowledge is assembled from local reliable reference points."
+  - "Route vs. survey knowledge: novice navigators learn routes (left at the church, right at the oak); expert navigators develop survey maps (a spatial model they can navigate flexibly in any direction)."
+  - "Estimation before measurement: skilled navigators maintain a continuous estimated position before confirming with measurements — measurement without prior estimate has no error baseline."
+
+structural_patterns:
+  - name: dead_reckoning
+    abstract: Estimating current state by accumulating a series of incremental changes from the last known state — error grows with each step but is controlled by periodic external verification.
+    maps_to: [state_estimation, odometry, incremental_updates, drift_correction]
+
+  - name: triangulation
+    abstract: Two or more independent lines of position converge to a reliable fix — single sources of information are always ambiguous; independent convergence produces reliable position.
+    maps_to: [multi_source_validation, triangulation, cross_validation, redundant_confirmation]
+
+  - name: landmark_sequence
+    abstract: Complex navigation is decomposed into a sequence of local steps, each reliable and distinctive — no single step requires global knowledge; the sequence builds global traversal from local certainties.
+    maps_to: [milestone_planning, staged_navigation, local_to_global, decomposition]
+
+  - name: route_to_survey_knowledge
+    abstract: Novice understanding is a sequence of steps; expert understanding is a spatial model that allows flexible navigation from any starting point in any direction.
+    maps_to: [expertise_development, model_building, contextual_flexibility, deep_understanding]
+
+  - name: continuous_situational_awareness
+    abstract: The navigator never stops estimating current position — even without external data, the estimated position is continuously updated. Awareness is not a state but a process.
+    maps_to: [continuous_monitoring, real_time_tracking, situational_awareness, proactive_estimation]
+
+injection_prompt: |
+  You are now reasoning through navigation and wayfinding. You need to know where you are
+  and where you are going in an environment with imperfect information. Ask: what is the
+  dead reckoning estimate — what does integration of recent changes from the last known
+  state suggest? What are the triangulation points — the three independent lines of
+  position that converge to a reliable fix? What is the next landmark — the distinctive
+  feature that confirms progress? What is the coastline danger — the reference that
+  guides but also threatens? Are you using route knowledge or survey knowledge?
+  Reason from navigation principles of position, reference, and accumulated error.

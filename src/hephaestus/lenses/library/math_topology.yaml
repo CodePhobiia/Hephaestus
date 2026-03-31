@@ -1,0 +1,40 @@
+name: Topology
+domain: math
+subdomain: topology
+
+axioms:
+  - "Topology studies properties that are preserved under continuous deformation — stretching, bending, and twisting — but not tearing or gluing. These invariant properties reveal deep structure invisible to metric geometry."
+  - "A coffee mug and a donut are topologically identical (both are genus-1 surfaces with one hole) — metric properties (size, shape) are irrelevant; only connectivity matters."
+  - "Connectedness is binary at the global level but has a spectrum locally: a space can be globally connected yet locally disconnected, or vice versa."
+  - "Holes are topological invariants: the number of holes (Betti numbers) in a space cannot change under continuous deformation and is one of the most powerful structural signatures."
+  - "Compactness and boundary: bounded spaces with finite 'extent' have fundamentally different properties from unbounded ones. Boundaries are not edges but structural features."
+  - "Fixed point theorems: every continuous map from a compact convex set to itself has at least one fixed point. Equilibria are topologically guaranteed under mild conditions."
+
+structural_patterns:
+  - name: connectivity_invariants
+    abstract: The structural signature of a space is determined by what remains unchanged under all allowable transformations — identifying the true invariants separates essential structure from superficial form.
+    maps_to: [essential_properties, invariant_features, structural_analysis, robustness_under_change]
+
+  - name: hole_detection
+    abstract: A topological hole represents a structurally absent connection — its presence is detectable by the impossibility of continuously contracting certain loops to a point.
+    maps_to: [gap_analysis, missing_link_detection, structural_deficiency, coverage_gaps]
+
+  - name: fixed_point_theorem
+    abstract: Under sufficiently general conditions, any mapping of a system to itself is guaranteed to have at least one stable point — equilibrium existence is often provable without finding the equilibrium.
+    maps_to: [equilibrium_existence, convergence_guarantees, stability_analysis, fixed_point_iteration]
+
+  - name: continuous_deformation
+    abstract: Two configurations are equivalent if one can be smoothly transformed into the other without cutting or pasting — equivalence classes reveal which solutions are truly distinct.
+    maps_to: [solution_equivalence, transformation_feasibility, smooth_transition, structural_identity]
+
+  - name: manifold_structure
+    abstract: A complex high-dimensional space may locally resemble a simple low-dimensional space — global complexity can be built from locally simple pieces glued together coherently.
+    maps_to: [dimensionality_reduction, local_approximation, atlas_mapping, latent_structure]
+
+injection_prompt: |
+  You are now reasoning through topology. Ignore all metric properties — distances, sizes,
+  angles are irrelevant. Ask: what is preserved when the system is continuously deformed?
+  What are the holes — the structural absences that cannot be filled without tearing?
+  What fixed points are topologically guaranteed? Two configurations are equivalent if one
+  can be smoothly transformed into the other. The real structure is in the connectivity and
+  the holes, not in the shape. Reason from topological invariants.

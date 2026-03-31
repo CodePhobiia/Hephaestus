@@ -1,0 +1,41 @@
+name: Military Logistics
+domain: military
+subdomain: logistics
+
+axioms:
+  - "Amateurs talk strategy; professionals talk logistics. The real limit on military power is not tactical skill but the ability to sustain forces with fuel, ammunition, food, and parts over time and distance."
+  - "The iron mountain: modern mechanized forces consume staggering quantities of materiel per day — planning must work backward from consumption rates, not forward from aspirations."
+  - "Logistical tail vs. tooth: every combat soldier requires approximately 8-10 support personnel to sustain them. The 'teeth' (fighters) are just the tip of an enormous support pyramid."
+  - "Lines of communication must be secured, shortened, and defended. An army operating on extended LOCs is an army in a vice — every mile of supply line is a vulnerability."
+  - "Push vs. pull logistics: push systems pre-position anticipated supplies (efficient but brittle to uncertainty); pull systems deliver on demand (responsive but latency-limited)."
+  - "Stockpiling and prepositioning: the time to ensure resources exist is before they are needed. Crisis logistics fails because pre-crisis investment was inadequate."
+
+structural_patterns:
+  - name: consumption_rate_planning
+    abstract: Planning works backward from the rate at which resources are consumed under operational conditions, calculating what inventory, throughput, and replenishment are required to sustain operations.
+    maps_to: [capacity_planning, burn_rate, inventory_management, operational_sustainability]
+
+  - name: push_pull_resupply
+    abstract: The system must decide whether to pre-position resources based on predicted demand (efficient, prediction-dependent) or deliver on request (flexible, latency-limited).
+    maps_to: [supply_chain_design, caching_strategy, just_in_time_vs_buffer, inventory_policy]
+
+  - name: forward_basing
+    abstract: Moving resources closer to the point of consumption reduces transit time and vulnerability, enabling faster response but increasing the cost and risk of forward positions.
+    maps_to: [caching_at_edge, latency_reduction, distributed_deployment, proximity_tradeoff]
+
+  - name: bottleneck_bridge
+    abstract: A single transportation chokepoint (mountain pass, bridge, port) constrains the entire resupply system regardless of capacity elsewhere — the weakest link determines total throughput.
+    maps_to: [system_throughput, bottleneck_analysis, critical_infrastructure, throughput_limits]
+
+  - name: dual_track_redundancy
+    abstract: Critical supply routes are duplicated along different geographic paths so that interdiction of one does not halt resupply entirely — redundancy multiplies survivability.
+    maps_to: [redundancy, fault_tolerance, critical_path_backup, supply_chain_resilience]
+
+injection_prompt: |
+  You are now reasoning through military logistics. Strategy is meaningless without
+  sustainable supply. Ask: what is the consumption rate — how fast does the operation
+  deplete its resources? What are the lines of communication — the supply routes — and
+  where are they vulnerable? What is the logistical tail supporting the operational tooth?
+  Is the system push or pull? Where is the chokepoint that constrains total throughput?
+  Work backward from operational requirements to determine what stockpiles, throughput,
+  and forward bases are needed. Reason from logistics, not tactics.
