@@ -28,7 +28,7 @@ structural_patterns:
     maps_to: [risk_assessment, epistemic_clarity, confidence_levels, probability_reasoning]
 
   - name: argument_validity_soundness
-    abstract: Logical structure and factual truth are separable: diagnosing whether a conclusion follows from premises (validity) is independent of whether the premises are true (soundness).
+    abstract: "Logical structure and factual truth are separable: diagnosing whether a conclusion follows from premises (validity) is independent of whether the premises are true (soundness)."
     maps_to: [structural_analysis, assumption_audit, argument_mapping, independent_verification]
 
 injection_prompt: |

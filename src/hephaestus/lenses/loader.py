@@ -107,7 +107,16 @@ class Lens:
 
     @property
     def lens_id(self) -> str:
-        """Stable identifier: domain_subdomain (e.g., biology_immune)."""
+        """
+        Stable identifier derived from the YAML filename stem (e.g., biology_immune).
+
+        The filename stem is the canonical ID because some lenses have single-word
+        names (e.g., agriculture, epidemiology) where domain == subdomain would
+        produce a redundant double (agriculture_agriculture).
+        """
+        if self.source_file and self.source_file.stem:
+            return self.source_file.stem
+        # Fallback: derive from domain_subdomain
         return f"{self.domain}_{self.subdomain}".replace(" ", "_")
 
     @property
