@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hephaestus:latest
+    container_name: hephaestus-web
+    ports:
+      - "8000:8000"
+    environment:
+      # API Keys — set in .env file or pass via shell environment
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Server config
+      - HEPH_HOST=0.0.0.0
+      - HEPH_PORT=8000
+      - HEPH_LOG_LEVEL=info
+    env_file:
+      - .env.docker
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      # Persist lens library customisations
+      - lens_library:/app/src/hephaestus/lenses/library
+
+volumes:
+  lens_library:
+    driver: local
