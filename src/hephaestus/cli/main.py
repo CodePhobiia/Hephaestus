@@ -190,7 +190,9 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     callback=_version_callback,
     help="Show version and exit.",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     problem: str | None,
     depth: int,
     model: str,
@@ -218,10 +220,36 @@ def cli(
         )
     console = make_console(quiet=quiet)
 
+    # ── Layered config ────────────────────────────────────────────────────────
+    layered = None
+    try:
+        from hephaestus.config.layered import LayeredConfig
+
+        layered = LayeredConfig()
+        resolved = layered.resolve()
+
+        # Use config values where CLI didn't explicitly override
+        _VALID_CLI_MODELS = {"claude-max", "claude-cli", "opus", "gpt5", "both"}
+        src = ctx.get_parameter_source
+        if src("depth") != click.core.ParameterSource.COMMANDLINE:
+            depth = resolved.depth
+        if src("model") != click.core.ParameterSource.COMMANDLINE:
+            # Only override if config value is a valid CLI preset
+            if resolved.default_model in _VALID_CLI_MODELS:
+                model = resolved.default_model
+            elif resolved.backend in ("claude-max", "claude-cli"):
+                model = resolved.backend
+        if src("intensity") != click.core.ParameterSource.COMMANDLINE:
+            intensity = resolved.divergence_intensity
+        if src("output_mode") != click.core.ParameterSource.COMMANDLINE:
+            output_mode = resolved.output_mode
+    except Exception:
+        pass  # Fall back to CLI defaults
+
     # ── Interactive mode ──────────────────────────────────────────────────────
     if interactive or (not problem and not raw):
         from hephaestus.cli.repl import run_interactive
-        run_interactive(console, model=model)
+        run_interactive(console, model=model, layered_config=layered)
         return
 
     # ── Validate inputs ───────────────────────────────────────────────────────
@@ -793,8 +821,77 @@ def _error_hint(error_msg: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+@click.command(
+    name="init",
+    help="Initialize a .hephaestus/ project directory in the current folder.",
+)
+def init_cmd() -> None:
+    """Create a .hephaestus/ directory with starter config and instructions."""
+    console = make_console(quiet=False)
+    cwd = Path.cwd()
+    heph_dir = cwd / ".hephaestus"
+
+    if heph_dir.exists():
+        console.print(f"  [{AMBER}]⚠[/] .hephaestus/ already exists in {cwd}")
+        return
+
+    heph_dir.mkdir()
+
+    # config.yaml with commented defaults
+    config_yaml = heph_dir / "config.yaml"
+    config_yaml.write_text(
+        "# Hephaestus project configuration\n"
+        "# These override your global ~/.hephaestus/config.yaml\n"
+        "#\n"
+        "# backend: api\n"
+        "# depth: 3\n"
+        "# candidates: 8\n"
+        "# divergence_intensity: STANDARD\n"
+        "# output_mode: MECHANISM\n"
+        "# auto_save: true\n",
+        encoding="utf-8",
+    )
+
+    # instructions.md
+    instructions = heph_dir / "instructions.md"
+    instructions.write_text(
+        "# Project Instructions for Hephaestus\n\n"
+        "Add project-specific guidance here. Hephaestus will include\n"
+        "this context when generating inventions in this directory.\n\n"
+        "## Domain Context\n\n"
+        "Describe your project's domain, constraints, and goals.\n\n"
+        "## Invention Preferences\n\n"
+        "Any preferences for source domains, output modes, or depth.\n",
+        encoding="utf-8",
+    )
+
+    # Add local.yaml to .gitignore
+    gitignore = cwd / ".gitignore"
+    if gitignore.exists():
+        content = gitignore.read_text()
+        if ".hephaestus/local.yaml" not in content:
+            with open(gitignore, "a") as f:
+                f.write("\n# Hephaestus local overrides\n.hephaestus/local.yaml\n")
+            console.print(f"  [dim]Added .hephaestus/local.yaml to .gitignore[/]")
+
+    from hephaestus.cli.display import GREEN
+    console.print()
+    console.print(f"  [{GREEN}]✓[/] Initialized .hephaestus/ in {cwd}")
+    console.print(f"  [dim]Created:[/]")
+    console.print(f"    {config_yaml}")
+    console.print(f"    {instructions}")
+    console.print()
+    console.print(f"  [dim]Edit .hephaestus/config.yaml for project defaults[/]")
+    console.print(f"  [dim]Edit .hephaestus/instructions.md for project context[/]")
+    console.print()
+
+
 def main() -> None:
     """Entry point for the heph CLI command."""
+    # Check for 'init' subcommand
+    if len(sys.argv) > 1 and sys.argv[1] == "init":
+        init_cmd(standalone_mode=True)
+        return
     cli()
 
 

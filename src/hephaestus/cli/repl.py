@@ -843,6 +843,15 @@ async def _cmd_save(console: Console, state: SessionState, args: str) -> None:
     session_path = _save_session_replay(state)
     if session_path:
         console.print(f"  [{GREEN}]\u2713[/] Session replay: [cyan]{session_path}[/]")
+
+    # Save typed session transcript
+    if state.session is not None:
+        try:
+            transcript_path = SESSIONS_DIR / f"{base}-transcript.json"
+            state.session.save(transcript_path)
+            console.print(f"  [{GREEN}]\u2713[/] Session transcript: [cyan]{transcript_path}[/]")
+        except Exception:
+            pass
     console.print()
 
 
@@ -1026,6 +1035,29 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
         data = json.loads(target.read_text(encoding="utf-8"))
     except Exception:
         print_error(console, f"Could not read {target.name}.", hint="Make sure the file contains valid JSON.")
+        return
+
+    # Detect typed Session transcript (has "meta" with "id" and "transcript")
+    if (
+        "meta" in data
+        and "transcript" in data
+        and "id" in data.get("meta", {})
+    ):
+        loaded_session = Session.from_dict(data)
+        state.session = loaded_session
+        state.context_items = list(loaded_session.pinned_context)
+        state.last_loaded_path = target
+        n_entries = len(loaded_session.transcript)
+        n_inv = len(loaded_session.inventions)
+        console.print(
+            f"  [{GREEN}]\u2713[/] Loaded session transcript"
+            f" ({n_entries} entries) from [cyan]{target.name}[/]"
+        )
+        if n_inv:
+            console.print(
+                f"  [dim]{n_inv} invention snapshot(s) in session.[/]"
+            )
+        console.print()
         return
 
     # Detect if it's a session replay (has "inventions" list) or a single invention
@@ -1676,6 +1708,26 @@ async def _run_pipeline(
     # Display the result
     _display_invention_result(console, state)
 
+    # Record invention in session transcript and check auto-compaction
+    if state.session is not None:
+        inv_name = (
+            report.top_invention.invention_name
+            if report.top_invention
+            else "N/A"
+        )
+        state.session.append_entry(
+            Role.ASSISTANT.value,
+            f"Invention: {inv_name}",
+            entry_type=EntryType.INVENTION.value,
+        )
+        if should_compact(state.session):
+            summary = compact_session(state.session)
+            if summary.removed_entries > 0:
+                console.print(
+                    f"  [dim]Session compacted: {summary.removed_entries}"
+                    f" older entries archived.[/]"
+                )
+
 
 def _auto_save_invention(state: SessionState) -> Path | None:
     """Save the current invention to ~/.hephaestus/inventions/ as JSON + markdown."""
@@ -1891,21 +1943,25 @@ async def _repl_loop(console: Console, state: SessionState) -> None:
         if not raw:
             continue
 
-        # ── Slash commands ─────────────────────────────────────────────
-        if raw.startswith("/"):
-            parts = raw[1:].split(None, 1)
-            cmd_name = parts[0].lower() if parts else ""
-            cmd_args = parts[1] if len(parts) > 1 else ""
+        # Record user input in session transcript
+        if state.session is not None:
+            state.session.append_entry(Role.USER.value, raw)
 
-            handler = COMMANDS.get(cmd_name)
-            if handler:
-                try:
-                    await handler(console, state, cmd_args)
-                except SystemExit:
-                    raise
-                except Exception as exc:
-                    print_error(console, "That command failed.", hint=_safe_error_message(exc))
+        # ── Slash commands (via CommandRegistry) ──────────────────────
+        if raw.startswith("/"):
+            cmd, cmd_args = _registry.parse_command(raw)
+            if cmd:
+                handler = COMMANDS.get(cmd.name)
+                if handler:
+                    try:
+                        await handler(console, state, cmd_args)
+                    except SystemExit:
+                        raise
+                    except Exception as exc:
+                        print_error(console, "That command failed.", hint=_safe_error_message(exc))
             else:
+                parts = raw[1:].split(None, 1)
+                cmd_name = parts[0].lower() if parts else ""
                 suggestion = _closest_command(cmd_name)
                 hint = f"  [dim]Did you mean[/] [cyan]/{suggestion}[/][dim]?[/]" if suggestion else "  [dim]Try /help for commands.[/]"
                 console.print(f"  [{RED}]Unknown command:[/] /{cmd_name}")
@@ -1932,12 +1988,31 @@ async def _repl_loop(console: Console, state: SessionState) -> None:
             print_error(console, "The REPL run failed.", hint=_safe_error_message(exc))
 
 
+def _auto_save_session_on_exit(state: SessionState) -> None:
+    """Auto-save session replay and typed transcript on exit."""
+    if state.inventions:
+        try:
+            _save_session_replay(state)
+        except Exception:
+            pass
+    if state.session is not None:
+        try:
+            ensure_dirs()
+            date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            sid = state.session.meta.id[:8]
+            session_path = SESSIONS_DIR / f"{date_str}-session-{sid}.json"
+            state.session.save(session_path)
+        except Exception:
+            pass
+
+
 def run_interactive(
     console: Console,
     *,
     model: str | None = None,
     depth: int | None = None,
     candidates: int | None = None,
+    layered_config: Any = None,
 ) -> None:
     """
     Entry point for interactive mode.
@@ -1947,14 +2022,18 @@ def run_interactive(
     """
     print_banner(console)
 
-    # Load or create config
-    cfg = load_config()
-    if cfg is None:
-        cfg = run_onboarding(console)
-    else:
-        # Refresh keys from env
-        from hephaestus.cli.config import _resolve_keys
+    # Load config via LayeredConfig (if provided) or fallback
+    from hephaestus.cli.config import CONFIG_PATH, _resolve_keys
+
+    if layered_config is not None and CONFIG_PATH.exists():
+        cfg = layered_config.resolve()
         _resolve_keys(cfg)
+    else:
+        cfg = load_config()
+        if cfg is None:
+            cfg = run_onboarding(console)
+        else:
+            _resolve_keys(cfg)
 
     # Apply CLI overrides (only real model names, not backend keywords)
     if model:
@@ -1973,7 +2052,16 @@ def run_interactive(
     if candidates:
         cfg.candidates = candidates
 
-    state = SessionState(config=cfg)
+    # Create typed session, todo list, and session state
+    session = Session(
+        meta=SessionMeta(model=cfg.default_model, backend=cfg.backend)
+    )
+    state = SessionState(
+        config=cfg,
+        session=session,
+        todo_list=TodoList(),
+        layered_config=layered_config,
+    )
 
     # Phase 4: Tab completion for /commands
     _setup_readline()
@@ -1981,27 +2069,15 @@ def run_interactive(
     try:
         asyncio.run(_repl_loop(console, state))
     except SystemExit:
-        if state.inventions:
-            try:
-                _save_session_replay(state)
-            except Exception:
-                pass
+        _auto_save_session_on_exit(state)
         if not state.exit_reported:
             _print_session_footer(console, state)
     except KeyboardInterrupt:
-        if state.inventions:
-            try:
-                _save_session_replay(state)
-            except Exception:
-                pass
+        _auto_save_session_on_exit(state)
         _print_session_footer(console, state)
     except Exception as exc:
         print_error(console, "Interactive mode crashed.", hint=_safe_error_message(exc))
-        if state.inventions:
-            try:
-                _save_session_replay(state)
-            except Exception:
-                pass
+        _auto_save_session_on_exit(state)
         _print_session_footer(console, state)
 
 
