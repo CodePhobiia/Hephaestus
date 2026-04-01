@@ -1007,6 +1007,87 @@ def lenses_cmd(validate: bool) -> None:
     console.print()
 
 
+@click.command(
+    name="workspace",
+    help="Start an interactive workspace session on a codebase.",
+)
+@click.argument("directory", default=".", type=click.Path(exists=True, path_type=Path))
+@click.option("--model", "-m", default="both", help="Model preset.")
+@click.option("--permission", "-p", default="workspace-write",
+              type=click.Choice(["read-only", "workspace-write", "full-access"]),
+              help="Permission level for file operations.")
+def workspace_cmd(directory: Path, model: str, permission: str) -> None:
+    """Start a workspace session."""
+    console = make_console(quiet=False)
+    print_banner(console)
+
+    from hephaestus.workspace.scanner import WorkspaceScanner
+    scanner = WorkspaceScanner(directory)
+    summary = scanner.scan()
+
+    console.print(f"\n  [bold cyan]Workspace:[/] {summary.root}")
+    console.print(f"  [dim]{summary.total_files} files | {summary.total_lines:,} lines | {summary.primary_language}[/]")
+    if summary.git:
+        console.print(f"  [dim]Git: {summary.git.branch} {'(dirty)' if summary.git.has_changes else '(clean)'}[/]")
+    console.print()
+    console.print(f"  [yellow]Workspace mode ready.[/] Use the REPL to chat about and modify this codebase.")
+    console.print(f"  [dim]Permission: {permission} | Model: {model}[/]")
+    console.print()
+
+    # Launch REPL with workspace context
+    from hephaestus.cli.repl import run_interactive
+    run_interactive(console, model=model)
+
+
+@click.command(
+    name="scan",
+    help="Scan a codebase and print its structure.",
+)
+@click.argument("directory", default=".", type=click.Path(exists=True, path_type=Path))
+@click.option("--tree", is_flag=True, help="Show directory tree.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+def scan_cmd(directory: Path, tree: bool, as_json: bool) -> None:
+    """Scan a codebase and display summary."""
+    from hephaestus.workspace.scanner import WorkspaceScanner
+    import json as _json
+
+    console = make_console(quiet=False)
+    scanner = WorkspaceScanner(directory)
+    summary = scanner.scan()
+
+    if as_json:
+        data = {
+            "root": summary.root,
+            "total_files": summary.total_files,
+            "total_lines": summary.total_lines,
+            "primary_language": summary.primary_language,
+            "languages": summary.languages,
+            "config_files": summary.config_files,
+            "entry_points": summary.entry_points,
+            "top_level_dirs": summary.top_level_dirs,
+        }
+        if summary.git:
+            data["git"] = {
+                "branch": summary.git.branch,
+                "has_changes": summary.git.has_changes,
+                "remote": summary.git.remote_url,
+            }
+        console.print(_json.dumps(data, indent=2))
+        return
+
+    console.print()
+    console.print(f"  [bold yellow]⚒️  Workspace Scan[/]")
+    console.print()
+    console.print(f"  {summary.format_summary()}")
+    console.print()
+
+    if tree or not summary.tree:
+        console.print(f"  [bold]Directory Tree:[/]")
+        for line in summary.tree.splitlines():
+            console.print(f"  {line}")
+        console.print()
+
+
 def main() -> None:
     """Entry point for the heph CLI command."""
     # Check for subcommands before Click parses argv
@@ -1021,6 +1102,14 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "lenses":
         sys.argv = [sys.argv[0]] + sys.argv[2:]  # Strip 'lenses'
         lenses_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "workspace":
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        workspace_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "scan":
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        scan_cmd(standalone_mode=True)
         return
     cli()
 
