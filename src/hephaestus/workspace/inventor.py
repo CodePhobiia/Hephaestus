@@ -33,6 +33,15 @@ Focus on problems that are:
 2. Non-obvious — things the developers might not have considered
 3. Concrete enough to solve with a specific mechanism
 4. Significant enough to improve the product meaningfully
+5. DIFFERENT from common/obvious problems — dig deep into the specific codebase
+
+DO NOT suggest these overused problems (they have already been analyzed):
+- "Pipeline is sequential / needs parallelism"
+- "No feedback loop between stages"
+- "Static lens selection / no learning"
+- "Fixed scoring formula"
+- "No checkpointing / no resume"
+These are known. Find DIFFERENT problems specific to THIS codebase.
 
 For each problem, write it as a clear engineering challenge that could
 benefit from cross-domain structural transfer.
