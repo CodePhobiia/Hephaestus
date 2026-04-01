@@ -65,6 +65,7 @@ IMPORTANT:
 - The structural match must be genuine — not superficial metaphor.
 - If no genuine structural match exists in this domain, set confidence < 0.3.
 - Do NOT invent mechanisms. Use real, documented phenomena from the domain.
+- CRITICAL NOVELTY TEST: The mechanism you find must be one that a domain expert in the TARGET domain would NOT independently reach for. If the mechanism is "cache results", "retry with backoff", "use a queue", or any other obvious engineering pattern — set confidence < 0.2 regardless of how good the structural match is. The value of cross-domain transfer is finding mechanisms that are UNKNOWN in the target domain, not validating known ones with foreign vocabulary.
 """
 
 _SEARCH_PROMPT_TEMPLATE = """\

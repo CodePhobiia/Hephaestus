@@ -93,6 +93,44 @@ Claimed structural mapping: {structural_mapping}
 Evaluate structural fidelity. Return JSON only.
 """
 
+_MECHANISM_NOVELTY_SYSTEM = """\
+You are a mechanism novelty evaluator. Given a candidate solution from a foreign domain
+and the target domain it would be applied to, assess whether the MECHANISM itself
+is novel in the target domain.
+
+The question is NOT whether the source domain is far away. The question is:
+"Would a competent engineer in the target domain independently come up with this
+specific mechanism to solve this problem?"
+
+Scoring:
+- 0.9-1.0: The mechanism is genuinely alien to the target domain — no engineer would think of this
+- 0.7-0.9: The mechanism is unusual and non-obvious in the target domain
+- 0.4-0.7: The mechanism has analogues in the target domain but this framing adds insight
+- 0.1-0.4: The mechanism is a known pattern with foreign vocabulary (e.g., "T-cell memory" = caching)
+- 0.0-0.1: The mechanism is completely obvious in the target domain
+
+Output ONLY valid JSON:
+{
+  "mechanism_novelty": <float 0.0-1.0>,
+  "target_domain_equivalent": "<what's the closest known pattern in the target domain? Be specific>",
+  "novelty_reasoning": "<why this mechanism is or isn't novel in the target domain>",
+  "would_engineer_reach_for_this": <bool — would a target domain expert independently build this?>
+}
+"""
+
+_MECHANISM_NOVELTY_PROMPT = """\
+TARGET DOMAIN: {native_domain}
+TARGET PROBLEM: {structure}
+
+CANDIDATE MECHANISM FROM {source_domain}:
+{mechanism}
+Solution: {source_solution}
+
+Would a {native_domain} engineer independently come up with this mechanism?
+What is the closest known pattern in {native_domain}?
+Rate mechanism novelty. Return JSON only.
+"""
+
 
 # ---------------------------------------------------------------------------
 # Data types
@@ -133,6 +171,10 @@ class ScoredCandidate:
     fidelity_reasoning: str = ""
     strong_mappings: list[str] = field(default_factory=list)
     weak_mappings: list[str] = field(default_factory=list)
+    mechanism_novelty: float = 0.5  # 0=obvious, 1=alien to target domain
+    target_domain_equivalent: str = ""  # closest known pattern
+    novelty_reasoning: str = ""
+    would_engineer_reach_for_this: bool = True  # if True, mechanism is conventional
     scoring_cost_usd: float = 0.0
     scoring_trace: ForgeTrace | None = None
 

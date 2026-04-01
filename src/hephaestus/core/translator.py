@@ -76,14 +76,19 @@ You must output ONLY valid JSON matching this schema:
   "mathematical_proof": "<brief formal statement of structural isomorphism, use notation where helpful>",
   "limitations": ["<limitation 1>", "<limitation 2>", ...],
   "implementation_notes": "<practical notes for an engineer implementing this>",
-  "key_insight": "<the single most important insight that makes this work>"
+  "key_insight": "<the single most important insight that makes this work>",
+  "mechanism_differs_from_baseline": "<CRITICAL: What does this mechanism do that the OBVIOUS solution does not? A senior engineer in the target domain would build X. How is your invention structurally different from X? Be specific.>",
+  "subtraction_test": "<If you removed all source-domain vocabulary and concepts from the architecture, what concrete mechanism remains? Describe the architecture using ONLY target-domain language. If it collapses to a known pattern, say so honestly.>",
+  "baseline_comparison": "<What is the simplest conventional solution to this problem? Describe it in one sentence. Then explain the specific structural advantage your invention has over that baseline.>"
 }
 
 REQUIREMENTS:
-- The mapping must be complete — every foreign element has a target counterpart
+- The mapping must be STRUCTURALLY LOAD-BEARING — removing the source domain logic must break the mechanism, not just change the vocabulary
 - The architecture must be implementable — pseudocode, algorithms, data structures
 - The limitations must be honest — name real failure modes, not platitudes
-- Be specific. Avoid vague statements like "similar to X" — say exactly HOW.
+- Be specific. Avoid vague statements like "similar to X" — say exactly HOW
+- The mechanism_differs_from_baseline field is MANDATORY — if your invention is just a known pattern with biological names, say so and set confidence low
+- CRITICAL: Ask yourself — "Would a senior engineer in the target domain independently invent this mechanism?" If yes, your domain transfer is decorative, not structural. Aim for mechanisms they would NOT reach for.
 """
 
 _TRANSLATE_PROMPT_TEMPLATE = """\
@@ -168,6 +173,9 @@ class Translation:
     implementation_notes: str
     key_insight: str
     source_candidate: ScoredCandidate
+    mechanism_differs_from_baseline: str = ""
+    subtraction_test: str = ""
+    baseline_comparison: str = ""
     cost_usd: float = 0.0
     duration_seconds: float = 0.0
     trace: ForgeTrace | None = None
@@ -418,6 +426,9 @@ class SolutionTranslator:
             implementation_notes=impl_notes,
             key_insight=key_ins,
             source_candidate=candidate,
+            mechanism_differs_from_baseline=parsed.get("mechanism_differs_from_baseline", ""),
+            subtraction_test=parsed.get("subtraction_test", ""),
+            baseline_comparison=parsed.get("baseline_comparison", ""),
             cost_usd=result.trace.total_cost_usd,
             duration_seconds=time.monotonic() - t_start,
             trace=result.trace,
@@ -455,6 +466,9 @@ class SolutionTranslator:
         data.setdefault("key_insight", "")
         data.setdefault("implementation_notes", "")
         data.setdefault("mathematical_proof", "")
+        data.setdefault("mechanism_differs_from_baseline", "")
+        data.setdefault("subtraction_test", "")
+        data.setdefault("baseline_comparison", "")
 
         if "mapping" not in data or not isinstance(data.get("mapping"), dict):
             data["mapping"] = {"elements": []}

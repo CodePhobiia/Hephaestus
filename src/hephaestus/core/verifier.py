@@ -204,6 +204,11 @@ class VerifiedInvention:
     validity_notes: str = ""
     feasibility_notes: str = ""
     novelty_notes: str = ""
+    load_bearing_passed: bool = True  # from load_bearing_check
+    load_bearing_notes: str = ""
+    mechanism_differs_from_baseline: str = ""  # from translation
+    subtraction_test: str = ""  # from translation
+    baseline_comparison: str = ""  # from translation
     recommended_next_steps: list[str] = field(default_factory=list)
     verification_cost_usd: float = 0.0
     verification_duration_seconds: float = 0.0
@@ -399,6 +404,24 @@ class NoveltyVerifier:
         )
         total_cost += validity_cost
 
+        # Step 3.5: Load-bearing domain check
+        load_bearing_passed = True
+        load_bearing_notes = ""
+        try:
+            from hephaestus.core.load_bearing_check import check_load_bearing_domains
+            lb_result = await check_load_bearing_domains(translation)
+            load_bearing_passed = lb_result.passed
+            load_bearing_notes = lb_result.summary()
+            if not load_bearing_passed:
+                logger.info(
+                    "Load-bearing check FAILED for %s: %s",
+                    translation.invention_name,
+                    "; ".join(lb_result.reasons[:2]),
+                )
+        except Exception as exc:
+            logger.warning("Load-bearing check skipped for %s: %s", translation.invention_name, exc)
+            load_bearing_notes = f"Check skipped: {exc}"
+
         # Step 4: Compute final novelty score
         novelty_score = self._compute_novelty_score(
             attack_result=attack_result,
@@ -407,11 +430,20 @@ class NoveltyVerifier:
             domain_distance=translation.domain_distance,
         )
 
+        # Step 4.5: Apply load-bearing penalty
+        if not load_bearing_passed:
+            novelty_score *= 0.5  # 50% penalty for decorative domain transfer
+            logger.info(
+                "Novelty score penalized (load-bearing failed): %.2f for %s",
+                novelty_score, translation.invention_name,
+            )
+
         # Combine verification notes
         notes_parts = [
             f"Adversarial verdict: {attack_result.verdict}",
             f"Prior art: {prior_art_status}",
             f"Feasibility: {validity.get('feasibility_rating', 'UNKNOWN')}",
+            f"Load-bearing: {'PASS' if load_bearing_passed else 'FAIL'}",
         ]
         if attack_result.strongest_objection:
             notes_parts.append(f"Main challenge: {attack_result.strongest_objection}")
@@ -430,6 +462,11 @@ class NoveltyVerifier:
             validity_notes=str(validity.get("validity_notes", "")),
             feasibility_notes=str(validity.get("feasibility_notes", "")),
             novelty_notes=str(validity.get("novelty_notes", "")),
+            load_bearing_passed=load_bearing_passed,
+            load_bearing_notes=load_bearing_notes,
+            mechanism_differs_from_baseline=translation.mechanism_differs_from_baseline,
+            subtraction_test=translation.subtraction_test,
+            baseline_comparison=translation.baseline_comparison,
             recommended_next_steps=list(validity.get("recommended_next_steps", [])),
             verification_cost_usd=total_cost,
             verification_duration_seconds=time.monotonic() - t_start,
