@@ -822,6 +822,80 @@ def _error_hint(error_msg: str) -> str | None:
 
 
 @click.command(
+    name="batch",
+    help="Process multiple problems from a file.\n\nExample:\n\n  heph batch --input problems.txt --output-dir inventions/",
+)
+@click.option(
+    "--input",
+    "-i",
+    "input_file",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to a text file with one problem per line.",
+)
+@click.option(
+    "--output-dir",
+    "-o",
+    "output_dir",
+    required=True,
+    type=click.Path(path_type=Path),
+    help="Directory where invention reports will be saved.",
+)
+@click.option(
+    "--format",
+    "-f",
+    "output_format",
+    default="markdown",
+    show_default=True,
+    type=click.Choice(["markdown", "json", "text"], case_sensitive=False),
+    help="Output format for each report.",
+)
+@click.option(
+    "--depth",
+    "-d",
+    default=3,
+    show_default=True,
+    type=click.IntRange(1, 10),
+    help="Anti-training pressure depth.",
+)
+@click.option(
+    "--model",
+    "-m",
+    default="both",
+    show_default=True,
+    type=click.Choice(["claude-max", "claude-cli", "opus", "gpt5", "both"], case_sensitive=False),
+    help="Backend/model preset.",
+)
+def batch_cmd(
+    input_file: Path,
+    output_dir: Path,
+    output_format: str,
+    depth: int,
+    model: str,
+) -> None:
+    """Run the genesis pipeline on every problem in a file."""
+    from hephaestus.cli.batch import BatchConfig, run_batch
+    from hephaestus.cli.display import print_banner
+
+    console = make_console(quiet=False)
+    print_banner(console)
+    console.print(f"  [dim]Batch mode: {input_file} → {output_dir}/[/]\n")
+
+    config = BatchConfig(
+        input_file=input_file,
+        output_dir=output_dir,
+        format=output_format,
+        depth=depth,
+        model=model,
+    )
+    try:
+        asyncio.run(run_batch(config, console))
+    except KeyboardInterrupt:
+        console.print("\n  [dim]Interrupted by user.[/]")
+        sys.exit(130)
+
+
+@click.command(
     name="init",
     help="Initialize a .hephaestus/ project directory in the current folder.",
 )
@@ -886,12 +960,67 @@ def init_cmd() -> None:
     console.print()
 
 
+@click.command(
+    name="lenses",
+    help="Show lens library stats and optionally validate all lenses.\n\nExamples:\n\n  heph lenses\n  heph lenses --validate",
+)
+@click.option(
+    "--validate",
+    is_flag=True,
+    default=False,
+    help="Run validation on all lens YAML files and report errors.",
+)
+def lenses_cmd(validate: bool) -> None:
+    """Show lens library stats or validate all lenses."""
+    from hephaestus.lenses.validator import compute_lens_stats, validate_all_lenses
+
+    console = make_console(quiet=False)
+
+    if validate:
+        results = validate_all_lenses()
+        total_files = len(results)
+        error_files = {f: errs for f, errs in results.items() if errs}
+
+        if not error_files:
+            console.print(f"\n  [bold green]✓[/] All {total_files} lenses passed validation.\n")
+        else:
+            console.print(f"\n  [bold red]✗[/] {len(error_files)}/{total_files} lenses have errors:\n")
+            for filename, errs in sorted(error_files.items()):
+                console.print(f"  [yellow]{filename}[/]")
+                for e in errs:
+                    console.print(f"    [{e.field}] {e.message}")
+            console.print()
+            sys.exit(1)
+        return
+
+    stats = compute_lens_stats()
+    console.print(f"\n  [bold]Lens Library[/]")
+    console.print(f"  Total lenses:       {stats.total_lenses}")
+    console.print(f"  Domains:            {len(stats.domains)}")
+    console.print(f"  Total axioms:       {stats.total_axioms}")
+    console.print(f"  Total patterns:     {stats.total_patterns}")
+    console.print(f"  Avg axioms/lens:    {stats.avg_axioms_per_lens}")
+    console.print()
+    console.print(f"  [dim]Domain coverage:[/]")
+    for domain in sorted(stats.domain_counts, key=lambda d: stats.domain_counts[d], reverse=True):
+        console.print(f"    {domain:<22} {stats.domain_counts[domain]} lenses")
+    console.print()
+
+
 def main() -> None:
     """Entry point for the heph CLI command."""
-    # Check for 'init' subcommand before Click parses argv
+    # Check for subcommands before Click parses argv
     if len(sys.argv) > 1 and sys.argv[1] == "init":
         sys.argv = [sys.argv[0]]  # Strip 'init' so Click doesn't see it
         init_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "batch":
+        sys.argv = [sys.argv[0]] + sys.argv[2:]  # Strip 'batch'
+        batch_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "lenses":
+        sys.argv = [sys.argv[0]] + sys.argv[2:]  # Strip 'lenses'
+        lenses_cmd(standalone_mode=True)
         return
     cli()
 

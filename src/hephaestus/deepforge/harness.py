@@ -42,6 +42,7 @@ from hephaestus.deepforge.exceptions import (
     GenerationKilled,
     HarnessError,
 )
+from hephaestus.deepforge.retry import RetryConfig, with_retry, with_timeout
 from hephaestus.deepforge.interference import (
     CognitiveInterferenceEngine,
     InjectionResult,
@@ -108,6 +109,8 @@ class HarnessConfig:
     temperature: float = 0.9
     convergence_patterns: list[ConvergencePattern] = field(default_factory=list)
     system_prompt: str | None = None
+    retry_config: RetryConfig | None = None
+    timeout_seconds: float = 120.0
 
 
 # ---------------------------------------------------------------------------
@@ -437,17 +440,26 @@ class DeepForgeHarness:
             try:
                 if self._pruner is not None:
                     # Streaming path — pruner monitors in real time
-                    stream = self._adapter.generate_stream(
-                        prompt,
-                        system=system,
-                        prefill=prefill,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                    )
-                    prune_result = await self._pruner.monitor_stream(
-                        stream,
-                        adapter=self._adapter,
-                    )
+                    async def _pruner_call() -> Any:
+                        stream = self._adapter.generate_stream(
+                            prompt,
+                            system=system,
+                            prefill=prefill,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                        )
+                        return await self._pruner.monitor_stream(  # type: ignore[union-attr]
+                            stream,
+                            adapter=self._adapter,
+                        )
+
+                    if cfg.retry_config is not None:
+                        prune_result = await with_retry(_pruner_call, cfg.retry_config)
+                    elif cfg.timeout_seconds != 120.0:
+                        prune_result = await with_timeout(_pruner_call(), cfg.timeout_seconds)
+                    else:
+                        prune_result = await _pruner_call()
+
                     last_text = prune_result.text
                     trace.total_input_tokens += prune_result.input_tokens
                     trace.total_output_tokens += prune_result.output_tokens
@@ -455,13 +467,23 @@ class DeepForgeHarness:
 
                 else:
                     # Non-streaming path
-                    last_result = await self._adapter.generate(
-                        prompt,
-                        system=system,
-                        prefill=prefill,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                    )
+                    async def _generate_call() -> GenerationResult:
+                        coro = self._adapter.generate(
+                            prompt,
+                            system=system,
+                            prefill=prefill,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                        )
+                        if cfg.timeout_seconds != 120.0 and cfg.retry_config is None:
+                            return await with_timeout(coro, cfg.timeout_seconds)
+                        return await coro
+
+                    if cfg.retry_config is not None:
+                        last_result = await with_retry(_generate_call, cfg.retry_config)
+                    else:
+                        last_result = await _generate_call()
+
                     trace.add_result(last_result)
                     last_text = last_result.text
 

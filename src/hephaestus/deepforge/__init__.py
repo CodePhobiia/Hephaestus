@@ -65,6 +65,12 @@ from hephaestus.deepforge.pruner import (
     PrunerSession,
     PruneResult,
 )
+from hephaestus.deepforge.retry import (
+    RetryConfig,
+    is_retryable,
+    with_retry,
+    with_timeout,
+)
 
 __all__ = [
     # Harness
@@ -102,4 +108,9 @@ __all__ = [
     "PressureError",
     "HarnessError",
     "ConfigurationError",
+    # Retry / resilience
+    "RetryConfig",
+    "is_retryable",
+    "with_retry",
+    "with_timeout",
 ]
