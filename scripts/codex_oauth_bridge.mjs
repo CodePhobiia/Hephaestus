@@ -199,6 +199,34 @@ async function main() {
   let context;
   const systemPrompt = req.system || 'You are a helpful assistant.';
 
+  if (req.kind === 'prompt_stream') {
+    const messages = [{ role: 'user', content: String(req.prompt || ''), timestamp: Date.now() }];
+    if (req.prefill) {
+      messages.push({
+        role: 'assistant',
+        content: [{ type: 'text', text: String(req.prefill) }],
+        api: 'openai-codex-responses',
+        provider: 'openai-codex',
+        model: model.id,
+        usage: { input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},
+        stopReason: 'stop',
+        timestamp: Date.now(),
+      });
+    }
+    context = { systemPrompt, messages };
+    const stream = pi.streamSimple(model, context, options);
+    let accumulated = '';
+    for await (const event of stream) {
+      if (event.type === 'text_delta') {
+        accumulated += event.delta || '';
+        process.stdout.write(JSON.stringify({ type: 'delta', delta: event.delta || '', accumulated }) + '\n');
+      }
+    }
+    const response = await stream.result();
+    process.stdout.write(JSON.stringify({ type: 'final', result: extractResult(response) }) + '\n');
+    return;
+  }
+
   if (req.kind === 'tools') {
     context = {
       systemPrompt,

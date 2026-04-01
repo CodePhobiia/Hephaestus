@@ -114,8 +114,11 @@ class LayeredConfig:
             self._sources[key] = "<builtin>"
 
         # Layer 2: user global
+        # Ignore the operator's real ~/.hephaestus/config.yaml under pytest so
+        # local machine defaults do not leak into test expectations.
         user_config = self._user_config_dir / "config.yaml"
-        self._apply_yaml(user_config, merged, config_fields, str(user_config))
+        if not (os.environ.get("PYTEST_CURRENT_TEST") and Path(self._user_config_dir).resolve() == Path(HEPHAESTUS_DIR).resolve()):
+            self._apply_yaml(user_config, merged, config_fields, str(user_config))
 
         # Layer 3 & 4: project + local
         self._project_root = find_project_root(self._start_dir)

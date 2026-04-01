@@ -662,6 +662,8 @@ def _bridge_report(genesis_report: Any) -> Any:
             architecture="N/A",
             where_analogy_breaks="N/A",
             cost_usd=genesis_report.total_cost_usd,
+            input_tokens=getattr(genesis_report, "total_input_tokens", 0),
+            output_tokens=getattr(genesis_report, "total_output_tokens", 0),
         )
 
     trans = top.translation
@@ -698,6 +700,8 @@ def _bridge_report(genesis_report: Any) -> Any:
         prior_art_report=getattr(top, "prior_art_report", None),
         alternatives=alternatives,
         cost_usd=genesis_report.total_cost_usd,
+        input_tokens=getattr(genesis_report, "total_input_tokens", 0),
+        output_tokens=getattr(genesis_report, "total_output_tokens", 0),
         models_used=list(set(genesis_report.model_config.values())),
         depth=3,
         wall_time_seconds=genesis_report.total_duration_seconds,

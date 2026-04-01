@@ -311,23 +311,102 @@ class CodexOAuthAdapter(BaseAdapter):
         temperature: float = 1.0,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
-        # For now use a simple non-streaming fallback with a final chunk.
-        result = await self.generate(
-            prompt,
-            system=system,
-            prefill=prefill,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            **kwargs,
+        proc = await asyncio.create_subprocess_exec(
+            self._node_bin,
+            str(self._bridge),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        yield StreamChunk(delta=result.text, accumulated=result.text)
+
+        payload = {
+            "kind": "prompt_stream",
+            "model": self.model_name,
+            "system": system,
+            "prompt": prompt,
+            "prefill": prefill,
+            "max_tokens": max_tokens,
+            "reasoning": kwargs.get("reasoning", "medium"),
+            "session_id": kwargs.get("session_id"),
+        }
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps(payload).encode("utf-8"))
+        await proc.stdin.drain()
+        proc.stdin.close()
+
+        accumulated = ""
+        final_result: dict[str, Any] | None = None
+        assert proc.stdout is not None
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                break
+            raw = line.decode("utf-8", errors="replace").strip()
+            if not raw:
+                continue
+            try:
+                event = json.loads(raw)
+            except Exception:
+                continue
+            if event.get("type") == "delta":
+                delta = str(event.get("delta", ""))
+                accumulated = str(event.get("accumulated", accumulated + delta))
+                yield StreamChunk(delta=delta, accumulated=accumulated)
+            elif event.get("type") == "final":
+                final_result = dict(event.get("result", {}) or {})
+
+        stderr = ""
+        if proc.stderr is not None:
+            stderr = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
+        rc = await proc.wait()
+        if rc != 0:
+            if self._fallback_to_cli:
+                from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+                self._logger.warning("Codex OAuth stream bridge failed, falling back to Codex CLI stream")
+                fallback = CodexCliAdapter(model=self.model_name, timeout=self._timeout, max_retries=self._max_retries)
+                async for chunk in fallback.generate_stream(
+                    prompt,
+                    system=system,
+                    prefill=prefill,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    **kwargs,
+                ):
+                    yield chunk
+                return
+            raise AdapterError(f"Codex OAuth stream bridge failed: {stderr or rc}")
+
+        if final_result is None:
+            # fallback to non-streaming if bridge emitted nothing useful
+            result = await self.generate(
+                prompt,
+                system=system,
+                prefill=prefill,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                **kwargs,
+            )
+            yield StreamChunk(delta=result.text, accumulated=result.text)
+            yield StreamChunk(
+                delta="",
+                accumulated=result.text,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                is_final=True,
+                stop_reason=result.stop_reason,
+            )
+            return
+
+        final_text = str(final_result.get("text", accumulated))
+        if prefill and final_text.startswith(prefill):
+            final_text = final_text[len(prefill):]
         yield StreamChunk(
             delta="",
-            accumulated=result.text,
-            input_tokens=result.input_tokens,
-            output_tokens=result.output_tokens,
+            accumulated=final_text,
+            input_tokens=int(final_result.get("input_tokens", 0) or 0),
+            output_tokens=int(final_result.get("output_tokens", 0) or 0),
             is_final=True,
-            stop_reason=result.stop_reason,
+            stop_reason=str(final_result.get("stop_reason", "stop")),
         )
 
 

@@ -302,6 +302,48 @@ class InventionReport:
         return self.cost_breakdown.total
 
     @property
+    def total_input_tokens(self) -> int:
+        """Aggregate input tokens across unique stage traces."""
+        total = 0
+        seen: set[int] = set()
+        traces = []
+        traces.append(getattr(self.structure, "trace", None))
+        traces.extend(getattr(c, "trace", None) for c in self.all_candidates)
+        traces.extend(getattr(c, "scoring_trace", None) for c in self.scored_candidates)
+        traces.extend(getattr(t, "trace", None) for t in self.translations)
+        traces.extend(getattr(v, "trace", None) for v in self.verified_inventions)
+        for trace in traces:
+            if trace is None:
+                continue
+            ident = id(trace)
+            if ident in seen:
+                continue
+            seen.add(ident)
+            total += int(getattr(trace, "total_input_tokens", 0) or 0)
+        return total
+
+    @property
+    def total_output_tokens(self) -> int:
+        """Aggregate output tokens across unique stage traces."""
+        total = 0
+        seen: set[int] = set()
+        traces = []
+        traces.append(getattr(self.structure, "trace", None))
+        traces.extend(getattr(c, "trace", None) for c in self.all_candidates)
+        traces.extend(getattr(c, "scoring_trace", None) for c in self.scored_candidates)
+        traces.extend(getattr(t, "trace", None) for t in self.translations)
+        traces.extend(getattr(v, "trace", None) for v in self.verified_inventions)
+        for trace in traces:
+            if trace is None:
+                continue
+            ident = id(trace)
+            if ident in seen:
+                continue
+            seen.add(ident)
+            total += int(getattr(trace, "total_output_tokens", 0) or 0)
+        return total
+
+    @property
     def alternative_inventions(self) -> list[Any]:
         """All inventions except the top one."""
         return self.verified_inventions[1:]

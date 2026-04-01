@@ -172,6 +172,8 @@ class InventionReport:
     novelty_proof: Any | None = None       # NoveltyProof
     alternatives: list[AlternativeInvention] = field(default_factory=list)
     cost_usd: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
     models_used: list[str] = field(default_factory=list)
     depth: int = 3
     wall_time_seconds: float = 0.0
@@ -194,6 +196,13 @@ class OutputFormatter:
 
     def __init__(self, indent_json: int = 2) -> None:
         self._indent = indent_json
+
+    @staticmethod
+    def _safe_int(value: Any) -> int:
+        try:
+            return int(value or 0)
+        except Exception:
+            return 0
 
     def format(self, report: InventionReport, fmt: OutputFormat = OutputFormat.MARKDOWN) -> str:
         """
@@ -398,9 +407,12 @@ class OutputFormatter:
         # ── Footer ───────────────────────────────────────────────────────────
         model_str = " + ".join(report.models_used) if report.models_used else "Unknown"
         time_str = f"{report.wall_time_seconds:.1f}s" if report.wall_time_seconds > 0 else "N/A"
+        in_tokens = self._safe_int(getattr(report, "input_tokens", 0))
+        out_tokens = self._safe_int(getattr(report, "output_tokens", 0))
         lines += [
             f"**Cost:** ${report.cost_usd:.2f} | "
             f"**Models:** {model_str} | "
+            f"**Tokens:** {in_tokens:,} in / {out_tokens:,} out | "
             f"**Depth:** {report.depth} | "
             f"**Time:** {time_str}",
             "",
@@ -548,9 +560,12 @@ class OutputFormatter:
         # Footer
         model_str = " + ".join(report.models_used) if report.models_used else "Unknown"
         time_str = f"{report.wall_time_seconds:.1f}s" if report.wall_time_seconds > 0 else "N/A"
+        in_tokens = self._safe_int(getattr(report, "input_tokens", 0))
+        out_tokens = self._safe_int(getattr(report, "output_tokens", 0))
         lines += [
             "-" * 60,
             f"Cost: ${report.cost_usd:.2f}  Models: {model_str}  "
+            f"Tokens: {in_tokens:,} in / {out_tokens:,} out  "
             f"Depth: {report.depth}  Time: {time_str}",
             "=" * 60,
         ]
