@@ -55,13 +55,22 @@ Find: logical inconsistencies, elements that don't actually map, where the
 analogy is superficial metaphor rather than genuine structural isomorphism,
 implementation impossibilities, and overlooked constraints.
 
+IMPORTANT DISTINCTION for novelty_risk:
+- The question is NOT "does the source-domain concept exist in academic literature?"
+  (Of course it does — that's where we found it.)
+- The question IS "has someone ALREADY applied this specific mechanism to THIS
+  specific target domain problem?" If the Kuramoto model exists but nobody has
+  used it for rate limiting, novelty_risk should be LOW.
+- Prior art means: someone already built THIS combination, not that the parts
+  exist separately.
+
 Output ONLY valid JSON:
 {
-  "attack_valid": <bool — true if you found significant invalidating flaws>,
-  "fatal_flaws": ["<flaw that would make the invention non-viable>", ...],
-  "structural_weaknesses": ["<weakness in the mapping that doesn't invalidate but degrades quality>", ...],
-  "strongest_objection": "<your single best attack on this invention>",
-  "novelty_risk": <float 0.0-1.0 — probability that prior art exists for this>,
+  "attack_valid": <bool — true if you found significant STRUCTURAL flaws>,
+  "fatal_flaws": ["<flaw that would make the invention structurally non-viable>", ...],
+  "structural_weaknesses": ["<genuine weakness in the mechanism, not just 'this is hard'>", ...],
+  "strongest_objection": "<your single best STRUCTURAL attack>",
+  "novelty_risk": <float 0.0-1.0 — probability that THIS SPECIFIC COMBINATION already exists as prior art>,
   "verdict": "<NOVEL | QUESTIONABLE | DERIVATIVE | INVALID>"
 }
 """
@@ -107,9 +116,13 @@ TEST 2 - Baseline Comparison: What is the simplest conventional solution a
 senior engineer would build? Compare the invention to this baseline. If they
 use the same core mechanism, novelty is LOW regardless of naming.
 
-TEST 3 - Mechanism Surprise: Would an expert in the target domain be SURPRISED
-by this mechanism? Not "oh that's a nice metaphor" but genuinely "I would never
-have thought to solve it that way."
+TEST 3 - Mechanism Surprise: Would a PRACTITIONER in the target domain be
+SURPRISED by this mechanism? Not "has this concept been published anywhere"
+but "would a working engineer building this system reach for this approach?"
+If the concept exists in academic literature but has never been practically
+applied to this problem class, it IS surprising.
+Rate SURPRISING if the mechanism brings a genuinely different computational
+approach, even if the abstract concept exists in other fields.
 
 Output ONLY valid JSON:
 {
