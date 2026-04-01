@@ -849,8 +849,16 @@ class Genesis:
         if cfg.use_claude_max:
             from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
             logger.info("Claude Max mode — routing all models via OAT subscription auth")
+            # Map any non-Claude model names to Claude equivalents
+            claude_default = "claude-sonnet-4-6"
             for model_name in all_models:
-                adapters[model_name] = ClaudeMaxAdapter(model=model_name)
+                # If it's already a Claude model, use it as-is
+                if model_name.startswith("claude"):
+                    adapters[model_name] = ClaudeMaxAdapter(model=model_name)
+                else:
+                    # Map non-Claude models (gpt-4o, o3-mini, etc.) to Claude
+                    adapters[model_name] = ClaudeMaxAdapter(model=claude_default)
+                    logger.info("Claude Max: mapped %s -> %s", model_name, claude_default)
             return adapters
 
         # Claude CLI mode
