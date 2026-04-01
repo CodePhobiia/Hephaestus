@@ -399,6 +399,19 @@ def default_registry() -> CommandRegistry:
         args_required=False,
     ))
 
+    # -- Session (working memory) -------------------------------------------
+    reg.register(Command(
+        name="todo",
+        aliases=["plan"],
+        description="Show or manage the working-memory todo list",
+        usage="/todo [add <text> | start <id> | done <id>]",
+        category="session",
+        handler_name="_cmd_todo",
+        modes=["all"],
+        resume_safe=True,
+        args_required=False,
+    ))
+
     # -- Export / Persistence -----------------------------------------------
     reg.register(Command(
         name="export",

@@ -13,6 +13,11 @@ from hephaestus.output.formatter import (
     InventionReport,
     OutputFormat,
     OutputFormatter,
+    _ascii_bar,
+    _domain_distance_interpretation,
+    _generate_roadmap_steps,
+    _structural_fidelity_interpretation,
+    _unicode_bar,
 )
 from hephaestus.output.prior_art import PriorArtReport, PatentResult, PaperResult
 from hephaestus.output.proof import NoveltyProof, NoveltyProofGenerator
@@ -365,3 +370,118 @@ class TestPlainOutput:
         plain = OutputFormatter().to_plain(_make_report(alternatives=alts))
         assert "ALTERNATIVE INVENTIONS" in plain
         assert "Alt" in plain
+
+    def test_contains_confidence_section(self) -> None:
+        plain = OutputFormatter().to_plain(_make_report())
+        assert "CONFIDENCE:" in plain
+
+    def test_contains_roadmap_section(self) -> None:
+        plain = OutputFormatter().to_plain(_make_report())
+        assert "IMPLEMENTATION ROADMAP:" in plain
+        assert "Phase 1:" in plain
+
+    def test_contains_ascii_bar(self) -> None:
+        plain = OutputFormatter().to_plain(_make_report())
+        assert "[=========" in plain  # 0.94 -> 9 filled
+
+
+# ---------------------------------------------------------------------------
+# Score bar rendering
+# ---------------------------------------------------------------------------
+
+
+class TestScoreBars:
+    def test_unicode_bar_full(self) -> None:
+        bar = _unicode_bar(1.0)
+        assert "██████████" in bar
+        assert "░" not in bar
+
+    def test_unicode_bar_empty(self) -> None:
+        bar = _unicode_bar(0.0)
+        assert "░░░░░░░░░░" in bar
+        assert "█" not in bar
+
+    def test_unicode_bar_mid(self) -> None:
+        bar = _unicode_bar(0.62)
+        assert "██████░░░░" in bar
+        assert "0.62" in bar
+
+    def test_ascii_bar_full(self) -> None:
+        bar = _ascii_bar(1.0)
+        assert "[==========]" in bar
+
+    def test_ascii_bar_empty(self) -> None:
+        bar = _ascii_bar(0.0)
+        assert "[          ]" in bar
+
+    def test_ascii_bar_mid(self) -> None:
+        bar = _ascii_bar(0.62)
+        assert "[======    ]" in bar
+        assert "0.62" in bar
+
+
+# ---------------------------------------------------------------------------
+# Confidence interpretation
+# ---------------------------------------------------------------------------
+
+
+class TestConfidenceInterpretation:
+    def test_far_transfer(self) -> None:
+        assert "Far transfer" in _domain_distance_interpretation(0.9)
+
+    def test_moderate_transfer(self) -> None:
+        assert "Moderate transfer" in _domain_distance_interpretation(0.6)
+
+    def test_near_transfer(self) -> None:
+        assert "Near transfer" in _domain_distance_interpretation(0.3)
+
+    def test_strong_structural_match(self) -> None:
+        assert "Strong structural match" in _structural_fidelity_interpretation(0.85)
+
+    def test_loose_analogy(self) -> None:
+        assert "Loose analogy" in _structural_fidelity_interpretation(0.4)
+
+
+# ---------------------------------------------------------------------------
+# Confidence & roadmap in markdown output
+# ---------------------------------------------------------------------------
+
+
+class TestMarkdownNewSections:
+    def test_confidence_section_in_markdown(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report())
+        assert "**CONFIDENCE:**" in md
+
+    def test_confidence_far_transfer_in_markdown(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report(domain_distance=0.94))
+        assert "Far transfer" in md
+
+    def test_confidence_loose_analogy_in_markdown(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report(structural_fidelity=0.3))
+        assert "Loose analogy" in md
+
+    def test_roadmap_section_in_markdown(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report())
+        assert "**IMPLEMENTATION ROADMAP:**" in md
+        assert "Phase 1:" in md
+        assert "Phase 2:" in md
+        assert "Phase 3:" in md
+
+    def test_roadmap_auto_steps_in_markdown(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report())
+        # The default architecture has "def route" which should produce a step
+        assert "Suggested steps" in md
+
+    def test_unicode_bar_in_markdown(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report())
+        assert "█" in md
+        assert "░" in md
+
+    def test_roadmap_steps_generated(self) -> None:
+        steps = _generate_roadmap_steps("def route(req):\n    pass\nclass Balancer:\n    pass")
+        assert any("route" in s for s in steps)
+        assert any("Balancer" in s for s in steps)
+
+    def test_roadmap_steps_empty_arch(self) -> None:
+        steps = _generate_roadmap_steps("")
+        assert steps == []

@@ -64,6 +64,7 @@ from hephaestus.cli.config import (
     run_onboarding,
     save_config,
 )
+from hephaestus.cli.commands import default_registry
 from hephaestus.cli.display import (
     AMBER,
     CYAN,
@@ -81,6 +82,20 @@ from hephaestus.cli.display import (
     print_trace,
     print_warning,
 )
+from hephaestus.memory.transparency import (
+    build_memory_report,
+    format_context_report,
+    format_memory_report,
+)
+from hephaestus.session.compact import compact_session, should_compact
+from hephaestus.session.schema import (
+    EntryType,
+    Role,
+    Session,
+    SessionMeta,
+    TranscriptEntry,
+)
+from hephaestus.session.todos import TodoList
 
 # ---------------------------------------------------------------------------
 # Session state
@@ -135,6 +150,11 @@ class SessionState:
         "Verify": [0, 0, 0],
         "Refine": [0, 0, 0],
     })
+
+    # Integration fields — typed session, todo list, layered config
+    session: Any = field(default=None)         # Session from session.schema
+    todo_list: Any = field(default=None)       # TodoList from session.todos
+    layered_config: Any = field(default=None)  # LayeredConfig instance
 
     @property
     def current(self) -> InventionEntry | None:
@@ -287,6 +307,13 @@ HELP_TEXT = """\
   [cyan]/context add[/] <text>   Add domain knowledge or constraints
   [cyan]/context clear[/]        Remove all added context
 
+[bold yellow]Working Memory[/]
+  [cyan]/todo[/]                Show current todo items
+  [cyan]/todo add[/] <text>     Add a new todo
+  [cyan]/todo start[/] <id>     Start working on a todo
+  [cyan]/todo done[/] <id>      Mark a todo complete
+  [cyan]/plan[/]                Alias for /todo
+
 [bold yellow]Creativity Controls[/]
   [cyan]/intensity[/] [level]    STANDARD, AGGRESSIVE, or MAXIMUM
   [cyan]/mode[/] [mode]          MECHANISM, FRAMEWORK, NARRATIVE, SYSTEM, PROTOCOL, TAXONOMY, or INTERFACE
@@ -330,6 +357,22 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
 
     console.print(Panel(table, title="[bold yellow]Session Status[/]", border_style="yellow"))
     console.print(f"  [dim]{backend_hint}[/]")
+
+    # Memory transparency section
+    config_ns = None
+    if state.layered_config is not None:
+        config_ns = SimpleNamespace(
+            config_sources=state.layered_config.config_sources()
+        )
+    mem_report = build_memory_report(state, config=config_ns)
+    console.print()
+    console.print(
+        Panel(
+            format_memory_report(mem_report),
+            title="[bold yellow]Memory & Context[/]",
+            border_style="dim yellow",
+        )
+    )
     console.print()
 
 
@@ -568,6 +611,44 @@ async def _cmd_mode(console: Console, state: SessionState, args: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Working memory commands
+# ---------------------------------------------------------------------------
+
+
+async def _cmd_todo(console: Console, state: SessionState, args: str) -> None:
+    """Show or manage the working-memory todo list."""
+    if state.todo_list is None:
+        state.todo_list = TodoList()
+
+    parts = args.strip().split(None, 1)
+    sub = parts[0].lower() if parts else ""
+
+    if sub == "add" and len(parts) > 1 and parts[1].strip():
+        item = state.todo_list.add(parts[1].strip())
+        console.print(f"  [{GREEN}]\u2713[/] Added: {item.title}  [dim](id: {item.id})[/]\n")
+    elif sub == "add":
+        console.print(f"  [{RED}]Usage: /todo add <text>[/]\n")
+    elif sub == "start" and len(parts) > 1:
+        try:
+            state.todo_list.start(parts[1].strip())
+            console.print(f"  [{GREEN}]\u2713[/] Started: {parts[1].strip()}\n")
+        except (KeyError, ValueError) as exc:
+            console.print(f"  [{RED}]{exc}[/]\n")
+    elif sub == "done" and len(parts) > 1:
+        try:
+            state.todo_list.complete(parts[1].strip())
+            console.print(f"  [{GREEN}]\u2713[/] Completed: {parts[1].strip()}\n")
+        except (KeyError, ValueError) as exc:
+            console.print(f"  [{RED}]{exc}[/]\n")
+    elif not sub:
+        console.print()
+        console.print(state.todo_list.summary())
+        console.print()
+    else:
+        console.print(f"  [dim]Usage: /todo [add <text> | start <id> | done <id>][/]\n")
+
+
+# ---------------------------------------------------------------------------
 # Phase 2 commands
 # ---------------------------------------------------------------------------
 
@@ -689,6 +770,23 @@ async def _cmd_context(console: Console, state: SessionState, args: str) -> None
             for i, item in enumerate(state.context_items, 1):
                 console.print(f"  [{CYAN}]{i}.[/] {item}")
             console.print()
+
+        # Context transparency report
+        config_ns = None
+        if state.layered_config is not None:
+            config_ns = SimpleNamespace(
+                config_sources=state.layered_config.config_sources()
+            )
+        mem_report = build_memory_report(state, config=config_ns)
+        ctx_text = format_context_report(mem_report)
+        console.print(
+            Panel(
+                ctx_text,
+                title="[bold yellow]Context Details[/]",
+                border_style="dim yellow",
+            )
+        )
+        console.print()
 
 
 # ---------------------------------------------------------------------------
@@ -1358,6 +1456,7 @@ ALL_COMMANDS = [
     "/context",
     "/save", "/load", "/history", "/compare",
     "/intensity", "/mode",
+    "/todo", "/plan",
 ]
 
 
@@ -1426,7 +1525,12 @@ COMMANDS: dict[str, Any] = {
     # V2 controls
     "intensity": _cmd_intensity,
     "mode": _cmd_mode,
+    # Working memory
+    "todo": _cmd_todo,
 }
+
+# Canonical command registry (shared with commands.py)
+_registry = default_registry()
 
 
 # ---------------------------------------------------------------------------

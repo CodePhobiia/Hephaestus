@@ -229,7 +229,7 @@ EXPECTED_COMMANDS = {
     "help", "status", "quit", "clear", "history", "compare",
     "usage", "cost", "refine", "alternatives", "deeper", "domain",
     "trace", "candidates", "model", "backend", "intensity", "mode",
-    "context", "export", "save", "load",
+    "context", "export", "save", "load", "todo", "plan",
 }
 
 

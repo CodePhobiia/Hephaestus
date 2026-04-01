@@ -12,6 +12,7 @@ Provides beautiful Rich-based display components:
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from rich import box
@@ -188,6 +189,10 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
 
     console.print()
     console.rule(Text("⚒️  HEPHAESTUS — Invention Report", style=GOLD), style="yellow")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    session_id = getattr(report, "session_id", None)
+    session_str = f"  [dim]Session:[/] [{CYAN}]{session_id}[/]" if session_id else ""
+    console.print(f"  [dim]Generated:[/] [{CYAN}]{timestamp}[/]{session_str}")
     console.print()
 
     # ── Problem ──────────────────────────────────────────────────────────────
@@ -241,6 +246,18 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
         console.rule(style="dim yellow")
         print_trace(console, report)
 
+    # ── Recommended usage ────────────────────────────────────────────────
+    console.rule(style="dim yellow")
+    console.print(f"\n  [{GOLD}]RECOMMENDED USAGE[/]\n")
+    console.print(f"  [{CYAN}]heph --refine[/]       [dim]Iterate on this invention[/]")
+    novelty = getattr(top, "novelty_score", 0.0)
+    if novelty < 0.7:
+        console.print(f"  [{CYAN}]heph --depth N[/]      [dim]Explore deeper (novelty {novelty:.2f} < 0.7)[/]")
+    else:
+        console.print(f"  [{CYAN}]heph --depth N[/]      [dim]Explore deeper[/]")
+    console.print(f"  [{CYAN}]heph --domain X[/]     [dim]Try a different source domain[/]")
+    console.print()
+
     console.rule(style="yellow")
     console.print()
 
@@ -275,15 +292,22 @@ def _print_invention_header(console: Console, top: Any) -> None:
     dd = getattr(top.translation.source_candidate, "domain_distance", top.novelty_score)
     sf = getattr(top.translation.source_candidate, "structural_fidelity", top.structural_validity)
 
-    score_table.add_row("  DOMAIN DISTANCE:", f"[{GREEN}]{dd:.2f}[/]")
-    score_table.add_row("  STRUCTURAL FIDELITY:", f"[{GREEN}]{sf:.2f}[/]")
-    score_table.add_row("  NOVELTY SCORE:", f"[{GOLD}]{top.novelty_score:.2f}[/]")
+    score_table.add_row("  DOMAIN DISTANCE:", f"[{GREEN}]{_score_bar(dd)} {dd:.2f}[/]")
+    score_table.add_row("  STRUCTURAL FIDELITY:", f"[{GREEN}]{_score_bar(sf)} {sf:.2f}[/]")
+    score_table.add_row("  NOVELTY SCORE:", f"[{GOLD}]{_score_bar(top.novelty_score)} {top.novelty_score:.2f}[/]")
     score_table.add_row("  FEASIBILITY:", f"[{CYAN}]{top.feasibility_rating}[/]")
     score_table.add_row("  VERDICT:", _verdict_style(top.verdict))
 
     console.print()
     console.print(score_table)
     console.print()
+
+
+def _score_bar(value: float, width: int = 10) -> str:
+    """Render a score as a unicode bar for Rich display."""
+    filled = round(value * width)
+    empty = width - filled
+    return f"{'█' * filled}{'░' * empty}"
 
 
 def _verdict_style(verdict: str) -> str:

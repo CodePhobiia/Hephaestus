@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -247,10 +248,19 @@ class OutputFormatter:
             "───────────────────────────────────────────────────",
             f"**INVENTION:** {report.invention_name}",
             f"**SOURCE DOMAIN:** {report.source_domain}",
-            f"**DOMAIN DISTANCE:** {report.domain_distance:.2f}",
-            f"**STRUCTURAL FIDELITY:** {report.structural_fidelity:.2f}",
-            f"**NOVELTY SCORE:** {report.novelty_score:.2f}",
+            f"**DOMAIN DISTANCE:** {_unicode_bar(report.domain_distance)}",
+            f"**STRUCTURAL FIDELITY:** {_unicode_bar(report.structural_fidelity)}",
+            f"**NOVELTY SCORE:** {_unicode_bar(report.novelty_score)}",
             "───────────────────────────────────────────────────",
+            "",
+        ]
+
+        # ── Confidence ────────────────────────────────────────────────────────
+        lines += [
+            "**CONFIDENCE:**",
+            "",
+            f"  Domain Distance: {_domain_distance_interpretation(report.domain_distance)}",
+            f"  Structural Fidelity: {_structural_fidelity_interpretation(report.structural_fidelity)}",
             "",
         ]
 
@@ -369,6 +379,22 @@ class OutputFormatter:
             lines.append("───────────────────────────────────────────────────")
             lines.append("")
 
+        # ── Implementation roadmap ────────────────────────────────────────────
+        lines += [
+            "**IMPLEMENTATION ROADMAP:**",
+            "",
+            "  **Phase 1:** Validate core mechanism (prototype the key insight)",
+            "  **Phase 2:** Build minimal working system (architecture skeleton)",
+            "  **Phase 3:** Harden (address where analogy breaks)",
+            "",
+        ]
+        auto_steps = _generate_roadmap_steps(report.architecture)
+        if auto_steps:
+            lines.append("  **Suggested steps:**")
+            for step in auto_steps:
+                lines.append(f"  - {step}")
+            lines.append("")
+
         # ── Footer ───────────────────────────────────────────────────────────
         model_str = " + ".join(report.models_used) if report.models_used else "Unknown"
         time_str = f"{report.wall_time_seconds:.1f}s" if report.wall_time_seconds > 0 else "N/A"
@@ -448,10 +474,14 @@ class OutputFormatter:
             "-" * 60,
             f"INVENTION: {report.invention_name}",
             f"SOURCE DOMAIN: {report.source_domain}",
-            f"DOMAIN DISTANCE: {report.domain_distance:.2f}",
-            f"STRUCTURAL FIDELITY: {report.structural_fidelity:.2f}",
-            f"NOVELTY SCORE: {report.novelty_score:.2f}",
+            f"DOMAIN DISTANCE: {_ascii_bar(report.domain_distance)}",
+            f"STRUCTURAL FIDELITY: {_ascii_bar(report.structural_fidelity)}",
+            f"NOVELTY SCORE: {_ascii_bar(report.novelty_score)}",
             "-" * 60,
+            "",
+            "CONFIDENCE:",
+            f"  Domain Distance: {_domain_distance_interpretation(report.domain_distance)}",
+            f"  Structural Fidelity: {_structural_fidelity_interpretation(report.structural_fidelity)}",
             "",
             "MECHANISM:",
             _indent_block(report.mechanism, fallback="Not available."),
@@ -500,6 +530,21 @@ class OutputFormatter:
                     lines.append(f"     {_as_text(alt.summary)}")
             lines.append("")
 
+        # Implementation roadmap
+        lines += [
+            "IMPLEMENTATION ROADMAP:",
+            "  Phase 1: Validate core mechanism (prototype the key insight)",
+            "  Phase 2: Build minimal working system (architecture skeleton)",
+            "  Phase 3: Harden (address where analogy breaks)",
+            "",
+        ]
+        auto_steps = _generate_roadmap_steps(report.architecture)
+        if auto_steps:
+            lines.append("  Suggested steps:")
+            for step in auto_steps:
+                lines.append(f"  - {step}")
+            lines.append("")
+
         # Footer
         model_str = " + ".join(report.models_used) if report.models_used else "Unknown"
         time_str = f"{report.wall_time_seconds:.1f}s" if report.wall_time_seconds > 0 else "N/A"
@@ -542,6 +587,65 @@ def _as_text(text: Any, fallback: str = "") -> str:
         return stripped or fallback
     rendered = str(text)
     return rendered.strip() or fallback
+
+
+def _unicode_bar(value: float, width: int = 10) -> str:
+    """Render a score as a unicode bar: ██████░░░░ 0.62"""
+    filled = round(value * width)
+    empty = width - filled
+    return f"{'█' * filled}{'░' * empty} {value:.2f}"
+
+
+def _ascii_bar(value: float, width: int = 10) -> str:
+    """Render a score as an ASCII bar: [======    ] 0.62"""
+    filled = round(value * width)
+    empty = width - filled
+    return f"[{'=' * filled}{' ' * empty}] {value:.2f}"
+
+
+def _domain_distance_interpretation(score: float) -> str:
+    """Interpret a domain distance score."""
+    if score > 0.8:
+        return "Far transfer (high novelty potential)"
+    elif score >= 0.5:
+        return "Moderate transfer"
+    else:
+        return "Near transfer (lower novelty)"
+
+
+def _structural_fidelity_interpretation(score: float) -> str:
+    """Interpret a structural fidelity score."""
+    if score > 0.8:
+        return "Strong structural match"
+    elif score >= 0.5:
+        return "Moderate structural match"
+    else:
+        return "Loose analogy — verify carefully"
+
+
+def _generate_roadmap_steps(architecture: str) -> list[str]:
+    """Auto-generate specific implementation steps from architecture text."""
+    steps: list[str] = []
+    arch = _as_text(architecture)
+    if not arch:
+        return steps
+    # Extract key nouns/actions from the architecture text
+    # Look for function definitions, class names, key terms
+    lines = arch.splitlines()
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        # Pick up def/class lines as prototype targets
+        if stripped.startswith("def ") or stripped.startswith("class "):
+            name = stripped.split("(")[0].replace("def ", "").replace("class ", "").strip()
+            steps.append(f"Implement {name}")
+        # Pick up assignment of key data structures
+        elif "=" in stripped and not stripped.startswith("//"):
+            var = stripped.split("=")[0].strip()
+            if var and len(var) < 40 and re.match(r"^[a-zA-Z_]", var):
+                steps.append(f"Define {var}")
+    return steps[:5]  # cap at 5 specific steps
 
 
 def _prior_art_to_dict(report: Any | None) -> dict[str, Any]:
