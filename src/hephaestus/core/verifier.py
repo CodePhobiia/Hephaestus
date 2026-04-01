@@ -647,9 +647,9 @@ class NoveltyVerifier:
         # Prior art multiplier
         prior_art_multipliers = {
             "NO_PRIOR_ART_FOUND": 1.0,
-            "POSSIBLE_PRIOR_ART": 0.6,
-            "SEARCH_UNAVAILABLE": 0.8,
-            "PRIOR_ART_FOUND": 0.2,
+            "POSSIBLE_PRIOR_ART": 0.7,
+            "SEARCH_UNAVAILABLE": 1.0,  # Don't penalize when search is down
+            "PRIOR_ART_FOUND": 0.3,
         }
         prior_mult = prior_art_multipliers.get(prior_art_status, 0.8)
 
