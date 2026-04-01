@@ -452,6 +452,16 @@ class NoveltyVerifier:
             logger.warning("Load-bearing check skipped for %s: %s", translation.invention_name, exc)
             load_bearing_notes = f"Check skipped: {exc}"
 
+        # Step 3.7: Quality gate assessment (rule-based, not model-based)
+        from hephaestus.core.quality_gate import assess_invention_quality
+        quality = assess_invention_quality(
+            architecture=translation.architecture,
+            key_insight=translation.key_insight,
+            mechanism_differs_from_baseline=translation.mechanism_differs_from_baseline,
+            subtraction_test=translation.subtraction_test,
+            baseline_comparison=translation.baseline_comparison,
+        )
+
         # Step 4: Compute final novelty score
         novelty_score = self._compute_novelty_score(
             attack_result=attack_result,
@@ -459,6 +469,7 @@ class NoveltyVerifier:
             prior_art_status=prior_art_status,
             domain_distance=translation.domain_distance,
             mechanism_surprise=str(validity.get("mechanism_surprise_rating", "")),
+            quality_gate=quality,
         )
 
         # Step 4.5: Apply quality penalties
@@ -597,6 +608,7 @@ class NoveltyVerifier:
         prior_art_status: str,
         domain_distance: float,
         mechanism_surprise: str = "",
+        quality_gate: Any = None,
     ) -> float:
         """
         Compute the final novelty score from all verification components.
@@ -638,6 +650,18 @@ class NoveltyVerifier:
             mechanism_surprise.upper(), 0.8  # default: mild skepticism
         )
 
+        # Quality gate bonus — rule-based signal that counterbalances
+        # over-conservative model self-assessment
+        quality_bonus = 1.0
+        if quality_gate is not None:
+            if quality_gate.passed and quality_gate.decorative_signal_count == 0:
+                # Clean quality gate pass = significant boost
+                quality_bonus = 1.3
+            elif quality_gate.passed:
+                quality_bonus = 1.1
+            elif not quality_gate.passed:
+                quality_bonus = 0.5  # gate failed = hard penalty
+
         raw = (
             structural_validity
             * novelty_risk_penalty
@@ -645,6 +669,7 @@ class NoveltyVerifier:
             * fatal_penalty
             * distance_bonus
             * surprise_mult
+            * quality_bonus
         )
 
         import numpy as np
