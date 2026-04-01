@@ -615,6 +615,21 @@ async def _cmd_mode(console: Console, state: SessionState, args: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _resolve_todo_id(todo_list: TodoList, prefix: str) -> str:
+    """Resolve a todo ID prefix to a full ID.
+
+    Raises :class:`KeyError` if no item matches or the prefix is ambiguous.
+    """
+    matches = [item for item in todo_list.items if item.id.startswith(prefix)]
+    if len(matches) == 1:
+        return matches[0].id
+    if len(matches) > 1:
+        raise KeyError(
+            f"Ambiguous prefix {prefix!r} — matches {len(matches)} items"
+        )
+    raise KeyError(f"No todo item with id prefix {prefix!r}")
+
+
 async def _cmd_todo(console: Console, state: SessionState, args: str) -> None:
     """Show or manage the working-memory todo list."""
     if state.todo_list is None:
@@ -630,14 +645,16 @@ async def _cmd_todo(console: Console, state: SessionState, args: str) -> None:
         console.print(f"  [{RED}]Usage: /todo add <text>[/]\n")
     elif sub == "start" and len(parts) > 1:
         try:
-            state.todo_list.start(parts[1].strip())
-            console.print(f"  [{GREEN}]\u2713[/] Started: {parts[1].strip()}\n")
+            resolved = _resolve_todo_id(state.todo_list, parts[1].strip())
+            state.todo_list.start(resolved)
+            console.print(f"  [{GREEN}]\u2713[/] Started: {resolved}\n")
         except (KeyError, ValueError) as exc:
             console.print(f"  [{RED}]{exc}[/]\n")
     elif sub == "done" and len(parts) > 1:
         try:
-            state.todo_list.complete(parts[1].strip())
-            console.print(f"  [{GREEN}]\u2713[/] Completed: {parts[1].strip()}\n")
+            resolved = _resolve_todo_id(state.todo_list, parts[1].strip())
+            state.todo_list.complete(resolved)
+            console.print(f"  [{GREEN}]\u2713[/] Completed: {resolved}\n")
         except (KeyError, ValueError) as exc:
             console.print(f"  [{RED}]{exc}[/]\n")
     elif not sub:
@@ -1527,7 +1544,13 @@ def _setup_readline() -> None:
 def _closest_command(name: str) -> str | None:
     """Return the closest command name by edit distance, or None if too distant."""
     from difflib import get_close_matches
-    matches = get_close_matches(name, list(COMMANDS.keys()), n=1, cutoff=0.5)
+
+    # Collect all known names and aliases from the registry
+    all_names: list[str] = []
+    for cmd in _registry.list_commands():
+        all_names.append(cmd.name)
+        all_names.extend(cmd.aliases)
+    matches = get_close_matches(name, all_names, n=1, cutoff=0.5)
     return matches[0] if matches else None
 
 

@@ -1,215 +1,158 @@
 # ⚒️ Hephaestus
 
-### The god of the forge didn't ask permission. He just built things the other gods couldn't imagine.
-
-**Hephaestus is an invention engine.** Give it a problem. It gives you a solution that has never existed — not by being random, but by finding solved patterns in distant fields and translating them into your domain.
-
-Every output comes with a novelty proof.
-
-```bash
-pip install hephaestus-ai
-export ANTHROPIC_API_KEY=sk-ant-...
-export OPENAI_API_KEY=sk-...
-heph "I need a load balancer that handles unpredictable traffic spikes"
-```
-
-> **Cost:** ~$1.25 per invention. **Time:** ~45 seconds. **Novelty:** Provable.
-
----
+### The Invention Engine — cross-domain structural transfer for novel solutions
 
 <p align="center">
   <a href="https://pypi.org/project/hephaestus-ai/"><img src="https://img.shields.io/pypi/v/hephaestus-ai?color=orange&label=pypi" alt="PyPI"></a>
   <a href="https://pypi.org/project/hephaestus-ai/"><img src="https://img.shields.io/pypi/pyversions/hephaestus-ai" alt="Python"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-  <a href="docs/architecture.md"><img src="https://img.shields.io/badge/docs-architecture-green" alt="Docs"></a>
 </p>
+
+> Give it a hard problem. It finds solved patterns in distant knowledge domains, maps the structure back, and returns an invention that has never existed — with a novelty proof.
+
+```bash
+pip install hephaestus-ai
+heph "I need a load balancer that handles unpredictable traffic spikes"
+```
+
+**Cost:** ~$1.25 per invention. **Time:** ~45 seconds. **Novelty:** Provable.
 
 ---
 
-## What is this?
+## What is Hephaestus?
 
-LLMs are consensus machines. They produce the most statistically likely output — the average answer. Ask any frontier model a creative question and you get a well-structured, articulate, *predictable* response. The same shaped answer a million other users received. Temperature adds noise, not novelty. Prompting is begging. The model's probability distribution doesn't change because you asked nicely.
+Hephaestus takes hard engineering problems — the kind where the obvious approaches have already been tried — and searches for solutions in places no engineer would think to look. Instead of asking an LLM to "be creative" (which produces the same well-worn answers everyone else gets), Hephaestus decomposes your problem into its abstract mathematical shape and then scans 80+ knowledge domains — from ant colony foraging to thermodynamics to music theory — for solved problems that share that exact structure.
 
-Hephaestus is different at the architectural level. It runs a 5-stage invention pipeline that: (1) strips your problem down to its abstract mathematical shape, (2) searches 51 knowledge domains for solved problems with that exact shape, (3) scores candidates by structural fidelity *and* domain distance (superlinear reward for distant domains), (4) builds the concrete structural bridge using the **DeepForge harness** — which actively prevents the model from defaulting to predictable solutions, and (5) adversarially verifies the invention against prior art and structural validity.
+When it finds a structural match in a distant field, it doesn't hand you a metaphor. It builds a concrete, element-by-element translation: what each component in the source domain maps to in yours, how the mechanism works, implementation pseudocode, and where the analogy breaks down. The further the source domain is from your problem, the higher the novelty — and Hephaestus rewards distance with a superlinear scoring function that penalizes adjacent-domain matches and amplifies cross-disciplinary ones.
 
-The output isn't a metaphor. It's a working architecture — element-by-element mapping, implementation pseudocode, mathematical proof of structural isomorphism, and honest documentation of where the analogy breaks. If you've ever read about TRIZ (the Soviet theory of inventive problem solving developed in 1946), this is automated TRIZ with unlimited domains and LLM-powered translation. If you haven't heard of TRIZ, you're about to understand why Hephaestus is different from everything else in the AI tooling space.
+The engine runs a 5-stage pipeline powered by multiple frontier LLMs in adversarial configuration. The key innovation is **DeepForge**, a harness that makes models structurally incapable of producing predictable output. It injects cognitive interference from foreign domains, prunes convergent paths in real time, and applies anti-training pressure that blocks the model's own consensus responses. Temperature adds noise; DeepForge adds novelty.
+
+Every invention report includes confidence scores for domain distance, structural fidelity, and novelty; a prior art analysis; an implementation roadmap; and an honest accounting of where the structural analogy breaks. If you've heard of TRIZ (the Soviet theory of inventive problem solving), this is automated TRIZ with unlimited domains and LLM-powered translation. If you haven't — you're about to understand why this is different from everything else in the AI tooling space.
 
 ---
 
 ## Quick Start
 
-```bash
-# Install
-pip install hephaestus-ai
+### Install
 
-# Set API keys (both required for default 'both' mode)
+```bash
+pip install hephaestus-ai
+```
+
+### Set API keys
+
+```bash
+# Both required for default cross-model mode
 export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...
-
-# Run your first invention
-heph "I need a reputation system for an anonymous marketplace that can't be gamed"
 ```
 
-That's it. In ~45 seconds you'll have a novel architecture, a structural mapping, implementation guidance, and a novelty proof.
+### Run your first invention
 
-**Single model (cheaper):**
 ```bash
-heph --model opus "my problem here"    # Claude only (~$0.90)
-heph --model gpt5 "my problem here"   # OpenAI only (~$0.75)
+heph "I need a load balancer for unpredictable traffic spikes"
 ```
 
-**Python SDK:**
-```python
-import asyncio
-from hephaestus import Hephaestus
+### Interactive REPL
 
-async def main():
-    async with Hephaestus.from_env() as heph:
-        result = await heph.invent("I need a fraud detection system that adapts in real time")
-        print(result.top_invention.invention_name)
-        print(f"Source: {result.top_invention.source_domain}")
-        print(f"Novelty: {result.top_invention.novelty_score:.2f}")
-        print(f"Cost: ${result.total_cost_usd:.2f}")
-
-asyncio.run(main())
+```bash
+heph --interactive
 ```
 
----
+Opens a session with 22+ slash commands, session persistence, refinement loops, and live cost tracking. Type `/help` to see everything available.
 
-## How It Works
+### Project setup
 
-The invention pipeline has 5 stages:
-
+```bash
+heph init
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         HEPHAESTUS                                   │
-│                                                                       │
-│  Your Problem                                                         │
-│      │                                                                │
-│      ▼                                                                │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Stage 1: DECOMPOSE  (Claude Opus)                              │ │
-│  │  Strip domain language → extract abstract mathematical shape    │ │
-│  │  "load balancer with traffic spikes"                            │ │
-│  │       → "dynamic resource allocation under Poisson arrivals     │ │
-│  │          with no central coordinator"                           │ │
-│  └────────────────────────────┬────────────────────────────────────┘ │
-│                               │                                       │
-│                               ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Stage 2: SEARCH  (GPT-5.4)                                     │ │
-│  │  Query 51 domain lenses for solved problems with matching shape  │ │
-│  │  Returns 8–10 candidates from distant fields                    │ │
-│  │  e.g., ant colony foraging, mycelium networks, bird murmurations│ │
-│  └────────────────────────────┬────────────────────────────────────┘ │
-│                               │                                       │
-│                               ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Stage 3: SCORE                                                  │ │
-│  │  score = fidelity × distance^1.5                                │ │
-│  │  Adjacent domains (gossip protocols) get penalized              │ │
-│  │  Distant domains (mycology, music theory) get rewarded          │ │
-│  └────────────────────────────┬────────────────────────────────────┘ │
-│                               │                                       │
-│                               ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Stage 4: TRANSLATE  (Claude Opus via DeepForge)                │ │
-│  │  Build the structural bridge — element-by-element mapping       │ │
-│  │  Cognitive interference ACTIVE → prevents conventional solutions│ │
-│  │  Outputs: architecture, pseudocode, mathematical proof          │ │
-│  └────────────────────────────┬────────────────────────────────────┘ │
-│                               │                                       │
-│                               ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Stage 5: VERIFY  (cross-model adversarial)                     │ │
-│  │  GPT attacks the mapping. Claude defends.                       │ │
-│  │  Prior art check. Feasibility assessment. Novelty proof.        │ │
-│  └────────────────────────────┬────────────────────────────────────┘ │
-│                               │                                       │
-│                               ▼                                       │
-│  InventionReport: name, domain, mapping, architecture, proof, cost   │
-└─────────────────────────────────────────────────────────────────────┘
+
+Creates a `.hephaestus/` directory with a `config.yaml` for project-level defaults and an `instructions.md` for domain context that Hephaestus will include in every run.
+
+### Single-model mode (cheaper)
+
+```bash
+heph --model opus "my problem"       # Claude only
+heph --model gpt5 "my problem"      # OpenAI only
+heph --model claude-max "my problem" # Claude Max (no API key needed)
 ```
 
 ---
 
-## The DeepForge Harness
-
-DeepForge is the engine underneath the pipeline. It makes frontier models structurally incapable of producing predictable output through three mechanisms:
-
-### 1. Cognitive Interference
-During translation, DeepForge injects foreign-domain axioms into the model's active reasoning — not as a prompt, but as assistant prefill. The model is forced to continue its chain-of-thought from inside an alien conceptual frame.
+## The Pipeline
 
 ```
-Normal model:              Interference active:
-"The best approach is      "As if through the lens of an immune system:
- a consistent hashing       every request is an antigen. Trust is
- algorithm with virtual     antigen presentation. The server's
- nodes..."                  willingness to respond is..."
+ Problem
+    │
+    ▼
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│ DECOMPOSE│──▶│  SEARCH  │──▶│  SCORE   │──▶│TRANSLATE │──▶│  VERIFY  │
+└──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
+    │               │               │               │               │
+ Extract         Scan 80+       Rank by        Build the       Adversarial
+ abstract       domain lenses   fidelity ×     structural      attack,
+ structural     for matching    distance^1.5   bridge via      prior art
+ form           shapes                         DeepForge       check, proof
+                                                                    │
+                                                                    ▼
+                                                            Invention Report
 ```
 
-### 2. Convergence Pruning
-The harness monitors the output stream in real-time. When the model starts heading toward a known solution (detected via embedding similarity against a banality database), the generation is killed and retried with that path explicitly blocked. Each retry seals another exit. After 3–4 rounds, the model is past its top convergence points.
-
-### 3. Anti-Training Pressure
-The adversarial mirror: ask the model for its default answer, feed it back as a structural prohibition. The model's own consensus response becomes the wall it must climb over. Round N blocks the N-th most obvious answer, forcing the model deeper into unexplored territory.
+| Stage | What it does |
+|-------|-------------|
+| **Decompose** | Strips domain-specific language to extract the abstract mathematical shape of your problem |
+| **Search** | Queries 80+ curated domain lenses for solved problems with a matching structural signature |
+| **Score** | Ranks candidates by `fidelity × distance^1.5` — distant domains are superlinearly rewarded |
+| **Translate** | Builds a concrete element-by-element mapping via the DeepForge harness with cognitive interference active |
+| **Verify** | Cross-model adversarial verification: one model attacks the mapping, another defends. Prior art check and novelty proof |
 
 ---
 
-## Cognitive Lenses
+## Features
 
-The lens library is a collection of 51 curated domain axiom sets — the conceptual primitives of each field, structured to be injected as cognitive frames during generation.
+### Output Modes
 
-Each lens contains:
-- **Axioms**: Core truths of the domain (how the field understands the world)
-- **Structural patterns**: Abstract mechanisms that map to common problem shapes
-- **Injection prompt**: The framing text that activates this domain's perspective
+Seven structural shapes for invention reports, selected with `--output-mode`:
 
-**Example: Immune System lens (excerpt)**
-```yaml
-name: Immune System
-domain: biology
-axioms:
-  - "Identity is not asserted — it is proven through molecular handshake."
-  - "Memory is the most powerful adaptation: a system that survived an
-     attack once responds 1000× faster the second time."
-  - "Clonal selection amplifies success: strategies that work get
-     duplicated; strategies that fail get pruned."
+| Mode | Description |
+|------|-------------|
+| `MECHANISM` | Component-level architecture with element mapping (default) |
+| `FRAMEWORK` | Conceptual framework with principles and decision rules |
+| `NARRATIVE` | Story-driven explanation of how the invention works |
+| `SYSTEM` | Full system design with modules, interfaces, and data flow |
+| `PROTOCOL` | Step-by-step protocol with actors, messages, and state transitions |
+| `TAXONOMY` | Classification system with categories and boundary definitions |
+| `INTERFACE` | API surface design with contracts and interaction patterns |
 
-structural_patterns:
-  - name: antigen_presentation
-    abstract: "An entity publicly broadcasts proof of its interactions
-               that any observer can independently verify"
-    maps_to: [trust, reputation, authentication, audit_trail]
-```
+### Divergence Intensity
 
-**Current lens library (51 domains):**
+Control how far from consensus the engine pushes, with `--intensity`:
 
-| Biology | Physics | Math | Strategy |
-|---------|---------|------|----------|
-| Immune System | Fluid Dynamics | Chaos Theory | Military Strategy |
-| Swarm Intelligence | Thermodynamics | Topology | Game Theory |
-| Evolution | Quantum Mechanics | Graph Theory | Military Logistics |
-| Ecology | Optics | | Military Intelligence |
-| Mycology | | | |
+| Intensity | Behavior |
+|-----------|----------|
+| `STANDARD` | Balanced novelty and feasibility (default) |
+| `AGGRESSIVE` | Stronger interference, deeper anti-training pressure |
+| `MAXIMUM` | Full divergence — maximally distant solutions, higher cost |
 
-| Social | Engineering | Arts | Earth Sciences |
-|--------|-------------|------|----------------|
-| Sociology Networks | Cryptography | Music Theory | Geology/Tectonics |
-| Urban Planning | Distributed Systems | Film Cinematography | Meteorology |
-| Economics/Markets | Network Theory | | Oceanography |
-| Behavioral Economics | Materials Science | | Astronomy/Orbital |
-| Game Theory (Econ) | | | |
+### Core Capabilities
 
-> Want to add a lens? See [docs/lens_authoring.md](docs/lens_authoring.md)
+- **80+ domain lenses** — curated axiom sets spanning biology, physics, mathematics, economics, military strategy, arts, agriculture, psychology, engineering, earth sciences, linguistics, and mythology
+- **DeepForge harness** — cognitive interference injection, convergence pruning, and anti-training pressure to prevent predictable output
+- **Session management** — typed transcripts, session persistence, and compaction with continuation summaries that preserve invention state
+- **MCP tool integration** — JSON-RPC 2.0 stdio client with multi-server manager and namespaced tool routing
+- **Multiple backends** — Anthropic (Claude), OpenAI (GPT), OpenRouter, Claude Max, and Claude CLI
+- **Interactive REPL** — 22+ slash commands with aliases, categories, tab completion, session history, refinement loops, and live cost tracking
+- **Layered configuration** — 5-level precedence: defaults < user (`~/.hephaestus/`) < project < local < environment variables
+- **Prior art search** — automated check against known solutions in both the source and target domains
+- **Novelty proof generation** — structural isomorphism verification with honest documentation of where the analogy breaks
+- **Permission system** — READ_ONLY, WORKSPACE_WRITE, and FULL_ACCESS modes for tool execution
+- **Budgeted context assembly** — instruction discovery up the directory tree with dedup, per-source limits, and dynamic boundary markers
 
 ---
 
 ## Example Output
 
-Here's a real invention from Hephaestus. Problem: *"I need a load balancer that handles unpredictable traffic spikes"*
-
----
+Problem: *"I need a load balancer that handles unpredictable traffic spikes"*
 
 ```
 ═══════════════════════════════════════════════════════════════
@@ -220,442 +163,278 @@ PROBLEM:
   I need a load balancer that handles unpredictable traffic spikes
 
 STRUCTURAL FORM:
-  Dynamic resource allocation under stochastic arrival rates with
-  no central coordinator and no predictable demand distribution.
-  Mathematical shape: decentralized optimization over a routing
-  graph with Poisson arrivals and time-varying capacity constraints.
+  Dynamic resource allocation under stochastic arrival rates
+  with no central coordinator and no predictable demand distribution.
+  Shape: decentralized optimization over a routing graph with
+  Poisson arrivals and time-varying capacity constraints.
 
 ───────────────────────────────────────────────────────────────
 INVENTION: Pheromone-Gradient Load Balancer
 SOURCE DOMAIN: Biology — Ant Colony Foraging (Swarm Intelligence)
-DOMAIN DISTANCE: 0.91 (swarm biology → distributed systems)
-STRUCTURAL FIDELITY: 0.88
-NOVELTY SCORE: 0.93
+
+  Domain Distance     ████████░░  0.91
+  Structural Fidelity ████████░░  0.88
+  Novelty Score       █████████░  0.93
 ───────────────────────────────────────────────────────────────
 
-MECHANISM (native domain):
+MECHANISM:
   Ant colonies solve the Traveling Salesman Problem in real time
   without a central planner. Each ant deposits pheromone on the
-  path it travels. Shorter paths accumulate pheromone faster
-  (more ants traverse them per unit time). Longer paths evaporate.
-  The colony converges on optimal routes through this emergent
-  gradient — with no ant ever seeing the global picture.
+  path it travels. Shorter paths accumulate pheromone faster.
+  Longer paths evaporate. The colony converges on optimal routes
+  through this emergent gradient — no ant ever sees the global picture.
 
 TRANSLATION:
-
-  Ant                  → Individual request
-  Pheromone            → Latency-weighted routing score
-  Pheromone deposit    → Response time recorded at request completion
-  Pheromone evaporation→ Exponential decay of routing scores (TTL)
-  Path length          → Inverse of current server response time
-  Colony               → The load balancer routing table
-  Nest                 → Entry point (client-facing endpoint)
-  Food source          → Available server capacity
+  Ant                   → Individual request
+  Pheromone             → Latency-weighted routing score
+  Pheromone deposit     → Response time recorded at request completion
+  Pheromone evaporation → Exponential decay of routing scores (TTL)
+  Path length           → Inverse of current server response time
+  Colony                → The load balancer routing table
+  Nest                  → Client-facing endpoint
+  Food source           → Available server capacity
 
 ARCHITECTURE:
-
-  Each server maintains a "pheromone level" P(s,t): a float in
-  [0,1] representing how "attractive" it is at time t. Initial
-  value: 0.5 for all servers.
-
+  Each server maintains a pheromone level P(s,t): a float in [0,1].
   On request arrival:
-    1. Route with probability proportional to P(s,t) for each server s
-       (probabilistic, not deterministic — like ants choosing paths)
-    2. Record actual response time T(s,request)
-    3. Update: P(s,t+1) = (1-ρ)·P(s,t) + ρ·(1/T(s,request))
-       where ρ is the evaporation rate (0.1–0.3)
+    1. Route with probability ∝ P(s,t)
+    2. Record response time T(s)
+    3. Update: P(s,t+1) = (1-ρ)·P(s,t) + ρ·(1/T(s))
 
-  Key insight: during a spike, overloaded servers respond slowly.
-  Their pheromone decays. Traffic automatically redistributes to
-  faster servers — without any server reporting its load, without
-  a health check endpoint, and with sub-millisecond routing decisions.
+  During a spike, overloaded servers respond slowly → pheromone
+  decays → traffic redistributes automatically. No health checks,
+  no load reporting, sub-millisecond routing decisions.
 
-  For new server introduction: seed with P(s,0) = mean(P) + ε.
-  New servers get a small initial bonus, pulled toward mean quickly.
-
-  Pseudocode:
-    class PheromoneRouter:
-        def __init__(self, servers, rho=0.15, decay_interval=1.0):
-            self.pheromones = {s: 0.5 for s in servers}
-            self.rho = rho
-
-        def route(self, request) -> Server:
-            weights = {s: p for s, p in self.pheromones.items()}
-            return weighted_random_choice(weights)
-
-        def record_response(self, server, latency_ms):
-            score = 1.0 / max(latency_ms, 1)
-            p = self.pheromones[server]
-            self.pheromones[server] = (1 - self.rho) * p + self.rho * score
-
-        def decay(self):  # Called periodically
-            for s in self.pheromones:
-                self.pheromones[s] *= 0.99  # Global evaporation
+IMPLEMENTATION ROADMAP:
+  Phase 1: Core router with pheromone table and weighted random
+           selection. Validate against round-robin baseline.
+  Phase 2: Add evaporation scheduler and spike detection with
+           adaptive decay rates.
+  Phase 3: In-flight request tracking (compensates for ants
+           having path memory, which HTTP requests lack).
+  Phase 4: Integrate health-check fallback for dead servers.
+           Add ε-greedy exploration bonus for path diversity.
 
 WHERE THE ANALOGY BREAKS:
-  • Ants have path memory; HTTP requests don't. Solution: track
-    in-flight requests per server explicitly.
-  • Ant pheromone is per-path; our pheromone is per-server.
-    This loses path diversity. Mitigate with exploration bonus (ε-greedy).
-  • Colonies handle node failure by path abandonment; you need an
-    explicit health check fallback for dead servers.
-  • The original algorithm assumes stationary demand; you'll need
-    faster decay rates during detected spikes.
+  • Ants have path memory; HTTP requests don't → track in-flight
+    requests per server explicitly.
+  • Pheromone is per-path; ours is per-server → loses path diversity.
+    Mitigate with exploration bonus (ε-greedy).
+  • Colonies handle node failure by path abandonment → need explicit
+    health check fallback for dead servers.
 
 PRIOR ART CHECK:
-  • "Ant Colony Optimization" (Dorigo, 1992) — foundational ACO work.
-    Does NOT cover HTTP routing specifically.
-  • "AntNet" (Di Caro & Dorigo, 1998) — network routing, not load
-    balancing. Different topology and constraints.
-  • Several patents on "adaptive load balancing" — none use
-    pheromone-gradient specifically with latency-as-pheromone.
-  Status: NO PRIOR ART for this specific cross-domain application.
-
-NOVELTY PROOF:
-  The structural isomorphism holds: both systems solve decentralized
-  optimization over a routing graph with emergent, gradient-based
-  path selection driven solely by local feedback signals. The key
-  transfer is treating LATENCY as the inverse of PHEROMONE STRENGTH —
-  a mapping that does not appear in prior load balancing literature,
-  ACO literature, or their intersection. The use of pheromone
-  evaporation as an automatic traffic spike dampener is novel.
+  • "Ant Colony Optimization" (Dorigo, 1992) — foundational ACO.
+    Does NOT cover HTTP routing.
+  • "AntNet" (Di Caro & Dorigo, 1998) — network routing, not
+    load balancing. Different topology and constraints.
+  • No prior art for latency-as-pheromone in load balancing.
+  Status: NOVEL ✓
 
 ───────────────────────────────────────────────────────────────
-ALTERNATIVE INVENTIONS:
-  2. Mycelium Network Router — fungal nutrient transport → request routing
-     (score: 0.86, domain dist: 0.89)
-  3. Flocking Murmuration Balancer — starling swarm dynamics → adaptive
-     server clustering (score: 0.81, domain dist: 0.87)
+ALTERNATIVES:
+  2. Mycelium Network Router (score: 0.86, distance: 0.89)
+  3. Flocking Murmuration Balancer (score: 0.81, distance: 0.87)
 ───────────────────────────────────────────────────────────────
-
-Cost: $1.18  |  Models: Claude Opus 4.5 + GPT-4o  |  Depth: 3  |  45s
+Cost: $1.18  |  Models: Claude Opus + GPT  |  Depth: 3  |  45s
 ═══════════════════════════════════════════════════════════════
 ```
 
-> See [examples/load_balancer.md](examples/load_balancer.md) for the full detailed version.
+---
+
+## Configuration
+
+### Project config (`.hephaestus/config.yaml`)
+
+Created by `heph init`. These override your global `~/.hephaestus/config.yaml`:
+
+```yaml
+# Hephaestus project configuration
+backend: api                    # api | claude-max | claude-cli
+depth: 3                        # Anti-training pressure rounds (1-10)
+candidates: 8                   # Cross-domain search candidates (1-20)
+divergence_intensity: STANDARD  # STANDARD | AGGRESSIVE | MAXIMUM
+output_mode: MECHANISM          # MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM | PROTOCOL | TAXONOMY | INTERFACE
+auto_save: true                 # Auto-save session transcripts
+```
+
+Project-level instructions go in `.hephaestus/instructions.md` — Hephaestus includes them as context in every run within that directory.
+
+Local overrides (not committed to git) go in `.hephaestus/local.yaml`.
+
+### Configuration precedence
+
+```
+defaults < ~/.hephaestus/config.yaml < .hephaestus/config.yaml < .hephaestus/local.yaml < env vars < CLI flags
+```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | For opus/both modes | Anthropic API key |
+| `OPENAI_API_KEY` | For gpt5/both modes | OpenAI API key |
+| `OPENROUTER_API_KEY` | For OpenRouter backend | OpenRouter API key |
+| `HEPHAESTUS_DEPTH` | No | Default pressure depth |
+| `HEPHAESTUS_MODEL` | No | Default model preset |
+| `HEPHAESTUS_LENS_DIR` | No | Custom lens library directory |
+| `HEPHAESTUS_LOG_LEVEL` | No | Log level (DEBUG/INFO/WARNING) |
+
+---
+
+## Architecture
+
+```
+src/hephaestus/
+├── core/               # Genesis pipeline — 5-stage invention engine
+│   ├── genesis.py      #   Pipeline orchestrator and streaming interface
+│   └── cross_model.py  #   Model presets and backend routing
+├── deepforge/          # DeepForge harness — anti-consensus engine
+│   ├── harness.py      #   Interference injection, pruning, pressure
+│   └── adapters/       #   Anthropic, OpenAI, OpenRouter, Claude Max, Claude CLI
+├── lenses/             # Domain lens library (80+ YAML axiom sets)
+│   ├── loader.py       #   Lens discovery and validation
+│   └── library/        #   Individual lens files by domain
+├── cli/                # Command-line interface
+│   ├── main.py         #   Click CLI with all flags and options
+│   ├── repl.py         #   Interactive REPL session loop
+│   ├── commands.py     #   22+ slash commands with aliases and categories
+│   └── display.py      #   Rich terminal output — score bars, stage progress
+├── config/             # Configuration
+│   └── layered.py      #   5-level config precedence resolver
+├── session/            # Session management
+│   ├── schema.py       #   Typed transcript model with persistence
+│   ├── todos.py        #   Working-memory todo list
+│   └── compact.py      #   Session compaction with continuation summaries
+├── prompts/            # Prompt construction
+│   ├── system_prompt.py#   Core invention philosophy prompt
+│   └── context_loader.py#  Instruction discovery and budgeted assembly
+├── tools/              # Tool system
+│   ├── registry.py     #   Tool registry with profiles
+│   ├── permissions.py  #   Permission policy enforcement
+│   ├── file_ops.py     #   File read/write/search operations
+│   ├── web_tools.py    #   Web search and fetch
+│   └── mcp/            #   MCP stdio client and multi-server manager
+├── agent/              # Conversation runtime
+│   └── runtime.py      #   Pluggable adapter, tool dispatch, transcript recording
+├── memory/             # Memory subsystem
+│   ├── anti_memory.py  #   Anti-memory for convergence prevention
+│   └── transparency.py #   Memory hit reporting and context surfaces
+├── convergence/        # Convergence detection and pruning
+├── novelty/            # Novelty scoring and proof generation
+├── output/             # Output formatting
+│   ├── formatter.py    #   Markdown, JSON, and plain text renderers
+│   ├── prior_art.py    #   Prior art report generation
+│   └── proof.py        #   Novelty proof construction
+├── analytics/          # Cost tracking and usage analytics
+└── sdk/                # Python SDK (Hephaestus class)
+```
+
+---
+
+## Development
+
+### Prerequisites
+
+- Python 3.10+
+- API keys for Anthropic and/or OpenAI (for integration tests)
+
+### Setup
+
+```bash
+git clone https://github.com/theyab/hephaestus.git
+cd hephaestus
+pip install -e ".[dev]"
+```
+
+### Running tests
+
+```bash
+# Full suite (920 tests)
+pytest tests/
+
+# By subsystem
+pytest tests/test_deepforge.py          # DeepForge harness
+pytest tests/test_genesis.py            # Pipeline (mocked LLM)
+pytest tests/test_lenses.py             # Lens validation
+pytest tests/test_session/              # Session management
+pytest tests/test_config/               # Layered config
+pytest tests/test_tools/                # Tools and MCP
+pytest tests/benchmarks/                # Novelty benchmarks (requires API keys)
+```
+
+### Project structure
+
+```
+hephaestus/
+├── src/hephaestus/     # Source code
+├── tests/              # Test suite (920 tests)
+├── docs/               # Documentation
+├── examples/           # Example invention reports
+└── web/                # Web UI (coming soon)
+```
+
+### Adding a lens
+
+The fastest way to contribute. Each lens is a single YAML file:
+
+```bash
+cp src/hephaestus/lenses/library/biology_immune.yaml \
+   src/hephaestus/lenses/library/my_domain.yaml
+# Edit the file with domain axioms and structural patterns
+pytest tests/test_lenses.py -k my_domain
+```
 
 ---
 
 ## CLI Reference
 
 ```
-Usage: heph [OPTIONS] PROBLEM
-
-  ⚒️  HEPHAESTUS — The Invention Engine.
+Usage: heph [OPTIONS] [PROBLEM]
 
 Options:
-  PROBLEM               Your problem description (natural language)
-
-  -d, --depth INT       Anti-training pressure depth (1-10, default: 3)
-                        Higher = more novel, more expensive.
-
-  -m, --model TEXT      Model strategy: opus | gpt5 | both (default: both)
-                        opus: Claude Opus only (~$0.90/invention)
-                        gpt5: OpenAI only (~$0.75/invention)
-                        both: Cross-model adversarial (~$1.25/invention)
-
-  -f, --format TEXT     Output format: markdown | json | text (default: markdown)
-
-  --domain TEXT         Domain hint: 'distributed-systems', 'biology', etc.
-
-  --trace               Show full reasoning trace (interference injections,
-                        pressure rounds, pruner kills)
-
-  --raw                 Skip Genesis pipeline — run DeepForge directly on prompt
-
-  -c, --candidates INT  Cross-domain search candidates (1-20, default: 8)
-
-  -o, --output PATH     Save report to file (format inferred from extension)
-
-  --cost                Show detailed cost breakdown table
-
-  -q, --quiet           Minimal output — just the invention name and stats
-
-  -v, --version         Show version and exit
-
-  -h, --help            Show this message and exit
-```
-
-**Examples:**
-
-```bash
-# Basic invention
-heph "I need a fraud detection system that doesn't rely on historical patterns"
-
-# More depth, trace enabled
-heph --depth 5 --trace "a caching system that predicts future access patterns"
-
-# Opus only, JSON output saved to file
-heph --model opus --format json --output invention.json "my problem"
-
-# Raw DeepForge — skip the pipeline, just force novel generation
-heph --raw "Design a consensus mechanism for a network with Byzantine actors"
-
-# Quiet mode (good for scripts)
-heph --quiet --format json "routing problem" | jq .top_invention.name
+  -d, --depth INT          Anti-training pressure depth (1-10, default: 3)
+  -m, --model TEXT         claude-max | claude-cli | opus | gpt5 | both
+  -f, --format TEXT        markdown | json | text
+  --domain TEXT            Domain hint (e.g. 'distributed-systems')
+  --intensity TEXT         STANDARD | AGGRESSIVE | MAXIMUM
+  --output-mode TEXT       MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM |
+                           PROTOCOL | TAXONOMY | INTERFACE
+  --trace                  Show full reasoning trace
+  --raw                    Run DeepForge directly, skip Genesis pipeline
+  -c, --candidates INT     Search candidates (1-20, default: 8)
+  -o, --output PATH        Save report to file
+  --cost                   Show detailed cost breakdown
+  -q, --quiet              Minimal output
+  -i, --interactive        Launch interactive REPL
+  --verbose                Debug logging
+  -v, --version            Show version and exit
+  -h, --help               Show help
 ```
 
 ---
 
 ## Python SDK
 
-### 1. Basic Invention
-
 ```python
 import asyncio
 from hephaestus import Hephaestus
 
 async def main():
     async with Hephaestus.from_env() as heph:
-        result = await heph.invent("I need a caching strategy for unpredictable access patterns")
-
+        result = await heph.invent(
+            "I need a fraud detection system that adapts in real time"
+        )
         inv = result.top_invention
         print(f"Invention: {inv.invention_name}")
-        print(f"From: {inv.source_domain}")
+        print(f"Source: {inv.source_domain}")
         print(f"Novelty: {inv.novelty_score:.2f}")
         print(f"Cost: ${result.total_cost_usd:.2f}")
 
 asyncio.run(main())
 ```
 
-### 2. Streaming Pipeline Progress
-
-```python
-import asyncio
-from hephaestus import Hephaestus
-
-async def main():
-    async with Hephaestus.from_env() as heph:
-        async for update in heph.invent_stream("trust system for ephemeral actors"):
-            print(f"[{update.stage.name:12}] {update.message}")
-            if update.stage.name == "COMPLETE":
-                report = update.data
-                print(f"\nTop invention: {report.top_invention.invention_name}")
-
-asyncio.run(main())
-```
-
-### 3. Raw DeepForge (No Pipeline)
-
-```python
-import asyncio
-from hephaestus import Hephaestus
-
-async def main():
-    async with Hephaestus.from_env(depth=5) as heph:
-        result = await heph.deepforge(
-            "Design a consensus mechanism for a network with unreliable nodes",
-            depth=5,
-        )
-        print(result.output)
-        print(f"Cost: ${result.trace.total_cost_usd:.4f}")
-        print(f"Pruner kills: {result.trace.pruner_kills}")
-
-asyncio.run(main())
-```
-
-### 4. Lens Introspection
-
-```python
-from hephaestus import Hephaestus
-
-heph = Hephaestus.from_env()
-
-# List all 51 lenses
-lenses = heph.list_lenses()
-for lens in lenses[:5]:
-    print(f"{lens['lens_id']:30} {lens['domain']:15} {lens['axiom_count']} axioms")
-
-# Load a specific lens
-immune = heph.get_lens("biology_immune")
-print(immune.name)
-for axiom in immune.axioms:
-    print(f"  • {axiom}")
-```
-
-### 5. Cost Estimation Before Running
-
-```python
-from hephaestus import Hephaestus
-
-heph = Hephaestus.from_env(depth=5, candidates=12)
-
-estimate = heph.estimate_cost("I need a fraud detection system")
-print(f"Estimated: ${estimate['mid']:.2f}")
-print(f"Range: ${estimate['low']:.2f} — ${estimate['high']:.2f}")
-print(f"Breakdown: {estimate['breakdown']}")
-```
-
-### Full SDK Reference → [docs/api_reference.md](docs/api_reference.md)
-
----
-
-## Web UI
-
-> **Coming in Phase 2.**
-
-```bash
-# Run the web interface locally
-pip install "hephaestus-ai[web]"
-heph-web
-# Open http://localhost:8000
-```
-
-The web UI provides:
-- Real-time streaming of the invention process (watch each stage)
-- Visual graph of the structural domain mapping
-- Gallery of past inventions (opt-in sharing)
-- Cost counter
-
----
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes (opus/both) | Anthropic API key for Claude Opus |
-| `OPENAI_API_KEY` | Yes (gpt5/both) | OpenAI API key for GPT models |
-| `HEPHAESTUS_DEPTH` | No | Default pressure depth (overrides CLI default of 3) |
-| `HEPHAESTUS_MODEL` | No | Default model (opus/gpt5/both) |
-| `HEPHAESTUS_LENS_DIR` | No | Custom lens library directory |
-| `HEPHAESTUS_LOG_LEVEL` | No | Log level (DEBUG/INFO/WARNING) |
-
-### Model Selection
-
-| Mode | Decompose | Search | Translate | Verify | Cost |
-|------|-----------|--------|-----------|--------|------|
-| `both` (default) | Claude Opus | GPT-4o | Claude Opus | Cross-model | ~$1.25 |
-| `opus` | Claude Opus | Claude Opus | Claude Opus | Claude Opus | ~$0.90 |
-| `gpt5` | GPT-4o | GPT-4o | GPT-4o | GPT-4o | ~$0.75 |
-
-Cross-model (`both`) gives the best results — different model families have different failure modes, so the adversarial verification is more meaningful.
-
-### SDK Configuration
-
-```python
-from hephaestus import Hephaestus
-
-# Full configuration
-heph = Hephaestus(
-    anthropic_key="sk-ant-...",
-    openai_key="sk-...",
-    model="both",          # opus | gpt5 | both
-    depth=3,               # 1-10, default 3
-    candidates=8,          # search candidates, default 8
-    num_translations=3,    # candidates to translate, default 3
-    run_prior_art=True,    # prior art check in stage 5
-)
-```
-
----
-
-## How Is This Different From Just Prompting?
-
-The honest answer: prompting has a ceiling. Here's the comparison:
-
-| | Raw Prompting | Hephaestus |
-|---|---|---|
-| **"Be creative!"** | Asks nicely. Model ignores. | Changes the probability distribution. |
-| **Source domains** | Whatever the model recalls from training | 51 curated lenses, structurally matched |
-| **Novelty guarantee** | None | Structural novelty proof + prior art check |
-| **Predictability** | Model takes the path of least resistance | Convergence pruner kills predictable paths |
-| **Translation quality** | Metaphor-level ("it's like...") | Element-by-element structural mapping |
-| **Cost** | $0.01 | ~$1.25 |
-| **Output type** | Text | Working architecture + pseudocode |
-
-The gap isn't prompt engineering. It's architecture. The model's probability distribution over "creative" outputs is heavily concentrated on a few well-worn solutions. Increasing temperature spreads probability mass over incoherent outputs — not novel ones. DeepForge shifts where the probability mass lives by actively blocking the high-probability paths.
-
----
-
-## Cost
-
-**Per invention: approximately $0.85–$1.50 depending on depth and model.**
-
-| Stage | Model | Est. Cost |
-|-------|-------|-----------|
-| Decompose | Claude Opus | $0.15 |
-| Search (8 candidates) | GPT-4o | $0.12 |
-| Score | GPT-4o-mini | $0.05 |
-| Translate (top 3, deepforge) | Claude Opus | $0.45 |
-| Convergence kills (~3 retries) | Mixed | $0.15 |
-| Verify + prior art | Both | $0.15 |
-| **Total** | | **~$1.07** |
-
-With Anthropic prompt caching (structural prompts are reused): **~$0.75** after the first run.
-
-**Use `--cost` to see the actual breakdown after every run:**
-```bash
-heph --cost "your problem"
-```
-
-**Estimate before running:**
-```bash
-python -c "from hephaestus import Hephaestus; h = Hephaestus.from_env(); print(h.estimate_cost('your problem'))"
-```
-
----
-
-## Contributing
-
-### Adding a Lens
-
-The fastest way to contribute. Each lens is a single YAML file in `src/hephaestus/lenses/library/`.
-
-```bash
-cp src/hephaestus/lenses/library/biology_immune.yaml src/hephaestus/lenses/library/my_domain.yaml
-# Edit the file
-python -m pytest tests/test_lenses.py -k my_domain
-```
-
-See [docs/lens_authoring.md](docs/lens_authoring.md) for the full schema and best practices.
-
-### Running Tests
-
-```bash
-pip install -e ".[dev]"
-pytest tests/                          # Full test suite
-pytest tests/test_deepforge.py         # DeepForge harness tests
-pytest tests/test_genesis.py           # Pipeline tests (mocked LLM calls)
-pytest tests/test_lenses.py            # Lens validation
-pytest tests/benchmarks/               # Novelty benchmarks (requires API keys)
-```
-
-### Submitting a PR
-
-1. Fork and create a branch: `git checkout -b feat/your-feature`
-2. Make changes, add tests
-3. Run `pytest` and `ruff check src/`
-4. Open a PR — describe what problem your change solves
-
-**High-value contributions:**
-- New cognitive lenses (especially rare/unexpected domains)
-- Convergence pattern seeds (examples of "boring" LLM outputs to block)
-- Benchmark improvements
-- Open-weight model adapters (Llama, Mistral)
-
----
-
-## Architecture Deep Dive → [docs/architecture.md](docs/architecture.md)
-
-## DeepForge Documentation → [docs/deepforge.md](docs/deepforge.md)
-
-## Lens Authoring Guide → [docs/lens_authoring.md](docs/lens_authoring.md)
-
-## Full API Reference → [docs/api_reference.md](docs/api_reference.md)
-
-## Benchmarks → [docs/benchmarks.md](docs/benchmarks.md)
-
----
-
-## Examples
-
-- [Load Balancer → Ant Colony Foraging](examples/load_balancer.md)
-- [Reputation System → Immune System](examples/reputation_system.md)
-- [Traffic Optimization → Fluid Dynamics](examples/traffic_optimization.md)
-- [Recommendation Engine → Mycorrhizal Networks](examples/recommendation_engine.md)
-- [Fraud Detection → Antigen Presentation](examples/fraud_detection.md)
+Streaming, raw DeepForge mode, lens introspection, and cost estimation are also available. See [docs/api_reference.md](docs/api_reference.md).
 
 ---
 
@@ -663,7 +442,7 @@ pytest tests/benchmarks/               # Novelty benchmarks (requires API keys)
 
 MIT — see [LICENSE](LICENSE).
 
-Built by [Theyab](https://github.com/theyab) and [Butters](https://github.com/theyab/hephaestus). 2026.
+Built by [Theyab](https://github.com/theyab). 2026.
 
 ---
 
