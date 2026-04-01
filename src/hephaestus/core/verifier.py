@@ -663,15 +663,18 @@ class NoveltyVerifier:
         # A far domain with an obvious mechanism should NOT score high.
         distance_bonus = 0.8 + 0.2 * min(domain_distance, 1.0)
 
-        # Mechanism surprise multiplier — this is the new core signal
+        # Mechanism surprise multiplier — model's self-assessment
+        # NOTE: Models systematically rate their own output as CONVENTIONAL
+        # because they just generated it and it feels familiar to them.
+        # We reduce this signal's weight to avoid self-referential bias.
         surprise_multipliers = {
-            "SURPRISING": 1.2,    # Boost genuinely surprising mechanisms
+            "SURPRISING": 1.15,   # Modest boost — if even the model is surprised, that's meaningful
             "INTERESTING": 1.0,   # Neutral
-            "CONVENTIONAL": 0.6,  # Heavy penalty for dressed-up known patterns
-            "OBVIOUS": 0.3,       # Near-fatal penalty for obvious solutions
+            "CONVENTIONAL": 0.85, # Mild penalty — model bias makes this unreliable
+            "OBVIOUS": 0.5,       # Significant penalty — only when model is very confident
         }
         surprise_mult = surprise_multipliers.get(
-            mechanism_surprise.upper(), 0.8  # default: mild skepticism
+            mechanism_surprise.upper(), 0.9  # default: slight benefit of doubt
         )
 
         # Quality gate bonus — rule-based signal that counterbalances
@@ -686,10 +689,10 @@ class NoveltyVerifier:
             elif not quality_gate.passed:
                 quality_bonus = 0.5  # gate failed = hard penalty
 
-        # Structural novelty (model-free) — blended with model assessment
-        # This provides a grounded signal that doesn't suffer from
-        # self-referential conservatism
-        structural_novelty_mult = 0.7 + 0.6 * structural_novelty_composite  # 0.7 to 1.3
+        # Structural novelty (model-free) — the most reliable novelty signal
+        # because it doesn't suffer from self-referential conservatism.
+        # Higher weight than model-based surprise assessment.
+        structural_novelty_mult = 0.6 + 0.8 * structural_novelty_composite  # 0.6 to 1.4
 
         raw = (
             structural_validity
