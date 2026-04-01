@@ -59,6 +59,16 @@ retain a modified state that accelerates future response to structurally
 similar stimuli, with the modification encoding both the stimulus signature
 and the response pathway."
 
+SELF-CHECK FOR PHASE 1: After writing the abstract mechanism, ask:
+"Is this just [parallel execution / caching / retry / queuing / 
+load balancing / pub-sub / observer pattern / state machine]?"
+If yes, STOP. These are elementary engineering patterns. Cross-domain
+transfer should find mechanisms that are NOT in the standard engineering
+toolkit. If your Phase 1 reduces to a well-known pattern, set
+mechanism_is_decorative to true and try to find a DIFFERENT mechanism
+from the source domain — one that is specific enough to be genuinely
+transferable.
+
 PHASE 2 — MECHANISM APPLICATION (target domain only, NO source domain language):
 Now take the abstract mechanism from Phase 1 and build a concrete architecture
 in the target domain. Do NOT reference the source domain at all. If you cannot
@@ -81,7 +91,7 @@ what known pattern it collapses to.
 
 You must output ONLY valid JSON matching this schema:
 {
-  "invention_name": "<short name — should describe the MECHANISM, not the source domain>",
+  "invention_name": "<short name (3-5 words MAX) that describes what the mechanism DOES in the target domain. NOT the source domain name. Good: 'Prediction-Error Rate Controller'. Bad: 'Immune-Memory Inspired Scheduler'. The name should make sense to a target-domain engineer who has never heard of the source domain.>",
   "phase1_abstract_mechanism": "<PHASE 1: The foreign mechanism described in purely abstract structural terms. NO source or target domain vocabulary. What is the mechanism doing mathematically/structurally?>",
   "phase2_target_architecture": "<PHASE 2: The mechanism applied to the target domain. NO source domain references. Concrete pseudocode, algorithms, data structures. 3-8 paragraphs.>",
   "mechanism_is_decorative": <bool — true if the mechanism is already known in the target domain>,

@@ -89,10 +89,9 @@ class TestParseProblem:
 
 
 class TestGenerateImplHint:
-    def test_basic_hint(self):
+    def test_returns_empty(self):
         hint = _generate_impl_hint("Use Redis caching", "slow queries", "myapp")
-        assert "myapp" in hint
-        assert "slow queries" in hint[:200]
+        assert hint == ""
 
     def test_empty_architecture(self):
         assert _generate_impl_hint("", "problem", "app") == ""
@@ -136,4 +135,3 @@ class TestWorkspaceInventor:
         assert "Immune Cache" in md
         assert "biology" in md
         assert "Pipeline timeout" in md
-        assert "How to Implement" in md

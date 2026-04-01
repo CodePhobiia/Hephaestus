@@ -80,6 +80,11 @@ class WorkspaceInvention:
     novelty_score: float = 0.0
     verdict: str = ""
     implementation_hint: str = ""
+    phase1_abstract_mechanism: str = ""
+    mechanism_is_decorative: bool = False
+    subtraction_test: str = ""
+    baseline_comparison: str = ""
+    load_bearing_passed: bool = True
     error: str = ""
 
     @property
@@ -181,15 +186,18 @@ class WorkspaceInventor:
 
             top = report.top_invention
             if top:
+                trans = top.translation
                 inv.invention_name = top.invention_name
                 inv.source_domain = top.source_domain
                 inv.novelty_score = top.novelty_score
                 inv.verdict = top.verdict
-                inv.key_insight = getattr(top.translation, "key_insight", "")
-                inv.architecture = getattr(top.translation, "architecture", "")
-                inv.implementation_hint = _generate_impl_hint(
-                    inv.architecture, problem.problem, self.root.name
-                )
+                inv.key_insight = getattr(trans, "key_insight", "")
+                inv.architecture = getattr(trans, "architecture", "")
+                inv.phase1_abstract_mechanism = getattr(trans, "phase1_abstract_mechanism", "")
+                inv.mechanism_is_decorative = getattr(trans, "mechanism_is_decorative", False)
+                inv.subtraction_test = getattr(trans, "subtraction_test", "")
+                inv.baseline_comparison = getattr(trans, "baseline_comparison", "")
+                inv.load_bearing_passed = getattr(top, "load_bearing_passed", True)
             else:
                 inv.error = "Pipeline produced no viable invention"
 
@@ -261,23 +269,47 @@ class WorkspaceInventor:
 
         for i, inv in enumerate(report.inventions, 1):
             if inv.success:
+                # Quality indicators
+                quality_flags = []
+                if inv.mechanism_is_decorative:
+                    quality_flags.append("⚠️ DECORATIVE")
+                if not inv.load_bearing_passed:
+                    quality_flags.append("⚠️ NOT LOAD-BEARING")
+                quality_str = f" ({', '.join(quality_flags)})" if quality_flags else ""
+
                 lines.extend([
-                    f"## {i}. {inv.invention_name}",
+                    f"## {i}. {inv.invention_name}{quality_str}",
                     "",
                     f"**Problem:** {inv.problem.problem}",
                     f"**Source Domain:** {inv.source_domain}",
-                    f"**Novelty Score:** {inv.novelty_score:.2f}",
-                    f"**Verdict:** {inv.verdict}",
+                    f"**Novelty Score:** {inv.novelty_score:.2f} | **Verdict:** {inv.verdict}",
                     "",
+                ])
+
+                if inv.phase1_abstract_mechanism:
+                    lines.extend([
+                        f"### Abstract Mechanism (domain-neutral)",
+                        inv.phase1_abstract_mechanism,
+                        "",
+                    ])
+
+                lines.extend([
                     f"### Key Insight",
                     inv.key_insight or "N/A",
                     "",
                     f"### Architecture",
                     inv.architecture or "N/A",
                     "",
-                    f"### How to Implement in This Codebase",
-                    inv.implementation_hint or "See architecture above.",
-                    "",
+                ])
+
+                if inv.baseline_comparison:
+                    lines.extend([
+                        f"### vs Conventional Baseline",
+                        inv.baseline_comparison,
+                        "",
+                    ])
+
+                lines.extend([
                     "---",
                     "",
                 ])
@@ -322,16 +354,11 @@ def _parse_problems(text: str) -> list[IdentifiedProblem]:
 
 
 def _generate_impl_hint(architecture: str, problem: str, project_name: str) -> str:
-    """Generate a brief implementation hint for the specific codebase."""
-    if not architecture:
-        return ""
-    return (
-        f"To implement this in {project_name}:\n"
-        f"1. Identify the components in the codebase that relate to: {problem[:100]}\n"
-        f"2. Apply the architectural pattern described above\n"
-        f"3. Start with a minimal prototype of the core mechanism\n"
-        f"4. Wire it into the existing architecture incrementally"
-    )
+    """Generate implementation hint — empty for now, will be replaced by
+    codebase-aware hints in a future version that reads the actual source files."""
+    # The old generic 4-liner was useless. Better to say nothing than to
+    # pretend we know where the code should go.
+    return ""
 
 
 __all__ = [
