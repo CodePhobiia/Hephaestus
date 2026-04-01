@@ -1,0 +1,206 @@
+"""Publication-ready markdown export for invention reports."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+@dataclass
+class ExportConfig:
+    """Controls what sections appear in the exported report."""
+
+    include_confidence: bool = True
+    include_roadmap: bool = True
+    include_alternatives: bool = True
+    include_prior_art: bool = True
+    include_cost: bool = False
+    title_prefix: str = ""
+    author: str = ""
+    date: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.date:
+            self.date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def export_markdown(report: Any, config: ExportConfig | None = None) -> str:
+    """Generate a publication-ready markdown document from an InventionReport."""
+    cfg = config or ExportConfig()
+    lines: list[str] = []
+
+    # Title block
+    title = f"{cfg.title_prefix}{report.invention_name}" if cfg.title_prefix else report.invention_name
+    lines.append(f"# {title}")
+    lines.append("")
+    meta_parts = []
+    if cfg.author:
+        meta_parts.append(f"**Author:** {cfg.author}")
+    meta_parts.append(f"**Date:** {cfg.date}")
+    meta_parts.append(f"**Source Domain:** {report.source_domain}")
+    lines.append(" | ".join(meta_parts))
+    lines.append("")
+
+    # Executive summary
+    lines.append("## Executive Summary")
+    lines.append("")
+    lines.append(
+        f"This invention, **{report.invention_name}**, addresses the problem of "
+        f"*{_truncate(report.problem, 200)}* by transferring structural insights from "
+        f"**{report.source_domain}** (domain distance: {report.domain_distance:.2f}, "
+        f"structural fidelity: {report.structural_fidelity:.2f}, "
+        f"novelty score: {report.novelty_score:.2f})."
+    )
+    lines.append("")
+
+    # Problem
+    lines.append("## Problem Statement")
+    lines.append("")
+    lines.append(report.problem)
+    lines.append("")
+
+    # Structural form
+    if report.structural_form:
+        lines.append("## Structural Form")
+        lines.append("")
+        lines.append(report.structural_form)
+        lines.append("")
+
+    # Solution
+    lines.append("## Solution Overview")
+    lines.append("")
+    if report.mechanism:
+        lines.append("### Key Insight")
+        lines.append("")
+        lines.append(report.mechanism)
+        lines.append("")
+
+    # Mapping table
+    if report.translation:
+        lines.append("### Structural Mapping")
+        lines.append("")
+        if "→" in report.translation or "•" in report.translation:
+            for line in report.translation.strip().split("\n"):
+                lines.append(line)
+        else:
+            lines.append(report.translation)
+        lines.append("")
+
+    # Architecture
+    if report.architecture:
+        lines.append("## Architecture")
+        lines.append("")
+        lines.append(report.architecture)
+        lines.append("")
+
+    # Confidence
+    if cfg.include_confidence:
+        lines.append("## Confidence Analysis")
+        lines.append("")
+        lines.append(f"| Metric | Score | Interpretation |")
+        lines.append(f"|--------|-------|----------------|")
+        lines.append(
+            f"| Domain Distance | {report.domain_distance:.2f} | "
+            f"{'Far transfer (high novelty)' if report.domain_distance > 0.8 else 'Moderate transfer' if report.domain_distance > 0.5 else 'Near transfer'} |"
+        )
+        lines.append(
+            f"| Structural Fidelity | {report.structural_fidelity:.2f} | "
+            f"{'Strong structural match' if report.structural_fidelity > 0.8 else 'Moderate match' if report.structural_fidelity > 0.5 else 'Loose analogy'} |"
+        )
+        lines.append(
+            f"| Novelty Score | {report.novelty_score:.2f} | "
+            f"{'Highly novel' if report.novelty_score > 0.8 else 'Moderately novel' if report.novelty_score > 0.5 else 'Low novelty'} |"
+        )
+        lines.append("")
+
+    # Limitations
+    if report.where_analogy_breaks:
+        lines.append("## Known Limitations")
+        lines.append("")
+        lines.append(report.where_analogy_breaks)
+        lines.append("")
+
+    # Roadmap
+    if cfg.include_roadmap:
+        lines.append("## Implementation Roadmap")
+        lines.append("")
+        lines.append("1. **Validate core mechanism** — prototype the key insight in isolation")
+        lines.append("2. **Build minimal system** — implement the architecture skeleton")
+        lines.append("3. **Harden** — address known limitations and edge cases")
+        lines.append("4. **Benchmark** — compare against existing solutions quantitatively")
+        lines.append("")
+
+    # Alternatives
+    alts = getattr(report, "alternatives", [])
+    if cfg.include_alternatives and alts:
+        lines.append("## Alternative Approaches")
+        lines.append("")
+        for alt in alts:
+            lines.append(
+                f"- **{alt.invention_name}** (from {alt.source_domain}, "
+                f"novelty: {alt.novelty_score:.2f})"
+            )
+            if alt.summary:
+                lines.append(f"  {alt.summary}")
+        lines.append("")
+
+    # Prior art
+    prior = getattr(report, "prior_art_report", None)
+    if cfg.include_prior_art and prior is not None:
+        lines.append("## Prior Art")
+        lines.append("")
+        summary = getattr(prior, "summary", "")
+        if summary:
+            lines.append(summary)
+        lines.append("")
+
+    # Cost
+    if cfg.include_cost:
+        lines.append("## Generation Metadata")
+        lines.append("")
+        lines.append(f"- **Cost:** ${report.cost_usd:.4f}")
+        models = getattr(report, "models_used", [])
+        if models:
+            lines.append(f"- **Models:** {', '.join(models)}")
+        lines.append(f"- **Depth:** {report.depth}")
+        wt = getattr(report, "wall_time_seconds", 0)
+        if wt:
+            lines.append(f"- **Generation time:** {wt:.1f}s")
+        lines.append("")
+
+    # Footer
+    lines.append("---")
+    lines.append(f"*Generated by [Hephaestus](https://github.com/hephaestus-ai/hephaestus) on {cfg.date}*")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def export_to_file(report: Any, path: Path, config: ExportConfig | None = None) -> None:
+    """Export an invention report to a file. Format inferred from extension."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    ext = path.suffix.lower()
+    if ext == ".json":
+        from hephaestus.output.formatter import OutputFormatter
+        content = OutputFormatter().to_json(report)
+    elif ext == ".txt":
+        from hephaestus.output.formatter import OutputFormatter
+        content = OutputFormatter().to_plain(report)
+    else:
+        content = export_markdown(report, config)
+
+    path.write_text(content, encoding="utf-8")
+
+
+def _truncate(text: str, max_len: int) -> str:
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 3] + "..."
+
+
+__all__ = ["ExportConfig", "export_markdown", "export_to_file"]
