@@ -656,8 +656,22 @@ class NoveltyVerifier:
         # Novelty risk penalty from adversarial attack
         novelty_risk_penalty = 1.0 - (attack_result.novelty_risk * 0.5)
 
-        # Fatal flaw penalty
-        fatal_penalty = 0.5 if attack_result.attack_valid and attack_result.fatal_flaws else 1.0
+        # Fatal flaw penalty — graduated by count and quality gate agreement
+        # The attacker tends to find "fatal flaws" in almost everything.
+        # Graduate the penalty: 1 flaw = mild, 3+ = severe
+        # But if quality gate passed cleanly, discount the attacker's aggression
+        n_fatal = len(attack_result.fatal_flaws) if attack_result.attack_valid else 0
+        if n_fatal == 0:
+            fatal_penalty = 1.0
+        elif n_fatal == 1:
+            fatal_penalty = 0.85
+        elif n_fatal == 2:
+            fatal_penalty = 0.7
+        else:
+            fatal_penalty = 0.55
+        # If quality gate passed cleanly, halve the fatal penalty effect
+        if quality_gate is not None and quality_gate.passed and quality_gate.decorative_signal_count == 0:
+            fatal_penalty = 1.0 - (1.0 - fatal_penalty) * 0.5
 
         # Distance bonus — CAPPED. Distance helps but doesn't dominate.
         # A far domain with an obvious mechanism should NOT score high.
