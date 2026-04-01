@@ -155,6 +155,8 @@ class SessionState:
     session: Any = field(default=None)         # Session from session.schema
     todo_list: Any = field(default=None)       # TodoList from session.todos
     layered_config: Any = field(default=None)  # LayeredConfig instance
+    workspace_root: Any = field(default=None)  # Path if workspace mode active
+    workspace_context: Any = field(default=None)  # WorkspaceContext
 
     @property
     def current(self) -> InventionEntry | None:
@@ -663,6 +665,95 @@ async def _cmd_todo(console: Console, state: SessionState, args: str) -> None:
         console.print()
     else:
         console.print(f"  [dim]Usage: /todo [add <text> | start <id> | done <id>][/]\n")
+
+
+# ---------------------------------------------------------------------------
+# Workspace commands
+# ---------------------------------------------------------------------------
+
+
+async def _cmd_read(console: Console, state: SessionState, args: str) -> None:
+    """Read a file from the workspace."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode. Run heph from a project directory.[/]\n")
+        return
+    path = args.strip()
+    if not path:
+        console.print(f"  [{RED}]Usage: /read <file_path>[/]\n")
+        return
+    from hephaestus.tools.file_ops import read_file
+    full = state.workspace_root / path if not Path(path).is_absolute() else Path(path)
+    content = read_file(str(full))
+    console.print()
+    console.print(content)
+    console.print()
+
+
+async def _cmd_tree(console: Console, state: SessionState, args: str) -> None:
+    """Show the workspace directory tree."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode.[/]\n")
+        return
+    if state.workspace_context and state.workspace_context.summary.tree:
+        console.print()
+        for line in state.workspace_context.summary.tree.splitlines():
+            console.print(f"  {line}")
+        console.print()
+    else:
+        from hephaestus.tools.file_ops import list_directory
+        console.print(list_directory(str(state.workspace_root)))
+
+
+async def _cmd_grep(console: Console, state: SessionState, args: str) -> None:
+    """Search file contents in the workspace."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode.[/]\n")
+        return
+    query = args.strip()
+    if not query:
+        console.print(f"  [{RED}]Usage: /grep <query>[/]\n")
+        return
+    from hephaestus.tools.file_ops import grep_search
+    result = grep_search(query, str(state.workspace_root))
+    console.print()
+    console.print(result)
+    console.print()
+
+
+async def _cmd_find(console: Console, state: SessionState, args: str) -> None:
+    """Find files by pattern in the workspace."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode.[/]\n")
+        return
+    pattern = args.strip() or "*.py"
+    from hephaestus.tools.file_ops import search_files
+    result = search_files(pattern, str(state.workspace_root))
+    console.print()
+    console.print(result)
+    console.print()
+
+
+async def _cmd_edit(console: Console, state: SessionState, args: str) -> None:
+    """Edit a file — replace exact text."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode.[/]\n")
+        return
+    console.print("  [dim]Use the agent chat to make edits. Describe what to change.[/]\n")
+
+
+async def _cmd_ws(console: Console, state: SessionState, args: str) -> None:
+    """Show workspace status."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode. Run heph from a project directory.[/]\n")
+        return
+    if state.workspace_context:
+        console.print()
+        console.print(f"  [{GOLD}]Workspace:[/] {state.workspace_root}")
+        s = state.workspace_context.summary
+        console.print(f"  [dim]Files:[/] {s.total_files} | [dim]Lines:[/] {s.total_lines:,} | [dim]Language:[/] {s.primary_language}")
+        if s.git:
+            console.print(f"  [dim]Git:[/] {s.git.branch} {'(dirty)' if s.git.has_changes else '(clean)'}")
+        console.print()
 
 
 # ---------------------------------------------------------------------------
@@ -1582,6 +1673,14 @@ COMMANDS: dict[str, Any] = {
     "mode": _cmd_mode,
     # Working memory
     "todo": _cmd_todo,
+    # Workspace commands
+    "read": _cmd_read,
+    "tree": _cmd_tree,
+    "grep": _cmd_grep,
+    "find": _cmd_find,
+    "edit": _cmd_edit,
+    "ws": _cmd_ws,
+    "workspace": _cmd_ws,
 }
 
 # Canonical command registry (shared with commands.py)
@@ -2036,12 +2135,19 @@ def run_interactive(
     depth: int | None = None,
     candidates: int | None = None,
     layered_config: Any = None,
+    workspace_root: Any = None,
 ) -> None:
     """
     Entry point for interactive mode.
 
     Called from ``main.py`` when no problem argument is given.
     Handles onboarding, config loading, and launches the async REPL loop.
+
+    Parameters
+    ----------
+    workspace_root:
+        If set, enables workspace mode with file read/write/edit tools
+        scoped to this directory.
     """
     print_banner(console)
 
@@ -2076,14 +2182,33 @@ def run_interactive(
         cfg.candidates = candidates
 
     # Create typed session, todo list, and session state
+    ws_name = f"workspace:{workspace_root.name}" if workspace_root else None
     session = Session(
-        meta=SessionMeta(model=cfg.default_model, backend=cfg.backend)
+        meta=SessionMeta(
+            model=cfg.default_model,
+            backend=cfg.backend,
+            name=ws_name or "",
+        )
     )
+
+    # Build workspace context if workspace mode
+    ws_context = None
+    if workspace_root:
+        try:
+            from hephaestus.workspace.context import WorkspaceContext
+            ws_context = WorkspaceContext.from_directory(workspace_root)
+            console.print(f"  [dim]Workspace tools enabled: read, write, edit, search, grep[/]")
+            console.print()
+        except Exception as exc:
+            console.print(f"  [dim yellow]⚠ Could not load workspace context: {exc}[/]")
+
     state = SessionState(
         config=cfg,
         session=session,
         todo_list=TodoList(),
         layered_config=layered_config,
+        workspace_root=workspace_root,
+        workspace_context=ws_context,
     )
 
     # Phase 4: Tab completion for /commands

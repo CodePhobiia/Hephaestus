@@ -271,7 +271,7 @@ class TestDefaultRegistry:
 
     def test_categories_are_known(self):
         reg = default_registry()
-        known = {"session", "invention", "config", "context", "export"}
+        known = {"session", "invention", "config", "context", "export", "workspace"}
         for cmd in reg.list_commands():
             assert cmd.category in known, f"{cmd.name} has unknown category {cmd.category!r}"
 

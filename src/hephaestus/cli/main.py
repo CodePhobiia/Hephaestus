@@ -249,7 +249,26 @@ def cli(
     # ── Interactive mode ──────────────────────────────────────────────────────
     if interactive or (not problem and not raw):
         from hephaestus.cli.repl import run_interactive
-        run_interactive(console, model=model, layered_config=layered)
+
+        # Auto-detect workspace: if cwd looks like a codebase, enable workspace mode
+        workspace_root = None
+        try:
+            from hephaestus.workspace.scanner import WorkspaceScanner
+            cwd = Path.cwd()
+            scanner = WorkspaceScanner(cwd, max_files=200)
+            quick_summary = scanner.scan()
+            if quick_summary.total_files >= 2:
+                workspace_root = cwd
+                if not quiet:
+                    console.print(
+                        f"  [dim]📂 Workspace detected:[/] [cyan]{cwd.name}/[/] "
+                        f"[dim]({quick_summary.total_files} files, "
+                        f"{quick_summary.primary_language})[/]"
+                    )
+        except Exception:
+            pass
+
+        run_interactive(console, model=model, layered_config=layered, workspace_root=workspace_root)
         return
 
     # ── Validate inputs ───────────────────────────────────────────────────────

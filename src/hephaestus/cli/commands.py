@@ -447,4 +447,72 @@ def default_registry() -> CommandRegistry:
         args_required=True,
     ))
 
+    # ── Workspace commands ──────────────────────────────────────────
+    reg.register(Command(
+        name="read",
+        aliases=["cat"],
+        description="Read a file from the workspace",
+        usage="/read <file_path>",
+        category="workspace",
+        handler_name="_cmd_read",
+        modes=["repl"],
+        resume_safe=True,
+        args_required=True,
+    ))
+    reg.register(Command(
+        name="tree",
+        aliases=[],
+        description="Show workspace directory tree",
+        usage="/tree",
+        category="workspace",
+        handler_name="_cmd_tree",
+        modes=["repl"],
+        resume_safe=True,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="grep",
+        aliases=[],
+        description="Search file contents in the workspace",
+        usage="/grep <query>",
+        category="workspace",
+        handler_name="_cmd_grep",
+        modes=["repl"],
+        resume_safe=True,
+        args_required=True,
+    ))
+    reg.register(Command(
+        name="find",
+        aliases=[],
+        description="Find files by glob pattern",
+        usage="/find <pattern>",
+        category="workspace",
+        handler_name="_cmd_find",
+        modes=["repl"],
+        resume_safe=True,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="edit",
+        aliases=[],
+        description="Edit a file (use agent chat for complex edits)",
+        usage="/edit",
+        category="workspace",
+        handler_name="_cmd_edit",
+        modes=["repl"],
+        resume_safe=False,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="ws",
+        aliases=["workspace"],
+        description="Show workspace status and info",
+        usage="/ws",
+        category="workspace",
+        handler_name="_cmd_ws",
+        modes=["repl"],
+        resume_safe=True,
+        args_required=False,
+    ))
+
     return reg
