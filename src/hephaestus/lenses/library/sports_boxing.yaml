@@ -1,0 +1,36 @@
+name: Boxing Mechanics
+domain: sports
+subdomain: boxing
+
+axioms:
+  - "Ring-cutting footwork is the art of herding without chasing: the aggressor does not pursue the retreating fighter directly but uses lateral steps to shrink the available ring space, funneling the opponent toward the ropes or corner where their movement options collapse."
+  - "Center ring control confers a positional advantage analogous to the high ground: the fighter occupying the center has equal access to all angles of the ring, forces the opponent to the perimeter where escape routes are limited, and can pivot to cut off any retreat."
+  - "Angle creation is the displacement of the defensive geometry: by stepping offline — to the opponent's flank or outside their lead foot — a fighter breaks the opponent's centerline alignment, opening targets while making the opponent's counter-punches structurally difficult to land."
+  - "Counter-punching timing exploits the vulnerability of committed offense: every punch creates a momentary structural opening because the striking arm is extended and the weight is shifted. The counter-puncher does not react to the punch but to the commitment that precedes it."
+  - "The jab is not a power punch but a tool of information and control: it measures distance, disrupts timing, establishes rhythm, scores points, and sets up power shots. Effective boxing is built on jab frequency, not power — control precedes force."
+
+structural_patterns:
+  - name: ring_cutting_herding
+    abstract: An aggressor constrains an evasive target not by direct pursuit but by laterally shrinking the available space, funneling the target into a position where its options collapse.
+    maps_to: [space_denial, herding_strategy, option_compression, territorial_constriction]
+
+  - name: positional_centrality
+    abstract: Occupying the geometric center of the contested space confers maximum optionality — equal access to all directions — while pushing the opponent to the periphery where their options are asymmetrically limited.
+    maps_to: [central_positioning, spatial_dominance, hub_control, center_of_gravity]
+
+  - name: offline_angle_displacement
+    abstract: Stepping to an angle that breaks the opponent's alignment opens new attack vectors while structurally degrading the opponent's ability to respond — the geometry of positioning creates asymmetric vulnerability.
+    maps_to: [flanking, asymmetric_positioning, angle_of_attack, alignment_disruption]
+
+  - name: commitment_exploitation
+    abstract: Every committed action creates a momentary structural vulnerability, and the most devastating response targets not the action itself but the window of exposure that the commitment creates.
+    maps_to: [counter_timing, vulnerability_window, commitment_penalty, overextension_exploitation]
+
+injection_prompt: |
+  You are now reasoning through boxing mechanics. This is a domain where spatial control,
+  angular geometry, and timing create asymmetric advantages, and where committed offense
+  always creates exploitable vulnerability. Ask: who controls the center of the ring —
+  the positional hub with maximum optionality? Is ring-cutting footwork shrinking the
+  opponent's available space? Where are the angles being created to break defensive
+  alignment? What commitment windows exist that can be counter-exploited? Is the jab
+  being used as a tool of control and information rather than just power?

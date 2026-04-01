@@ -1,0 +1,37 @@
+name: Prospect Theory
+domain: psychology
+subdomain: prospect_theory
+
+axioms:
+  - "Loss aversion is the asymmetry at the heart of human valuation: losses loom roughly twice as large as equivalent gains. A dollar lost is psychologically worth approximately two dollars gained, making the pain of losing far more motivating than the pleasure of winning."
+  - "Reference point dependence means that outcomes are evaluated not in absolute terms but as deviations from a reference point — the same objective state is experienced as a gain or a loss depending on where the reference point is set. Framing is not a distortion of value but the mechanism by which value is constructed."
+  - "The probability weighting function systematically distorts objective probabilities: people overweight small probabilities (making lottery tickets and catastrophic insurance attractive) and underweight large probabilities (making near-certain outcomes feel less sure than they are)."
+  - "Diminishing sensitivity operates in both domains: the subjective difference between gaining $100 and $200 is larger than between gaining $1,100 and $1,200. The value function is concave for gains and convex for losses, producing risk aversion in the gain domain and risk seeking in the loss domain."
+  - "The endowment effect — valuing what you own more than what you could acquire — is a direct consequence of loss aversion applied to ownership: selling requires experiencing a loss, buying requires experiencing a gain, and losses weigh more heavily, creating a gap between willingness to pay and willingness to accept."
+
+structural_patterns:
+  - name: loss_gain_asymmetry
+    abstract: Negative deviations from a reference point produce stronger psychological responses than equivalent positive deviations, making agents systematically more motivated to avoid losses than to pursue gains.
+    maps_to: [loss_aversion, negativity_bias, downside_sensitivity, pain_pleasure_asymmetry]
+
+  - name: reference_point_framing
+    abstract: The perceived value of an outcome depends entirely on the reference point against which it is evaluated — the same objective outcome can be experienced as gain or loss by shifting the reference.
+    maps_to: [framing_effect, anchoring, baseline_dependence, perspective_manipulation]
+
+  - name: probability_distortion
+    abstract: Agents systematically overweight rare events and underweight probable ones, creating irrational attraction to longshots and irrational anxiety about near-certainties.
+    maps_to: [tail_risk_overweighting, certainty_underweighting, probability_bias, risk_mispricing]
+
+  - name: domain_dependent_risk_attitude
+    abstract: The same agent is risk-averse when considering gains (preferring a sure thing) and risk-seeking when considering losses (gambling to avoid a certain loss) — risk attitude is not a trait but a function of the frame.
+    maps_to: [contextual_risk_preference, gain_loss_framing, risk_reversal, situational_risk_attitude]
+
+injection_prompt: |
+  You are now reasoning through prospect theory. This is a domain where value is
+  constructed relative to reference points, where losses weigh more than equivalent gains,
+  and where probability is systematically distorted. Ask: what is the reference point
+  that determines whether outcomes are perceived as gains or losses? Is loss aversion
+  creating asymmetric responses to upside and downside? Are small probabilities being
+  overweighted and large probabilities underweighted? Does the agent's risk attitude
+  reverse depending on whether the frame is gains or losses? Can the reference point
+  be shifted to reframe the decision?

@@ -1,0 +1,37 @@
+name: Tensegrity Structures
+domain: engineering
+subdomain: tensegrity
+
+axioms:
+  - "In tensegrity, compression members float in a sea of tension: rigid struts do not touch each other but are held in spatial equilibrium by a continuous tension network — structural integrity emerges from pull, not push."
+  - "Pre-stress is the animating force: a tensegrity structure without pre-stress is a pile of loose parts. The initial tension applied to the network is what gives the structure its shape, rigidity, and load-bearing capacity — form is a consequence of internal stress."
+  - "Load distribution in tensegrity is inherently global: because the tension network is continuous, a force applied at any point is distributed throughout the entire structure. There are no isolated load paths — every member participates in every response."
+  - "Tensegrity achieves strength-to-weight ratios impossible for conventional rigid structures because material is placed only where forces exist: compression members handle compression, tension members handle tension, and no material is wasted resisting forces it was not designed for."
+  - "The geometry of a tensegrity structure is over-determined by its topology — once the connection pattern and member lengths are specified, there is typically only one equilibrium configuration. The shape is not designed but discovered through the resolution of competing tensions."
+
+structural_patterns:
+  - name: compression_islands_in_tension
+    abstract: Rigid, isolated components are held in stable configuration by a continuous network of tensile connections — the system's integrity comes from the connections, not from the rigid parts themselves.
+    maps_to: [network_cohesion, distributed_connectivity, relationship_structure, web_of_trust]
+
+  - name: pre_stress_activation
+    abstract: A structure has no functional form until internal stress is applied — the initial tension is what transforms a collection of components into a coherent, load-bearing system.
+    maps_to: [activation_energy, initial_tension, bootstrapping, catalytic_investment]
+
+  - name: global_load_distribution
+    abstract: Any local perturbation propagates through the entire continuous network, engaging every member in the response — there are no isolated subsystems.
+    maps_to: [systemic_coupling, global_response, network_effects, distributed_impact]
+
+  - name: topology_determined_form
+    abstract: The system's shape is not imposed from outside but emerges as the unique equilibrium of its internal connection topology and member properties — form follows tension.
+    maps_to: [emergent_form, self_organization, topology_driven_design, equilibrium_shape]
+
+injection_prompt: |
+  You are now reasoning through tensegrity structures. This is a domain where structural
+  integrity arises from continuous tension networks holding discontinuous compression
+  elements in equilibrium, and where pre-stress transforms loose components into coherent
+  form. Ask: what are the compression islands — the rigid, isolated components? What is
+  the tension network that holds them in configuration? Is there adequate pre-stress to
+  give the system shape and rigidity? Does load distribute globally through the tension
+  network, or are there disconnected subsystems? Is the system's form emergent from its
+  topology?

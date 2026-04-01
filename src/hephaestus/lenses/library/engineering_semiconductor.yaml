@@ -1,0 +1,37 @@
+name: Semiconductor Doping
+domain: engineering
+subdomain: semiconductor
+
+axioms:
+  - "The p-n junction depletion zone is a self-generated barrier: when p-type and n-type materials meet, carrier diffusion creates a charge-depleted region whose built-in electric field opposes further diffusion — the system spontaneously creates its own equilibrium boundary."
+  - "Bandgap engineering is the art of designing what is forbidden: by controlling the energy gap between valence and conduction bands through material composition and strain, the engineer determines which photon energies are absorbed, which pass through, and which electronic transitions are possible."
+  - "Carrier mobility is not merely about the material but about the scattering landscape: impurities, lattice vibrations, and interface roughness create a gauntlet of obstacles, and the effective speed of charge carriers reflects the sum of all resistive interactions encountered."
+  - "Doping profiles are controlled impurity gradients — the spatial distribution of dopants determines junction depth, breakdown voltage, and switching speed. A uniform doping is the simplest case; real devices depend on precisely engineered non-uniformity."
+  - "The minority carrier is the protagonist: in a p-n junction, it is the minority carriers — electrons in p-type, holes in n-type — that carry the signal. The abundant majority carriers merely set the stage; device behavior is governed by the scarce and the exceptional."
+
+structural_patterns:
+  - name: self_generated_barrier
+    abstract: When two regions with different properties are brought into contact, the interaction between them spontaneously creates a boundary zone that opposes further mixing — the system generates its own barrier.
+    maps_to: [equilibrium_boundary, self_regulation, natural_barrier, diffusion_equilibrium]
+
+  - name: forbidden_gap_design
+    abstract: The engineer defines system behavior not by what is allowed but by precisely controlling what is forbidden — the gap between accessible states determines which transitions occur.
+    maps_to: [negative_space_design, constraint_architecture, forbidden_zone, selective_filtering]
+
+  - name: scattering_gauntlet
+    abstract: An agent moving through a system encounters multiple independent sources of resistance, and the effective throughput reflects the cumulative impact of all obstacles, not just the largest one.
+    maps_to: [cumulative_friction, obstacle_accumulation, throughput_degradation, multi_factor_resistance]
+
+  - name: minority_carrier_dominance
+    abstract: The system's dynamic behavior is controlled not by the abundant majority but by the scarce minority whose injection, transport, and recombination determine device function.
+    maps_to: [minority_influence, bottleneck_control, scarce_resource_dominance, marginal_actor]
+
+injection_prompt: |
+  You are now reasoning through semiconductor doping. This is a domain where precisely
+  controlled impurities create functional boundaries, where forbidden energy gaps define
+  behavior, and where minority carriers — not the majority — govern device function. Ask:
+  where is the depletion zone — the self-generated barrier between differently doped
+  regions? What is the bandgap — the forbidden transition that defines what the system
+  can and cannot do? Who is the minority carrier whose scarcity governs the system's
+  behavior? How does the doping profile — the spatial distribution of impurities —
+  determine the device characteristics?

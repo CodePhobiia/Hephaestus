@@ -1,0 +1,36 @@
+name: Naval Warfare
+domain: military
+subdomain: naval
+
+axioms:
+  - "Convoy escort is a resource allocation problem under uncertainty: escorts must be distributed around a convoy to provide overlapping sensor coverage and rapid response capability, but the defensive geometry must also account for the most likely threat axes without leaving other sectors unguarded."
+  - "Screen geometry — the arrangement of escort vessels around a high-value unit — balances detection range against response time: a wider screen detects threats earlier but thins the response force at any point. The optimal screen is the one where the probability of detection times the probability of successful interception is maximized."
+  - "Submarines exploit the thermocline — the sharp temperature gradient in ocean water — as a tactical boundary: sound refracts at the thermocline, creating shadow zones where a submarine below the layer is acoustically invisible to surface sonar above it. The physics of sound propagation defines the tactical geometry."
+  - "Acoustic signature management is the submarine's primary survival discipline: every mechanical noise — propulsion, pumps, hull flexing — radiates through the water and can betray the submarine's position. Silence is not merely tactical preference but existential necessity."
+  - "Sea control is not occupation but denial and access: unlike land, the sea cannot be permanently held. Naval dominance means the ability to use a maritime area while denying its use to the adversary — it is a function of sensor coverage, weapon range, and the ability to project force through time, not of physical presence."
+
+structural_patterns:
+  - name: screen_geometry_optimization
+    abstract: Defensive assets are arranged in a geometric pattern around a protected core, balancing early detection probability against the ability to concentrate force at the point of attack.
+    maps_to: [perimeter_defense, detection_response_tradeoff, coverage_optimization, defensive_geometry]
+
+  - name: thermocline_boundary_exploitation
+    abstract: A natural physical boundary creates asymmetric information — agents on one side of the boundary cannot detect agents on the other, and exploiting this boundary is a primary tactical advantage.
+    maps_to: [information_asymmetry, boundary_exploitation, sensor_shadow, detection_evasion]
+
+  - name: signature_minimization
+    abstract: Survival depends on minimizing all detectable emissions — the agent that is hardest to detect has the highest survival probability, making stealth an existential rather than optional capability.
+    maps_to: [stealth, emission_control, low_observability, noise_discipline]
+
+  - name: access_denial_vs_occupation
+    abstract: Control of a domain means the ability to use it while denying its use to others — it is established through sensor coverage and weapon reach, not physical presence or occupation.
+    maps_to: [area_denial, domain_control, access_management, exclusion_zone]
+
+injection_prompt: |
+  You are now reasoning through naval warfare. This is a domain where the medium itself
+  shapes tactics — sound propagation defines detection geometry, the thermocline creates
+  tactical boundaries, and control means denial of access rather than occupation. Ask:
+  what is the screen geometry — how are defensive assets arranged to balance detection
+  and response? Where are the thermocline-like boundaries that create asymmetric detection?
+  What acoustic signatures or emissions might betray position? Is control being established
+  through presence or through the ability to deny access?

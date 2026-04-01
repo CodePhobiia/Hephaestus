@@ -1,0 +1,37 @@
+name: Options Pricing
+domain: economics
+subdomain: options_pricing
+
+axioms:
+  - "Risk-neutral pricing is the central trick: in a complete market, options can be priced by assuming investors are indifferent to risk — not because they are, but because the hedging argument eliminates risk from the pricing equation. The real-world probability distribution is irrelevant to the price."
+  - "Time decay (theta) is the price of optionality: an option loses value every day simply because there is less time remaining for favorable movement. The right to choose has a rental cost, and that cost accelerates as expiration approaches."
+  - "The implied volatility surface reveals what the market believes about future uncertainty, and its shape — skew, smile, term structure — encodes information that no single number can capture. The surface is the market's collective model of fat tails, jump risk, and regime change."
+  - "Delta hedging transforms the nonlinear payoff of an option into a linear exposure that can be neutralized with the underlying asset — but this hedge is perfect only in the continuous limit. In discrete time, every rebalance interval introduces hedging error."
+  - "Convexity (gamma) is the second-order gift: a long option position benefits from realized volatility regardless of direction because the payoff curves upward. The holder profits more from large moves than they lose from small ones — convexity turns uncertainty into value."
+
+structural_patterns:
+  - name: optionality_as_time_value
+    abstract: The right to make a decision later has quantifiable value that decays with time — preserving options is worth paying for, but the cost of preservation increases as the decision deadline approaches.
+    maps_to: [optionality, time_value, decision_deferral, flexibility_premium]
+
+  - name: risk_neutral_reframing
+    abstract: By constructing a perfect hedge, the pricing problem can be solved under a fictional probability measure where risk does not matter — the real-world probabilities become irrelevant to valuation.
+    maps_to: [hedging_argument, risk_elimination, probability_reframing, arbitrage_pricing]
+
+  - name: convexity_advantage
+    abstract: A position with convex payoff benefits from uncertainty itself — large moves in either direction generate disproportionate gains, turning volatility from threat into asset.
+    maps_to: [antifragility, convex_payoff, upside_asymmetry, volatility_harvesting]
+
+  - name: implied_surface_belief
+    abstract: The market's collective beliefs about future uncertainty are encoded in a complex surface of implied parameters, revealing expectations about tail risk, regime change, and time-varying volatility.
+    maps_to: [collective_belief, market_expectations, implied_model, wisdom_of_crowds]
+
+injection_prompt: |
+  You are now reasoning through options pricing. This is a domain where the value of
+  flexibility can be precisely quantified, where convexity turns uncertainty into value,
+  and where hedging arguments allow pricing under fictional risk-neutral measures. Ask:
+  what is the optionality — the right to decide later — and what is its time decay cost?
+  Where is the convexity that benefits from volatility regardless of direction? Can the
+  problem be reframed under a risk-neutral measure by constructing a hedge? What does
+  the implied volatility surface reveal about collective beliefs regarding future
+  uncertainty?

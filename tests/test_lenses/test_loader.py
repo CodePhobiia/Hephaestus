@@ -25,6 +25,8 @@ from hephaestus.lenses.loader import (
     LensValidationError,
     StructuralPattern,
     _DEFAULT_LIBRARY_DIR,
+    _SUPPORTED_DOMAIN_FAMILIES,
+    classify_domain_family,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -101,15 +103,15 @@ class TestLibraryDirectory:
             f"Bundled library directory not found: {_DEFAULT_LIBRARY_DIR}"
         )
 
-    def test_library_has_51_yaml_files(self, library_dir: Path):
+    def test_library_has_81_yaml_files(self, library_dir: Path):
         yaml_files = list(library_dir.glob("*.yaml"))
-        assert len(yaml_files) == 51, (
-            f"Expected 51 YAML files, found {len(yaml_files)}: "
+        assert len(yaml_files) == 81, (
+            f"Expected 81 YAML files, found {len(yaml_files)}: "
             f"{sorted(f.stem for f in yaml_files)}"
         )
 
     def test_all_expected_lenses_present(self, library_dir: Path):
-        """Verify all 51 expected lens files are present."""
+        """Verify all expected lens files are present."""
         expected = [
             "biology_immune", "biology_ecology", "biology_mycology",
             "biology_swarm", "biology_evolution",
@@ -143,9 +145,9 @@ class TestLibraryDirectory:
 # ──────────────────────────────────────────────────────────────────────────────
 
 class TestLoadAll:
-    def test_load_all_returns_51_lenses(self, loader: LensLoader):
+    def test_load_all_returns_81_lenses(self, loader: LensLoader):
         lenses = loader.load_all()
-        assert len(lenses) == 51
+        assert len(lenses) == 81
 
     def test_load_all_returns_lens_objects(self, loader: LensLoader):
         lenses = loader.load_all()
@@ -157,6 +159,9 @@ class TestLoadAll:
         for lens_id, lens in lenses.items():
             assert lens.name, f"{lens_id} missing name"
             assert lens.domain, f"{lens_id} missing domain"
+            assert lens.domain_family in _SUPPORTED_DOMAIN_FAMILIES, (
+                f"{lens_id} has unsupported domain_family={lens.domain_family!r}"
+            )
             assert lens.subdomain, f"{lens_id} missing subdomain"
             assert len(lens.axioms) >= 2, f"{lens_id} has fewer than 2 axioms"
             assert len(lens.structural_patterns) >= 1, f"{lens_id} has no patterns"
@@ -275,7 +280,7 @@ class TestValidation:
 class TestCaching:
     def test_cache_populated_after_load_all(self, loader: LensLoader):
         loader.load_all()
-        assert len(loader) == 51
+        assert len(loader) == 81
 
     def test_second_load_all_uses_cache(self, loader: LensLoader):
         lenses1 = loader.load_all()
@@ -351,9 +356,9 @@ class TestHotReload:
 # ──────────────────────────────────────────────────────────────────────────────
 
 class TestListAvailable:
-    def test_list_available_returns_51_items(self, loader: LensLoader):
+    def test_list_available_returns_81_items(self, loader: LensLoader):
         items = loader.list_available()
-        assert len(items) == 51
+        assert len(items) == 81
 
     def test_list_available_sorted_by_lens_id(self, loader: LensLoader):
         items = loader.list_available()
@@ -366,6 +371,7 @@ class TestListAvailable:
             assert "lens_id" in item
             assert "name" in item
             assert "domain" in item
+            assert "domain_family" in item
             assert "subdomain" in item
             assert "axiom_count" in item
             assert "pattern_count" in item
@@ -386,13 +392,13 @@ class TestListAvailable:
 class TestDomainQueries:
     def test_get_by_domain_biology(self, loader: LensLoader):
         bio_lenses = loader.get_by_domain("biology")
-        assert len(bio_lenses) == 5
+        assert len(bio_lenses) == 10
         for lens in bio_lenses:
             assert lens.domain == "biology"
 
     def test_get_by_domain_case_insensitive(self, loader: LensLoader):
         lenses = loader.get_by_domain("BIOLOGY")
-        assert len(lenses) == 5
+        assert len(lenses) == 10
 
     def test_get_by_maps_to_trust(self, loader: LensLoader):
         trust_lenses = loader.get_by_maps_to("trust")
@@ -422,6 +428,25 @@ class TestLensProperties:
         for pat in lens.structural_patterns:
             manual_union.update(pat.maps_to)
         assert all_maps == manual_union
+
+    def test_known_lenses_have_expected_domain_families(self, loader: LensLoader):
+        expected = {
+            "biology_immune": "biology",
+            "physics_thermodynamics": "physical_sciences",
+            "economics_markets": "economics",
+            "film_cinematography": "arts",
+            "military_strategy": "military",
+            "math_topology": "mathematics",
+            "engineering_grid": "engineering",
+        }
+        for lens_id, family in expected.items():
+            assert loader.load_one(lens_id).domain_family == family
+
+    def test_classify_domain_family_handles_problem_domain_aliases(self):
+        assert classify_domain_family("distributed_systems") == "engineering"
+        assert classify_domain_family("machine_learning") == "engineering"
+        assert classify_domain_family("finance") == "economics"
+        assert classify_domain_family("general") == "general"
 
     def test_contains_operator(self, loader: LensLoader):
         assert "biology_immune" in loader

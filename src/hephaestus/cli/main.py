@@ -69,11 +69,14 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     name="heph",
     help=(
         "⚒️  HEPHAESTUS — The Invention Engine.\n\n"
-        "Give it a problem. Get a genuinely novel solution derived from a distant"
-        " knowledge domain, with structural mapping, architecture, and novelty proof.\n\n"
+        "Describe a hard problem. Hephaestus will search distant domains, map the"
+        " structure back, and return a concrete invention report.\n\n"
+        "Run without a problem to open the interactive REPL.\n\n"
         "Example:\n\n"
         '  heph "I need a load balancer that handles unpredictable traffic spikes"\n\n'
-        '  heph --depth 5 --model opus --trace "a complex routing problem"'
+        '  heph --depth 5 --model opus --trace "a complex routing problem"\n\n'
+        "Interactive:\n\n"
+        "  heph --interactive"
     ),
     context_settings={"help_option_names": ["-h", "--help"]},
 )
@@ -91,8 +94,8 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     "-m",
     default="both",
     show_default=True,
-    type=click.Choice(["opus", "gpt5", "both"], case_sensitive=False),
-    help="Model(s) to use: opus (Claude Opus), gpt5 (GPT-5.4), or both.",
+    type=click.Choice(["claude-max", "claude-cli", "opus", "gpt5", "both"], case_sensitive=False),
+    help="Backend/model preset to use: claude-max, claude-cli, opus, gpt5, or both.",
 )
 @click.option(
     "--format",
@@ -149,6 +152,36 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     help="Minimal output — print only the invention name and key stats.",
 )
 @click.option(
+    "--intensity",
+    default="STANDARD",
+    show_default=True,
+    type=click.Choice(["STANDARD", "AGGRESSIVE", "MAXIMUM"], case_sensitive=False),
+    help="Divergence intensity — how far from consensus.",
+)
+@click.option(
+    "--output-mode",
+    default="MECHANISM",
+    show_default=True,
+    type=click.Choice(
+        ["MECHANISM", "FRAMEWORK", "NARRATIVE", "SYSTEM", "PROTOCOL", "TAXONOMY", "INTERFACE"],
+        case_sensitive=False,
+    ),
+    help="Output structure shape (e.g. MECHANISM, FRAMEWORK, SYSTEM).",
+)
+@click.option(
+    "--interactive",
+    "-i",
+    is_flag=True,
+    default=False,
+    help="Launch interactive REPL mode.",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable debug logging.",
+)
+@click.option(
     "--version",
     "-v",
     is_flag=True,
@@ -169,9 +202,27 @@ def cli(
     output: Path | None,
     cost: bool,
     quiet: bool,
+    interactive: bool,
+    verbose: bool,
+    intensity: str,
+    output_mode: str,
 ) -> None:
     """Main CLI entry point."""
+    import logging as _logging
+
+    if verbose:
+        _logging.basicConfig(
+            level=_logging.DEBUG,
+            format="%(asctime)s %(name)s %(levelname)s %(message)s",
+            datefmt="%H:%M:%S",
+        )
     console = make_console(quiet=quiet)
+
+    # ── Interactive mode ──────────────────────────────────────────────────────
+    if interactive or (not problem and not raw):
+        from hephaestus.cli.repl import run_interactive
+        run_interactive(console, model=model)
+        return
 
     # ── Validate inputs ───────────────────────────────────────────────────────
     if not problem:
@@ -180,7 +231,7 @@ def cli(
         console.print(
             "  [yellow]Provide a problem description.[/]\n\n"
             "  Example:  [cyan]heph \"I need a load balancer for traffic spikes\"[/]\n\n"
-            "  Run [cyan]heph --help[/] for all options."
+            "  Run [cyan]heph --interactive[/] for the REPL or [cyan]heph --help[/] for all options."
         )
         sys.exit(0)
 
@@ -189,7 +240,9 @@ def cli(
     openai_key = os.environ.get("OPENAI_API_KEY")
 
     model_lower = model.lower()
-    if model_lower in ("opus", "both") and not anthropic_key:
+    if model_lower in ("claude-max", "claude-cli"):
+        pass
+    elif model_lower in ("opus", "both") and not anthropic_key:
         print_error(
             console,
             "ANTHROPIC_API_KEY environment variable is not set.",
@@ -240,11 +293,21 @@ def cli(
                     quiet=quiet,
                     anthropic_key=anthropic_key,
                     openai_key=openai_key,
+                    divergence_intensity=intensity,
+                    output_mode=output_mode,
                 )
             )
     except KeyboardInterrupt:
         console.print(f"\n  [dim]Interrupted by user.[/]")
         sys.exit(130)
+    except Exception as exc:
+        msg = str(exc) or exc.__class__.__name__
+        print_error(
+            console,
+            "The CLI run failed before a result was produced.",
+            hint=_error_hint(msg) or msg,
+        )
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -266,6 +329,8 @@ async def _run_genesis(
     quiet: bool,
     anthropic_key: str | None,
     openai_key: str | None,
+    divergence_intensity: str = "STANDARD",
+    output_mode: str = "MECHANISM",
 ) -> None:
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
@@ -282,6 +347,8 @@ async def _run_genesis(
         domain=domain,
         anthropic_key=anthropic_key,
         openai_key=openai_key,
+        divergence_intensity=divergence_intensity,
+        output_mode=output_mode,
     )
 
     genesis = Genesis(config)
@@ -290,24 +357,34 @@ async def _run_genesis(
     report: Any = None
     error_msg: str | None = None
 
-    if not quiet:
-        stage_progress = StageProgress(console)
-        with stage_progress:
+    try:
+        if not quiet:
+            stage_progress = StageProgress(console)
+            with stage_progress:
+                async for update in genesis.invent_stream(problem):
+                    _handle_pipeline_update(update, stage_progress)
+                    if update.stage == PipelineStage.COMPLETE:
+                        report = update.data
+                    elif update.stage == PipelineStage.FAILED:
+                        error_msg = update.message
+                        break
+        else:
+            # Quiet mode — just collect the final result
             async for update in genesis.invent_stream(problem):
-                _handle_pipeline_update(update, stage_progress)
                 if update.stage == PipelineStage.COMPLETE:
                     report = update.data
                 elif update.stage == PipelineStage.FAILED:
                     error_msg = update.message
                     break
-    else:
-        # Quiet mode — just collect the final result
-        async for update in genesis.invent_stream(problem):
-            if update.stage == PipelineStage.COMPLETE:
-                report = update.data
-            elif update.stage == PipelineStage.FAILED:
-                error_msg = update.message
-                break
+    except KeyboardInterrupt:
+        raise
+    except Exception as exc:
+        print_error(
+            console,
+            "The invention pipeline crashed before completion.",
+            hint=_error_hint(str(exc)) or "Check your API keys, backend connectivity, and model selection.",
+        )
+        sys.exit(1)
 
     # ── Handle failure ────────────────────────────────────────────────────────
     if error_msg or report is None:
@@ -422,7 +499,11 @@ async def _run_raw(
     except KeyboardInterrupt:
         raise
     except Exception as exc:
-        print_error(console, str(exc), hint="Check your API keys and network connection.")
+        print_error(
+            console,
+            "DeepForge could not complete the raw run.",
+            hint=_error_hint(str(exc)) or "Check your API keys and network connection.",
+        )
         sys.exit(1)
 
     # Print output
@@ -493,8 +574,16 @@ def _save_report(console: Console, report: Any, path: Path, fmt: str) -> None:
     else:
         content = formatter.to_markdown(fmt_report)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    except OSError:
+        print_error(
+            console,
+            f"Could not write output file: {path}",
+            hint="Check that the directory exists and that this shell can write to it.",
+        )
+        return
     print_success(console, f"Saved to [cyan]{path}[/]")
 
 
@@ -580,44 +669,68 @@ def _build_genesis_config(
     domain: str | None,
     anthropic_key: str | None,
     openai_key: str | None,
+    divergence_intensity: str = "STANDARD",
+    output_mode: str = "MECHANISM",
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
+    from hephaestus.core.cross_model import get_model_preset
     from hephaestus.core.genesis import GenesisConfig
 
-    # Model selection
-    if model == "opus":
-        decompose_model = "claude-opus-4-5"
-        search_model = "claude-opus-4-5"
-        score_model = "claude-opus-4-5"
-        translate_model = "claude-opus-4-5"
-        attack_model = "claude-opus-4-5"
-        defend_model = "claude-opus-4-5"
-    elif model == "gpt5":
-        decompose_model = "gpt-4o"
-        search_model = "gpt-4o"
-        score_model = "gpt-4o-mini"
-        translate_model = "gpt-4o"
-        attack_model = "gpt-4o"
-        defend_model = "gpt-4o"
-    else:  # both (default)
-        decompose_model = "claude-opus-4-5"
-        search_model = "gpt-4o"
-        score_model = "gpt-4o-mini"
-        translate_model = "claude-opus-4-5"
-        attack_model = "gpt-4o"
-        defend_model = "claude-opus-4-5"
+    if model == "claude-max":
+        models = get_model_preset("opus")
+        return GenesisConfig(
+            anthropic_api_key=anthropic_key,
+            openai_api_key=openai_key,
+            openrouter_api_key=None,
+            use_claude_max=True,
+            decompose_model=models["decompose"],
+            search_model=models["search"],
+            score_model=models["score"],
+            translate_model=models["translate"],
+            attack_model=models["attack"],
+            defend_model=models["defend"],
+            num_candidates=candidates,
+            use_interference_in_translate=True,
+            divergence_intensity=divergence_intensity.upper(),
+            output_mode=output_mode.upper(),
+        )
+
+    if model == "claude-cli":
+        models = get_model_preset("opus")
+        return GenesisConfig(
+            anthropic_api_key=anthropic_key,
+            openai_api_key=openai_key,
+            openrouter_api_key=None,
+            use_claude_cli=True,
+            decompose_model=models["decompose"],
+            search_model=models["search"],
+            score_model=models["score"],
+            translate_model=models["translate"],
+            attack_model=models["attack"],
+            defend_model=models["defend"],
+            num_candidates=candidates,
+            use_interference_in_translate=True,
+            divergence_intensity=divergence_intensity.upper(),
+            output_mode=output_mode.upper(),
+        )
+
+    # Map CLI flag names to preset names
+    preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model, "both")
+    models = get_model_preset(preset_key)
 
     return GenesisConfig(
         anthropic_api_key=anthropic_key,
         openai_api_key=openai_key,
-        decompose_model=decompose_model,
-        search_model=search_model,
-        score_model=score_model,
-        translate_model=translate_model,
-        attack_model=attack_model,
-        defend_model=defend_model,
+        decompose_model=models["decompose"],
+        search_model=models["search"],
+        score_model=models["score"],
+        translate_model=models["translate"],
+        attack_model=models["attack"],
+        defend_model=models["defend"],
         num_candidates=candidates,
         use_interference_in_translate=True,
+        divergence_intensity=divergence_intensity.upper(),
+        output_mode=output_mode.upper(),
     )
 
 
@@ -628,12 +741,24 @@ def _build_raw_adapter(
     openai_key: str | None,
 ) -> Any:
     """Build an adapter for raw deepforge mode."""
+    from hephaestus.core.cross_model import get_model_preset
+
+    if model == "claude-max":
+        from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
+        return ClaudeMaxAdapter(model="claude-opus-4-6")
+    if model == "claude-cli":
+        from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
+        return ClaudeCliAdapter(model="claude-opus-4-6")
+
+    preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model, "both")
+    models = get_model_preset(preset_key)
+
     if model in ("opus", "both"):
         from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
-        return AnthropicAdapter(model="claude-opus-4-5", api_key=anthropic_key)
+        return AnthropicAdapter(model=models["decompose"], api_key=anthropic_key)
     else:
         from hephaestus.deepforge.adapters.openai import OpenAIAdapter
-        return OpenAIAdapter(model="gpt-4o", api_key=openai_key)
+        return OpenAIAdapter(model=models["decompose"], api_key=openai_key)
 
 
 # ---------------------------------------------------------------------------
@@ -646,6 +771,8 @@ def _error_hint(error_msg: str) -> str | None:
     msg = error_msg.lower()
     if "api key" in msg or "authentication" in msg or "unauthorized" in msg:
         return "Check that your ANTHROPIC_API_KEY and OPENAI_API_KEY are set correctly."
+    if "openrouter" in msg:
+        return "Check that OPENROUTER_API_KEY is set and that the selected model is available on OpenRouter."
     if "decomposition failed" in msg:
         return "Try rephrasing your problem description. Make it more specific and concrete."
     if "no candidates found" in msg:
@@ -656,6 +783,8 @@ def _error_hint(error_msg: str) -> str | None:
         return "Run: pip install --upgrade hephaestus-ai"
     if "rate limit" in msg or "429" in msg:
         return "API rate limit hit. Wait a few seconds and try again."
+    if "connection" in msg or "network" in msg or "timeout" in msg:
+        return "Check outbound network access from this server and try again."
     return None
 
 

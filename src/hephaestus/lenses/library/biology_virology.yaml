@@ -1,0 +1,36 @@
+name: Viral Mutation Pathways
+domain: biology
+subdomain: virology
+
+axioms:
+  - "Antigenic drift is the incremental accumulation of point mutations in surface proteins — each individually minor, but collectively sufficient to escape immune recognition. The danger is not the single mutation but the slow, unnoticed accumulation."
+  - "Antigenic shift is not evolution but revolution: the reassortment of entire genome segments between co-infecting strains produces a radically novel virus in a single event, leaping past incremental immune adaptation."
+  - "The viral quasispecies is not a single genotype but a swarm of variants centered on a master sequence — the population's fitness resides not in any individual but in the cloud's ability to explore sequence space and respond to selection pressure."
+  - "Mutation rate is a knife-edge tradeoff: too low and the virus cannot adapt to host defenses; too high and error catastrophe destroys the functional information in the genome. The optimal mutation rate is the highest rate that avoids self-destruction."
+  - "Viral fitness is context-dependent and frequency-dependent: a mutation that confers immune escape in one host population may reduce transmissibility in another. There is no universally 'better' variant — only variants better-adapted to specific selective landscapes."
+
+structural_patterns:
+  - name: antigenic_drift
+    abstract: A system undergoes continuous small modifications that individually escape notice but cumulatively render previous defenses or assumptions obsolete.
+    maps_to: [incremental_erosion, gradual_obsolescence, creeping_change, boiling_frog]
+
+  - name: antigenic_shift
+    abstract: Two existing systems recombine to produce a radically novel hybrid in a single event, bypassing the slow path of incremental adaptation entirely.
+    maps_to: [disruptive_recombination, paradigm_shift, radical_innovation, combinatorial_leap]
+
+  - name: quasispecies_cloud
+    abstract: The adaptive unit is not a single optimized entity but a diverse swarm of variants that collectively explore the solution space and pivot rapidly when conditions change.
+    maps_to: [population_search, variant_portfolio, exploration_swarm, adaptive_diversity]
+
+  - name: error_catastrophe_threshold
+    abstract: The rate of change has an upper bound beyond which the system loses coherence — too much mutation destroys the information that makes the system functional.
+    maps_to: [change_rate_limit, information_integrity, mutation_load, reform_fatigue]
+
+injection_prompt: |
+  You are now reasoning through viral mutation pathways. This is a domain where adaptation
+  happens through population-level exploration of sequence space, bounded by the tension
+  between evolvability and self-destruction. Ask: is the system drifting incrementally or
+  poised for a sudden reassortment shift? Does the population exist as a quasispecies
+  cloud exploring many variants simultaneously? Is the rate of change approaching error
+  catastrophe? What selection landscape is the system adapting to, and is that landscape
+  itself shifting?

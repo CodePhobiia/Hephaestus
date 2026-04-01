@@ -269,10 +269,12 @@ class NoveltyVerifier:
         attack_harness: DeepForgeHarness,
         defend_harness: DeepForgeHarness | None = None,
         run_prior_art: bool = True,
+        system: str | None = None,
     ) -> None:
         self._attack_harness = attack_harness
         self._defend_harness = defend_harness or attack_harness
         self._run_prior_art = run_prior_art
+        self._system_override = system
         self._prior_art_searcher: Any = None
 
         if run_prior_art:
@@ -455,10 +457,11 @@ class NoveltyVerifier:
             original_problem=structure.original_problem,
         )
 
+        attack_system = self._system_override if self._system_override is not None else _ATTACK_SYSTEM
         result = await self._attack_harness.forge(
             prompt,
-            system=_ATTACK_SYSTEM,
-            max_tokens=800,
+            system=attack_system,
+            max_tokens=16000,
             temperature=0.4,
         )
 
@@ -498,10 +501,11 @@ class NoveltyVerifier:
             limitations=limitations_text or "• (none stated)",
         )
 
+        validity_system = self._system_override if self._system_override is not None else _VALIDITY_SYSTEM
         result = await self._defend_harness.forge(
             prompt,
-            system=_VALIDITY_SYSTEM,
-            max_tokens=700,
+            system=validity_system,
+            max_tokens=16000,
             temperature=0.3,
         )
 

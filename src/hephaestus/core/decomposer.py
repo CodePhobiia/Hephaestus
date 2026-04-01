@@ -195,7 +195,11 @@ class ProblemDecomposer:
         self._harness = harness
         self._max_retries = max_retries
 
-    async def decompose(self, problem: str) -> ProblemStructure:
+    async def decompose(
+        self,
+        problem: str,
+        system: str | None = None,
+    ) -> ProblemStructure:
         """
         Decompose a natural language problem into its abstract structural form.
 
@@ -203,6 +207,9 @@ class ProblemDecomposer:
         ----------
         problem:
             The user's natural language problem description.
+        system:
+            Optional system prompt override (e.g. V2 master prompt).
+            Falls back to the default decomposition system prompt.
 
         Returns
         -------
@@ -221,6 +228,7 @@ class ProblemDecomposer:
         t_start = time.monotonic()
 
         prompt = _DECOMPOSE_PROMPT_TEMPLATE.format(problem=problem)
+        system_prompt = system if system is not None else _DECOMPOSE_SYSTEM
         last_error = ""
         last_output = ""
 
@@ -228,8 +236,8 @@ class ProblemDecomposer:
             try:
                 result = await self._harness.forge(
                     prompt,
-                    system=_DECOMPOSE_SYSTEM,
-                    max_tokens=1024,
+                    system=system_prompt,
+                    max_tokens=16000,
                     temperature=0.3,  # Low temperature for consistent structured output
                 )
                 last_output = result.output

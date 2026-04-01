@@ -1,0 +1,36 @@
+name: Information Theory
+domain: mathematics
+subdomain: information_theory
+
+axioms:
+  - "Channel capacity is a hard ceiling: Shannon's noisy channel coding theorem proves that reliable communication is possible at any rate below channel capacity and impossible above it — the capacity is not a guideline but a mathematical wall, and approaching it requires codes of increasing complexity."
+  - "The rate-distortion function defines the fundamental tradeoff between compression and fidelity: for any lossy compression scheme, there exists a minimum bit rate below which the desired fidelity is mathematically unachievable. You cannot compress beyond the information content without losing something."
+  - "Entropy is not disorder but irreducible uncertainty: the Shannon entropy of a source measures the minimum average number of bits needed to encode its output. It is the fundamental limit on compression — you cannot represent the source in fewer bits than its entropy without losing information."
+  - "Mutual information quantifies the dependency between two variables by measuring how much knowing one reduces uncertainty about the other — it is symmetric, non-negative, and zero if and only if the variables are independent. It captures all forms of statistical dependence, not just linear correlation."
+  - "The data processing inequality states that no manipulation of data can create information that was not already present — processing, transforming, or filtering a signal can only preserve or destroy information, never create it. Every pipeline stage is lossy or neutral, never generative."
+
+structural_patterns:
+  - name: channel_capacity_ceiling
+    abstract: There exists a hard mathematical limit on the rate at which information can be reliably transmitted through a noisy channel — approaching this limit is possible but requires increasingly sophisticated encoding.
+    maps_to: [hard_limit, throughput_ceiling, capacity_bound, physical_constraint]
+
+  - name: rate_distortion_tradeoff
+    abstract: Compression and fidelity are in fundamental tension — any reduction in representation size below the source entropy necessarily introduces distortion, and the relationship between rate and distortion is a quantifiable curve.
+    maps_to: [compression_fidelity_tradeoff, lossy_compression, abstraction_cost, summary_loss]
+
+  - name: data_processing_inequality
+    abstract: No transformation of data can create new information — every processing step either preserves or destroys information, establishing that insights must be present in the raw data or they cannot be manufactured.
+    maps_to: [information_conservation, processing_loss, no_free_information, garbage_in_garbage_out]
+
+  - name: mutual_information_dependency
+    abstract: The degree to which knowing one variable reduces uncertainty about another quantifies their true statistical dependency — capturing all forms of relationship, not just linear ones.
+    maps_to: [dependency_measurement, predictive_power, information_coupling, statistical_association]
+
+injection_prompt: |
+  You are now reasoning through information theory. This is a domain where hard mathematical
+  limits govern what can be communicated, compressed, and inferred, and where processing
+  can never create information that was not already present. Ask: what is the channel
+  capacity — the hard ceiling on reliable communication rate? Where is the rate-distortion
+  tradeoff between compression and fidelity? Does the data processing inequality apply —
+  is information being created or merely transformed? What mutual information exists
+  between the variables of interest?

@@ -1,0 +1,36 @@
+name: 3D Printing Layer Adhesion
+domain: engineering
+subdomain: 3d_printing
+
+axioms:
+  - "Interlayer bonding is the Achilles heel of additive manufacturing: the interface between sequentially deposited layers is inherently weaker than the bulk material because polymer chains have limited time and thermal energy to interdiffuse across the boundary before solidification — every layer line is a potential failure plane."
+  - "Thermal gradient control is the master variable: too steep a gradient creates residual stress, warping, and delamination; too shallow means the previous layer remelts excessively, losing dimensional accuracy. The optimal print is a continuous negotiation between thermal history and geometric fidelity."
+  - "Layer adhesion depends on the thermal history of the interface, not just the deposition temperature: the previous layer must be warm enough for polymer chain reptation across the boundary but cool enough to maintain its shape — the window of opportunity for molecular diffusion is measured in seconds."
+  - "Support structures are sacrificial architecture: material printed solely to prevent geometric collapse during fabrication, serving no function in the final part. The art of support design is minimizing the material used while preventing catastrophic drooping, overhang sagging, and thermal bridging."
+  - "Anisotropy is the inherent tax of layer-by-layer fabrication: mechanical properties differ dramatically along the build direction (Z-axis, between layers) versus the in-plane directions (X-Y, within layers). Designing for 3D-printed parts requires treating them as laminated composites, not isotropic solids."
+
+structural_patterns:
+  - name: layer_interface_weakness
+    abstract: In any system built by sequential addition, the interfaces between sequential additions are inherently weaker than the material within each addition — the joints between steps are the failure planes.
+    maps_to: [seam_vulnerability, interface_weakness, integration_boundary, handoff_failure]
+
+  - name: thermal_history_window
+    abstract: The quality of bonding between sequential steps depends on a narrow time-temperature window — too hot destroys previous work, too cold prevents integration, and the window closes rapidly.
+    maps_to: [timing_window, integration_opportunity, temperature_sensitivity, bonding_window]
+
+  - name: sacrificial_scaffolding
+    abstract: Temporary structures are built solely to enable the construction of the final form, serving no purpose in the finished system but being essential during fabrication — they are designed to be removed.
+    maps_to: [temporary_infrastructure, construction_scaffolding, bootstrapping_structure, disposable_support]
+
+  - name: build_direction_anisotropy
+    abstract: The system has fundamentally different properties along the axis of sequential construction versus the in-plane axes, requiring designers to account for directional weakness in structural analysis.
+    maps_to: [directional_weakness, laminated_properties, build_orientation, axis_dependent_strength]
+
+injection_prompt: |
+  You are now reasoning through 3D printing layer adhesion. This is a domain where
+  sequential fabrication creates inherent anisotropy and interface weakness, where thermal
+  history governs bonding quality, and where sacrificial structures enable geometric
+  complexity. Ask: where are the layer interfaces — the inherent weak planes between
+  sequential additions? Is the thermal history window adequate for interlayer bonding?
+  What sacrificial scaffolding is required during construction but absent from the final
+  form? Is the build-direction anisotropy accounted for in the structural design?

@@ -1,0 +1,36 @@
+name: Bacterial Biofilm Formation
+domain: biology
+subdomain: biofilm
+
+axioms:
+  - "The EPS matrix is not mere glue but engineered infrastructure: the extracellular polymeric substance creates a three-dimensional scaffold with water channels, nutrient gradients, and chemical microenvironments that transform a colony of identical cells into a spatially differentiated community."
+  - "Persister cell switching is the biofilm's insurance policy: a stochastic fraction of cells enters a dormant, antibiotic-tolerant state not through genetic mutation but through phenotypic switching, ensuring that even catastrophic assault on the active population leaves survivors to regenerate."
+  - "Surface attachment is a one-way commitment cascade: initial reversible adhesion through van der Waals forces gives way to irreversible attachment via pili and adhesins, followed by EPS production. Each step increases the cost of departure and the investment in the sessile lifestyle."
+  - "Biofilm architecture creates emergent division of labor without genetic specialization: cells at the periphery have access to oxygen and nutrients, cells in the interior are protected but nutrient-limited, and the resulting metabolic heterogeneity gives the community capabilities no single cell possesses."
+  - "Quorum sensing within the biofilm matrix operates under confined diffusion conditions that accelerate signal accumulation, meaning the biofilm's physical structure itself lowers the threshold for collective gene expression — architecture enables communication."
+
+structural_patterns:
+  - name: matrix_infrastructure
+    abstract: A shared extracellular structure built collectively creates microenvironments, channels, and gradients that differentiate the roles of otherwise identical agents — the scaffold is the strategy.
+    maps_to: [shared_infrastructure, platform_differentiation, environmental_engineering, organizational_architecture]
+
+  - name: persister_switching
+    abstract: A stochastic fraction of agents enters a dormant state that is resistant to the primary threat, providing a bet-hedging reservoir that can regenerate the population after catastrophe.
+    maps_to: [bet_hedging, dormant_reserve, antifragile_subset, insurance_strategy]
+
+  - name: commitment_cascade
+    abstract: A series of increasingly irreversible steps transforms an initial tentative engagement into a permanent structural commitment, with escalating switching costs at each stage.
+    maps_to: [escalating_commitment, lock_in_progression, sunk_cost_cascade, onboarding_funnel]
+
+  - name: emergent_division_of_labor
+    abstract: Positional differences within a shared structure create functional specialization among genetically identical agents, with the architecture itself generating role differentiation.
+    maps_to: [positional_specialization, structural_roles, emergent_hierarchy, spatial_differentiation]
+
+injection_prompt: |
+  You are now reasoning through bacterial biofilm formation. This is a domain where
+  collectively built physical infrastructure creates spatial differentiation, metabolic
+  specialization, and community resilience from genetically identical individuals. Ask:
+  what is the EPS matrix — the shared infrastructure that differentiates roles? Are there
+  persister-like dormant agents providing catastrophic insurance? Is the system undergoing
+  a commitment cascade of increasingly irreversible steps? Does the physical architecture
+  itself create the conditions for collective behavior?

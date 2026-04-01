@@ -1,0 +1,40 @@
+name: Crystallography
+domain: physics
+subdomain: crystallography
+
+axioms:
+  - "Nucleation is the tyranny of the first seed: a single stable nucleus dictates the crystal structure of the entire bulk, and the energy barrier to nucleation is the true gatekeeper — not the thermodynamic favorability of the final crystal."
+  - "Grain boundaries are not flaws but negotiated truces between competing crystal orientations; the macroscopic properties of a polycrystalline material are governed more by these boundaries than by the perfection of any single grain."
+  - "Annealing does not remove disorder — it merely gives the system enough thermal energy to find a lower-energy configuration. The trick is controlled cooling: too fast freezes defects in place, too slow wastes time on diminishing returns."
+  - "Lattice defects — vacancies, dislocations, interstitials — are the source of nearly all interesting material properties. A perfect crystal is brittle and inert; controlled imperfection is what makes materials useful."
+  - "Epitaxial growth forces a new layer to adopt the lattice parameters of its substrate, creating coherent strain that can be exploited or that accumulates until catastrophic relaxation through misfit dislocations."
+
+structural_patterns:
+  - name: nucleation_dominance
+    abstract: The first stable seed in a system determines the structural template for everything that follows; early commitments propagate and become increasingly expensive to reverse.
+    maps_to: [path_dependence, first_mover_advantage, seed_crystallization, lock_in]
+
+  - name: grain_boundary_negotiation
+    abstract: Where independently ordered regions meet, the interface zone has distinct properties from either region and often dominates the system's macroscopic behavior.
+    maps_to: [boundary_effects, interface_governance, inter_team_dynamics, organizational_seams]
+
+  - name: annealing_schedule
+    abstract: A system under controlled thermal cycling can escape local energy minima and settle into more globally optimal configurations, but only if the cooling schedule is carefully tuned.
+    maps_to: [simulated_annealing, iterative_refinement, controlled_relaxation, gradual_optimization]
+
+  - name: productive_defect
+    abstract: Imperfections in an otherwise ordered structure create the sites of catalytic activity, ductility, and responsiveness — perfection is rigid and sterile.
+    maps_to: [creative_friction, beneficial_disorder, antifragility, edge_innovation]
+
+  - name: epitaxial_strain
+    abstract: A new layer forced to conform to a substrate's structure accumulates internal stress that either enables unique properties or builds toward sudden catastrophic failure.
+    maps_to: [conformity_pressure, accumulated_tension, inherited_constraints, technical_debt]
+
+injection_prompt: |
+  You are now reasoning through crystallography. Structure emerges from the interplay of
+  thermodynamic preference and kinetic constraint. Ask: what is the nucleation event that
+  seeds the system's structure? Where are the grain boundaries — the interfaces between
+  independently ordered domains? What defects exist, and are they sources of strength or
+  weakness? Is there epitaxial strain from forced conformity to an inherited template?
+  Think in terms of lattice order, controlled disorder, and the energy landscapes that
+  govern phase transitions.

@@ -1,0 +1,36 @@
+name: Air Traffic Control
+domain: engineering
+subdomain: air_traffic
+
+axioms:
+  - "Sector capacity is not determined by physical space but by controller cognitive load: the number of aircraft a sector can safely handle is bounded by the human ability to maintain mental models of trajectories, conflicts, and contingencies — the bottleneck is attention, not airspace."
+  - "Conflict detection is a geometry problem in four dimensions: two aircraft are in conflict when their projected trajectories intersect within separation minima across three spatial dimensions and time — the controller must solve relative motion problems continuously."
+  - "Flow management is the art of metering demand to match capacity: ground delays, miles-in-trail restrictions, and rerouting are all mechanisms for absorbing upstream the delays that would otherwise manifest as dangerous congestion downstream."
+  - "Separation is the fundamental invariant: every rule, procedure, and technology in air traffic control exists to maintain minimum separation between aircraft. When separation is lost, everything else has already failed."
+  - "The system degrades gracefully through layered procedural fallbacks: when automation fails, controllers revert to radar procedures; when radar fails, to procedural control with time-based separation. Each layer is less efficient but maintains the separation invariant."
+
+structural_patterns:
+  - name: cognitive_capacity_bottleneck
+    abstract: System throughput is limited not by physical capacity but by the cognitive bandwidth of the human operators managing it — adding more entities to the system degrades safety nonlinearly.
+    maps_to: [attention_bottleneck, cognitive_load, management_span, human_factors_limit]
+
+  - name: four_dimensional_conflict
+    abstract: Conflicts between agents are detectable only by projecting their trajectories through space and time simultaneously — static snapshots miss conflicts that emerge from relative motion.
+    maps_to: [trajectory_intersection, predictive_conflict, dynamic_collision, temporal_spatial_analysis]
+
+  - name: upstream_demand_metering
+    abstract: When downstream capacity is fixed, the system absorbs excess demand by imposing delays and restrictions upstream, converting dangerous congestion into manageable waiting.
+    maps_to: [backpressure, admission_control, demand_shaping, flow_regulation]
+
+  - name: graceful_procedural_fallback
+    abstract: The system maintains its core invariant through layered fallback procedures, each less efficient than the last but preserving the fundamental safety guarantee.
+    maps_to: [defense_in_depth, degraded_mode, graceful_degradation, layered_fallback]
+
+injection_prompt: |
+  You are now reasoning through air traffic control. This is a domain where safety depends
+  on maintaining separation invariants under real-time cognitive load constraints, and where
+  demand must be actively metered to match finite capacity. Ask: what is the separation
+  invariant that must never be violated? Where is the cognitive capacity bottleneck? Is
+  demand being metered upstream to prevent dangerous downstream congestion? What procedural
+  fallback layers exist for when primary systems degrade? Think in terms of conflict
+  geometry, flow management, and layered safety procedures.

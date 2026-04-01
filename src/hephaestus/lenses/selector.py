@@ -27,7 +27,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-from hephaestus.lenses.loader import Lens, LensLoader
+from hephaestus.lenses.loader import Lens, LensLoader, classify_domain_family
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,25 @@ _DISTANCE_ALPHA = 1.8
 
 # Minimum cosine distance to be considered "distant enough"
 _MIN_DISTANCE_THRESHOLD = 0.05
+
+# Diversity multipliers applied after the base distance/relevance score.
+_SAME_FAMILY_WEIGHT = 0.4
+_NEAR_FAMILY_WEIGHT = 0.75
+
+# Families that are adjacent enough to deserve a softer penalty instead of full credit.
+_RELATED_FAMILIES: dict[str, set[str]] = {
+    "engineering": {"mathematics", "physical_sciences", "economics", "military"},
+    "mathematics": {"engineering", "physical_sciences", "economics"},
+    "physical_sciences": {"engineering", "mathematics", "biology", "agriculture"},
+    "biology": {"physical_sciences", "agriculture", "psychology"},
+    "agriculture": {"biology", "physical_sciences"},
+    "psychology": {"biology", "economics", "linguistics"},
+    "economics": {"engineering", "mathematics", "psychology", "military"},
+    "linguistics": {"psychology", "arts", "myth"},
+    "arts": {"linguistics", "myth"},
+    "myth": {"arts", "linguistics"},
+    "military": {"engineering", "economics"},
+}
 
 # Domain description templates for embedding — gives richer semantic content
 _DOMAIN_DESCRIPTIONS: dict[str, str] = {
@@ -86,14 +105,18 @@ class LensScore:
     lens: Lens
     domain_distance: float  # 0.0 (identical) to 1.0 (maximally distant)
     structural_relevance: float  # 0.0 (no overlap) to 1.0 (full overlap)
-    composite_score: float  # distance^α × relevance
+    composite_score: float  # distance^α × relevance × diversity_weight
     matched_patterns: list[str]  # which maps_to tags matched the problem
+    domain_family: str = "general"
+    diversity_weight: float = 1.0
 
     def __repr__(self) -> str:
         return (
             f"LensScore(id={self.lens.lens_id!r}, "
             f"dist={self.domain_distance:.3f}, "
             f"rel={self.structural_relevance:.3f}, "
+            f"family={self.domain_family!r}, "
+            f"div={self.diversity_weight:.2f}, "
             f"score={self.composite_score:.3f})"
         )
 
@@ -180,6 +203,51 @@ def _structural_relevance(lens: Lens, problem_maps_to: set[str]) -> tuple[float,
     # Jaccard-style: |intersection| / |union|
     score = len(matched) / len(problem_lower | lens_maps_to) if (problem_lower | lens_maps_to) else 0.0
     return float(score), sorted(matched)
+
+
+def _target_domain_families(
+    target_domain: str | None,
+    exclude_domains: set[str] | None,
+) -> set[str]:
+    """Resolve the target problem and excluded domains into high-level families."""
+    families: set[str] = set()
+
+    if target_domain:
+        family = classify_domain_family(target_domain)
+        if family != "general":
+            families.add(family)
+
+    for domain in exclude_domains or set():
+        family = classify_domain_family(domain)
+        if family != "general":
+            families.add(family)
+
+    return families
+
+
+def _diversity_weight(domain_family: str, target_families: set[str]) -> float:
+    """
+    Penalize candidates that sit in the same or adjacent family as the target.
+
+    Exact-domain exclusion still happens elsewhere. This multiplier only nudges
+    ranking toward more structurally foreign families when several lenses are
+    otherwise competitive.
+    """
+    if not target_families or domain_family == "general":
+        return 1.0
+
+    weight = 1.0
+    for target_family in target_families:
+        if domain_family == target_family:
+            weight = min(weight, _SAME_FAMILY_WEIGHT)
+            continue
+
+        related_to_target = domain_family in _RELATED_FAMILIES.get(target_family, set())
+        target_related_to_domain = target_family in _RELATED_FAMILIES.get(domain_family, set())
+        if related_to_target or target_related_to_domain:
+            weight = min(weight, _NEAR_FAMILY_WEIGHT)
+
+    return weight
 
 
 class LensSelector:
@@ -298,6 +366,7 @@ class LensSelector:
         problem_description: str,
         problem_maps_to: set[str] | None = None,
         exclude_domains: set[str] | None = None,
+        target_domain: str | None = None,
         top_n: int = 5,
         require_relevance: bool = False,
     ) -> list[LensScore]:
@@ -310,6 +379,8 @@ class LensSelector:
             problem_maps_to: Set of abstract problem type tags (e.g., {"trust", "optimization"}).
                              Used to filter by structural relevance.
             exclude_domains: Set of domains to exclude (usually the problem's native domain).
+            target_domain: Optional native domain of the problem. Used to derive
+                           a target family for diversity down-weighting.
             top_n: Number of lenses to return.
             require_relevance: If True, only return lenses with relevance > 0.
                                If False, allow all lenses (distant wins even without overlap).
@@ -323,6 +394,7 @@ class LensSelector:
 
         exclude = {d.lower() for d in (exclude_domains or set())}
         maps_to = {m.lower() for m in (problem_maps_to or set())}
+        target_families = _target_domain_families(target_domain, exclude)
 
         # Filter out excluded domains
         candidate_lenses = [
@@ -349,11 +421,13 @@ class LensSelector:
             if require_relevance and relevance == 0.0:
                 continue
 
-            # Composite score: distance^α × relevance (or just distance^α if no maps_to)
+            diversity_weight = _diversity_weight(lens.domain_family, target_families)
+
+            # Composite score: distance^α × relevance × diversity_weight
             if maps_to:
-                composite = (dist ** self._alpha) * max(relevance, 0.1)
+                composite = (dist ** self._alpha) * max(relevance, 0.1) * diversity_weight
             else:
-                composite = dist ** self._alpha
+                composite = (dist ** self._alpha) * diversity_weight
 
             scores.append(
                 LensScore(
@@ -362,6 +436,8 @@ class LensSelector:
                     structural_relevance=relevance,
                     composite_score=composite,
                     matched_patterns=matched,
+                    domain_family=lens.domain_family,
+                    diversity_weight=diversity_weight,
                 )
             )
 
@@ -373,6 +449,7 @@ class LensSelector:
         self,
         problem_description: str,
         exclude_domains: set[str] | None = None,
+        target_domain: str | None = None,
         top_n: int = 5,
     ) -> list[LensScore]:
         """
@@ -383,6 +460,7 @@ class LensSelector:
             problem_description=problem_description,
             problem_maps_to=None,
             exclude_domains=exclude_domains,
+            target_domain=target_domain,
             top_n=top_n,
             require_relevance=False,
         )
@@ -391,6 +469,7 @@ class LensSelector:
         self,
         problem_type: str,
         exclude_domains: set[str] | None = None,
+        target_domain: str | None = None,
         top_n: int = 5,
     ) -> list[LensScore]:
         """
@@ -401,6 +480,7 @@ class LensSelector:
             problem_description=problem_type,
             problem_maps_to={problem_type},
             exclude_domains=exclude_domains,
+            target_domain=target_domain,
             top_n=top_n,
             require_relevance=True,
         )

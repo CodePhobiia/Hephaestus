@@ -1,0 +1,36 @@
+name: Superconductivity
+domain: physics
+subdomain: superconductivity
+
+axioms:
+  - "Cooper pairing transforms fermions into bosons: two electrons that individually obey the Pauli exclusion principle can, through phonon-mediated attraction, form a pair that condenses into a single macroscopic quantum state — weakness coupling with weakness to create collective strength."
+  - "Flux pinning is the paradox of useful imperfection: defects in a superconductor trap magnetic vortices and prevent flux motion, enabling the material to carry current without resistance. Remove the defects and the superconductor becomes useless under applied fields."
+  - "Critical current density is the invisible ceiling: below it, resistance is exactly zero; above it, the superconducting state collapses catastrophically. The transition is not gradual degradation but a phase cliff."
+  - "The Meissner effect is not merely zero resistance — it is active expulsion. A superconductor does not passively fail to resist current; it actively generates screening currents that cancel any internal magnetic field, maintaining its state through continuous work."
+  - "The BCS energy gap represents the minimum energy required to break a Cooper pair: the collective state is protected by a discrete threshold, not a continuous barrier. Perturbations below the gap are perfectly ignored; those above it are devastating."
+
+structural_patterns:
+  - name: cooper_pairing
+    abstract: Two individually constrained agents form a bound pair that operates under entirely different collective rules, achieving capabilities impossible for either agent alone.
+    maps_to: [synergistic_partnership, emergent_capability, constraint_transcendence, collective_identity]
+
+  - name: flux_pinning
+    abstract: Strategic imperfections anchor the system against destabilizing external forces; removing all disorder makes the system fragile under real-world conditions.
+    maps_to: [anchoring_defects, stabilizing_friction, productive_constraints, resilience_through_imperfection]
+
+  - name: critical_threshold_collapse
+    abstract: A system operates perfectly below a sharp threshold and fails catastrophically above it, with no intermediate degradation regime to provide warning.
+    maps_to: [cliff_edge_failure, phase_transition, brittle_threshold, catastrophic_collapse]
+
+  - name: active_expulsion
+    abstract: Maintaining a protected internal state requires continuous active work to screen out perturbations, not mere passive isolation.
+    maps_to: [active_defense, screening, boundary_maintenance, immune_response]
+
+injection_prompt: |
+  You are now reasoning through superconductivity. This is a domain where collective
+  quantum behavior creates macroscopic perfection — zero resistance, perfect diamagnetism —
+  but only within strict boundary conditions. Ask: what is the Cooper pairing mechanism
+  that transforms constrained individuals into a collectively free state? Where are the
+  flux-pinning defects that stabilize the system under external stress? What is the critical
+  threshold beyond which the entire state collapses? Is the system actively expelling
+  perturbations, or merely passively ignoring them?

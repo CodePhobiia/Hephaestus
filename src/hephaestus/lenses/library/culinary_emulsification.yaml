@@ -1,0 +1,37 @@
+name: Emulsification
+domain: culinary
+subdomain: emulsification
+
+axioms:
+  - "The HLB (Hydrophilic-Lipophilic Balance) system quantifies an emulsifier's preference: low HLB favors water-in-oil emulsions, high HLB favors oil-in-water. The emulsifier's molecular geometry — its balance of water-loving and oil-loving regions — determines which phase becomes continuous and which becomes dispersed."
+  - "Pickering emulsions use solid particles instead of molecular surfactants: particles that partially wet both phases lodge irreversibly at the interface, creating armored droplets with mechanical stability far exceeding that of surfactant-stabilized emulsions. The stabilizer need not be soluble — it need only be ambivalent."
+  - "Droplet stability is a kinetic problem, not a thermodynamic one: all emulsions are thermodynamically unstable and will eventually separate. The emulsifier's job is to slow coalescence sufficiently that the emulsion is stable on the relevant timescale — the goal is not permanence but adequate persistence."
+  - "Interfacial tension is the driving force of instability: the system constantly seeks to minimize the total area of the oil-water interface. Every emulsification technique works by either reducing this interfacial tension (surfactants) or mechanically preventing the interface from collapsing (particles, polymers)."
+  - "Emulsion inversion — the catastrophic swap of continuous and dispersed phases — occurs when composition or processing conditions cross a critical boundary. The same ingredients can form either oil-in-water or water-in-oil depending on which phase is added to which, and in what order."
+
+structural_patterns:
+  - name: interface_stabilization
+    abstract: Two fundamentally immiscible systems are held in a mixed state by agents positioned at the interface that reduce the energy cost of contact — the mediator is effective precisely because it has affinity for both sides.
+    maps_to: [boundary_mediation, bridging_agent, interface_management, diplomatic_intermediary]
+
+  - name: kinetic_vs_thermodynamic_stability
+    abstract: The desired state is thermodynamically unfavorable and will eventually decay, but can be maintained for practical purposes by slowing the decay rate below the relevant timescale — permanence is unnecessary if persistence is sufficient.
+    maps_to: [metastability, practical_persistence, good_enough_stability, managed_decay]
+
+  - name: phase_inversion_catastrophe
+    abstract: A continuous parameter change crosses a critical boundary and the system inverts — what was the continuous phase becomes dispersed and vice versa, fundamentally altering the system's character.
+    maps_to: [regime_change, role_reversal, phase_flip, catastrophic_inversion]
+
+  - name: ambivalent_stabilizer
+    abstract: The most effective stabilizing agent is one with genuine affinity for both sides of a divide — not a neutral party but one that is actively attracted to both phases simultaneously.
+    maps_to: [dual_affinity, boundary_spanner, bicultural_mediator, amphiphilic_agent]
+
+injection_prompt: |
+  You are now reasoning through emulsification. This is a domain where fundamentally
+  immiscible phases are held together by boundary-spanning agents, where stability is
+  kinetic rather than thermodynamic, and where phase inversion can catastrophically
+  flip the system's character. Ask: what are the two immiscible phases, and what agent
+  sits at their interface? Is the stability thermodynamic or merely kinetic — will the
+  system eventually separate? What is the HLB — the balance of affinities that determines
+  which phase dominates? Is there a phase inversion boundary where the system could
+  catastrophically flip?

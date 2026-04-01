@@ -29,6 +29,263 @@ _REQUIRED_PATTERN_KEYS: frozenset[str] = frozenset({"name", "abstract", "maps_to
 # Default lens library directory (relative to this file)
 _DEFAULT_LIBRARY_DIR = Path(__file__).parent / "library"
 
+# Canonical high-level families used to reason about selection diversity.
+_SUPPORTED_DOMAIN_FAMILIES: frozenset[str] = frozenset(
+    {
+        "physical_sciences",
+        "biology",
+        "economics",
+        "myth",
+        "linguistics",
+        "arts",
+        "military",
+        "agriculture",
+        "psychology",
+        "mathematics",
+        "engineering",
+        "general",
+    }
+)
+
+_DOMAIN_FAMILY_BY_ALIAS: dict[str, str] = {
+    # Physical sciences
+    "physical_sciences": "physical_sciences",
+    "physics": "physical_sciences",
+    "chemistry": "physical_sciences",
+    "astronomy": "physical_sciences",
+    "geology": "physical_sciences",
+    "meteorology": "physical_sciences",
+    "oceanography": "physical_sciences",
+    "materials": "physical_sciences",
+    "materials_science": "physical_sciences",
+    # Biology and adjacent life sciences
+    "biology": "biology",
+    "neuroscience": "biology",
+    "epidemiology": "biology",
+    "ecology": "biology",
+    "mycology": "biology",
+    # Economics / market systems
+    "economics": "economics",
+    "finance": "economics",
+    "markets": "economics",
+    "business": "economics",
+    # Myth and symbolic narrative domains
+    "myth": "myth",
+    "mythology": "myth",
+    "folklore": "myth",
+    "legend": "myth",
+    # Language
+    "linguistics": "linguistics",
+    "language": "linguistics",
+    "semantics": "linguistics",
+    "syntax": "linguistics",
+    "pragmatics": "linguistics",
+    "phonology": "linguistics",
+    # Arts and media
+    "arts": "arts",
+    "art": "arts",
+    "music": "arts",
+    "film": "arts",
+    "textiles": "arts",
+    # Military / competitive strategy
+    "military": "military",
+    "martial_arts": "military",
+    "sports": "military",
+    # Agriculture / food systems
+    "agriculture": "agriculture",
+    "forestry": "agriculture",
+    "cooking": "agriculture",
+    "culinary": "agriculture",
+    # Psychology / social behavior
+    "psychology": "psychology",
+    "sociology": "psychology",
+    # Mathematics / formal abstraction
+    "mathematics": "mathematics",
+    "math": "mathematics",
+    "philosophy": "mathematics",
+    "logic": "mathematics",
+    # Engineering / computing / designed systems
+    "engineering": "engineering",
+    "cs": "engineering",
+    "computer_science": "engineering",
+    "distributed_systems": "engineering",
+    "machine_learning": "engineering",
+    "software": "engineering",
+    "architecture": "engineering",
+    "urban_planning": "engineering",
+    "navigation": "engineering",
+    "infrastructure": "engineering",
+    "systems": "engineering",
+    # Explicit fallback family labels
+    "general": "general",
+}
+
+_DOMAIN_FAMILY_TOKEN_HINTS: dict[str, set[str]] = {
+    "physical_sciences": {
+        "physics",
+        "physical",
+        "chemistry",
+        "chemical",
+        "astronomy",
+        "geology",
+        "meteorology",
+        "oceanography",
+        "materials",
+        "optics",
+        "quantum",
+        "thermodynamics",
+    },
+    "biology": {
+        "biology",
+        "bio",
+        "immune",
+        "ecology",
+        "evolution",
+        "epidemiology",
+        "neuro",
+        "neuroscience",
+        "virology",
+        "mycology",
+        "coral",
+        "reef",
+    },
+    "economics": {
+        "economics",
+        "economic",
+        "finance",
+        "financial",
+        "market",
+        "markets",
+        "auction",
+        "pricing",
+        "mechanism",
+        "incentive",
+    },
+    "myth": {"myth", "mythology", "folklore", "legend", "heroic", "narrative"},
+    "linguistics": {
+        "linguistics",
+        "language",
+        "syntax",
+        "semantics",
+        "pragmatics",
+        "phonology",
+        "grammar",
+    },
+    "arts": {
+        "art",
+        "arts",
+        "music",
+        "film",
+        "textiles",
+        "color",
+        "counterpoint",
+        "cinematography",
+    },
+    "military": {
+        "military",
+        "martial",
+        "combat",
+        "warfare",
+        "sports",
+        "boxing",
+        "chess",
+        "naval",
+        "strategy",
+    },
+    "agriculture": {
+        "agriculture",
+        "forestry",
+        "farm",
+        "crop",
+        "soil",
+        "cooking",
+        "culinary",
+        "food",
+        "fermentation",
+        "maillard",
+        "emulsification",
+    },
+    "psychology": {
+        "psychology",
+        "psychological",
+        "behavior",
+        "behavioral",
+        "cognitive",
+        "social",
+        "sociology",
+    },
+    "mathematics": {
+        "math",
+        "mathematics",
+        "proof",
+        "logic",
+        "topology",
+        "chaos",
+        "queueing",
+        "information",
+        "philosophy",
+        "dynamical",
+    },
+    "engineering": {
+        "engineering",
+        "engineered",
+        "distributed",
+        "systems",
+        "software",
+        "computer",
+        "network",
+        "architecture",
+        "urban",
+        "planning",
+        "navigation",
+        "grid",
+        "semiconductor",
+        "traffic",
+        "infrastructure",
+    },
+}
+
+
+def _normalize_domain_label(value: str | None) -> str:
+    """Normalize free-form domain labels to a predictable lowercase token."""
+    if not value:
+        return ""
+    return str(value).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def classify_domain_family(
+    domain: str | None,
+    subdomain: str | None = None,
+    explicit_family: str | None = None,
+) -> str:
+    """
+    Resolve a domain/subdomain pair to a canonical high-level family.
+
+    Explicit family labels win if provided. Otherwise we classify using exact
+    aliases first, then broad token hints so decomposed native domains like
+    ``distributed_systems`` or ``finance`` also resolve sensibly.
+    """
+    normalized_explicit = _normalize_domain_label(explicit_family)
+    if normalized_explicit:
+        return _DOMAIN_FAMILY_BY_ALIAS.get(normalized_explicit, normalized_explicit)
+
+    for raw in (domain, subdomain):
+        normalized = _normalize_domain_label(raw)
+        if normalized in _DOMAIN_FAMILY_BY_ALIAS:
+            return _DOMAIN_FAMILY_BY_ALIAS[normalized]
+
+    tokens: set[str] = set()
+    for raw in (domain, subdomain):
+        normalized = _normalize_domain_label(raw)
+        if normalized:
+            tokens.update(part for part in normalized.split("_") if part)
+
+    for family, hints in _DOMAIN_FAMILY_TOKEN_HINTS.items():
+        if tokens & hints:
+            return family
+
+    return "general"
+
 
 @dataclass
 class StructuralPattern:
@@ -71,6 +328,11 @@ class Lens:
     # Optional metadata
     tags: list[str] = field(default_factory=list)
     distance_hints: dict[str, float] = field(default_factory=dict)
+    domain_family: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.domain_family:
+            self.domain_family = classify_domain_family(self.domain, self.subdomain)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any], source_file: Path | None = None) -> "Lens":
@@ -103,6 +365,11 @@ class Lens:
             source_file=source_file or Path(),
             tags=[str(t) for t in data.get("tags", [])],
             distance_hints=dict(data.get("distance_hints", {})),
+            domain_family=classify_domain_family(
+                data["domain"],
+                data["subdomain"],
+                data.get("domain_family"),
+            ),
         )
 
     @property
@@ -133,6 +400,7 @@ class Lens:
             "lens_id": self.lens_id,
             "name": self.name,
             "domain": self.domain,
+            "domain_family": self.domain_family,
             "subdomain": self.subdomain,
             "axiom_count": len(self.axioms),
             "pattern_count": len(self.structural_patterns),

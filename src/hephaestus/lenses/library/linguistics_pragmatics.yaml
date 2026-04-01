@@ -1,0 +1,37 @@
+name: Conversational Pragmatics
+domain: linguistics
+subdomain: pragmatics
+
+axioms:
+  - "Grice's Cooperative Principle asserts that conversation operates on the assumption of mutual cooperation: speakers are expected to make contributions that are truthful (Quality), informative (Quantity), relevant (Relation), and clear (Manner). These maxims are the invisible infrastructure of meaning."
+  - "Implicature is meaning that is communicated but not said: when a speaker says 'Some students passed,' the hearer infers 'Not all students passed' — not from the literal meaning but from the expectation that the speaker would have said 'all' if that were true. Meaning routinely exceeds semantics."
+  - "Flouting a maxim is not violating it but exploiting it: when a speaker deliberately and obviously says something false, irrelevant, or obscure, the hearer recognizes the deviation and searches for the intended meaning — irony, metaphor, and understatement all work by conspicuous flouting."
+  - "Conversational repair is the immune system of communication: when misunderstanding is detected, speakers initiate repair sequences — clarification requests, self-corrections, reformulations — that restore mutual understanding. The system is designed to fail gracefully, not to never fail."
+  - "Presupposition is the invisible load-bearing structure of utterances: 'Have you stopped cheating?' presupposes that you were cheating. Presuppositions frame the conversation by establishing background assumptions that are difficult to challenge without derailing the discourse."
+
+structural_patterns:
+  - name: cooperative_maxim_framework
+    abstract: Communication operates on the unstated assumption that all participants are cooperating by being truthful, informative, relevant, and clear — the system breaks down when this assumption is false.
+    maps_to: [cooperative_assumption, good_faith_communication, implicit_contract, trust_framework]
+
+  - name: implicature_beyond_literal
+    abstract: The actual meaning communicated routinely exceeds the literal content of what was said, with the gap filled by shared expectations about cooperative behavior.
+    maps_to: [implied_meaning, reading_between_lines, pragmatic_inference, subtext]
+
+  - name: conspicuous_flouting
+    abstract: Deliberately and obviously violating a cooperative norm forces the audience to search for an alternative intended meaning, creating expressive possibilities (irony, metaphor, understatement) unavailable through literal compliance.
+    maps_to: [strategic_norm_violation, ironic_signaling, creative_rule_breaking, conspicuous_deviation]
+
+  - name: conversational_repair
+    abstract: When communication fails, the system has built-in mechanisms for detecting and correcting misunderstanding — the robustness of communication lies not in preventing errors but in the efficiency of the repair process.
+    maps_to: [error_correction, graceful_recovery, feedback_loop, self_healing_protocol]
+
+injection_prompt: |
+  You are now reasoning through conversational pragmatics. This is a domain where meaning
+  routinely exceeds literal content, where cooperative assumptions enable inference, and
+  where deliberate norm violation creates new expressive possibilities. Ask: what
+  cooperative maxims are being assumed, and are any being flouted deliberately for
+  expressive effect? What implicatures — unstated but communicated meanings — are being
+  generated? Are there presuppositions silently framing the discourse? Where are the
+  repair mechanisms that handle communication breakdowns? Think in terms of the gap
+  between what is said and what is meant.

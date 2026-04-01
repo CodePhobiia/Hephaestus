@@ -365,7 +365,7 @@ class CandidateScorer:
         result = await self._harness.forge(
             prompt,
             system=_FIDELITY_SYSTEM,
-            max_tokens=600,
+            max_tokens=16000,
             temperature=0.2,
         )
 

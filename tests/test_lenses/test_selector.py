@@ -93,7 +93,7 @@ def make_lens(
             )
         ],
         injection_prompt="Test injection prompt that is definitely long enough to be valid.",
-        source_file=Path("/fake/path.yaml"),
+        source_file=Path(f"/fake/{lens_id}.yaml"),
     )
 
 
@@ -241,6 +241,8 @@ class TestSelect:
             assert isinstance(s.lens, Lens)
             assert 0.0 <= s.domain_distance <= 2.0
             assert 0.0 <= s.structural_relevance <= 1.0
+            assert 0.0 < s.diversity_weight <= 1.0
+            assert s.domain_family
             assert s.composite_score >= 0.0
 
     def test_select_sorted_by_composite_score_descending(self, selector: LensSelector):
@@ -299,7 +301,7 @@ class TestSelect:
             top_n=999,
         )
         # Should return at most len(library) results
-        assert len(scores) <= 51
+        assert len(scores) <= 81
 
     def test_select_require_relevance_excludes_zero_overlap(
         self, selector: LensSelector
@@ -423,6 +425,58 @@ class TestCompositeScore:
         scores = selector.select("distributed systems problem", top_n=5)
         for s in scores:
             assert s.composite_score > 0.0
+
+    def test_target_family_penalty_downweights_nearby_families(
+        self, loader: LensLoader
+    ):
+        sel = LensSelector(loader=loader, distance_alpha=1.8, min_distance=0.0)
+
+        lens_same_family = make_lens("engineering_grid", domain="engineering", maps_to=["trust"])
+        lens_near_family = make_lens("math_queueing", domain="math", maps_to=["trust"])
+        lens_far_family = make_lens("mythology_narrative", domain="mythology", maps_to=["trust"])
+
+        with patch.object(
+            sel,
+            "compute_all_distances",
+            return_value={
+                "engineering_grid": 0.9,
+                "math_queueing": 0.9,
+                "mythology_narrative": 0.9,
+            },
+        ):
+            with patch.object(
+                loader,
+                "load_all",
+                return_value={
+                    "engineering_grid": lens_same_family,
+                    "math_queueing": lens_near_family,
+                    "mythology_narrative": lens_far_family,
+                },
+            ):
+                scores = sel.select(
+                    problem_description="trust problem",
+                    problem_maps_to={"trust"},
+                    target_domain="distributed_systems",
+                    top_n=10,
+                )
+
+        assert [score.lens.lens_id for score in scores] == [
+            "mythology_narrative",
+            "math_queueing",
+            "engineering_grid",
+        ]
+
+        same_family = next(score for score in scores if score.lens.lens_id == "engineering_grid")
+        near_family = next(score for score in scores if score.lens.lens_id == "math_queueing")
+        far_family = next(score for score in scores if score.lens.lens_id == "mythology_narrative")
+
+        assert same_family.domain_family == "engineering"
+        assert same_family.diversity_weight == pytest.approx(0.4)
+        assert near_family.domain_family == "mathematics"
+        assert near_family.diversity_weight == pytest.approx(0.75)
+        assert far_family.domain_family == "myth"
+        assert far_family.diversity_weight == pytest.approx(1.0)
+        assert far_family.composite_score > near_family.composite_score > same_family.composite_score
 
 
 # ──────────────────────────────────────────────────────────────────────────────

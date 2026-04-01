@@ -313,6 +313,8 @@ class PriorArtSearcher:
             tasks.append(self._search_google_patents(query))
         if include_papers:
             tasks.append(self._search_semantic_scholar(query))
+        # Always try Perplexity if key available
+        tasks.append(search_perplexity(query))
 
         if not tasks:
             report.search_available = False
@@ -334,6 +336,20 @@ class PriorArtSearcher:
                     any_success = True
                 elif result and isinstance(result[0], PaperResult):
                     report.papers.extend(result)
+                    any_success = True
+                elif result and isinstance(result[0], PerplexityResult):
+                    # Store perplexity results as papers with special source
+                    for pr in result:
+                        report.papers.append(PaperResult(
+                            paper_id=f"perplexity-{hash(pr.title) % 10000}",
+                            title=pr.title,
+                            abstract=pr.snippet,
+                            authors=["Perplexity AI"],
+                            year=2026,
+                            venue="Web Search",
+                            citation_count=0,
+                            url=pr.url or "",
+                        ))
                     any_success = True
                 else:
                     any_success = True  # empty list but no error
@@ -565,3 +581,77 @@ class PriorArtSearcher:
             logger.debug("Error parsing Semantic Scholar response: %s", exc)
 
         return results
+
+
+# ---------------------------------------------------------------------------
+# Perplexity Search
+# ---------------------------------------------------------------------------
+
+class PerplexityResult:
+    """A single result from Perplexity search."""
+    def __init__(self, title: str, url: str, snippet: str):
+        self.title = title
+        self.url = url
+        self.snippet = snippet
+
+
+async def search_perplexity(query: str, timeout: float = 30.0) -> list[PerplexityResult]:
+    """Search Perplexity for prior art. Returns list of results."""
+    import os
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
+        return []
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            resp = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "sonar",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a prior art research assistant. Search for existing implementations, papers, patents, or systems similar to the described invention. Return specific names, URLs, and brief descriptions of the closest matches.",
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Find existing prior art, research papers, patents, or implementations similar to this invention:\n\n{query}\n\nList the 5 closest matches with title, URL (if available), and a one-sentence description of why it's similar.",
+                        },
+                    ],
+                },
+            )
+            if resp.status_code != 200:
+                logger.warning("Perplexity search returned %d", resp.status_code)
+                return []
+
+            data = resp.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            citations = data.get("citations", [])
+
+            # Parse the response into results
+            results = []
+            if citations:
+                for url in citations[:5]:
+                    results.append(PerplexityResult(
+                        title=url.split("/")[-1][:60] if "/" in url else url[:60],
+                        url=url,
+                        snippet="",
+                    ))
+
+            # Always include the full AI summary as the first result
+            if content:
+                results.insert(0, PerplexityResult(
+                    title="Perplexity AI Summary",
+                    url="",
+                    snippet=content[:500],
+                ))
+
+            return results
+
+        except Exception as exc:
+            logger.warning("Perplexity search failed: %s", exc)
+            return []

@@ -463,6 +463,46 @@ class TestGenesis:
         assert report.total_cost_usd >= 0
 
     @pytest.mark.asyncio
+    async def test_rejected_inventions_are_forwarded_to_failure_log(self):
+        """Rejected verifier results should be sent to the failure log hook."""
+        genesis = Genesis(self._make_config())
+        mocks = self._mock_all_stages()
+        rejected = _make_verified_invention()
+        rejected.feasibility_rating = "LOW"
+        rejected.adversarial_result.verdict = "INVALID"
+        rejected.adversarial_result.fatal_flaws = ["Fatal flaw"]
+        mocks["verifier"].verify = AsyncMock(return_value=[rejected])
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mocks["decomposer"]),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mocks["searcher"]),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mocks["scorer"]),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=mocks["translator"]),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mocks["verifier"]),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+            patch("hephaestus.analytics.failure_log.FailureLog") as mock_failure_log,
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
+            genesis._adapters = {}
+            mock_failure_log.return_value.append_rejected_inventions.return_value = [MagicMock()]
+
+            await genesis.invent("test")
+
+        mock_failure_log.return_value.append_rejected_inventions.assert_called_once_with(
+            [rejected],
+            target_domain="distributed_systems",
+            problem="test",
+            baselines=[],
+        )
+
+    @pytest.mark.asyncio
     async def test_all_scored_filtered_yields_failed(self):
         """If scorer returns empty (all adjacent), yield FAILED."""
         genesis = Genesis(self._make_config())

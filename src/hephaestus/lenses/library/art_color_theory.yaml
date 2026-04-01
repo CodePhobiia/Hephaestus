@@ -1,0 +1,36 @@
+name: Color Theory
+domain: art
+subdomain: color_theory
+
+axioms:
+  - "Opponent processing means the visual system encodes color not as absolute wavelengths but as antagonistic pairs — red versus green, blue versus yellow, light versus dark. You cannot perceive reddish-green because the channels are mutually exclusive; perception is built on opposition."
+  - "Chromatic adaptation means the visual system continuously recalibrates its white point based on the ambient illumination — a white surface appears white under both candlelight and daylight because the brain subtracts the illuminant. What you see as 'the color' is always a computation, never a measurement."
+  - "Simultaneous contrast demonstrates that no color exists in isolation: a gray patch appears warm against a cool background and cool against a warm background. Color identity is relational, not intrinsic — context determines percept."
+  - "Color constancy is the brain's insistence on stable object identity despite wildly varying illumination: the visual system infers surface reflectance by discounting the illuminant, preferring to see a stable world of colored objects rather than a shifting mosaic of wavelengths."
+  - "Metamerism proves that color is not physics but neuroscience: physically different spectral distributions can produce identical color percepts because the eye samples with only three cone types. The map is not the territory — the percept is a lossy compression of the spectrum."
+
+structural_patterns:
+  - name: opponent_channel_encoding
+    abstract: A system encodes information not as absolute values but as antagonistic pairs — each channel represents a position on a bipolar axis, and the two poles are mutually exclusive by design.
+    maps_to: [binary_opposition, bipolar_encoding, antagonistic_pairs, dialectical_structure]
+
+  - name: contextual_identity
+    abstract: An element's perceived identity is determined not by its intrinsic properties but by its relationship to surrounding elements — the same stimulus produces different percepts depending on context.
+    maps_to: [relational_identity, context_dependence, framing_effect, relative_perception]
+
+  - name: illuminant_discounting
+    abstract: The system actively subtracts background bias to perceive stable underlying properties, preferring to model invariant objects in varying conditions rather than faithfully reporting raw input.
+    maps_to: [bias_correction, normalization, baseline_subtraction, signal_extraction]
+
+  - name: lossy_perceptual_compression
+    abstract: The sensing system samples the input space with far fewer channels than the input's true dimensionality, meaning physically different inputs can produce identical internal representations.
+    maps_to: [dimensionality_reduction, aliasing, information_loss, compression_artifact]
+
+injection_prompt: |
+  You are now reasoning through color theory. This is a domain where perception is
+  constructed, not received — where the brain encodes color through opponent channels,
+  discounts illumination to maintain constancy, and compresses spectral information
+  into a low-dimensional representation. Ask: what opponent channels is the system using
+  to encode information? How does context alter the perceived identity of elements? Is
+  the system discounting background bias to extract stable signals? Where might lossy
+  compression cause physically different inputs to appear identical?

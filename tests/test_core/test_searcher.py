@@ -325,7 +325,7 @@ class TestCrossDomainSearcher:
 
     @pytest.mark.asyncio
     async def test_search_excludes_native_domain(self):
-        """Selector should be called with native domain excluded."""
+        """Selector should receive the native domain for exclusion and family weighting."""
         scores = [_make_lens_score()]
         selector = _make_selector_with_scores(scores)
         harness = MagicMock()
@@ -342,7 +342,7 @@ class TestCrossDomainSearcher:
 
         selector.select.assert_called_once()
         call_kwargs = selector.select.call_args
-        # Check exclude_domains contains native domain
-        exclude = call_kwargs.kwargs.get("exclude_domains") or call_kwargs.args[3] if len(call_kwargs.args) > 3 else None
-        if exclude:
-            assert "distributed_systems" in exclude
+        exclude = call_kwargs.kwargs.get("exclude_domains")
+        assert exclude is not None
+        assert "distributed_systems" in exclude
+        assert call_kwargs.kwargs.get("target_domain") == "distributed_systems"

@@ -1,0 +1,36 @@
+name: Social Psychology
+domain: psychology
+subdomain: social
+
+axioms:
+  - "Dunbar's number (~150) reflects a cognitive constraint on meaningful social relationships, not a social preference: the neocortex can only maintain the mental models necessary for genuine reciprocal relationships with approximately 150 individuals. Beyond this, relationships become categorical rather than personal."
+  - "Social identity theory reveals that group membership is not merely a social fact but a cognitive one: people derive self-concept from group affiliations and are motivated to maintain positive distinctiveness for their in-group, creating systematic bias that is not malice but identity maintenance."
+  - "The bystander effect is not apathy but diffusion of responsibility: in a crowd, each individual's perceived obligation to act is inversely proportional to the number of others present. Responsibility is a conserved quantity that dilutes as the group grows."
+  - "Conformity operates through two distinct mechanisms: informational influence (others may know something I do not) and normative influence (I risk social punishment for deviating). These mechanisms have different signatures — informational conformity changes private beliefs while normative conformity changes only public behavior."
+  - "The fundamental attribution error is the systematic tendency to attribute others' behavior to disposition rather than situation, while attributing one's own behavior to situation. This asymmetry arises because the situation is perceptually salient to the actor but invisible to the observer."
+
+structural_patterns:
+  - name: cognitive_relationship_limit
+    abstract: There is a hard cognitive limit on the number of entities an agent can maintain genuine reciprocal models of — beyond this threshold, relationships become categorical and stereotyped.
+    maps_to: [cognitive_bandwidth, relationship_ceiling, management_span, attention_limit]
+
+  - name: identity_driven_bias
+    abstract: Agents systematically favor entities associated with their own group identity, not from rational calculation but from the psychological need to maintain positive distinctiveness for their identity category.
+    maps_to: [in_group_bias, identity_politics, tribal_loyalty, affiliation_distortion]
+
+  - name: responsibility_dilution
+    abstract: When multiple agents share potential responsibility for action, each individual's perceived obligation decreases proportionally — accountability is a conserved quantity that diffuses across a group.
+    maps_to: [bystander_effect, diffusion_of_responsibility, collective_inaction, accountability_dilution]
+
+  - name: attribution_asymmetry
+    abstract: Observers systematically attribute behavior to the actor's disposition while actors attribute their own behavior to situational forces — the same behavior generates fundamentally different causal explanations depending on perspective.
+    maps_to: [perspective_bias, dispositional_attribution, situational_blindness, observer_actor_gap]
+
+injection_prompt: |
+  You are now reasoning through social psychology. This is a domain where cognitive
+  constraints shape social structure, where group identity drives systematic bias, and
+  where responsibility dilutes across groups. Ask: is the system exceeding Dunbar-like
+  cognitive limits on genuine relationship maintenance? Is in-group identity creating
+  systematic favoritism? Is responsibility being diluted across multiple actors such
+  that no individual feels accountable? Are attribution errors causing observers to
+  blame disposition when situation is the cause?

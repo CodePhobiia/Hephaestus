@@ -296,6 +296,7 @@ class CrossDomainSearcher:
             problem_description=structure.to_search_description(),
             problem_maps_to=structure.problem_maps_to,
             exclude_domains={structure.native_domain},
+            target_domain=structure.native_domain,
             top_n=self._num_lenses,
             require_relevance=False,
         )
@@ -332,7 +333,7 @@ class CrossDomainSearcher:
             result = await self._harness.forge(
                 prompt,
                 system=_SEARCH_SYSTEM,
-                max_tokens=800,
+                max_tokens=16000,
                 temperature=0.5,
             )
             raw = result.output

@@ -1,0 +1,36 @@
+name: Deception Operations
+domain: military
+subdomain: deception
+
+axioms:
+  - "Maskirovka — the Russian doctrine of military deception — treats deception not as a supporting activity but as a fundamental operational dimension: every military action has both a physical and an informational component, and the informational component shapes the enemy's decision-making as surely as firepower shapes the battlefield."
+  - "The distinction between denial and deception is the distinction between hiding and lying: denial prevents the adversary from acquiring true information (concealment, camouflage, OPSEC), while deception feeds them false information designed to lead to a specific incorrect conclusion. Both are necessary; neither is sufficient alone."
+  - "The double bluff exploits the adversary's sophistication: an adversary who suspects deception may dismiss true information as a trick, and a sophisticated deceiver can exploit this by presenting truth in a context where it will be disbelieved — the most dangerous deception is the one that uses real information."
+  - "Deception works by exploiting the target's existing beliefs and cognitive biases: the most effective deception does not create new beliefs from scratch but reinforces what the target already expects to see. Confirming an enemy's preconceptions is far easier than installing new ones."
+  - "Perception management requires coherence across all channels: a deception detected on any single channel collapses the entire narrative. Every source the enemy monitors — signals, imagery, human intelligence, open source — must tell a consistent false story, making multi-channel deception exponentially harder than single-channel."
+
+structural_patterns:
+  - name: denial_plus_deception
+    abstract: Effective information control requires both preventing the adversary from seeing truth (denial) and causing them to believe a specific falsehood (deception) — one without the other leaves the adversary uncertain rather than deceived.
+    maps_to: [information_control, concealment_plus_fabrication, hide_and_misdirect, dual_information_warfare]
+
+  - name: confirmation_bias_exploitation
+    abstract: The most effective deception reinforces what the target already believes, exploiting the tendency to accept information that confirms existing expectations and reject information that contradicts them.
+    maps_to: [bias_exploitation, expectation_reinforcement, belief_confirmation, preconception_leverage]
+
+  - name: multi_channel_coherence
+    abstract: A deception narrative must be consistent across every information channel the target monitors — inconsistency on any single channel can collapse the entire deception, making complexity the enemy of deception.
+    maps_to: [narrative_consistency, cross_channel_alignment, story_coherence, cover_story_integrity]
+
+  - name: double_bluff_recursion
+    abstract: A sophisticated target who suspects deception may dismiss true information, allowing the deceiver to present truth in a context where it will be disbelieved — exploiting the adversary's own sophistication against them.
+    maps_to: [recursive_deception, meta_game, sophistication_exploitation, truth_as_weapon]
+
+injection_prompt: |
+  You are now reasoning through deception operations. This is a domain where information
+  is a weapon, where the adversary's existing beliefs are the primary vulnerability, and
+  where multi-channel coherence determines whether a narrative holds. Ask: is the operation
+  combining denial (hiding truth) with deception (planting falsehood)? Is the deception
+  exploiting the target's pre-existing beliefs and confirmation biases? Is the false
+  narrative consistent across all channels the target monitors? Is there a double bluff —
+  truth presented in a context where it will be disbelieved?

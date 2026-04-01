@@ -1,0 +1,36 @@
+name: Dynamical Systems
+domain: mathematics
+subdomain: dynamical_systems
+
+axioms:
+  - "Strange attractors are the fingerprints of deterministic chaos: trajectories in phase space converge to a bounded region of fractal dimension but never repeat, creating aperiodic behavior that is fully deterministic yet practically unpredictable — order and disorder coexist on the same attractor."
+  - "Bifurcation cascades are the road to chaos: as a control parameter changes smoothly, the system's qualitative behavior changes abruptly at critical values — a stable fixed point splits into an oscillation, which splits into period-doubling, which cascades into chaos. The route to complexity is punctuated, not gradual."
+  - "Lyapunov exponents quantify the rate at which nearby trajectories diverge: a positive largest Lyapunov exponent is the mathematical definition of chaos, measuring the system's sensitivity to initial conditions in bits per unit time. The exponent tells you how fast your prediction horizon shrinks."
+  - "Basins of attraction partition phase space into regions of fate: every initial condition belongs to exactly one basin, and the system's long-term behavior is entirely determined by which basin it starts in. The basin boundary is where sensitivity to initial conditions is most extreme."
+  - "Structural stability separates robust dynamics from fragile ones: a structurally stable system maintains its qualitative behavior under small perturbations, while a structurally unstable one can change character from a tiny nudge. Most real-world systems operate near structural stability boundaries."
+
+structural_patterns:
+  - name: strange_attractor_confinement
+    abstract: The system's trajectory is confined to a bounded region but never repeats, creating behavior that is bounded yet aperiodic — predictable in aggregate (it stays on the attractor) but unpredictable in detail.
+    maps_to: [bounded_chaos, constrained_unpredictability, deterministic_randomness, structured_disorder]
+
+  - name: bifurcation_transition
+    abstract: A smooth change in a control parameter produces an abrupt qualitative shift in system behavior at a critical value — the transition is sudden, discrete, and often irreversible.
+    maps_to: [phase_transition, tipping_point, qualitative_shift, regime_change]
+
+  - name: sensitivity_horizon
+    abstract: The system's predictability has a quantifiable horizon beyond which forecasting is impossible, determined by the rate of divergence of nearby trajectories — prediction accuracy decays exponentially.
+    maps_to: [prediction_horizon, forecast_decay, uncertainty_growth, exponential_divergence]
+
+  - name: basin_partition
+    abstract: The space of initial conditions is partitioned into regions with fundamentally different long-term outcomes — the system's fate depends entirely on which basin it starts in, and the basin boundaries are zones of extreme sensitivity.
+    maps_to: [fate_determination, initial_condition_sensitivity, outcome_partition, threshold_geography]
+
+injection_prompt: |
+  You are now reasoning through dynamical systems. This is a domain where deterministic
+  rules can produce unpredictable behavior, where smooth parameter changes trigger abrupt
+  qualitative shifts, and where initial conditions determine long-term fate through basin
+  partitioning. Ask: is the system on a strange attractor — bounded but aperiodic? Is a
+  control parameter approaching a bifurcation point? What is the Lyapunov exponent — how
+  fast does prediction accuracy decay? Which basin of attraction does the current state
+  occupy, and how close is it to a basin boundary?

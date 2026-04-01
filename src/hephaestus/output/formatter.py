@@ -235,10 +235,10 @@ class OutputFormatter:
             "═══════════════════════════════════════════════════",
             "",
             "**PROBLEM:**",
-            f"  {report.problem}",
+            f"  {_as_text(report.problem, 'Not provided.')}",
             "",
             "**STRUCTURAL FORM:**",
-            f"  {report.structural_form}",
+            f"  {_as_text(report.structural_form, 'Not available.')}",
             "",
         ]
 
@@ -277,7 +277,7 @@ class OutputFormatter:
             "**ARCHITECTURE:**",
             "",
         ]
-        arch = report.architecture
+        arch = _as_text(report.architecture, "Not available.")
         if "```" in arch or arch.strip().startswith("#"):
             # Already has code blocks
             lines.append(arch)
@@ -291,7 +291,7 @@ class OutputFormatter:
         lines += [
             "**WHERE THE ANALOGY BREAKS:**",
             "",
-            f"  {report.where_analogy_breaks}",
+            f"  {_as_text(report.where_analogy_breaks, 'No major analogy limits were recorded.')}",
             "",
         ]
 
@@ -301,7 +301,7 @@ class OutputFormatter:
             "",
         ]
         if report.prior_art_report is not None:
-            summary = getattr(report.prior_art_report, "summary", "")
+            summary = _as_text(getattr(report.prior_art_report, "summary", ""), "Prior art summary not available.")
             status = getattr(report.prior_art_report, "novelty_status", "UNKNOWN")
             lines.append(f"  {summary}")
             lines.append("")
@@ -319,7 +319,7 @@ class OutputFormatter:
             proof = report.novelty_proof
             score = getattr(proof, "novelty_score", report.novelty_score)
             confidence = getattr(proof, "confidence", "N/A")
-            formal = getattr(proof, "formal_statement", "")
+            formal = _as_text(getattr(proof, "formal_statement", ""))
             caveats = getattr(proof, "caveats", [])
 
             lines += [
@@ -358,13 +358,13 @@ class OutputFormatter:
             ]
             for alt in report.alternatives:
                 lines += [
-                    f"**{alt.rank}. {alt.invention_name}**",
-                    f"   Source: {alt.source_domain} | "
+                    f"**{alt.rank}. {_as_text(alt.invention_name, 'Unnamed alternative')}**",
+                    f"   Source: {_as_text(alt.source_domain, 'Unknown domain')} | "
                     f"Distance: {alt.domain_distance:.2f} | "
                     f"Novelty: {alt.novelty_score:.2f}",
                 ]
                 if alt.summary:
-                    lines.append(f"   {alt.summary}")
+                    lines.append(f"   {_as_text(alt.summary)}")
                 lines.append("")
             lines.append("───────────────────────────────────────────────────")
             lines.append("")
@@ -440,10 +440,10 @@ class OutputFormatter:
             "=" * 60,
             "",
             "PROBLEM:",
-            f"  {report.problem}",
+            f"  {_as_text(report.problem, 'Not provided.')}",
             "",
             "STRUCTURAL FORM:",
-            f"  {report.structural_form}",
+            f"  {_as_text(report.structural_form, 'Not available.')}",
             "",
             "-" * 60,
             f"INVENTION: {report.invention_name}",
@@ -454,16 +454,16 @@ class OutputFormatter:
             "-" * 60,
             "",
             "MECHANISM:",
-            _indent_block(report.mechanism),
+            _indent_block(report.mechanism, fallback="Not available."),
             "",
             "TRANSLATION:",
-            _indent_block(report.translation),
+            _indent_block(report.translation, fallback="Not available."),
             "",
             "ARCHITECTURE:",
-            _indent_block(report.architecture),
+            _indent_block(report.architecture, fallback="Not available."),
             "",
             "WHERE THE ANALOGY BREAKS:",
-            f"  {report.where_analogy_breaks}",
+            f"  {_as_text(report.where_analogy_breaks, 'No major analogy limits were recorded.')}",
             "",
         ]
 
@@ -471,9 +471,9 @@ class OutputFormatter:
         lines.append("PRIOR ART CHECK:")
         if report.prior_art_report is not None:
             status = getattr(report.prior_art_report, "novelty_status", "UNKNOWN")
-            summary = getattr(report.prior_art_report, "summary", "")
+            summary = _as_text(getattr(report.prior_art_report, "summary", ""), "Prior art summary not available.")
             lines.append(f"  Status: {status}")
-            lines.append(_indent_block(summary))
+            lines.append(_indent_block(summary, fallback="Prior art summary not available."))
         else:
             lines.append("  Not performed.")
         lines.append("")
@@ -493,11 +493,11 @@ class OutputFormatter:
             lines.append("ALTERNATIVE INVENTIONS:")
             for alt in report.alternatives:
                 lines.append(
-                    f"  {alt.rank}. {alt.invention_name} "
-                    f"(from {alt.source_domain}, novelty={alt.novelty_score:.2f})"
+                    f"  {alt.rank}. {_as_text(alt.invention_name, 'Unnamed alternative')} "
+                    f"(from {_as_text(alt.source_domain, 'Unknown domain')}, novelty={alt.novelty_score:.2f})"
                 )
                 if alt.summary:
-                    lines.append(f"     {alt.summary}")
+                    lines.append(f"     {_as_text(alt.summary)}")
             lines.append("")
 
         # Footer
@@ -518,15 +518,30 @@ class OutputFormatter:
 # ---------------------------------------------------------------------------
 
 
-def _split_paragraphs(text: str) -> list[str]:
+def _split_paragraphs(text: Any) -> list[str]:
     """Split text into paragraphs for formatted output."""
-    paragraphs = [p.strip() for p in text.strip().split("\n\n") if p.strip()]
-    return paragraphs or [text.strip()]
+    normalized = _as_text(text, "Not available.")
+    paragraphs = [p.strip() for p in normalized.strip().split("\n\n") if p.strip()]
+    return paragraphs or [normalized.strip()]
 
 
-def _indent_block(text: str, indent: str = "  ") -> str:
+def _indent_block(text: Any, indent: str = "  ", fallback: str = "") -> str:
     """Indent every line of a block of text."""
-    return "\n".join(f"{indent}{line}" for line in text.splitlines())
+    rendered = _as_text(text, fallback)
+    return "\n".join(f"{indent}{line}" for line in rendered.splitlines())
+
+
+def _as_text(text: Any, fallback: str = "") -> str:
+    """Render possibly missing structured data as readable text."""
+    if isinstance(text, dict):
+        return json.dumps(text, indent=2)
+    if text is None:
+        return fallback
+    if isinstance(text, str):
+        stripped = text.strip()
+        return stripped or fallback
+    rendered = str(text)
+    return rendered.strip() or fallback
 
 
 def _prior_art_to_dict(report: Any | None) -> dict[str, Any]:

@@ -1,0 +1,36 @@
+name: Queueing Theory
+domain: mathematics
+subdomain: queueing_theory
+
+axioms:
+  - "Little's Law is the universal accounting identity of queues: the average number of items in a system equals the average arrival rate multiplied by the average time each item spends in the system (L = lambda * W). It holds for any stable system regardless of arrival distribution, service distribution, or queue discipline."
+  - "In an M/M/1 queue, the relationship between utilization and latency is hyperbolic, not linear: response time approaches infinity as utilization approaches 100%. The practical consequence is that the last 20% of capacity costs dramatically more in latency than the first 80% — high utilization is a trap."
+  - "Priority scheduling does not create capacity — it redistributes waiting time. Giving one class of customer priority necessarily increases the average wait time for all other classes. Every priority system has losers, and the total system wait time is conserved."
+  - "The variance of inter-arrival and service times matters as much as their means: two systems with identical average arrival and service rates can have vastly different queue lengths if one has higher variance. Burstiness destroys performance even when average capacity is adequate."
+  - "Pooling queues — merging multiple separate queues into a single shared queue — always reduces average wait time for the same total capacity. Isolated queues suffer from statistical imbalance; shared queues allow idle servers to absorb bursts from any source."
+
+structural_patterns:
+  - name: utilization_latency_hyperbola
+    abstract: As system utilization increases linearly, response latency increases hyperbolically — the system appears to degrade gradually at first, then catastrophically as it approaches full capacity.
+    maps_to: [diminishing_returns, capacity_cliff, overload_nonlinearity, utilization_trap]
+
+  - name: priority_redistribution
+    abstract: Assigning priority to one class of work does not increase total throughput but redistributes waiting time — the prioritized class improves at the direct expense of all other classes.
+    maps_to: [zero_sum_priority, triage_tradeoff, queue_jumping, redistribution_cost]
+
+  - name: variance_penalty
+    abstract: High variability in arrival or service patterns degrades performance even when average capacity is sufficient — burstiness, not average load, is often the true performance killer.
+    maps_to: [burstiness_cost, variance_impact, consistency_value, predictability_premium]
+
+  - name: pooling_efficiency
+    abstract: Combining multiple isolated queues into a single shared queue reduces average wait time without adding capacity, because statistical multiplexing allows idle capacity in one queue to absorb bursts from another.
+    maps_to: [resource_pooling, statistical_multiplexing, shared_capacity, consolidation_benefit]
+
+injection_prompt: |
+  You are now reasoning through queueing theory. This is a domain where utilization and
+  latency have a nonlinear relationship, where variance matters as much as averages, and
+  where pooling queues creates efficiency from statistical multiplexing. Ask: what is the
+  utilization level, and is the system in the hyperbolic danger zone near capacity? Is
+  variance in arrival or service times driving performance problems more than average load?
+  Can queues be pooled to gain statistical multiplexing benefits? Does a priority scheme
+  exist, and who bears the redistributed cost? Apply Little's Law: L = lambda * W.

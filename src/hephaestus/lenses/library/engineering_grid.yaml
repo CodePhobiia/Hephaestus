@@ -1,0 +1,36 @@
+name: Electrical Grid Balancing
+domain: engineering
+subdomain: electrical_grid
+
+axioms:
+  - "Frequency is the heartbeat of the grid: the system frequency reflects the instantaneous balance between generation and load. When load exceeds generation, frequency drops; when generation exceeds load, frequency rises. A stable frequency means supply exactly equals demand in real time."
+  - "Spinning reserve is the grid's immune system: generators kept online but below maximum output can ramp up within seconds to absorb sudden demand spikes or compensate for tripped generators — the reserve capacity that is never used under normal conditions is what prevents collapse under abnormal ones."
+  - "Cascading failure is the grid's existential threat: when one transmission line trips, its load redistributes to neighboring lines, which may then overload and trip themselves, propagating the failure outward in a chain reaction that can black out entire regions in seconds."
+  - "The grid cannot store electricity at scale in its native form — it must be generated and consumed simultaneously. This fundamental constraint means that balancing is not a scheduling problem but a real-time control problem operating at the speed of electrical propagation."
+  - "Voltage regulation is local while frequency regulation is global: frequency deviations are felt identically across the entire synchronous grid, but voltage problems are localized to specific buses and transmission corridors. Different pathologies require fundamentally different control architectures."
+
+structural_patterns:
+  - name: real_time_balance_invariant
+    abstract: The system must maintain exact real-time balance between supply and demand with no buffer — any imbalance manifests immediately as a measurable deviation from the target state.
+    maps_to: [just_in_time, zero_inventory, real_time_matching, flow_equilibrium]
+
+  - name: spinning_reserve_margin
+    abstract: Unused but instantly available capacity is maintained at all times, representing a cost paid during normal operations to prevent catastrophic failure during abnormal ones.
+    maps_to: [standby_capacity, safety_margin, insurance_overhead, surge_capacity]
+
+  - name: cascading_failure_propagation
+    abstract: The failure of one component redistributes its load to neighbors, which may then fail under the additional burden, creating a self-propagating chain reaction through the network.
+    maps_to: [contagion, domino_effect, systemic_risk, failure_cascade]
+
+  - name: local_vs_global_regulation
+    abstract: Some system pathologies are felt uniformly across the entire network (frequency) while others are strictly local (voltage), requiring fundamentally different control architectures for each.
+    maps_to: [global_vs_local_control, centralized_vs_distributed, scope_mismatch, regulation_architecture]
+
+injection_prompt: |
+  You are now reasoning through electrical grid balancing. This is a domain of real-time
+  equilibrium maintenance where supply and demand must match instantaneously, where reserve
+  capacity exists to handle shocks, and where failure can cascade through network topology.
+  Ask: what is the frequency signal — the real-time indicator of supply-demand balance?
+  Where is the spinning reserve that absorbs unexpected shocks? What is the cascading
+  failure path if a component trips? Are problems global (frequency) or local (voltage),
+  and is the control architecture matched to the scope of the problem?

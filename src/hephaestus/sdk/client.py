@@ -527,59 +527,40 @@ class Hephaestus:
 
     def _build_genesis(self) -> Genesis:
         """Build the Genesis pipeline from current config."""
-        if self._model == "opus":
-            config = GenesisConfig(
-                anthropic_api_key=self._anthropic_key,
-                openai_api_key=self._openai_key,
-                decompose_model="claude-opus-4-5",
-                search_model="claude-opus-4-5",
-                score_model="claude-opus-4-5",
-                translate_model="claude-opus-4-5",
-                attack_model="claude-opus-4-5",
-                defend_model="claude-opus-4-5",
-                num_candidates=self._candidates,
-                num_translations=self._num_translations,
-                run_prior_art=self._run_prior_art,
-            )
-        elif self._model == "gpt5":
-            config = GenesisConfig(
-                anthropic_api_key=self._anthropic_key,
-                openai_api_key=self._openai_key,
-                decompose_model="gpt-4o",
-                search_model="gpt-4o",
-                score_model="gpt-4o-mini",
-                translate_model="gpt-4o",
-                attack_model="gpt-4o",
-                defend_model="gpt-4o",
-                num_candidates=self._candidates,
-                num_translations=self._num_translations,
-                run_prior_art=self._run_prior_art,
-            )
-        else:  # both
-            config = GenesisConfig(
-                anthropic_api_key=self._anthropic_key,
-                openai_api_key=self._openai_key,
-                decompose_model="claude-opus-4-5",
-                search_model="gpt-4o",
-                score_model="gpt-4o-mini",
-                translate_model="claude-opus-4-5",
-                attack_model="gpt-4o",
-                defend_model="claude-opus-4-5",
-                num_candidates=self._candidates,
-                num_translations=self._num_translations,
-                run_prior_art=self._run_prior_art,
-            )
+        from hephaestus.core.cross_model import get_model_preset
+
+        preset_key = {"opus": "opus", "gpt5": "gpt"}.get(self._model, "both")
+        models = get_model_preset(preset_key)
+
+        config = GenesisConfig(
+            anthropic_api_key=self._anthropic_key,
+            openai_api_key=self._openai_key,
+            decompose_model=models["decompose"],
+            search_model=models["search"],
+            score_model=models["score"],
+            translate_model=models["translate"],
+            attack_model=models["attack"],
+            defend_model=models["defend"],
+            num_candidates=self._candidates,
+            num_translations=self._num_translations,
+            run_prior_art=self._run_prior_art,
+        )
 
         return Genesis(config)
 
     def _build_adapter(self, model: str) -> Any:
         """Build the appropriate adapter for raw deepforge."""
+        from hephaestus.core.cross_model import get_model_preset
+
+        preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model, "both")
+        models = get_model_preset(preset_key)
+
         if model in ("opus", "both"):
             from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
-            return AnthropicAdapter(model="claude-opus-4-5", api_key=self._anthropic_key)
+            return AnthropicAdapter(model=models["decompose"], api_key=self._anthropic_key)
         else:
             from hephaestus.deepforge.adapters.openai import OpenAIAdapter
-            return OpenAIAdapter(model="gpt-4o", api_key=self._openai_key)
+            return OpenAIAdapter(model=models["decompose"], api_key=self._openai_key)
 
     def __repr__(self) -> str:
         return (

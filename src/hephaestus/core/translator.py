@@ -89,7 +89,7 @@ REQUIREMENTS:
 _TRANSLATE_PROMPT_TEMPLATE = """\
 TARGET PROBLEM:
 {original_problem}
-
+{banned_baselines_section}
 ABSTRACT STRUCTURAL FORM:
 {structure}
 
@@ -226,9 +226,11 @@ class SolutionTranslator:
         self,
         harness: DeepForgeHarness,
         top_n: int = 3,
+        system: str | None = None,
     ) -> None:
         self._harness = harness
         self._top_n = top_n
+        self._system_override = system
 
     async def translate(
         self,
@@ -322,15 +324,25 @@ class SolutionTranslator:
             use_pruner=False,   # Pruner not needed for translation
             use_pressure=False, # Pressure not needed — interference is active
             injection_strategy=InjectionStrategy.FULL,
-            max_tokens=2500,
+            max_tokens=16000,
             temperature=0.7,    # Higher temperature for creative translation
         )
 
         constraints_text = "\n".join(f"• {c}" for c in structure.constraints[:6])
         axioms_text = "\n".join(f"• {a}" for a in lens.axioms[:5])
 
+        # Build banned baselines section if available
+        banned = getattr(self, '_banned_baselines', None) or []
+        if banned:
+            banned_text = "\nBANNED BASELINES — these obvious approaches are NOT acceptable:\n"
+            banned_text += "\n".join(f"- {b}" for b in banned[:5])
+            banned_text += "\n"
+        else:
+            banned_text = ""
+
         prompt = _TRANSLATE_PROMPT_TEMPLATE.format(
             original_problem=structure.original_problem,
+            banned_baselines_section=banned_text,
             structure=structure.structure,
             mathematical_shape=structure.mathematical_shape,
             constraints=constraints_text or "• (none specified)",
@@ -349,10 +361,11 @@ class SolutionTranslator:
             config=config,
         )
 
+        translate_system = self._system_override if self._system_override is not None else _TRANSLATE_SYSTEM
         result = await interference_harness.forge(
             prompt,
-            system=_TRANSLATE_SYSTEM,
-            max_tokens=2500,
+            system=translate_system,
+            max_tokens=16000,
             temperature=0.7,
         )
 
@@ -370,14 +383,40 @@ class SolutionTranslator:
                     )
                 )
 
+        # Ensure all fields are strings (V2 prompt may cause dict returns)
+        arch = parsed.get("architecture", "")
+        if isinstance(arch, dict):
+            import json as _json
+            arch = _json.dumps(arch, indent=2)
+        elif not isinstance(arch, str):
+            arch = str(arch) if arch else ""
+
+        key_ins = parsed.get("key_insight", "")
+        if not isinstance(key_ins, str):
+            key_ins = str(key_ins) if key_ins else ""
+
+        impl_notes = parsed.get("implementation_notes", "")
+        if not isinstance(impl_notes, str):
+            impl_notes = str(impl_notes) if impl_notes else ""
+
+        math_proof = parsed.get("mathematical_proof", "")
+        if not isinstance(math_proof, str):
+            math_proof = str(math_proof) if math_proof else ""
+
+        lims = parsed.get("limitations", [])
+        if isinstance(lims, str):
+            lims = [lims]
+        elif not isinstance(lims, list):
+            lims = [str(lims)] if lims else []
+
         translation = Translation(
             invention_name=parsed.get("invention_name", f"{lens.name}-Inspired Solution"),
             mapping=mappings,
-            architecture=parsed.get("architecture", ""),
-            mathematical_proof=parsed.get("mathematical_proof", ""),
-            limitations=parsed.get("limitations", []),
-            implementation_notes=parsed.get("implementation_notes", ""),
-            key_insight=parsed.get("key_insight", ""),
+            architecture=arch,
+            mathematical_proof=math_proof,
+            limitations=lims,
+            implementation_notes=impl_notes,
+            key_insight=key_ins,
             source_candidate=candidate,
             cost_usd=result.trace.total_cost_usd,
             duration_seconds=time.monotonic() - t_start,

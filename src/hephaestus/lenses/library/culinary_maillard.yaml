@@ -1,0 +1,37 @@
+name: Maillard Reaction Chemistry
+domain: culinary
+subdomain: maillard_reaction
+
+axioms:
+  - "The Amadori rearrangement is the irreversible gateway: initial sugar-amino acid condensation is reversible, but once the Amadori product forms, the reaction cascades irreversibly through hundreds of parallel pathways — the point of no return is a specific molecular rearrangement, not a temperature."
+  - "Flavor compound formation is combinatorial: the Maillard reaction produces hundreds of volatile compounds from just a few starting amino acids and sugars, and the specific flavor profile depends on which amino acids and sugars are present, their ratios, pH, water activity, and temperature — the same reaction framework yields chocolate, bread crust, or roasted meat."
+  - "Temperature thresholds define reaction regimes: below 110C Maillard products are predominantly flavor precursors; between 140-165C the characteristic browning and aroma compounds form; above 180C pyrolysis and bitter compounds dominate. The chef navigates a narrow thermal corridor."
+  - "Water activity is the hidden variable: the Maillard reaction proceeds fastest at intermediate water activity (0.6-0.8) because water is both a reactant in the initial condensation and a product that inhibits the reaction at high concentrations. Drying the surface accelerates browning."
+  - "Browning kinetics follow an induction-acceleration pattern: there is a lag phase where precursors accumulate with no visible change, followed by an exponential acceleration of color and flavor development. The apparent suddenness of browning reflects autocatalytic feedback, not a simple threshold."
+
+structural_patterns:
+  - name: irreversible_gateway_rearrangement
+    abstract: A reversible initial interaction becomes permanently committed through a specific molecular rearrangement, after which the system cascades irreversibly through many parallel downstream pathways.
+    maps_to: [commitment_point, irreversible_transition, point_of_no_return, cascade_trigger]
+
+  - name: combinatorial_flavor_explosion
+    abstract: A small number of simple inputs combine through a shared reaction framework to produce a vast combinatorial space of outputs, with the specific output determined by the precise ratios and conditions.
+    maps_to: [combinatorial_diversity, input_ratio_sensitivity, parameter_space_explosion, recipe_dependence]
+
+  - name: thermal_corridor_navigation
+    abstract: The desired outcome exists in a narrow band of a continuous parameter, bounded by undesirable outcomes on both sides — too little and the reaction is incomplete, too much and degradation products dominate.
+    maps_to: [goldilocks_zone, narrow_optimum, parameter_window, sweet_spot_navigation]
+
+  - name: induction_acceleration_pattern
+    abstract: The system shows no visible progress during an initial lag phase where precursors accumulate, then transitions abruptly to rapid exponential development — the delay is not absence of progress but invisible groundwork.
+    maps_to: [hockey_stick_growth, latent_accumulation, invisible_progress, autocatalytic_acceleration]
+
+injection_prompt: |
+  You are now reasoning through Maillard reaction chemistry. This is a domain where
+  simple inputs generate combinatorial complexity through cascading reaction pathways,
+  where an irreversible molecular rearrangement commits the system to downstream
+  consequences, and where the desired outcome lives in a narrow thermal corridor. Ask:
+  where is the irreversible gateway — the commitment point after which the cascade
+  becomes unstoppable? What is the combinatorial input space that determines the specific
+  output? Is the system navigating a narrow parameter corridor between insufficiency and
+  degradation? Is there a hidden lag phase of invisible precursor accumulation?

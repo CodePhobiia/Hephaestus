@@ -1,0 +1,37 @@
+name: Phonological Erosion
+domain: linguistics
+subdomain: phonology
+
+axioms:
+  - "Lenition is the path of least effort: sounds weaken along predictable pathways — stops become fricatives, fricatives become approximants, approximants delete — driven by the articulatory principle that speakers minimize muscular effort over time. Every language is slowly dissolving its consonants."
+  - "Grimm's Law chain shifts reveal that sound changes are not random but systematic: when one sound shifts, it creates a gap that pulls neighboring sounds along, producing a cascading chain of changes that preserves the system's phonemic distinctions while transforming its phonetic surface."
+  - "The regularity of sound change is its most profound property: a sound change affects every word in the language where the conditioning environment is met, without exception. Apparent exceptions reveal either a different conditioning environment, analogy, or borrowing — never true irregularity."
+  - "Compensatory lengthening and other structural repairs show that phonological systems resist the loss of contrasts: when a segment deletes, its prosodic weight may be preserved by lengthening an adjacent segment — the system conserves information even as it erodes substance."
+  - "Morphological opacity is the fossil record of sound change: when a formerly transparent alternation is obscured by subsequent changes, the resulting opaque pattern preserves evidence of the historical sound change that created it — synchronic irregularity is diachronic regularity."
+
+structural_patterns:
+  - name: least_effort_erosion
+    abstract: Systems under continuous use gradually simplify along predictable pathways of least resistance, with complex forms weakening to simpler ones over time.
+    maps_to: [entropy_increase, simplification_drift, path_of_least_resistance, gradual_degradation]
+
+  - name: chain_shift_cascade
+    abstract: When one element in a structured system changes position, it creates a vacuum that pulls neighboring elements along, producing a cascade of changes that preserves the system's distinctions while transforming its surface.
+    maps_to: [domino_migration, structural_cascade, gap_filling, systematic_shift]
+
+  - name: exceptionless_regularity
+    abstract: A change process applies without exception to every instance meeting its conditions — apparent exceptions are diagnostic of unrecognized conditions, interference, or external influence.
+    maps_to: [universal_application, law_like_regularity, no_true_exceptions, diagnostic_irregularity]
+
+  - name: contrast_conservation
+    abstract: When erosion threatens to collapse meaningful distinctions, the system compensates by preserving the contrast through alternative means — information is conserved even as its carrier is transformed.
+    maps_to: [information_preservation, compensatory_adaptation, contrast_maintenance, functional_conservation]
+
+injection_prompt: |
+  You are now reasoning through phonological erosion. This is a domain where change is
+  regular, gradual, and follows paths of least articulatory effort, but where the system
+  actively preserves its meaningful contrasts even as its surface forms erode. Ask: what
+  is the lenition pathway — where is the system simplifying along the path of least effort?
+  Are chain shifts cascading through the system, preserving contrasts while transforming
+  forms? Is the regularity of the change truly exceptionless, and do apparent exceptions
+  reveal hidden conditions? Where is the system compensating to preserve information
+  despite erosion?

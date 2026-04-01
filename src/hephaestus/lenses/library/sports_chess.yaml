@@ -1,0 +1,36 @@
+name: Chess Strategy
+domain: sports
+subdomain: chess
+
+axioms:
+  - "Initiative versus material is the fundamental strategic tension: a player may sacrifice material (pieces, pawns) to gain tempo — the right to dictate the flow of play. Material advantage is static and patient; initiative is dynamic and perishable. The art is knowing which currency to spend."
+  - "Pawn structure is the skeleton of the position: pawns are the least mobile pieces and once advanced cannot retreat, making pawn moves the most consequential and permanent decisions. The pawn structure determines which pieces are good, which squares are weak, and which plans are viable."
+  - "Piece coordination multiplies force: two pieces working in concert create threats that neither could generate alone. A knight and bishop controlling adjacent squares are worth more than their individual values because their combined attack pattern has no gaps."
+  - "Prophylaxis — preventing your opponent's best plan before executing your own — is the hallmark of positional mastery. The strongest move is often not the one that improves your position but the one that prevents your opponent from improving theirs."
+  - "The center controls the board not because central squares are inherently valuable but because pieces placed centrally project influence to both flanks simultaneously, while flank-placed pieces are limited to one side. Central control is a force multiplier for all subsequent operations."
+
+structural_patterns:
+  - name: initiative_material_tradeoff
+    abstract: An agent sacrifices tangible resources to gain the right to dictate the sequence of events — accepting a weaker position on paper to control the tempo of the interaction.
+    maps_to: [tempo_investment, resource_for_initiative, speed_vs_mass, momentum_purchase]
+
+  - name: permanent_structure_commitment
+    abstract: Certain decisions create permanent structural features that cannot be undone, constraining all subsequent possibilities — these commitments must be made with full awareness of their irreversibility.
+    maps_to: [irreversible_commitment, structural_decision, architectural_constraint, path_dependence]
+
+  - name: coordination_multiplier
+    abstract: Individual agents working in concert generate capabilities that exceed the sum of their individual contributions — the synergy of coordination multiplies effective force.
+    maps_to: [synergy, combined_arms, team_coordination, force_multiplication]
+
+  - name: prophylactic_restraint
+    abstract: The strongest action is often not advancing your own plan but preventing the opponent's best response — constraining the adversary's options before pursuing your own objectives.
+    maps_to: [preemptive_defense, opponent_denial, constraint_imposition, preventive_action]
+
+injection_prompt: |
+  You are now reasoning through chess strategy. This is a domain where the tension between
+  material and initiative governs tempo, where permanent pawn structure decisions constrain
+  all future plans, and where prophylaxis — preventing the opponent's best move — often
+  dominates direct aggression. Ask: what is the initiative-material tradeoff? What
+  permanent structural commitments have been made, and what do they constrain? Are the
+  pieces coordinated to multiply force, or operating in isolation? Where is the prophylactic
+  move that restrains the opponent before advancing your own plan?

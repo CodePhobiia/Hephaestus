@@ -1,0 +1,36 @@
+name: Chemotaxis
+domain: biology
+subdomain: chemotaxis
+
+axioms:
+  - "Receptor methylation adaptation is the secret of persistent sensitivity: by resetting the signaling baseline through covalent modification, the cell maintains responsiveness to changes in concentration rather than absolute levels — it remembers the recent past to detect the present gradient."
+  - "Run-and-tumble navigation is biased random walk, not directed steering: the bacterium cannot turn toward the signal but can extend favorable runs and shorten unfavorable ones, achieving directed motion through statistical bias of an inherently stochastic process."
+  - "Gradient sensing at the single-cell scale is a temporal comparison, not a spatial one: the cell is too small to measure concentration differences across its body and must instead compare concentrations across time as it moves, converting a spatial problem into a memory problem."
+  - "The chemotactic response integrates multiple competing signals through a shared signaling pathway — attractants and repellents feed into the same phosphotransfer cascade with opposite signs, and the cell's trajectory reflects the net balance, not any single input."
+  - "Perfect adaptation ensures that the steady-state tumbling frequency returns to baseline regardless of ambient concentration: the system responds only to change, never to steady state. A cell in uniform high concentration behaves identically to one in uniform low concentration."
+
+structural_patterns:
+  - name: biased_random_walk
+    abstract: An agent navigating under uncertainty cannot steer directly toward a goal but can bias an inherently stochastic process — extending favorable trajectories and truncating unfavorable ones.
+    maps_to: [stochastic_optimization, explore_exploit, directional_drift, probabilistic_navigation]
+
+  - name: temporal_gradient_sensing
+    abstract: When an agent is too small relative to the signal landscape to sense spatial gradients directly, it must convert the spatial problem into a temporal one by comparing sequential measurements.
+    maps_to: [sequential_sampling, memory_based_navigation, trend_detection, time_series_analysis]
+
+  - name: adaptive_baseline_reset
+    abstract: The sensory system continuously resets its baseline to the current environment, maintaining sensitivity to changes rather than absolute levels — ensuring the system responds to dynamics, not statics.
+    maps_to: [hedonic_adaptation, relative_measurement, dynamic_calibration, change_detection]
+
+  - name: competing_signal_integration
+    abstract: Multiple attractant and repellent signals are integrated through a single shared pathway, and the system's behavior reflects the net balance of all inputs simultaneously.
+    maps_to: [multi_objective_optimization, signal_integration, net_assessment, weighted_decision]
+
+injection_prompt: |
+  You are now reasoning through chemotaxis. This is a domain where directed behavior
+  emerges from biased randomness, where sensitivity is maintained through adaptive
+  baseline reset, and where spatial problems are solved through temporal memory. Ask:
+  is the system navigating by biasing a random walk rather than steering directly?
+  Is it sensing gradients through temporal comparison? Has the baseline adapted such
+  that only changes — not absolute levels — are detected? Are multiple competing
+  signals being integrated through a shared decision pathway?

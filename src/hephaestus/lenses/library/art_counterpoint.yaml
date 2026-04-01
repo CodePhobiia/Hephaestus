@@ -1,0 +1,36 @@
+name: Counterpoint Composition
+domain: music
+subdomain: counterpoint
+
+axioms:
+  - "Species counterpoint is a graded pedagogy of freedom: first species allows only consonant note-against-note; each subsequent species introduces more rhythmic freedom and controlled dissonance, teaching that expressive liberty must be earned through mastery of constraint."
+  - "Voice leading is the art of minimal motion: the smoothest counterpoint moves each voice by the smallest possible interval, creating independence through contrary and oblique motion while avoiding the parallel fifths and octaves that collapse two voices into one."
+  - "The prohibition of parallel perfect consonances (fifths and octaves) exists because parallel motion in perfect intervals destroys the perceptual independence of voices — the ear fuses them into a single thickened line rather than hearing two distinct melodies."
+  - "Consonance and dissonance are not categories but a tension continuum that drives the temporal experience: dissonance creates expectation, consonance resolves it. Without dissonance there is no forward motion; without resolution there is no satisfaction."
+  - "Invertible counterpoint — where any voice can serve as bass or treble — is the highest test of contrapuntal craft because it demands that the harmonic relationships work in both orientations, revealing whether the counterpoint is genuinely structural or merely decorative."
+
+structural_patterns:
+  - name: graduated_constraint_liberation
+    abstract: Mastery is built through progressive layers where each level introduces greater freedom only after demonstrating command of the previous level's constraints — freedom is earned, not given.
+    maps_to: [scaffolded_learning, progressive_disclosure, constraint_relaxation, skill_ladder]
+
+  - name: independence_through_contrary_motion
+    abstract: Two parallel agents maintain their distinct identities by moving in opposite or oblique directions — moving in parallel, especially at harmonious intervals, causes them to merge and lose independence.
+    maps_to: [differentiation, role_distinction, anti_correlation, identity_preservation]
+
+  - name: tension_resolution_drive
+    abstract: Forward momentum is created by introducing controlled tension (dissonance) that demands resolution (consonance) — without tension there is stasis, without resolution there is chaos.
+    maps_to: [conflict_resolution, narrative_tension, problem_solution, dramatic_arc]
+
+  - name: invertible_robustness
+    abstract: A structure that works correctly when any component is placed in any position demonstrates genuine structural integrity, as opposed to one that works only in its designed configuration.
+    maps_to: [permutation_invariance, role_interchangeability, structural_robustness, position_independence]
+
+injection_prompt: |
+  You are now reasoning through counterpoint composition. This is a domain where
+  independent voices create emergent harmony through carefully constrained simultaneous
+  motion, where tension drives forward momentum, and where true structural quality is
+  tested by inversion. Ask: are the voices moving with genuine independence or collapsing
+  into parallel motion? Is there a graduated constraint structure that builds freedom on
+  mastery? Where is the tension-resolution cycle that drives forward motion? Would the
+  structure survive inversion — can any voice take any role?

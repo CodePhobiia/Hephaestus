@@ -1,0 +1,36 @@
+name: Quorum Sensing
+domain: biology
+subdomain: quorum_sensing
+
+axioms:
+  - "Autoinducer threshold dynamics create a binary switch from a continuous variable: each cell constitutively produces signal molecules, but the collective behavior activates only when the local concentration crosses a sharp threshold — individual whispers become a collective shout."
+  - "Quorum sensing is not voting but echo: each cell both produces and responds to the same signal, creating a positive feedback loop where detecting the signal causes more signal production, leading to rapid, switch-like transitions once the threshold is approached."
+  - "Cross-species signal interference means that quorum sensing operates in a contested information environment: other species may eavesdrop on signals, jam them with analogs, or degrade them enzymatically — the signal landscape is adversarial, not private."
+  - "The quorum threshold is a commitment device: by making costly collective behaviors contingent on population density, the system ensures that resources are not wasted on actions that require a minimum number of participants to succeed."
+  - "Diffusion geometry determines the quorum: the same number of cells in a large volume may never reach threshold while a smaller number in a confined space activates easily. The signal is not merely population but population density in the context of diffusion constraints."
+
+structural_patterns:
+  - name: threshold_activation
+    abstract: A continuously produced signal accumulates until crossing a sharp threshold, triggering a discrete collective behavior that no individual could achieve alone — the transition from individual to collective action is a phase change.
+    maps_to: [tipping_point, critical_mass, phase_transition, collective_activation]
+
+  - name: positive_feedback_echo
+    abstract: Each agent both produces and amplifies the coordination signal, creating a self-reinforcing loop that drives rapid, switch-like commitment once the threshold is near.
+    maps_to: [viral_amplification, bandwagon_effect, self_reinforcing_cycle, momentum]
+
+  - name: signal_jamming
+    abstract: Adversaries in the environment can intercept, mimic, degrade, or overwhelm the coordination signal, making the information channel unreliable and requiring signal authentication.
+    maps_to: [information_warfare, signal_degradation, adversarial_communication, spoofing]
+
+  - name: density_dependent_commitment
+    abstract: Costly collective actions are gated behind a density-dependent signal, ensuring resources are committed only when enough participants are present for the action to succeed.
+    maps_to: [minimum_viable_coalition, conditional_cooperation, commitment_device, coordination_gate]
+
+injection_prompt: |
+  You are now reasoning through quorum sensing. This is a domain where individual agents
+  produce continuous signals that trigger discrete collective behaviors once a threshold
+  is crossed, creating phase-transition-like shifts in group behavior. Ask: what is the
+  autoinducer signal — the continuously produced indicator that accumulates toward a
+  threshold? Is there positive feedback amplifying the signal near the tipping point?
+  Are adversaries jamming, eavesdropping, or degrading the signal? Does the diffusion
+  geometry of the environment determine whether the quorum can be reached?

@@ -183,7 +183,7 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
     """
     top = report.top_invention
     if not top:
-        console.print(f"[{RED}]No inventions produced.[/]")
+        print_warning(console, "No viable invention was produced for this run.")
         return
 
     console.print()
@@ -247,8 +247,9 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
 
 def _print_section(console: Console, title: str, content: str) -> None:
     """Print a labeled section."""
+    text = _safe_text(content, fallback="Not available.")
     console.print(f"  [{GOLD}]{title}:[/]")
-    console.print(f"  {content}")
+    console.print(f"  {text}")
     console.print()
 
 
@@ -287,6 +288,7 @@ def _print_invention_header(console: Console, top: Any) -> None:
 
 def _verdict_style(verdict: str) -> str:
     """Return Rich markup for a verdict string."""
+    verdict = _safe_text(verdict, fallback="UNKNOWN")
     colors = {
         "NOVEL": GREEN,
         "QUESTIONABLE": AMBER,
@@ -299,7 +301,10 @@ def _verdict_style(verdict: str) -> str:
 
 def _print_translation(console: Console, top: Any) -> None:
     """Print mechanism, translation mapping, and architecture."""
-    trans = top.translation
+    trans = getattr(top, "translation", None)
+    if not trans:
+        print_warning(console, "Translation details were not available for this invention.")
+        return
 
     # Key insight
     if hasattr(trans, "key_insight") and trans.key_insight:
@@ -308,11 +313,16 @@ def _print_translation(console: Console, top: Any) -> None:
         console.print()
 
     # Architecture
-    if hasattr(trans, "architecture") and trans.architecture:
+    arch = getattr(trans, "architecture", None)
+    if arch:
+        if isinstance(arch, dict):
+            import json
+            arch = json.dumps(arch, indent=2)
+        elif not isinstance(arch, str):
+            arch = str(arch)
         console.print(f"  [{GOLD}]ARCHITECTURE:[/]")
         console.print()
-        # Indent each paragraph
-        for para in trans.architecture.split("\n\n"):
+        for para in arch.split("\n\n"):
             if para.strip():
                 console.print(f"  {para.strip()}")
                 console.print()
@@ -328,34 +338,47 @@ def _print_translation(console: Console, top: Any) -> None:
         map_table.add_column("Mechanism", style=DIM, no_wrap=False)
         for elem in trans.mapping[:8]:  # cap at 8 rows
             map_table.add_row(
-                getattr(elem, "source_element", ""),
+                _safe_text(getattr(elem, "source_element", "")),
                 "→",
-                getattr(elem, "target_element", ""),
-                getattr(elem, "mechanism", ""),
+                _safe_text(getattr(elem, "target_element", "")),
+                _safe_text(getattr(elem, "mechanism", "")),
             )
         console.print(map_table)
         console.print()
+    else:
+        console.print(f"  [{DIM}]No structural mapping details were returned.[/]\n")
 
 
 def _print_adversarial(console: Console, top: Any) -> None:
     """Print adversarial verification results."""
-    adv = top.adversarial_result
+    adv = getattr(top, "adversarial_result", None)
 
     console.print(f"  [{GOLD}]ADVERSARIAL VERIFICATION:[/]")
     console.print()
 
-    if adv.fatal_flaws:
+    if isinstance(adv, str):
+        console.print(f"  {adv}")
+        console.print()
+        return
+
+    if adv is None:
+        console.print(f"  [{DIM}]No adversarial verification details were returned.[/]\n")
+        return
+
+    fatal_flaws = list(getattr(adv, "fatal_flaws", []) or [])
+    if fatal_flaws:
         console.print(f"  [{RED}]Fatal flaws:[/]")
-        for flaw in adv.fatal_flaws:
+        for flaw in fatal_flaws:
             console.print(f"  [{RED}]  ✗[/] {flaw}")
         console.print()
     else:
         console.print(f"  [{GREEN}]  ✓ No fatal flaws found[/]")
         console.print()
 
-    if adv.structural_weaknesses:
+    structural_weaknesses = list(getattr(adv, "structural_weaknesses", []) or [])
+    if structural_weaknesses:
         console.print(f"  [{AMBER}]Structural weaknesses:[/]")
-        for w in adv.structural_weaknesses:
+        for w in structural_weaknesses:
             console.print(f"  [{AMBER}]  ⚠[/] {w}")
         console.print()
 
@@ -401,7 +424,11 @@ def print_cost_table(console: Console, report: Any) -> None:
     console.print(f"  [{GOLD}]COST BREAKDOWN[/]")
     console.print()
 
-    cost = report.cost_breakdown
+    cost = getattr(report, "cost_breakdown", None)
+    if cost is None:
+        console.print(f"  [{DIM}]No cost breakdown available for this run.[/]\n")
+        return
+
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), show_header=True)
     table.add_column("Stage", style=AMBER, no_wrap=True)
     table.add_column("Cost (USD)", style=GREEN, justify="right")
@@ -424,9 +451,9 @@ def print_cost_table(console: Console, report: Any) -> None:
     console.print(table)
 
     # Footer stats
-    models = report.model_config
+    models = getattr(report, "model_config", {}) or {}
     model_str = " + ".join(sorted(set(models.values()))) if models else "N/A"
-    elapsed = report.total_duration_seconds
+    elapsed = float(getattr(report, "total_duration_seconds", 0.0))
     console.print()
     console.print(
         f"  [dim]Models:[/] [{CYAN}]{model_str}[/]  "
@@ -455,7 +482,8 @@ def print_trace(console: Console, report: Any) -> None:
         trace = top.trace
         console.print(f"  [dim]Attempts:[/] {getattr(trace, 'attempts', '?')}")
         console.print(f"  [dim]Pruner kills:[/] {getattr(trace, 'pruner_kills', 0)}")
-        console.print(f"  [dim]Mechanisms:[/] {', '.join(getattr(trace, 'mechanisms_used', []))}")
+        mechanisms = list(getattr(trace, "mechanisms_used", []) or [])
+        console.print(f"  [dim]Mechanisms:[/] {', '.join(mechanisms) if mechanisms else 'N/A'}")
         console.print(f"  [dim]Input tokens:[/] {int(getattr(trace, 'total_input_tokens', 0)):,}")
         console.print(f"  [dim]Output tokens:[/] {int(getattr(trace, 'total_output_tokens', 0)):,}")
         console.print(f"  [dim]Wall time:[/] {float(getattr(trace, 'wall_time_seconds', 0)):.2f}s")
@@ -490,9 +518,10 @@ def print_trace(console: Console, report: Any) -> None:
 
 def print_error(console: Console, error: str, hint: str | None = None) -> None:
     """Print a user-friendly error message."""
+    text = _safe_text(error, fallback="Something went wrong.")
     console.print()
     console.print(Panel(
-        Text(error, style=RED),
+        Text(text, style=RED),
         title="[bold red]Error[/]",
         border_style="red",
         padding=(0, 2),
@@ -528,4 +557,14 @@ def print_quiet_result(console: Console, report: Any) -> None:
             f"cost=[dim]${report.total_cost_usd:.4f}[/]"
         )
     else:
-        console.print(f"[{RED}]No inventions produced.[/]")
+        console.print(f"[{RED}]No viable invention produced.[/]")
+
+
+def _safe_text(value: Any, fallback: str = "") -> str:
+    """Render a value as a readable string for terminal output."""
+    if value is None:
+        return fallback
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or fallback
+    return str(value)

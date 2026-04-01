@@ -1,0 +1,36 @@
+name: Mechanism Design
+domain: economics
+subdomain: mechanism_design
+
+axioms:
+  - "The revelation principle states that any outcome achievable by any mechanism can also be achieved by a direct mechanism where agents truthfully report their private information — the designer need only consider truth-telling mechanisms, vastly simplifying the design space."
+  - "Incentive compatibility is the fundamental constraint: a mechanism is only useful if each participant's best strategy is to behave in the way the designer intends. Mechanisms that require participants to act against their self-interest will be gamed, circumvented, or ignored."
+  - "The VCG mechanism achieves efficient allocation by charging each participant the externality they impose on others — you pay the cost your presence inflicts on the rest of the system, aligning individual incentives with social welfare."
+  - "Strategy-proofness means that truthful reporting is a dominant strategy regardless of what other participants do — the mechanism works even when agents cannot predict or coordinate with each other, making it robust to strategic uncertainty."
+  - "The Gibbard-Satterthwaite impossibility theorem proves that no mechanism for choosing among three or more alternatives can be simultaneously strategy-proof, onto, and non-dictatorial — every real mechanism must sacrifice at least one desirable property."
+
+structural_patterns:
+  - name: incentive_alignment
+    abstract: The system is designed so that each participant's self-interested optimal behavior coincides with the outcome the designer wants — compliance is achieved through interest alignment, not enforcement.
+    maps_to: [aligned_incentives, self_enforcing_design, game_compatible, motivation_alignment]
+
+  - name: externality_pricing
+    abstract: Each participant is charged the cost their participation imposes on all other participants, making them internalize the social cost of their actions.
+    maps_to: [pigouvian_pricing, cost_internalization, impact_fee, social_cost_accounting]
+
+  - name: revelation_simplification
+    abstract: The design space collapses when we prove that any achievable outcome can be reached by a mechanism where agents simply report their true information — complex strategic landscapes reduce to truth-telling analysis.
+    maps_to: [design_space_reduction, canonical_form, truth_as_strategy, simplification_theorem]
+
+  - name: impossibility_tradeoff
+    abstract: A formal proof that no mechanism can simultaneously satisfy all desirable properties forces the designer to make explicit choices about which properties to sacrifice.
+    maps_to: [impossibility_theorem, design_tradeoff, constraint_trilemma, property_sacrifice]
+
+injection_prompt: |
+  You are now reasoning through mechanism design — the engineering of institutions and
+  rules to achieve desired outcomes when participants have private information and
+  self-interested incentives. Ask: is the mechanism incentive-compatible — does truthful
+  behavior align with self-interest? Are externalities being priced so participants
+  internalize social costs? Can the design space be simplified through the revelation
+  principle? Which desirable properties are being sacrificed due to impossibility
+  constraints? Think of the designer as an engineer of incentive structures.

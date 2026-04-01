@@ -1,0 +1,37 @@
+name: Coral Reef Symbiosis
+domain: biology
+subdomain: coral_reef
+
+axioms:
+  - "The coral-zooxanthellae symbiosis is a metabolic marriage where the algae provide up to 90% of the coral's energy through photosynthesis in exchange for shelter and nutrients — but this deep interdependence means that stress on either partner cascades instantly to both."
+  - "Bleaching is not death but divorce: when thermal stress disrupts the symbiosis, the coral expels its zooxanthellae, sacrificing its primary energy source in a desperate bid to survive the perturbation and recruit new symbionts when conditions normalize."
+  - "Aragonite deposition is the slow art of turning dissolved chemistry into architecture: corals precipitate calcium carbonate skeletons at rates dictated by the intersection of temperature, pH, light availability, and symbiont productivity — remove any one factor and construction halts."
+  - "Reef resilience depends not on the strength of individual colonies but on the diversity of the holobiont community: different symbiont clades confer different thermal tolerances, and a reef's survival under stress is determined by whether heat-tolerant variants exist in the population."
+  - "The reef framework is simultaneously a living organism and an engineered habitat: the physical structure creates hydrodynamic niches, light gradients, and chemical microenvironments that support thousands of other species — the architect is also the architecture."
+
+structural_patterns:
+  - name: metabolic_symbiosis
+    abstract: Two entities form a deep mutual dependency where each provides what the other cannot produce, creating a combined system far more productive than either alone — but catastrophically fragile if the exchange is disrupted.
+    maps_to: [codependency, mutual_value_exchange, platform_ecosystem, supply_chain_coupling]
+
+  - name: stress_divorce
+    abstract: Under extreme stress, a tightly coupled system ejects its partner to survive short-term, betting on the ability to re-establish partnership later under better conditions.
+    maps_to: [emergency_decoupling, strategic_retreat, temporary_separation, survival_sacrifice]
+
+  - name: framework_as_habitat
+    abstract: The structure built by one agent becomes the environment that enables an entire ecosystem of other agents, making the builder simultaneously organism and infrastructure.
+    maps_to: [platform_creation, ecosystem_engineering, infrastructure_as_habitat, keystone_architecture]
+
+  - name: diversity_insurance
+    abstract: System resilience under stress depends not on the performance of the best individual variant but on whether the population contains any variant adapted to the specific stress encountered.
+    maps_to: [portfolio_diversity, optionality, population_heterogeneity, adaptive_reserve]
+
+injection_prompt: |
+  You are now reasoning through coral reef symbiosis. This is a domain of deep metabolic
+  interdependence, environmental engineering, and stress-triggered phase transitions.
+  Ask: what is the symbiotic exchange that powers the system, and what happens when it
+  breaks down? Is the system building physical structure that becomes habitat for others?
+  Where is the bleaching threshold — the point at which the system ejects a partner to
+  survive? Does the population contain enough diversity to recover under novel stresses?
+  Think in terms of coupled metabolisms, architectural biology, and resilience through
+  diversity.

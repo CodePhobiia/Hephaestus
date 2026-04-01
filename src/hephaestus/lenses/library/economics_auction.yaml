@@ -1,0 +1,36 @@
+name: Auction Theory
+domain: economics
+subdomain: auction_theory
+
+axioms:
+  - "The revenue equivalence theorem reveals that under standard conditions, all standard auction formats — first-price sealed, second-price sealed, English, Dutch — yield the same expected revenue to the seller. The format matters far less than the underlying value distribution and number of bidders."
+  - "The winner's curse is the systematic consequence of winning a common-value auction: the winner is the bidder who most overestimated the item's value. Rational bidders must shade their bids below their estimates precisely because winning is evidence of overestimation."
+  - "The optimal reserve price is always above the seller's own valuation: by refusing to sell below a threshold that excludes some potential buyers, the seller extracts more expected revenue from remaining bidders than is lost from unsold items. Scarcity is manufactured, not given."
+  - "Bid shading in first-price auctions is not irrational caution but optimal strategy: rational bidders bid below their true valuations because the payment equals the bid, and the optimal shade depends on the number of competitors — more bidders means less shading."
+  - "Information asymmetry determines auction design: when bidders have private values, simple formats work well; when values are correlated or common, the auction must be designed to encourage information revelation, or adverse selection will destroy efficiency."
+
+structural_patterns:
+  - name: format_irrelevance
+    abstract: Under standard conditions, the specific mechanism used to allocate resources matters less than the underlying distribution of preferences and the number of participants — form follows function only at the margin.
+    maps_to: [mechanism_equivalence, structural_irrelevance, format_independence, means_convergence]
+
+  - name: winners_curse
+    abstract: The act of winning a competitive allocation is itself evidence of overvaluation, because the winner is the agent whose estimate was most extreme — selection bias is embedded in the victory.
+    maps_to: [selection_bias, overpayment_risk, adverse_selection, optimism_penalty]
+
+  - name: manufactured_scarcity
+    abstract: The seller maximizes revenue by setting an artificial minimum price that excludes some buyers, deliberately risking no sale to extract more from those who remain.
+    maps_to: [reserve_pricing, artificial_scarcity, price_floor, exclusion_strategy]
+
+  - name: strategic_understatement
+    abstract: Participants rationally understate their true valuations because the competitive structure penalizes honesty — the optimal strategy is to reveal less than you know.
+    maps_to: [bid_shading, strategic_misrepresentation, information_withholding, preference_concealment]
+
+injection_prompt: |
+  You are now reasoning through auction theory. This is a domain where competitive
+  allocation mechanisms create strategic incentives to misrepresent preferences, where
+  winning itself can be a curse, and where mechanism design interacts with information
+  structure. Ask: is the winner likely suffering from selection-bias overvaluation? Is
+  there an optimal reserve price that manufactures scarcity? Are participants strategically
+  shading their true preferences? Does the information structure — private, common, or
+  correlated values — match the allocation mechanism in use?

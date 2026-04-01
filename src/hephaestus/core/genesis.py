@@ -127,6 +127,9 @@ class GenesisConfig:
 
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
+    openrouter_api_key: str | None = None
+    use_claude_cli: bool = False
+    use_claude_max: bool = False
 
     # Model selection
     decompose_model: str = "claude-opus-4-5"
@@ -148,12 +151,22 @@ class GenesisConfig:
     use_interference_in_translate: bool = True
     run_prior_art: bool = True
 
+    # V2 system prompt parameters
+    divergence_intensity: str = "STANDARD"  # STANDARD | AGGRESSIVE | MAXIMUM
+    output_mode: str = "MECHANISM"  # MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM | PROTOCOL | TAXONOMY | INTERFACE
+    output_length: str = "FULL"  # DENSE | FULL | EXPANSIVE
+
     # Token budgets
-    max_tokens_decompose: int = 1024
-    max_tokens_search: int = 800
-    max_tokens_score: int = 600
-    max_tokens_translate: int = 2500
-    max_tokens_verify: int = 800
+    max_tokens_decompose: int = 16000
+    max_tokens_search: int = 16000
+    max_tokens_score: int = 16000
+    max_tokens_translate: int = 16000
+    max_tokens_verify: int = 16000
+
+    # V2 mechanisms
+    exclusion_zone: list[str] | None = None
+    banned_baselines: list[str] | None = None
+    max_rejection_retries: int = 1
 
     # Library override
     lens_library_dir: str | None = None
@@ -304,13 +317,23 @@ class InventionReport:
                 "source_domain": top.source_domain if top else None,
                 "novelty_score": top.novelty_score if top else None,
                 "feasibility": top.feasibility_rating if top else None,
-                "verdict": top.verdict if top else None,
+                "verdict": getattr(top, 'verdict', None) if top else None,
+                "architecture": getattr(top.translation, 'architecture', None) if top and hasattr(top, 'translation') else None,
+                "mapping": getattr(top.translation, 'mapping', None) if top and hasattr(top, 'translation') else None,
+                "limitations": getattr(top.translation, 'limitations', None) if top and hasattr(top, 'translation') else None,
+                "key_insight": getattr(top.translation, 'key_insight', None) if top and hasattr(top, 'translation') else None,
+                "implementation_notes": getattr(top.translation, 'implementation_notes', None) if top and hasattr(top, 'translation') else None,
+                "adversarial_critique": getattr(top, 'adversarial_result', None) if top else None,
+                "validity_notes": getattr(top, 'validity_notes', None) if top else None,
+                "recommended_next_steps": getattr(top, 'recommended_next_steps', None) if top else None,
             } if top else None,
             "alternatives": [
                 {
                     "name": inv.invention_name,
                     "source_domain": inv.source_domain,
                     "novelty_score": inv.novelty_score,
+                    "architecture": getattr(inv.translation, 'architecture', None) if hasattr(inv, 'translation') else None,
+                    "key_insight": getattr(inv.translation, 'key_insight', None) if hasattr(inv, 'translation') else None,
                 }
                 for inv in self.alternative_inventions
             ],
@@ -446,6 +469,69 @@ class Genesis:
             _LensLoader = _genesis_module.LensLoader
             _LensSelector = _genesis_module.LensSelector
 
+            # ── Phase 0: Burn-Off (generate obvious baselines) ─────────────
+            baselines: list[str] = list(self._config.banned_baselines or [])
+            try:
+                from hephaestus.core.burn_off import BurnOff
+                burn_off = BurnOff(self._harnesses["decompose"])
+                burn_off_results = await burn_off.generate_baselines(problem)
+                if burn_off_results:
+                    baselines.extend(burn_off_results)
+                    logger.info("Burn-off produced %d baselines", len(burn_off_results))
+            except Exception as exc:
+                logger.warning("Burn-off skipped: %s", exc)
+
+            # ── Anti-Memory query (exclusion zone) ─────────────────────────
+            exclusion_zone: str = ""
+            config_exclusions = self._config.exclusion_zone or []
+            if config_exclusions:
+                exclusion_zone = "\n".join(f"- {e}" for e in config_exclusions)
+            try:
+                from hephaestus.memory.anti_memory import AntiMemory
+                anti_mem = AntiMemory()
+                past_inventions = anti_mem.query(problem, top_k=5)
+                if past_inventions:
+                    mem_lines = [
+                        f"- {p['invention_name']}: {p['text'][:120]}"
+                        for p in past_inventions
+                    ]
+                    exclusion_zone = (exclusion_zone + "\n" + "\n".join(mem_lines)).strip()
+                    logger.info("Anti-memory exclusion zone: %d past inventions", len(past_inventions))
+            except Exception as exc:
+                logger.warning("Anti-memory query skipped: %s", exc)
+
+            # ── Build V2 system prompt (with burn-off + anti-memory) ───────
+            v2_system_prompt: str | None = None
+            try:
+                from hephaestus.prompts.system_prompt import build_system_prompt
+                v2_system_prompt = build_system_prompt(
+                    user_prompt=problem,
+                    anti_memory_zone=exclusion_zone,
+                    banned_baselines="\n".join(f"- {b}" for b in baselines) if baselines else "",
+                    output_mode=self._config.output_mode,
+                    divergence_intensity=self._config.divergence_intensity,
+                    output_length=self._config.output_length,
+                )
+                logger.info(
+                    "V2 system prompt built | intensity=%s mode=%s baselines=%d",
+                    self._config.divergence_intensity,
+                    self._config.output_mode,
+                    len(baselines),
+                )
+            except Exception as exc:
+                logger.warning("V2 system prompt build failed, using per-stage prompts: %s", exc)
+
+            # ── CrutchFilter injection ─────────────────────────────────────
+            try:
+                from hephaestus.deepforge.crutch_filter import CrutchFilter
+                cf = CrutchFilter()
+                crutch_constraint = cf.get_negative_constraint_for_claude()
+                if v2_system_prompt:
+                    v2_system_prompt = v2_system_prompt + "\n\n" + crutch_constraint
+                logger.info("Crutch filter injected (%d banned words)", len(cf.words))
+            except Exception as exc:
+                logger.warning("Crutch filter skipped: %s", exc)
+
             # ── Stage 1: Decompose ──────────────────────────────────────────
             yield PipelineUpdate(
                 stage=PipelineStage.DECOMPOSING,
@@ -570,10 +656,16 @@ class Genesis:
                 elapsed_seconds=elapsed(),
             )
 
+            # V2 system prompt is NOT passed to translator — it conflicts with
+            # the JSON output format. Creativity forcing happens through the
+            # mechanical constraints (burn-off, anti-memory, crutch filter,
+            # lens selection, cognitive interference) not prompt overrides.
+            # Banned baselines ARE injected into the translator prompt directly.
             translator = _SolutionTranslator(
                 harness=self._harnesses["translate"],
                 top_n=self._config.num_translations,
             )
+            translator._banned_baselines = baselines if baselines else []
             translations = await translator.translate(scored, structure)
 
             if not translations:
@@ -622,6 +714,43 @@ class Genesis:
                 data=verified,
                 elapsed_seconds=elapsed(),
             )
+
+            # ── Failure log store (persist rejected inventions/critique) ───
+            if verified:
+                try:
+                    from hephaestus.analytics.failure_log import FailureLog
+
+                    failure_log = FailureLog()
+                    rejected_records = failure_log.append_rejected_inventions(
+                        verified,
+                        target_domain=structure.native_domain,
+                        problem=problem,
+                        baselines=baselines,
+                    )
+                    if rejected_records:
+                        logger.info(
+                            "Stored %d rejected inventions in failure log",
+                            len(rejected_records),
+                        )
+                except Exception as exc:
+                    logger.warning("Failure log store skipped: %s", exc)
+
+            # ── Anti-Memory store (persist inventions for future exclusion) ─
+            if verified:
+                try:
+                    from hephaestus.memory.anti_memory import AntiMemory
+                    anti_mem_store = AntiMemory()
+                    for inv in verified:
+                        anti_mem_store.store(
+                            f"{inv.invention_name}: {inv.translation.architecture[:500]}",
+                            metadata={
+                                "invention_name": inv.invention_name,
+                                "source_domain": inv.source_domain,
+                            },
+                        )
+                    logger.info("Stored %d inventions in anti-memory", len(verified))
+                except Exception as exc:
+                    logger.warning("Anti-memory store skipped: %s", exc)
 
             # ── Build Report ─────────────────────────────────────────────────
             report = InventionReport(
@@ -704,13 +833,44 @@ class Genesis:
     @staticmethod
     def _build_adapters(cfg: GenesisConfig) -> dict[str, Any]:
         """Build the model adapters needed for each stage."""
+        import os
         import hephaestus.core.genesis as _genesis_module
         _AnthropicAdapter = _genesis_module.AnthropicAdapter
         _OpenAIAdapter = _genesis_module.OpenAIAdapter
 
         adapters: dict[str, Any] = {}
 
-        # Deduplicate: build each unique model name once
+        all_models = {
+            cfg.decompose_model, cfg.search_model, cfg.score_model,
+            cfg.translate_model, cfg.attack_model, cfg.defend_model
+        }
+
+        # Claude Max mode — route ALL models through OAT subscription auth
+        if cfg.use_claude_max:
+            from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
+            logger.info("Claude Max mode — routing all models via OAT subscription auth")
+            for model_name in all_models:
+                adapters[model_name] = ClaudeMaxAdapter(model=model_name)
+            return adapters
+
+        # Claude CLI mode
+        if cfg.use_claude_cli:
+            from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
+            logger.info("Claude CLI mode — routing all models through claude --print")
+            for model_name in all_models:
+                adapters[model_name] = ClaudeCliAdapter(model=model_name)
+            return adapters
+
+        # OpenRouter mode
+        openrouter_key = cfg.openrouter_api_key or os.environ.get("OPENROUTER_API_KEY")
+        if openrouter_key:
+            from hephaestus.deepforge.adapters.openrouter import OpenRouterAdapter
+            logger.info("OpenRouter mode — routing all models through OpenRouter")
+            for model_name in all_models:
+                adapters[model_name] = OpenRouterAdapter(model=model_name, api_key=openrouter_key)
+            return adapters
+
+        # Direct API keys — deduplicate: build each unique model name once
         anthropic_models = {
             n for n in [
                 cfg.decompose_model,
@@ -758,8 +918,11 @@ class Genesis:
                             model=model_name,
                             api_key=cfg.openai_api_key,
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc2:
+                        logger.warning(
+                            "No adapter created for model %s: anthropic=%s openai=%s",
+                            model_name, exc, exc2,
+                        )
 
         return adapters
 

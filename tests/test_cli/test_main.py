@@ -553,6 +553,23 @@ class TestErrorHandling:
         # Should not crash, might show error message
         assert "Traceback" not in result.output
 
+    @patch("hephaestus.core.genesis.Genesis")
+    def test_unexpected_pipeline_exception_no_traceback(
+        self, MockGenesis: MagicMock, runner: CliRunner
+    ) -> None:
+        async def _broken_stream(*args: Any, **kwargs: Any):
+            raise RuntimeError("socket closed")
+            yield
+
+        instance = MockGenesis.return_value
+        instance.invent_stream = _broken_stream
+
+        result = runner.invoke(cli, ["test problem"])
+
+        assert result.exit_code == 1
+        assert "Traceback" not in result.output
+        assert "socket" in result.output.lower() or "pipeline" in result.output.lower()
+
 
 # ---------------------------------------------------------------------------
 # Raw mode
