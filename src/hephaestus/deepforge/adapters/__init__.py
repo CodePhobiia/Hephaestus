@@ -16,6 +16,7 @@ from hephaestus.deepforge.adapters.base import (
 from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter, ANTHROPIC_MODELS
 from hephaestus.deepforge.adapters.openai import OpenAIAdapter, OPENAI_MODELS
 from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter, CODEX_CLI_MODELS
+from hephaestus.deepforge.adapters.codex_oauth import CodexOAuthAdapter, CODEX_OAUTH_MODELS
 
 __all__ = [
     # Base
@@ -31,4 +32,6 @@ __all__ = [
     "OPENAI_MODELS",
     "CodexCliAdapter",
     "CODEX_CLI_MODELS",
+    "CodexOAuthAdapter",
+    "CODEX_OAUTH_MODELS",
 ]

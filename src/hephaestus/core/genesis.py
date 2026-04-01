@@ -872,15 +872,15 @@ class Genesis:
 
         # Codex CLI mode (ChatGPT/Codex OAuth, GPT Pro subscription)
         if cfg.use_codex_cli:
-            from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
-            logger.info("Codex CLI mode — routing all models through codex exec")
+            from hephaestus.deepforge.adapters.codex_oauth import CodexOAuthAdapter
+            logger.info("Codex OAuth mode — routing all models through native openai-codex-responses transport")
             codex_default = "gpt-5.4"
             for model_name in all_models:
                 # Route every stage through Codex; unknown provider model names map to configured Codex model
                 target_model = model_name if model_name.startswith("gpt-") else codex_default
-                adapters[model_name] = CodexCliAdapter(model=target_model)
+                adapters[model_name] = CodexOAuthAdapter(model=target_model)
                 if target_model != model_name:
-                    logger.info("Codex CLI: mapped %s -> %s", model_name, target_model)
+                    logger.info("Codex OAuth: mapped %s -> %s", model_name, target_model)
             return adapters
 
         # OpenRouter mode
