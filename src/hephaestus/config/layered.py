@@ -21,7 +21,6 @@ import yaml
 
 from hephaestus.cli.config import (
     HEPHAESTUS_DIR,
-    CONFIG_PATH,
     HephaestusConfig,
     VALID_BACKENDS,
     VALID_INTENSITIES,
@@ -55,27 +54,50 @@ class ConfigValidationError(ValueError):
     """Raised when a config value fails validation."""
 
 
+def find_project_root(start_dir: Path | None = None) -> Path | None:
+    """Walk up from *start_dir* looking for a ``.hephaestus/`` directory.
+
+    Returns the directory that **contains** ``.hephaestus/``, or ``None``.
+    """
+    current = (start_dir or Path.cwd()).resolve()
+    while True:
+        if (current / ".hephaestus").is_dir():
+            return current
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
+
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge *override* into *base* (returns new dict, no mutation)."""
+    merged = dict(base)
+    for key, val in override.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(val, dict):
+            merged[key] = _deep_merge(merged[key], val)
+        else:
+            merged[key] = val
+    return merged
+
+
 class LayeredConfig:
     """Resolves configuration from multiple layered sources."""
 
-    def __init__(self, start_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        start_dir: Path | None = None,
+        user_config_dir: Path | None = None,
+    ) -> None:
         self._start_dir = Path(start_dir) if start_dir else Path.cwd()
+        self._user_config_dir = user_config_dir or HEPHAESTUS_DIR
         self._sources: dict[str, str] = {}
         self._project_root: Path | None = None
         self._resolved: HephaestusConfig | None = None
 
     @staticmethod
-    def find_project_root(start_dir: Path) -> Path | None:
+    def find_project_root(start_dir: Path | None = None) -> Path | None:
         """Walk up from *start_dir* looking for a ``.hephaestus/`` directory."""
-        current = start_dir.resolve()
-        while True:
-            candidate = current / ".hephaestus"
-            if candidate.is_dir():
-                return current
-            parent = current.parent
-            if parent == current:
-                return None
-            current = parent
+        return find_project_root(start_dir)
 
     def resolve(self) -> HephaestusConfig:
         """Merge all layers and return the final config."""
@@ -89,26 +111,27 @@ class LayeredConfig:
         defaults = asdict(HephaestusConfig())
         for key, value in defaults.items():
             merged[key] = value
-            self._sources[key] = "defaults"
+            self._sources[key] = "<builtin>"
 
         # Layer 2: user global
-        self._apply_yaml(CONFIG_PATH, merged, config_fields, "user-global")
+        user_config = self._user_config_dir / "config.yaml"
+        self._apply_yaml(user_config, merged, config_fields, str(user_config))
 
         # Layer 3 & 4: project + local
-        self._project_root = self.find_project_root(self._start_dir)
+        self._project_root = find_project_root(self._start_dir)
         if self._project_root is not None:
             project_config = self._project_root / ".hephaestus" / "config.yaml"
-            self._apply_yaml(project_config, merged, config_fields, f"project:{project_config}")
+            self._apply_yaml(project_config, merged, config_fields, str(project_config))
 
             local_config = self._project_root / ".hephaestus" / "local.yaml"
-            self._apply_yaml(local_config, merged, config_fields, f"local:{local_config}")
+            self._apply_yaml(local_config, merged, config_fields, str(local_config))
 
         # Layer 5: environment variables
         for env_var, field_name in _ENV_MAP.items():
             raw = os.environ.get(env_var)
             if raw is not None and field_name in config_fields:
                 merged[field_name] = _coerce(field_name, raw)
-                self._sources[field_name] = f"env:{env_var}"
+                self._sources[field_name] = "<env>"
 
         # Validate
         self._validate(merged)
@@ -183,4 +206,4 @@ def _coerce(field_name: str, raw: str) -> Any:
     return raw
 
 
-__all__ = ["LayeredConfig", "ConfigValidationError"]
+__all__ = ["LayeredConfig", "ConfigValidationError", "find_project_root", "_deep_merge"]
