@@ -888,8 +888,9 @@ def init_cmd() -> None:
 
 def main() -> None:
     """Entry point for the heph CLI command."""
-    # Check for 'init' subcommand
+    # Check for 'init' subcommand before Click parses argv
     if len(sys.argv) > 1 and sys.argv[1] == "init":
+        sys.argv = [sys.argv[0]]  # Strip 'init' so Click doesn't see it
         init_cmd(standalone_mode=True)
         return
     cli()
