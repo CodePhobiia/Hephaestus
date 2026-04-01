@@ -30,7 +30,7 @@ SESSIONS_DIR = HEPHAESTUS_DIR / "sessions"
 # Config dataclass
 # ---------------------------------------------------------------------------
 
-VALID_BACKENDS = ("claude-max", "claude-cli", "api", "openrouter")
+VALID_BACKENDS = ("claude-max", "claude-cli", "codex-cli", "api", "openrouter")
 VALID_INTENSITIES = ("STANDARD", "AGGRESSIVE", "MAXIMUM")
 VALID_OUTPUT_MODES = (
     "MECHANISM",
@@ -168,6 +168,22 @@ def _detect_claude_cli() -> bool:
     return shutil.which("claude") is not None
 
 
+def _detect_codex_cli() -> bool:
+    """Return True if Codex CLI and ChatGPT/Codex auth are available."""
+    import json, shutil
+    codex_bin = shutil.which("codex")
+    if codex_bin is None:
+        return False
+    auth_path = Path.home() / ".codex" / "auth.json"
+    if not auth_path.exists():
+        return False
+    try:
+        data = json.loads(auth_path.read_text())
+        return data.get("auth_mode") == "chatgpt" and bool(data.get("tokens", {}).get("id_token"))
+    except Exception:
+        return False
+
+
 def run_onboarding(console: Console) -> HephaestusConfig:
     """
     Interactive first-run setup wizard.
@@ -180,6 +196,7 @@ def run_onboarding(console: Console) -> HephaestusConfig:
     # Detect available backends
     has_claude_max = _detect_claude_max()
     has_claude_cli = _detect_claude_cli()
+    has_codex_cli = _detect_codex_cli()
     has_api = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
     has_openrouter = bool(os.environ.get("OPENROUTER_API_KEY"))
 
@@ -187,12 +204,14 @@ def run_onboarding(console: Console) -> HephaestusConfig:
     recommended = None
     if has_claude_max:
         recommended = "1"
-    elif has_api:
+    elif has_codex_cli:
         recommended = "3"
+    elif has_api:
+        recommended = "4"
     elif has_claude_cli:
         recommended = "2"
     elif has_openrouter:
-        recommended = "4"
+        recommended = "5"
 
     banner = Text()
     banner.append("  Welcome to Hephaestus interactive mode.\n", style="dim")
@@ -217,19 +236,27 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
-    banner.append("  [3] API keys", style="bold cyan")
-    banner.append("   — Direct API access (Anthropic + OpenAI, pay-per-use)", style="dim")
-    if has_api:
-        banner.append("  <-- keys found", style="bold green")
+    banner.append("  [3] Codex CLI", style="bold cyan")
+    banner.append(" — Uses your GPT Pro / ChatGPT Codex OAuth session", style="dim")
+    if has_codex_cli:
+        banner.append("  <-- detected", style="bold green")
     if recommended == "3":
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
-    banner.append("  [4] OpenRouter", style="bold cyan")
+    banner.append("  [4] API keys", style="bold cyan")
+    banner.append("   — Direct API access (Anthropic + OpenAI, pay-per-use)", style="dim")
+    if has_api:
+        banner.append("  <-- keys found", style="bold green")
+    if recommended == "4":
+        banner.append("  (recommended)", style="bold green")
+    banner.append("\n")
+
+    banner.append("  [5] OpenRouter", style="bold cyan")
     banner.append(" — Single API key, routes to many models", style="dim")
     if has_openrouter:
         banner.append("  <-- key found", style="bold green")
-    if recommended == "4":
+    if recommended == "5":
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
@@ -242,23 +269,23 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         )
     )
 
-    backend_map = {"1": "claude-max", "2": "claude-cli", "3": "api", "4": "openrouter"}
+    backend_map = {"1": "claude-max", "2": "claude-cli", "3": "codex-cli", "4": "api", "5": "openrouter"}
     rec_hint = f" [dim](Enter for {recommended})[/]" if recommended else ""
 
     while True:
         try:
-            choice = console.input(f"  [bold yellow]Choose 1-4{rec_hint}>[/] ").strip()
+            choice = console.input(f"  [bold yellow]Choose 1-5{rec_hint}>[/] ").strip()
         except (EOFError, KeyboardInterrupt):
-            fallback = recommended or "3"
+            fallback = recommended or "4"
             console.print(f"\n  [dim]Setup interrupted. Using option {fallback} for now.[/]")
-            choice = recommended or "3"
+            choice = recommended or "4"
             break
         if not choice and recommended:
             choice = recommended
             break
         if choice in backend_map:
             break
-        console.print("  [red]Please enter 1, 2, 3, or 4.[/]")
+        console.print("  [red]Please enter 1, 2, 3, 4, or 5.[/]")
 
     backend = backend_map.get(choice, "api")
     cfg = HephaestusConfig(backend=backend)

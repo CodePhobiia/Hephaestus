@@ -217,6 +217,12 @@ def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
             "ready" if ready else "not ready",
             "`claude` is on PATH." if ready else "Install the Claude CLI or switch to /backend api.",
         )
+    if backend == "codex-cli":
+        ready = _detect_codex_cli_available()
+        return (
+            "ready" if ready else "not ready",
+            "Uses your Codex/ChatGPT OAuth from ~/.codex." if ready else "Run `codex login` on this machine first.",
+        )
     if backend == "openrouter":
         ready = bool(getattr(config, "openrouter_api_key", None))
         return (
@@ -249,13 +255,19 @@ def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
         if openai:
             providers.append("OpenAI")
         return "ready", f"API keys detected: {', '.join(providers)}."
-    return "not ready", "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or switch to /backend claude-max."
+    return "not ready", "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or switch to /backend claude-max or /backend codex-cli."
 
 
 def _detect_claude_max_available() -> bool:
     from hephaestus.cli.config import _detect_claude_max
 
     return _detect_claude_max()
+
+
+def _detect_codex_cli_available() -> bool:
+    from hephaestus.cli.config import _detect_codex_cli
+
+    return _detect_codex_cli()
 
 
 def _detect_claude_cli_available() -> bool:
@@ -381,21 +393,21 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
 VALID_MODELS = {
     "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5",
     "claude-sonnet-4-5", "claude-opus-4-5",
-    "gpt-4o", "gpt-4o-mini", "o3", "o4-mini",
-    "opus", "gpt5", "both",
+    "gpt-4o", "gpt-4o-mini", "o3", "o4-mini", "gpt-5.4", "gpt-5.4-mini",
+    "opus", "gpt5", "codex", "both",
 }
 
 async def _cmd_model(console: Console, state: SessionState, args: str) -> None:
     if not args:
         console.print(f"  [dim]Current model:[/] [{CYAN}]{state.config.default_model}[/]")
-        console.print(f"  [dim]Use an exact model name or a preset like opus, gpt5, or both.[/]")
+        console.print(f"  [dim]Use an exact model name or a preset like opus, gpt5, codex, or both.[/]")
         console.print(f"  [dim]Available:[/] {', '.join(sorted(VALID_MODELS))}\n")
         return
     name = args.strip().lower()
     if name not in VALID_MODELS:
         console.print(f"  [{RED}]Unknown model '{args.strip()}'.[/] Available: {', '.join(sorted(VALID_MODELS))}\n")
         return
-    if name in {"opus", "gpt5", "both"} and state.config.backend in {"claude-max", "claude-cli"}:
+    if name in {"opus", "gpt5", "codex", "both"} and state.config.backend in {"claude-max", "claude-cli", "codex-cli"}:
         state.config.backend = "api"
         console.print(f"  [dim]Switched backend to [cyan]api[/] so the preset can use provider-specific stage models.[/]")
     state.config.default_model = name
@@ -795,6 +807,10 @@ def _build_adapter_for_analysis(cfg: Any) -> Any:
     """
     import os
     backend = cfg.backend
+
+    if backend == "codex-cli":
+        from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+        return CodexCliAdapter(model=cfg.default_model or "gpt-5.4")
 
     # Always try Claude Max first — it's free (subscription)
     try:
@@ -1781,8 +1797,8 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
     backend = cfg.backend
     selected_model = cfg.default_model  # User's /model choice
 
-    # For claude-max and claude-cli: use the user's selected model for ALL stages
-    if backend in ("claude-max", "claude-cli"):
+    # For claude-max, claude-cli, and codex-cli: use the selected model for ALL stages
+    if backend in ("claude-max", "claude-cli", "codex-cli"):
         return GenesisConfig(
             decompose_model=selected_model,
             search_model=selected_model,
@@ -1792,16 +1808,17 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             defend_model=selected_model,
             use_claude_max=(backend == "claude-max"),
             use_claude_cli=(backend == "claude-cli"),
+            use_codex_cli=(backend == "codex-cli"),
             num_candidates=cfg.candidates,
             use_interference_in_translate=True,
             divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
             output_mode=getattr(cfg, "output_mode", "MECHANISM"),
         )
 
-    if selected_model in {"opus", "gpt5", "both"}:
+    if selected_model in {"opus", "gpt5", "codex", "both"}:
         from hephaestus.core.cross_model import get_model_preset
 
-        preset_key = {"opus": "opus", "gpt5": "gpt"}.get(selected_model, "both")
+        preset_key = {"opus": "opus", "gpt5": "gpt", "codex": "codex"}.get(selected_model, "both")
         models = get_model_preset(preset_key)
         return GenesisConfig(
             anthropic_api_key=getattr(cfg, "anthropic_api_key", None),
@@ -2252,6 +2269,9 @@ def run_interactive(
             cfg.backend = "claude-max"
         elif model == "claude-cli":
             cfg.backend = "claude-cli"
+        elif model == "codex":
+            cfg.backend = "codex-cli"
+            cfg.default_model = "gpt-5.4"
         elif model in {"opus", "gpt5", "both"}:
             cfg.default_model = model
             cfg.backend = "api"

@@ -59,6 +59,14 @@ MODEL_PRESETS: dict[str, dict[str, str]] = {
         "attack": "gpt-4o",
         "defend": "gpt-4o",
     },
+    "codex": {
+        "decompose": "gpt-5.4",
+        "search": "gpt-5.4",
+        "score": "gpt-5.4",
+        "translate": "gpt-5.4",
+        "attack": "gpt-5.4",
+        "defend": "gpt-5.4",
+    },
     "both": {
         "decompose": "claude-opus-4-5",
         "search": "gpt-4o",

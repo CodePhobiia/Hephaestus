@@ -130,6 +130,7 @@ class GenesisConfig:
     openrouter_api_key: str | None = None
     use_claude_cli: bool = False
     use_claude_max: bool = False
+    use_codex_cli: bool = False
 
     # Model selection
     decompose_model: str = "claude-opus-4-5"
@@ -867,6 +868,19 @@ class Genesis:
             logger.info("Claude CLI mode — routing all models through claude --print")
             for model_name in all_models:
                 adapters[model_name] = ClaudeCliAdapter(model=model_name)
+            return adapters
+
+        # Codex CLI mode (ChatGPT/Codex OAuth, GPT Pro subscription)
+        if cfg.use_codex_cli:
+            from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+            logger.info("Codex CLI mode — routing all models through codex exec")
+            codex_default = "gpt-5.4"
+            for model_name in all_models:
+                # Route every stage through Codex; unknown provider model names map to configured Codex model
+                target_model = model_name if model_name.startswith("gpt-") else codex_default
+                adapters[model_name] = CodexCliAdapter(model=target_model)
+                if target_model != model_name:
+                    logger.info("Codex CLI: mapped %s -> %s", model_name, target_model)
             return adapters
 
         # OpenRouter mode

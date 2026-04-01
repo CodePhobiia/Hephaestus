@@ -94,8 +94,8 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     "-m",
     default="both",
     show_default=True,
-    type=click.Choice(["claude-max", "claude-cli", "opus", "gpt5", "both"], case_sensitive=False),
-    help="Backend/model preset to use: claude-max, claude-cli, opus, gpt5, or both.",
+    type=click.Choice(["claude-max", "claude-cli", "codex", "opus", "gpt5", "both"], case_sensitive=False),
+    help="Backend/model preset to use: claude-max, claude-cli, codex, opus, gpt5, or both.",
 )
 @click.option(
     "--format",
@@ -287,7 +287,7 @@ def cli(
     openai_key = os.environ.get("OPENAI_API_KEY")
 
     model_lower = model.lower()
-    if model_lower in ("claude-max", "claude-cli"):
+    if model_lower in ("claude-max", "claude-cli", "codex"):
         pass
     elif model_lower in ("opus", "both") and not anthropic_key:
         print_error(
@@ -761,8 +761,27 @@ def _build_genesis_config(
             output_mode=output_mode.upper(),
         )
 
+    if model == "codex":
+        models = get_model_preset("codex")
+        return GenesisConfig(
+            anthropic_api_key=anthropic_key,
+            openai_api_key=openai_key,
+            openrouter_api_key=None,
+            use_codex_cli=True,
+            decompose_model=models["decompose"],
+            search_model=models["search"],
+            score_model=models["score"],
+            translate_model=models["translate"],
+            attack_model=models["attack"],
+            defend_model=models["defend"],
+            num_candidates=candidates,
+            use_interference_in_translate=True,
+            divergence_intensity=divergence_intensity.upper(),
+            output_mode=output_mode.upper(),
+        )
+
     # Map CLI flag names to preset names
-    preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model, "both")
+    preset_key = {"opus": "opus", "gpt5": "gpt", "codex": "codex"}.get(model, "both")
     models = get_model_preset(preset_key)
 
     return GenesisConfig(
@@ -796,8 +815,11 @@ def _build_raw_adapter(
     if model == "claude-cli":
         from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
         return ClaudeCliAdapter(model="claude-opus-4-6")
+    if model == "codex":
+        from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+        return CodexCliAdapter(model="gpt-5.4")
 
-    preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model, "both")
+    preset_key = {"opus": "opus", "gpt5": "gpt", "codex": "codex"}.get(model, "both")
     models = get_model_preset(preset_key)
 
     if model in ("opus", "both"):
@@ -882,7 +904,7 @@ def _error_hint(error_msg: str) -> str | None:
     "-m",
     default="both",
     show_default=True,
-    type=click.Choice(["claude-max", "claude-cli", "opus", "gpt5", "both"], case_sensitive=False),
+    type=click.Choice(["claude-max", "claude-cli", "codex", "opus", "gpt5", "both"], case_sensitive=False),
     help="Backend/model preset.",
 )
 def batch_cmd(
