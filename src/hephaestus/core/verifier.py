@@ -89,13 +89,27 @@ Return JSON only.
 """
 
 _VALIDITY_SYSTEM = """\
-You are a structural validity and feasibility assessor. Evaluate whether a
-proposed cross-domain invention is:
+You are a structural validity, feasibility, and GENUINE NOVELTY assessor.
+
+Evaluate whether a proposed cross-domain invention is:
 1. Structurally valid — the mapping holds under scrutiny
 2. Implementable — can be built with current technology
-3. Genuinely novel — not a restatement of known approaches
+3. Genuinely novel — not a restatement of known approaches IN THE TARGET DOMAIN
 
-Consider the adversarial critique provided.
+CRITICAL NOVELTY TESTS (apply all three):
+
+TEST 1 - Domain Vocabulary Removal: Describe the invention's mechanism using
+ONLY target-domain language. If the description is coherent and describes a
+known pattern, the novelty is LOW. If removing source-domain vocabulary makes
+the mechanism incoherent or impossible to describe, the novelty is HIGH.
+
+TEST 2 - Baseline Comparison: What is the simplest conventional solution a
+senior engineer would build? Compare the invention to this baseline. If they
+use the same core mechanism, novelty is LOW regardless of naming.
+
+TEST 3 - Mechanism Surprise: Would an expert in the target domain be SURPRISED
+by this mechanism? Not "oh that's a nice metaphor" but genuinely "I would never
+have thought to solve it that way."
 
 Output ONLY valid JSON:
 {
@@ -106,6 +120,9 @@ Output ONLY valid JSON:
   "validity_notes": "<explanation of structural validity assessment>",
   "feasibility_notes": "<what would be needed to implement this>",
   "novelty_notes": "<why this is or isn't genuinely novel>",
+  "domain_removal_test": "<describe the mechanism without source-domain words — is it still coherent and known?>",
+  "baseline_mechanism": "<what would a senior engineer build conventionally?>",
+  "mechanism_surprise_rating": "<SURPRISING | INTERESTING | CONVENTIONAL | OBVIOUS>",
   "recommended_next_steps": ["<concrete step 1>", "<step 2>", ...]
 }
 """
@@ -428,6 +445,7 @@ class NoveltyVerifier:
             structural_validity=validity.get("structural_validity", 0.5),
             prior_art_status=prior_art_status,
             domain_distance=translation.domain_distance,
+            mechanism_surprise=str(validity.get("mechanism_surprise_rating", "")),
         )
 
         # Step 4.5: Apply load-bearing penalty
@@ -555,19 +573,23 @@ class NoveltyVerifier:
         structural_validity: float,
         prior_art_status: str,
         domain_distance: float,
+        mechanism_surprise: str = "",
     ) -> float:
         """
         Compute the final novelty score from all verification components.
 
-        Formula:
-            novelty = validity × (1 - novelty_risk × 0.5) × prior_art_multiplier
-            × distance_bonus
+        The score now incorporates concrete novelty tests:
+        - Adversarial novelty risk
+        - Prior art status
+        - Domain distance (but capped — distance alone doesn't make it novel)
+        - Mechanism surprise rating (from the 3-test assessment)
+        - Fatal flaw penalty
         """
         # Prior art multiplier
         prior_art_multipliers = {
             "NO_PRIOR_ART_FOUND": 1.0,
             "POSSIBLE_PRIOR_ART": 0.6,
-            "SEARCH_UNAVAILABLE": 0.8,  # Benefit of doubt
+            "SEARCH_UNAVAILABLE": 0.8,
             "PRIOR_ART_FOUND": 0.2,
         }
         prior_mult = prior_art_multipliers.get(prior_art_status, 0.8)
@@ -578,8 +600,20 @@ class NoveltyVerifier:
         # Fatal flaw penalty
         fatal_penalty = 0.5 if attack_result.attack_valid and attack_result.fatal_flaws else 1.0
 
-        # Distance bonus (superlinear: more distant = more novel by default)
-        distance_bonus = 0.7 + 0.3 * domain_distance
+        # Distance bonus — CAPPED. Distance helps but doesn't dominate.
+        # A far domain with an obvious mechanism should NOT score high.
+        distance_bonus = 0.8 + 0.2 * min(domain_distance, 1.0)
+
+        # Mechanism surprise multiplier — this is the new core signal
+        surprise_multipliers = {
+            "SURPRISING": 1.2,    # Boost genuinely surprising mechanisms
+            "INTERESTING": 1.0,   # Neutral
+            "CONVENTIONAL": 0.6,  # Heavy penalty for dressed-up known patterns
+            "OBVIOUS": 0.3,       # Near-fatal penalty for obvious solutions
+        }
+        surprise_mult = surprise_multipliers.get(
+            mechanism_surprise.upper(), 0.8  # default: mild skepticism
+        )
 
         raw = (
             structural_validity
@@ -587,6 +621,7 @@ class NoveltyVerifier:
             * prior_mult
             * fatal_penalty
             * distance_bonus
+            * surprise_mult
         )
 
         import numpy as np
