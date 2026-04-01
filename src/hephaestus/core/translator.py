@@ -65,6 +65,15 @@ in the target domain. Do NOT reference the source domain at all. If you cannot
 describe a novel architecture without mentioning the source domain, the transfer
 is decorative and you must set mechanism_is_decorative to true.
 
+CONCRETENESS REQUIREMENTS FOR PHASE 2:
+- Name specific data structures (not "a data structure" but "a ring buffer of 
+  size 2^k indexed by hash(request_id) mod k")
+- Include specific parameters with reasonable default values
+- Write actual pseudocode with function signatures, not prose descriptions
+- Specify complexity bounds (time and space)
+- Include at least one concrete numerical example showing the mechanism in action
+- Describe the failure mode and recovery procedure
+
 CRITICAL SELF-TEST: After writing the architecture, ask: "Is this mechanism
 already known in the target domain under a different name?" If yes, your
 transfer added no value. Set mechanism_is_decorative to true and explain

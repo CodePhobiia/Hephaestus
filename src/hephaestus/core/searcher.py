@@ -51,6 +51,17 @@ domain to search within.
 Your task: identify ONE real, well-understood solved problem from the given
 domain that shares the SAME MATHEMATICAL STRUCTURE as the abstract problem.
 
+CRITICAL: Go deep into the domain. Do not pick the first obvious example.
+The best cross-domain transfers come from SPECIFIC, DETAILED mechanisms —
+not broad principles. Instead of "immune systems remember threats" (too broad),
+find "CD8+ T-cells maintain a clonal archive indexed by MHC-peptide complex
+affinity, with recall latency inversely proportional to clone frequency"
+(specific enough to engineer from).
+
+The more SPECIFIC the mechanism, the more useful the structural transfer.
+Name exact phenomena, exact processes, exact mathematical relationships
+from the domain. Vague mechanisms produce vague inventions.
+
 You must output ONLY valid JSON matching this schema:
 {
   "source_domain": "<specific subdomain, e.g., 'Immune System — T-Cell Memory'>",

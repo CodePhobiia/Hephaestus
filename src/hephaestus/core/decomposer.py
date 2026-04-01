@@ -67,9 +67,9 @@ Schema:
 }
 
 Guidelines for each field:
-- structure: Describe WHAT the problem IS structurally, not WHAT it does. Use abstract language.
-- constraints: Be exhaustive. Include both explicit and implicit constraints.
-- mathematical_shape: Use mathematical vocabulary (graphs, flows, distributions, games, etc.).
+- structure: Describe WHAT the problem IS structurally, not WHAT it does. Use abstract language. Be PRECISE — "allocation under constraints" is too vague. "Partitioning a finite resource among N competing consumers with heterogeneous demand distributions, subject to a global ceiling and per-consumer fairness bounds, where consumers can adversarially misrepresent demand" is the right level of detail.
+- constraints: Be exhaustive. Include both explicit and implicit constraints. Include quantitative bounds where the problem specifies them.
+- mathematical_shape: Use SPECIFIC mathematical vocabulary. Not just "optimization" but "online convex optimization with bandit feedback and adversarial perturbation." The more precise the shape, the better the cross-domain search.
 - native_domain: Single domain, lowercase, use underscores.
 - problem_maps_to: Tags like ["trust", "optimization", "routing", "scheduling",
   "classification", "coordination", "filtering", "search", "allocation",
