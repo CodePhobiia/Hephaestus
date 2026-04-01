@@ -452,6 +452,28 @@ class NoveltyVerifier:
             logger.warning("Load-bearing check skipped for %s: %s", translation.invention_name, exc)
             load_bearing_notes = f"Check skipped: {exc}"
 
+        # Step 3.6: Structural novelty score (model-free)
+        from hephaestus.core.structural_novelty import compute_structural_novelty
+        source_words = translation.source_domain.lower().replace("—", " ").replace("-", " ").split()
+        structural_novelty = compute_structural_novelty(
+            problem=structure.original_problem,
+            architecture=translation.architecture,
+            key_insight=translation.key_insight,
+            phase1_abstract=getattr(translation, "phase1_abstract_mechanism", ""),
+            source_domain_words=source_words,
+        )
+        logger.info(
+            "Structural novelty for %s: composite=%.2f (%s) | "
+            "vocab_div=%.2f concept_den=%.2f spec=%.2f self_contain=%.2f",
+            translation.invention_name,
+            structural_novelty.composite,
+            structural_novelty.label,
+            structural_novelty.vocabulary_divergence,
+            structural_novelty.concept_density,
+            structural_novelty.specificity,
+            structural_novelty.self_containment,
+        )
+
         # Step 3.7: Quality gate assessment (rule-based, not model-based)
         from hephaestus.core.quality_gate import assess_invention_quality
         quality = assess_invention_quality(
@@ -470,6 +492,7 @@ class NoveltyVerifier:
             domain_distance=translation.domain_distance,
             mechanism_surprise=str(validity.get("mechanism_surprise_rating", "")),
             quality_gate=quality,
+            structural_novelty_composite=structural_novelty.composite,
         )
 
         # Step 4.5: Apply quality penalties
@@ -609,6 +632,7 @@ class NoveltyVerifier:
         domain_distance: float,
         mechanism_surprise: str = "",
         quality_gate: Any = None,
+        structural_novelty_composite: float = 0.5,
     ) -> float:
         """
         Compute the final novelty score from all verification components.
@@ -662,6 +686,11 @@ class NoveltyVerifier:
             elif not quality_gate.passed:
                 quality_bonus = 0.5  # gate failed = hard penalty
 
+        # Structural novelty (model-free) — blended with model assessment
+        # This provides a grounded signal that doesn't suffer from
+        # self-referential conservatism
+        structural_novelty_mult = 0.7 + 0.6 * structural_novelty_composite  # 0.7 to 1.3
+
         raw = (
             structural_validity
             * novelty_risk_penalty
@@ -670,6 +699,7 @@ class NoveltyVerifier:
             * distance_bonus
             * surprise_mult
             * quality_bonus
+            * structural_novelty_mult
         )
 
         import numpy as np
