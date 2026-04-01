@@ -48,47 +48,61 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _TRANSLATE_SYSTEM = """\
-You are a structural translation engine. Your task is to build a concrete
-architectural bridge between a foreign domain solution and a target domain
-problem.
+You are a structural translation engine. You perform cross-domain structural
+transfer in TWO MANDATORY PHASES. Both phases must be completed.
 
-You will receive:
-1. A target problem and its abstract structural form
-2. A scored candidate from a foreign domain
-3. The foreign domain's cognitive lens (axioms and patterns)
+PHASE 1 — MECHANISM EXTRACTION (source domain only, NO target domain language):
+First, describe the foreign mechanism in purely ABSTRACT terms. Strip all
+domain-specific vocabulary. What is the mechanism doing structurally?
+Not "T-cells remember pathogens" but "entities that encountered a stimulus
+retain a modified state that accelerates future response to structurally
+similar stimuli, with the modification encoding both the stimulus signature
+and the response pathway."
 
-Your task: produce a full structural translation — not a metaphor, but a genuine
-engineering blueprint that maps the foreign mechanism into the target domain.
+PHASE 2 — MECHANISM APPLICATION (target domain only, NO source domain language):
+Now take the abstract mechanism from Phase 1 and build a concrete architecture
+in the target domain. Do NOT reference the source domain at all. If you cannot
+describe a novel architecture without mentioning the source domain, the transfer
+is decorative and you must set mechanism_is_decorative to true.
+
+CRITICAL SELF-TEST: After writing the architecture, ask: "Is this mechanism
+already known in the target domain under a different name?" If yes, your
+transfer added no value. Set mechanism_is_decorative to true and explain
+what known pattern it collapses to.
 
 You must output ONLY valid JSON matching this schema:
 {
-  "invention_name": "<short memorable name for the invention, e.g., 'Pheromone-Gradient Load Balancer'>",
+  "invention_name": "<short name — should describe the MECHANISM, not the source domain>",
+  "phase1_abstract_mechanism": "<PHASE 1: The foreign mechanism described in purely abstract structural terms. NO source or target domain vocabulary. What is the mechanism doing mathematically/structurally?>",
+  "phase2_target_architecture": "<PHASE 2: The mechanism applied to the target domain. NO source domain references. Concrete pseudocode, algorithms, data structures. 3-8 paragraphs.>",
+  "mechanism_is_decorative": <bool — true if the mechanism is already known in the target domain>,
+  "known_pattern_if_decorative": "<if decorative: what known pattern does this collapse to?>",
   "mapping": {
     "elements": [
       {
-        "source_element": "<component/concept in the foreign domain>",
-        "target_element": "<corresponding component/concept in the target domain>",
-        "mechanism": "<how this mapping works>"
+        "source_element": "<component in the foreign domain>",
+        "target_element": "<component in the target domain>",
+        "mechanism": "<how the structural correspondence works>"
       }
     ]
   },
-  "architecture": "<working implementation description or pseudocode in the target domain, 3-8 paragraphs. Be specific and concrete.>",
-  "mathematical_proof": "<brief formal statement of structural isomorphism, use notation where helpful>",
-  "limitations": ["<limitation 1>", "<limitation 2>", ...],
-  "implementation_notes": "<practical notes for an engineer implementing this>",
-  "key_insight": "<the single most important insight that makes this work>",
-  "mechanism_differs_from_baseline": "<CRITICAL: What does this mechanism do that the OBVIOUS solution does not? A senior engineer in the target domain would build X. How is your invention structurally different from X? Be specific.>",
-  "subtraction_test": "<If you removed all source-domain vocabulary and concepts from the architecture, what concrete mechanism remains? Describe the architecture using ONLY target-domain language. If it collapses to a known pattern, say so honestly.>",
-  "baseline_comparison": "<What is the simplest conventional solution to this problem? Describe it in one sentence. Then explain the specific structural advantage your invention has over that baseline.>"
+  "architecture": "<COPY of phase2_target_architecture for backward compatibility>",
+  "mathematical_proof": "<formal statement of structural isomorphism>",
+  "limitations": ["<where the mechanism genuinely fails, not platitudes>"],
+  "implementation_notes": "<practical engineering notes>",
+  "key_insight": "<the ONE insight that makes this work — must be statable WITHOUT source domain words>",
+  "mechanism_differs_from_baseline": "<What does this do that the obvious solution does not?>",
+  "subtraction_test": "<Architecture described using ONLY target-domain language>",
+  "baseline_comparison": "<Simplest conventional solution vs this invention's structural advantage>"
 }
 
 REQUIREMENTS:
-- The mapping must be STRUCTURALLY LOAD-BEARING — removing the source domain logic must break the mechanism, not just change the vocabulary
+- Phase 1 MUST use only abstract/mathematical language — no domain words from either side
+- Phase 2 MUST use only target domain language — no source domain references
+- If the mechanism is a known pattern (caching, retry, queue, etc.), set mechanism_is_decorative: true
 - The architecture must be implementable — pseudocode, algorithms, data structures
-- The limitations must be honest — name real failure modes, not platitudes
-- Be specific. Avoid vague statements like "similar to X" — say exactly HOW
-- The mechanism_differs_from_baseline field is MANDATORY — if your invention is just a known pattern with biological names, say so and set confidence low
-- CRITICAL: Ask yourself — "Would a senior engineer in the target domain independently invent this mechanism?" If yes, your domain transfer is decorative, not structural. Aim for mechanisms they would NOT reach for.
+- Limitations must be honest failure modes, not hedging
+- If you find yourself writing "inspired by" or "analogous to" — STOP. The transfer is decorative.
 """
 
 _TRANSLATE_PROMPT_TEMPLATE = """\
@@ -173,6 +187,10 @@ class Translation:
     implementation_notes: str
     key_insight: str
     source_candidate: ScoredCandidate
+    phase1_abstract_mechanism: str = ""
+    phase2_target_architecture: str = ""
+    mechanism_is_decorative: bool = False
+    known_pattern_if_decorative: str = ""
     mechanism_differs_from_baseline: str = ""
     subtraction_test: str = ""
     baseline_comparison: str = ""
@@ -426,6 +444,10 @@ class SolutionTranslator:
             implementation_notes=impl_notes,
             key_insight=key_ins,
             source_candidate=candidate,
+            phase1_abstract_mechanism=parsed.get("phase1_abstract_mechanism", ""),
+            phase2_target_architecture=parsed.get("phase2_target_architecture", ""),
+            mechanism_is_decorative=bool(parsed.get("mechanism_is_decorative", False)),
+            known_pattern_if_decorative=parsed.get("known_pattern_if_decorative", ""),
             mechanism_differs_from_baseline=parsed.get("mechanism_differs_from_baseline", ""),
             subtraction_test=parsed.get("subtraction_test", ""),
             baseline_comparison=parsed.get("baseline_comparison", ""),
@@ -466,9 +488,17 @@ class SolutionTranslator:
         data.setdefault("key_insight", "")
         data.setdefault("implementation_notes", "")
         data.setdefault("mathematical_proof", "")
+        data.setdefault("phase1_abstract_mechanism", "")
+        data.setdefault("phase2_target_architecture", "")
+        data.setdefault("mechanism_is_decorative", False)
+        data.setdefault("known_pattern_if_decorative", "")
         data.setdefault("mechanism_differs_from_baseline", "")
         data.setdefault("subtraction_test", "")
         data.setdefault("baseline_comparison", "")
+
+        # Use phase2 as architecture if architecture is missing/empty
+        if not data.get("architecture") and data.get("phase2_target_architecture"):
+            data["architecture"] = data["phase2_target_architecture"]
 
         if "mapping" not in data or not isinstance(data.get("mapping"), dict):
             data["mapping"] = {"elements": []}

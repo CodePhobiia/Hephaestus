@@ -448,9 +448,19 @@ class NoveltyVerifier:
             mechanism_surprise=str(validity.get("mechanism_surprise_rating", "")),
         )
 
-        # Step 4.5: Apply load-bearing penalty
+        # Step 4.5: Apply quality penalties
         if not load_bearing_passed:
             novelty_score *= 0.5  # 50% penalty for decorative domain transfer
+
+        # Self-reported decorative transfer penalty
+        if getattr(translation, "mechanism_is_decorative", False):
+            novelty_score *= 0.3  # 70% penalty — model itself says it's decorative
+            logger.info(
+                "Novelty score penalized (self-reported decorative): %.2f for %s. "
+                "Known pattern: %s",
+                novelty_score, translation.invention_name,
+                getattr(translation, "known_pattern_if_decorative", "unknown"),
+            )
             logger.info(
                 "Novelty score penalized (load-bearing failed): %.2f for %s",
                 novelty_score, translation.invention_name,
