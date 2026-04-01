@@ -789,23 +789,36 @@ async def _cmd_invent(console: Console, state: SessionState, args: str) -> None:
 
 
 def _build_adapter_for_analysis(cfg: Any) -> Any:
-    """Build an LLM adapter from the current session config for codebase analysis."""
+    """Build an LLM adapter from the current session config for codebase analysis.
+
+    Prefers Claude Max (OAT token, zero API cost) when available.
+    """
     import os
     backend = cfg.backend
 
-    if backend == "claude-max":
+    # Always try Claude Max first — it's free (subscription)
+    try:
         from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
-        return ClaudeMaxAdapter(model=cfg.default_model or "claude-opus-4-6")
+        return ClaudeMaxAdapter(model=cfg.default_model or "claude-sonnet-4-6")
+    except Exception:
+        pass  # OAT token not available, fall back
+
     if backend == "claude-cli":
         from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
         return ClaudeCliAdapter(model=cfg.default_model or "claude-opus-4-6")
 
-    # Default: use Anthropic adapter
-    from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
-    return AnthropicAdapter(
-        model=cfg.default_model or "claude-sonnet-4-20250514",
-        api_key=os.environ.get("ANTHROPIC_API_KEY"),
-    )
+    # Fall back to API key adapters
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if anthropic_key:
+        from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
+        return AnthropicAdapter(model=cfg.default_model or "claude-sonnet-4-20250514", api_key=anthropic_key)
+
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if openai_key:
+        from hephaestus.deepforge.adapters.openai import OpenAIAdapter
+        return OpenAIAdapter(model="gpt-4o", api_key=openai_key)
+
+    raise RuntimeError("No LLM adapter available. Set up Claude Max, ANTHROPIC_API_KEY, or OPENAI_API_KEY.")
 
 
 async def _cmd_ws(console: Console, state: SessionState, args: str) -> None:

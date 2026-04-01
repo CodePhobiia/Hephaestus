@@ -91,9 +91,9 @@ class WorkspaceInvention:
 class WorkspaceInventionReport:
     """Full report of workspace-aware invention run."""
     workspace_root: str
-    problems_found: int
-    inventions_attempted: int
-    inventions_succeeded: int
+    problems_found: int = 0
+    inventions_attempted: int = 0
+    inventions_succeeded: int = 0
     inventions: list[WorkspaceInvention] = field(default_factory=list)
     total_cost_usd: float = 0.0
 
@@ -128,17 +128,23 @@ class WorkspaceInventor:
 
     async def analyze_codebase(self) -> list[IdentifiedProblem]:
         """Use the model to analyze the codebase and identify problems."""
+        from hephaestus.deepforge.harness import DeepForgeHarness, HarnessConfig
+
         context = WorkspaceContext.from_directory(self.root, budget_chars=20_000)
         prompt = _ANALYSIS_PROMPT.format(workspace_context=context.to_prompt_text())
 
-        result = await self.adapter.generate(
-            prompt,
-            system=_ANALYSIS_SYSTEM,
-            max_tokens=2000,
-            temperature=0.7,
+        harness = DeepForgeHarness(
+            adapter=self.adapter,
+            config=HarnessConfig(
+                use_interference=False,
+                use_pruner=False,
+                use_pressure=False,
+                max_tokens=2000,
+                temperature=0.7,
+            ),
         )
-
-        return _parse_problems(result.text if hasattr(result, 'text') else str(result))
+        result = await harness.forge(prompt, system=_ANALYSIS_SYSTEM)
+        return _parse_problems(result.output)
 
     async def invent_for_problem(
         self,
