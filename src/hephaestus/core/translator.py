@@ -83,6 +83,11 @@ CONCRETENESS REQUIREMENTS FOR PHASE 2:
 - Specify complexity bounds (time and space)
 - Include at least one concrete numerical example showing the mechanism in action
 - Describe the failure mode and recovery procedure
+- Include a BEFORE/AFTER comparison: "Without this mechanism, the system does X.
+  With this mechanism, the system does Y. The specific measurable improvement is Z."
+- If possible, describe the MINIMAL VIABLE VERSION — what is the smallest change
+  that captures 80% of the benefit? Engineers want to prototype, not build the
+  full system on day one.
 
 CRITICAL SELF-TEST: After writing the architecture, ask: "Is this mechanism
 already known in the target domain under a different name?" If yes, your
