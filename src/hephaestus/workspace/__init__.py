@@ -3,5 +3,9 @@
 from hephaestus.workspace.scanner import WorkspaceScanner, WorkspaceSummary
 from hephaestus.workspace.context import WorkspaceContext
 from hephaestus.workspace.mode import WorkspaceMode
+from hephaestus.workspace.inventor import WorkspaceInventor, WorkspaceInventionReport
 
-__all__ = ["WorkspaceScanner", "WorkspaceSummary", "WorkspaceContext", "WorkspaceMode"]
+__all__ = [
+    "WorkspaceScanner", "WorkspaceSummary", "WorkspaceContext",
+    "WorkspaceMode", "WorkspaceInventor", "WorkspaceInventionReport",
+]

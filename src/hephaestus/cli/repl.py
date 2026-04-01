@@ -741,6 +741,73 @@ async def _cmd_edit(console: Console, state: SessionState, args: str) -> None:
     console.print("  [dim]Use the agent chat to make edits. Describe what to change.[/]\n")
 
 
+async def _cmd_invent(console: Console, state: SessionState, args: str) -> None:
+    """Analyze the codebase and invent improvements using the genesis pipeline."""
+    if not state.workspace_root:
+        console.print("  [dim]Not in workspace mode. Run heph from a project directory.[/]\n")
+        return
+
+    max_inventions = 3
+    if args.strip().isdigit():
+        max_inventions = min(int(args.strip()), 7)
+
+    console.print(f"\n  [bold yellow]⚒️  Workspace Invention Mode[/]")
+    console.print(f"  [dim]Analyzing {state.workspace_root.name}/ and inventing up to {max_inventions} improvements...[/]\n")
+
+    try:
+        from hephaestus.workspace.inventor import WorkspaceInventor
+
+        # Build an adapter from current config
+        cfg = state.config
+        adapter = _build_adapter_for_analysis(cfg)
+
+        inventor = WorkspaceInventor(
+            adapter=adapter,
+            workspace_root=state.workspace_root,
+            max_inventions=max_inventions,
+            depth=cfg.depth,
+            model=cfg.backend if cfg.backend != "api" else "both",
+            intensity=cfg.divergence_intensity,
+        )
+
+        report = await inventor.analyze_and_invent(console=console)
+
+        # Save report
+        if report.inventions_succeeded > 0:
+            report_text = inventor.format_report(report)
+            save_path = state.workspace_root / ".hephaestus" / "inventions.md"
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            save_path.write_text(report_text, encoding="utf-8")
+            console.print(f"\n  [green]✓[/] Report saved to {save_path}")
+
+        console.print(
+            f"\n  [bold]Results:[/] {report.inventions_succeeded}/{report.inventions_attempted} "
+            f"inventions succeeded\n"
+        )
+    except Exception as exc:
+        console.print(f"  [red]Invention failed: {exc}[/]\n")
+
+
+def _build_adapter_for_analysis(cfg: Any) -> Any:
+    """Build an LLM adapter from the current session config for codebase analysis."""
+    import os
+    backend = cfg.backend
+
+    if backend == "claude-max":
+        from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
+        return ClaudeMaxAdapter(model=cfg.default_model or "claude-opus-4-6")
+    if backend == "claude-cli":
+        from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
+        return ClaudeCliAdapter(model=cfg.default_model or "claude-opus-4-6")
+
+    # Default: use Anthropic adapter
+    from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
+    return AnthropicAdapter(
+        model=cfg.default_model or "claude-sonnet-4-20250514",
+        api_key=os.environ.get("ANTHROPIC_API_KEY"),
+    )
+
+
 async def _cmd_ws(console: Console, state: SessionState, args: str) -> None:
     """Show workspace status."""
     if not state.workspace_root:
@@ -1681,6 +1748,7 @@ COMMANDS: dict[str, Any] = {
     "edit": _cmd_edit,
     "ws": _cmd_ws,
     "workspace": _cmd_ws,
+    "invent": _cmd_invent,
 }
 
 # Canonical command registry (shared with commands.py)

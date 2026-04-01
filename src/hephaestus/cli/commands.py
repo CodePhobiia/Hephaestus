@@ -504,6 +504,17 @@ def default_registry() -> CommandRegistry:
         args_required=False,
     ))
     reg.register(Command(
+        name="invent",
+        aliases=["improve", "analyze"],
+        description="Analyze the codebase and invent improvements",
+        usage="/invent [max_count]",
+        category="workspace",
+        handler_name="_cmd_invent",
+        modes=["repl"],
+        resume_safe=False,
+        args_required=False,
+    ))
+    reg.register(Command(
         name="ws",
         aliases=["workspace"],
         description="Show workspace status and info",
