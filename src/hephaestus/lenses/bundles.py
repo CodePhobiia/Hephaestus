@@ -610,12 +610,14 @@ class BundleComposer:
         candidate_pool_size: int = 6,
         min_bundle_strength: float = 0.46,
         min_bundle_gain: float = 0.03,
+        allow_singleton_fallback: bool = True,
     ) -> None:
         self._exclusion_ledger = exclusion_ledger or AdaptiveExclusionLedger()
         self._max_bundle_size = max(2, max_bundle_size)
         self._candidate_pool_size = max(3, candidate_pool_size)
         self._min_bundle_strength = min_bundle_strength
         self._min_bundle_gain = min_bundle_gain
+        self._allow_singleton_fallback = allow_singleton_fallback
 
     def select(
         self,
@@ -664,7 +666,7 @@ class BundleComposer:
                 )
             )
         )
-        if not should_use_bundle:
+        if not should_use_bundle and self._allow_singleton_fallback:
             return self._singleton_result(lens_scores)
 
         order = list(best_proof.translation_order)
@@ -732,7 +734,7 @@ class BundleComposer:
             recomposition_count=bundle.recomposition_count + 1,
             invalidation_reasons=tuple(dict.fromkeys((*bundle.invalidation_reasons, reason))),
         )
-        fallback_required = new_proof.proof_confidence < self._min_bundle_strength
+        fallback_required = self._allow_singleton_fallback and new_proof.proof_confidence < self._min_bundle_strength
         if fallback_required:
             self._exclusion_ledger.record_outcome(
                 lens_ids=bundle.lens_ids,

@@ -89,6 +89,9 @@ class TestDefaults:
         assert cfg.use_perplexity_research is True
         assert cfg.perplexity_model == "sonar-pro"
         assert cfg.use_branchgenome_v1 is False
+        assert cfg.use_adaptive_lens_engine is True
+        assert cfg.allow_lens_bundle_fallback is True
+        assert cfg.enable_derived_lens_composites is True
 
     def test_sources_all_builtin(self, tmp_path: Path) -> None:
         lc = _make_lc(tmp_path)
@@ -214,6 +217,18 @@ class TestEnvVars:
         monkeypatch.setenv("HEPHAESTUS_USE_BRANCHGENOME_V1", "true")
         lc = _make_lc(tmp_path)
         assert lc.resolve().use_branchgenome_v1 is True
+
+    def test_env_adaptive_lens_flags_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HEPHAESTUS_USE_ADAPTIVE_LENS_ENGINE", "false")
+        monkeypatch.setenv("HEPHAESTUS_ALLOW_LENS_BUNDLE_FALLBACK", "false")
+        monkeypatch.setenv("HEPHAESTUS_ENABLE_DERIVED_LENS_COMPOSITES", "false")
+        lc = _make_lc(tmp_path)
+        cfg = lc.resolve()
+        assert cfg.use_adaptive_lens_engine is False
+        assert cfg.allow_lens_bundle_fallback is False
+        assert cfg.enable_derived_lens_composites is False
 
 
 # ── Full precedence ──────────────────────────────────────────────────────

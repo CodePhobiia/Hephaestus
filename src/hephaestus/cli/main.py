@@ -249,6 +249,9 @@ def cli(
         )
     console = make_console(quiet=quiet)
     use_branchgenome_v1 = False
+    use_adaptive_lens_engine = True
+    allow_lens_bundle_fallback = True
+    enable_derived_lens_composites = True
 
     # ── Layered config ────────────────────────────────────────────────────────
     layered = None
@@ -278,6 +281,9 @@ def cli(
         if src("research_model") != click.core.ParameterSource.COMMANDLINE:
             research_model = resolved.perplexity_model
         use_branchgenome_v1 = getattr(resolved, "use_branchgenome_v1", False)
+        use_adaptive_lens_engine = getattr(resolved, "use_adaptive_lens_engine", True)
+        allow_lens_bundle_fallback = getattr(resolved, "allow_lens_bundle_fallback", True)
+        enable_derived_lens_composites = getattr(resolved, "enable_derived_lens_composites", True)
     except Exception:
         pass  # Fall back to CLI defaults
 
@@ -419,6 +425,9 @@ def cli(
                     use_research=use_research,
                     research_model=research_model,
                     use_branchgenome_v1=use_branchgenome_v1,
+                    use_adaptive_lens_engine=use_adaptive_lens_engine,
+                    allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+                    enable_derived_lens_composites=enable_derived_lens_composites,
                 )
             )
     except KeyboardInterrupt:
@@ -458,6 +467,9 @@ async def _run_genesis(
     use_research: bool = True,
     research_model: str | None = None,
     use_branchgenome_v1: bool = False,
+    use_adaptive_lens_engine: bool = True,
+    allow_lens_bundle_fallback: bool = True,
+    enable_derived_lens_composites: bool = True,
 ) -> None:
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
@@ -479,6 +491,9 @@ async def _run_genesis(
         use_perplexity_research=use_research,
         research_model=research_model,
         use_branchgenome_v1=use_branchgenome_v1,
+        use_adaptive_lens_engine=use_adaptive_lens_engine,
+        allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+        enable_derived_lens_composites=enable_derived_lens_composites,
     )
 
     genesis = Genesis(config)
@@ -886,6 +901,9 @@ def _build_genesis_config(
     use_perplexity_research: bool = True,
     research_model: str | None = None,
     use_branchgenome_v1: bool = False,
+    use_adaptive_lens_engine: bool = True,
+    allow_lens_bundle_fallback: bool = True,
+    enable_derived_lens_composites: bool = True,
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
     from hephaestus.core.cross_model import get_model_preset
@@ -911,6 +929,9 @@ def _build_genesis_config(
             use_perplexity_research=use_perplexity_research,
             perplexity_model=research_model,
             use_branchgenome_v1=use_branchgenome_v1,
+            use_adaptive_lens_engine=use_adaptive_lens_engine,
+            allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+            enable_derived_lens_composites=enable_derived_lens_composites,
         )
 
     if model == "claude-cli":
@@ -933,6 +954,9 @@ def _build_genesis_config(
             use_perplexity_research=use_perplexity_research,
             perplexity_model=research_model,
             use_branchgenome_v1=use_branchgenome_v1,
+            use_adaptive_lens_engine=use_adaptive_lens_engine,
+            allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+            enable_derived_lens_composites=enable_derived_lens_composites,
         )
 
     if model == "codex":
@@ -955,6 +979,9 @@ def _build_genesis_config(
             use_perplexity_research=use_perplexity_research,
             perplexity_model=research_model,
             use_branchgenome_v1=use_branchgenome_v1,
+            use_adaptive_lens_engine=use_adaptive_lens_engine,
+            allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+            enable_derived_lens_composites=enable_derived_lens_composites,
         )
 
     # Map CLI flag names to preset names
@@ -977,6 +1004,9 @@ def _build_genesis_config(
         use_perplexity_research=use_perplexity_research,
         perplexity_model=research_model,
         use_branchgenome_v1=use_branchgenome_v1,
+        use_adaptive_lens_engine=use_adaptive_lens_engine,
+        allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+        enable_derived_lens_composites=enable_derived_lens_composites,
     )
 
 
@@ -1146,6 +1176,9 @@ def init_cmd() -> None:
         "# use_perplexity_research: true\n"
         "# perplexity_model: sonar-pro\n"
         "# use_branchgenome_v1: false\n"
+        "# use_adaptive_lens_engine: true\n"
+        "# allow_lens_bundle_fallback: true\n"
+        "# enable_derived_lens_composites: true\n"
         "# auto_save: true\n",
         encoding="utf-8",
     )

@@ -258,6 +258,8 @@ class CrossDomainSearcher:
         num_lenses: int = 10,
         min_confidence: float = 0.4,
         max_bundle_size: int = 3,
+        use_adaptive_lens_engine: bool = True,
+        allow_lens_bundle_fallback: bool = True,
     ) -> None:
         self._harness = harness
         self._loader = loader or LensLoader()
@@ -266,6 +268,8 @@ class CrossDomainSearcher:
         self._num_lenses = num_lenses
         self._min_confidence = min_confidence
         self._max_bundle_size = max(2, max_bundle_size)
+        self._use_adaptive_lens_engine = use_adaptive_lens_engine
+        self._allow_lens_bundle_fallback = allow_lens_bundle_fallback
         self._bundle_exclusion_ledger = AdaptiveExclusionLedger()
         self._last_runtime: SearchRuntimeResult | None = None
 
@@ -415,7 +419,7 @@ class CrossDomainSearcher:
 
     def _select_runtime(self, structure: "ProblemStructure") -> Any:
         """Select either a bundle proof or a singleton fallback plan."""
-        if hasattr(self._selector, "select_bundle_first"):
+        if self._use_adaptive_lens_engine and hasattr(self._selector, "select_bundle_first"):
             return self._selector.select_bundle_first(
                 problem_description=structure.to_search_description(),
                 problem_maps_to=structure.problem_maps_to,
@@ -426,6 +430,7 @@ class CrossDomainSearcher:
                 structure=structure,
                 max_bundle_size=self._max_bundle_size,
                 exclusion_ledger=self._bundle_exclusion_ledger,
+                allow_singleton_fallback=self._allow_lens_bundle_fallback,
             )
 
         lens_scores = self._select_lenses(structure)

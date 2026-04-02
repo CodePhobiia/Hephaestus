@@ -91,6 +91,15 @@ class _SelectorStub:
         return self._selection
 
 
+class _SelectorWithFallback(_SelectorStub):
+    def __init__(self, selection: BundleSelectionResult, fallback_scores: list[LensScore]) -> None:
+        super().__init__(selection)
+        self._fallback_scores = fallback_scores
+
+    def select(self, **_: object) -> list[LensScore]:
+        return list(self._fallback_scores)
+
+
 @pytest.mark.asyncio
 async def test_searcher_carries_bundle_proof_and_lineage() -> None:
     structure = _make_structure()
@@ -166,3 +175,30 @@ async def test_searcher_falls_back_to_singleton_when_bundle_retrieval_is_weak() 
     assert len(candidates) == 1
     assert candidates[0].selection_mode == "singleton_fallback"
     assert candidates[0].bundle_proof is None
+
+
+@pytest.mark.asyncio
+async def test_searcher_can_disable_adaptive_lens_engine() -> None:
+    structure = _make_structure()
+    lens_a = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
+    lens_b = _make_lens(domain="economics", subdomain="auction", name="Auction Clearing", maps_to=["verification", "control"])
+    score_a = _make_score(lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
+    score_b = _make_score(lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"])
+
+    selection = BundleComposer().select([score_a, score_b], structure)
+    harness = MagicMock()
+    harness.forge = AsyncMock(side_effect=[_forge_result("Immune Memory"), _forge_result("Auction Clearing")])
+
+    searcher = CrossDomainSearcher(
+        harness=harness,
+        selector=_SelectorWithFallback(selection, [score_a, score_b]),
+        num_candidates=4,
+        num_lenses=2,
+        use_adaptive_lens_engine=False,
+    )
+
+    candidates = await searcher.search(structure)
+
+    assert searcher.last_runtime is not None
+    assert searcher.last_runtime.retrieval_mode == "singleton"
+    assert all(candidate.bundle_proof is None for candidate in candidates)

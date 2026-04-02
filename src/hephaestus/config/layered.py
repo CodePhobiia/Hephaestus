@@ -41,10 +41,20 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_USE_PERPLEXITY_RESEARCH": "use_perplexity_research",
     "HEPHAESTUS_PERPLEXITY_MODEL": "perplexity_model",
     "HEPHAESTUS_USE_BRANCHGENOME_V1": "use_branchgenome_v1",
+    "HEPHAESTUS_USE_ADAPTIVE_LENS_ENGINE": "use_adaptive_lens_engine",
+    "HEPHAESTUS_ALLOW_LENS_BUNDLE_FALLBACK": "allow_lens_bundle_fallback",
+    "HEPHAESTUS_ENABLE_DERIVED_LENS_COMPOSITES": "enable_derived_lens_composites",
 }
 
 _INT_FIELDS = {"depth", "candidates"}
-_BOOL_FIELDS = {"auto_save", "use_perplexity_research", "use_branchgenome_v1"}
+_BOOL_FIELDS = {
+    "auto_save",
+    "use_perplexity_research",
+    "use_branchgenome_v1",
+    "use_adaptive_lens_engine",
+    "allow_lens_bundle_fallback",
+    "enable_derived_lens_composites",
+}
 
 _VALIDATORS: dict[str, tuple[str, tuple[str, ...]]] = {
     "backend": ("backend", VALID_BACKENDS),

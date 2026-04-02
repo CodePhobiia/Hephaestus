@@ -61,6 +61,9 @@ class HephaestusConfig:
     use_perplexity_research: bool = True
     perplexity_model: str = "sonar-pro"
     use_branchgenome_v1: bool = False
+    use_adaptive_lens_engine: bool = True
+    allow_lens_bundle_fallback: bool = True
+    enable_derived_lens_composites: bool = True
 
     # API keys (resolved from env at load time, never persisted)
     anthropic_api_key: str | None = field(default=None, repr=False)
@@ -81,6 +84,9 @@ class HephaestusConfig:
             "use_perplexity_research": self.use_perplexity_research,
             "perplexity_model": self.perplexity_model,
             "use_branchgenome_v1": self.use_branchgenome_v1,
+            "use_adaptive_lens_engine": self.use_adaptive_lens_engine,
+            "allow_lens_bundle_fallback": self.allow_lens_bundle_fallback,
+            "enable_derived_lens_composites": self.enable_derived_lens_composites,
         }
 
 
@@ -117,6 +123,15 @@ def load_config() -> HephaestusConfig | None:
         use_branchgenome_v1 = data.get("use_branchgenome_v1", False)
         if not isinstance(use_branchgenome_v1, bool):
             use_branchgenome_v1 = str(use_branchgenome_v1).strip().lower() in ("1", "true", "yes", "on")
+        use_adaptive_lens_engine = data.get("use_adaptive_lens_engine", True)
+        if not isinstance(use_adaptive_lens_engine, bool):
+            use_adaptive_lens_engine = str(use_adaptive_lens_engine).strip().lower() in ("1", "true", "yes", "on")
+        allow_lens_bundle_fallback = data.get("allow_lens_bundle_fallback", True)
+        if not isinstance(allow_lens_bundle_fallback, bool):
+            allow_lens_bundle_fallback = str(allow_lens_bundle_fallback).strip().lower() in ("1", "true", "yes", "on")
+        enable_derived_lens_composites = data.get("enable_derived_lens_composites", True)
+        if not isinstance(enable_derived_lens_composites, bool):
+            enable_derived_lens_composites = str(enable_derived_lens_composites).strip().lower() in ("1", "true", "yes", "on")
         cfg = HephaestusConfig(
             backend=backend,
             default_model=data.get("default_model", _DEFAULT_MODEL),
@@ -129,6 +144,9 @@ def load_config() -> HephaestusConfig | None:
             use_perplexity_research=use_perplexity_research,
             perplexity_model=perplexity_model,
             use_branchgenome_v1=use_branchgenome_v1,
+            use_adaptive_lens_engine=use_adaptive_lens_engine,
+            allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+            enable_derived_lens_composites=enable_derived_lens_composites,
         )
     except Exception:
         cfg = HephaestusConfig()

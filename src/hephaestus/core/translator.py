@@ -334,12 +334,14 @@ class SolutionTranslator:
         top_n: int = 3,
         system: str | None = None,
         max_bundle_recompositions: int = 2,
+        allow_bundle_fallback: bool = True,
     ) -> None:
         self._harness = harness
         self._top_n = top_n
         self._system_override = system
         self._max_bundle_recompositions = max(1, max_bundle_recompositions)
-        self._bundle_composer = BundleComposer()
+        self._allow_bundle_fallback = allow_bundle_fallback
+        self._bundle_composer = BundleComposer(allow_singleton_fallback=allow_bundle_fallback)
         self._last_runtime: TranslationRuntimeResult | None = None
 
     @property
@@ -580,7 +582,7 @@ class SolutionTranslator:
             for candidate in all_candidates
             if candidate.lens_id not in invalidated and candidate.lens_id not in translated_lens_ids
         ]
-        if (not translations or active_bundle is None) and fallback_candidates:
+        if self._allow_bundle_fallback and (not translations or active_bundle is None) and fallback_candidates:
             runtime.fallback_used = True
             for candidate in fallback_candidates[: self._top_n]:
                 if candidate.lens_id in invalidated:

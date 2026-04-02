@@ -195,6 +195,9 @@ class GenesisConfig:
     run_prior_art: bool = True
     use_perplexity_research: bool = True
     use_branchgenome_v1: bool = False
+    use_adaptive_lens_engine: bool = True
+    allow_lens_bundle_fallback: bool = True
+    enable_derived_lens_composites: bool = True
     perplexity_model: str | None = None
     branchgenome_rejection_ledger_path: str | None = None
 
@@ -728,7 +731,10 @@ class Genesis:
 
             from hephaestus.core.searcher import SearchError
 
-            loader = _LensLoader(self._config.lens_library_dir)
+            loader = _LensLoader(
+                self._config.lens_library_dir,
+                allow_derived_composites=self._config.enable_derived_lens_composites,
+            )
             selector = _LensSelector(loader)
 
             searcher = _CrossDomainSearcher(
@@ -739,6 +745,8 @@ class Genesis:
                 num_lenses=self._config.num_search_lenses,
                 min_confidence=self._config.min_search_confidence,
                 max_bundle_size=self._config.max_bundle_size,
+                use_adaptive_lens_engine=self._config.use_adaptive_lens_engine,
+                allow_lens_bundle_fallback=self._config.allow_lens_bundle_fallback,
             )
             try:
                 candidates = await searcher.search(structure)
@@ -928,6 +936,7 @@ class Genesis:
                 harness=self._harnesses["translate"],
                 top_n=self._config.num_translations,
                 max_bundle_recompositions=self._config.max_bundle_recompositions,
+                allow_bundle_fallback=self._config.allow_lens_bundle_fallback,
             )
             translator._banned_baselines = baselines if baselines else []
             attempted_translation_inputs = translation_inputs[: self._config.num_translations]
@@ -952,7 +961,11 @@ class Genesis:
                         if branch is not None and candidate.lens_id in invalidated_lens_ids:
                             branch.status = BranchStatus.PRUNED
 
-            if not translations and getattr(searcher, "last_runtime", None) is not None:
+            if (
+                not translations
+                and self._config.allow_lens_bundle_fallback
+                and getattr(searcher, "last_runtime", None) is not None
+            ):
                 fallback_inputs = self._singleton_fallback_inputs(
                     scored=scored,
                     attempted=attempted_translation_inputs,

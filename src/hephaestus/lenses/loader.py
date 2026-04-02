@@ -430,9 +430,11 @@ class LensLoader:
         self,
         library_dir: Path | str | None = None,
         hot_reload: bool = False,
+        allow_derived_composites: bool = True,
     ) -> None:
         self._library_dir = Path(library_dir) if library_dir else _DEFAULT_LIBRARY_DIR
         self._hot_reload = hot_reload
+        self._allow_derived_composites = allow_derived_composites
         self._cache: dict[str, tuple[Lens, float]] = {}
         self._card_cache: dict[str, LensCard] = {}
         self._lineage_cache: dict[str, LensLineage] = {}
@@ -452,6 +454,10 @@ class LensLoader:
     @property
     def hot_reload(self) -> bool:
         return self._hot_reload
+
+    @property
+    def allow_derived_composites(self) -> bool:
+        return self._allow_derived_composites
 
     @property
     def library_revision(self) -> int:
@@ -574,7 +580,7 @@ class LensLoader:
                 else:
                     raise
 
-        if include_derived and self._derived_lenses:
+        if include_derived and self._allow_derived_composites and self._derived_lenses:
             valid_ids = set(self._validate_derived(reference_context=reference_context))
             for lens_id, lens in self._derived_lenses.items():
                 if lens_id in valid_ids or (include_stale and lens_id in self._derived_invalid):
@@ -705,6 +711,8 @@ class LensLoader:
         reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
         lens_id: str | None = None,
     ) -> Lens:
+        if not self._allow_derived_composites:
+            raise RuntimeError("Derived lens composites are disabled by configuration")
         unique_parent_ids = tuple(dict.fromkeys(_slug(parent_id) for parent_id in parent_lens_ids if parent_id))
         if len(unique_parent_ids) < 2:
             raise ValueError("Composite lenses require at least two parent lenses")

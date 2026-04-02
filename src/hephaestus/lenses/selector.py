@@ -602,6 +602,7 @@ class LensSelector:
         max_bundle_size: int = 3,
         exclusion_ledger: AdaptiveExclusionLedger | None = None,
         reference_context: Mapping[str, Any] | None = None,
+        allow_singleton_fallback: bool = True,
     ) -> BundleSelectionResult:
         """Build a runtime bundle proof first, then fall back to singleton ranking."""
 
@@ -647,6 +648,7 @@ class LensSelector:
             exclusion_ledger=ledger,
             max_bundle_size=max_bundle_size,
             candidate_pool_size=max(max_bundle_size + 2, len(plan.scores)),
+            allow_singleton_fallback=allow_singleton_fallback,
         )
         return composer.select(list(plan.scores), structure)
 
