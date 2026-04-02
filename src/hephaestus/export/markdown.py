@@ -69,6 +69,19 @@ def export_markdown(report: Any, config: ExportConfig | None = None) -> str:
         lines.append(report.structural_form)
         lines.append("")
 
+    baseline = getattr(report, "baseline_dossier", None)
+    if baseline is not None:
+        lines.append("## State of the Art Recon")
+        lines.append("")
+        lines.append(getattr(baseline, "summary", "") or "No external reconnaissance summary available.")
+        lines.append("")
+        avoid = getattr(baseline, "keywords_to_avoid", [])
+        if avoid:
+            lines.append("### Conventional Mechanisms to Avoid")
+            for item in avoid[:8]:
+                lines.append(f"- {item}")
+            lines.append("")
+
     # Solution
     lines.append("## Solution Overview")
     lines.append("")
@@ -156,6 +169,42 @@ def export_markdown(report: Any, config: ExportConfig | None = None) -> str:
         if summary:
             lines.append(summary)
         lines.append("")
+
+    grounding = getattr(report, "external_grounding_report", None)
+    if grounding is not None:
+        lines.append("## External Grounding")
+        lines.append("")
+        lines.append(getattr(grounding, "summary", "") or "No external grounding summary available.")
+        lines.append("")
+        for title, values in [
+            ("Closest Related Work", getattr(grounding, "closest_related_work", [])),
+            ("Adjacent Fields", getattr(grounding, "adjacent_fields", [])),
+            ("Practitioner Risks", getattr(grounding, "practitioner_risks", [])),
+            ("Notable Projects", getattr(grounding, "notable_projects", [])),
+        ]:
+            if values:
+                lines.append(f"### {title}")
+                for item in values[:8]:
+                    lines.append(f"- {item}")
+                lines.append("")
+
+    risk = getattr(report, "implementation_risk_review", None)
+    if risk is not None:
+        lines.append("## Implementation Risk Review")
+        lines.append("")
+        lines.append(getattr(risk, "summary", "") or "No grounded risk review available.")
+        lines.append("")
+        for title, values in [
+            ("Major Risks", getattr(risk, "major_risks", [])),
+            ("Operational Constraints", getattr(risk, "operational_constraints", [])),
+            ("Likely Failure Modes", getattr(risk, "likely_failure_modes", [])),
+            ("Mitigations", getattr(risk, "mitigations", [])),
+        ]:
+            if values:
+                lines.append(f"### {title}")
+                for item in values[:8]:
+                    lines.append(f"- {item}")
+                lines.append("")
 
     # Cost
     if cfg.include_cost:

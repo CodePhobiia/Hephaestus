@@ -199,6 +199,22 @@ class ScoredCandidate:
     def lens_used(self):  # type: ignore[return]
         return self.candidate.lens_used
 
+    @property
+    def bundle_proof(self) -> Any | None:
+        return getattr(self.candidate, "bundle_proof", None)
+
+    @property
+    def bundle_lineage(self) -> Any | None:
+        return getattr(self.candidate, "bundle_lineage", None)
+
+    @property
+    def selection_mode(self) -> str:
+        return str(getattr(self.candidate, "selection_mode", "singleton"))
+
+    @property
+    def bundle_role(self) -> str:
+        return str(getattr(self.candidate, "bundle_role", ""))
+
     def total_cost_usd(self) -> float:
         """Combined cost of search + scoring."""
         return self.candidate.cost_usd + self.scoring_cost_usd
@@ -322,7 +338,7 @@ class CandidateScorer:
                 )
                 # Fallback: use search confidence as fidelity
                 dist = distances.get(id(candidate), 0.5)
-                combined = candidate.confidence * (dist ** self._alpha)
+                combined = candidate.confidence * (dist ** self._alpha) * self._bundle_score_multiplier(candidate)
                 results.append(
                     ScoredCandidate(
                         candidate=candidate,
@@ -415,7 +431,7 @@ class CandidateScorer:
         fidelity = float(parsed.get("structural_fidelity", 0.5))
         fidelity = float(np.clip(fidelity, 0.0, 1.0))
 
-        combined = fidelity * (domain_distance ** self._alpha)
+        combined = fidelity * (domain_distance ** self._alpha) * self._bundle_score_multiplier(candidate)
 
         return ScoredCandidate(
             candidate=candidate,
@@ -428,6 +444,15 @@ class CandidateScorer:
             scoring_cost_usd=result.trace.total_cost_usd,
             scoring_trace=result.trace,
         )
+
+    @staticmethod
+    def _bundle_score_multiplier(candidate: SearchCandidate) -> float:
+        proof = getattr(candidate, "bundle_proof", None)
+        if proof is None:
+            return 1.0
+        confidence = float(getattr(proof, "proof_confidence", 0.5))
+        role_bonus = 0.03 if getattr(candidate, "bundle_role", "") == "critical" else 0.0
+        return float(np.clip(0.94 + 0.18 * confidence + role_bonus, 0.9, 1.12))
 
     def _parse_fidelity(self, raw: str) -> dict[str, Any]:
         """Parse the fidelity scoring JSON."""

@@ -1,35 +1,40 @@
 """
-Lens Library Manager — loads, validates, and caches cognitive lens YAML files.
+Lens Library Manager — loads, validates, versions, and caches cognitive lenses.
 
-A cognitive lens is a curated axiom set from a knowledge domain that, when injected
-mid-reasoning, forces an LLM to reason from a structurally foreign frame.
+This loader handles both static YAML lenses and derived composite lenses used by
+the adaptive bundle-proof selector.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
-import os
-import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from hephaestus.lenses.cards import LensCard, compile_lens_card
+from hephaestus.lenses.cells import CohesionCellIndex
+from hephaestus.lenses.lineage import (
+    LensLineage,
+    build_composite_lineage,
+    build_native_lineage,
+    compute_reference_signature,
+    validate_lineage,
+)
+from hephaestus.session.reference_lots import ReferenceLot
+
 logger = logging.getLogger(__name__)
 
-# Required top-level keys in every lens YAML
 _REQUIRED_KEYS: frozenset[str] = frozenset(
     {"name", "domain", "subdomain", "axioms", "structural_patterns", "injection_prompt"}
 )
-
-# Required keys inside each structural_pattern entry
 _REQUIRED_PATTERN_KEYS: frozenset[str] = frozenset({"name", "abstract", "maps_to"})
-
-# Default lens library directory (relative to this file)
 _DEFAULT_LIBRARY_DIR = Path(__file__).parent / "library"
 
-# Canonical high-level families used to reason about selection diversity.
 _SUPPORTED_DOMAIN_FAMILIES: frozenset[str] = frozenset(
     {
         "physical_sciences",
@@ -48,7 +53,6 @@ _SUPPORTED_DOMAIN_FAMILIES: frozenset[str] = frozenset(
 )
 
 _DOMAIN_FAMILY_BY_ALIAS: dict[str, str] = {
-    # Physical sciences
     "physical_sciences": "physical_sciences",
     "physics": "physical_sciences",
     "chemistry": "physical_sciences",
@@ -58,53 +62,43 @@ _DOMAIN_FAMILY_BY_ALIAS: dict[str, str] = {
     "oceanography": "physical_sciences",
     "materials": "physical_sciences",
     "materials_science": "physical_sciences",
-    # Biology and adjacent life sciences
     "biology": "biology",
     "neuroscience": "biology",
     "epidemiology": "biology",
     "ecology": "biology",
     "mycology": "biology",
-    # Economics / market systems
     "economics": "economics",
     "finance": "economics",
     "markets": "economics",
     "business": "economics",
-    # Myth and symbolic narrative domains
     "myth": "myth",
     "mythology": "myth",
     "folklore": "myth",
     "legend": "myth",
-    # Language
     "linguistics": "linguistics",
     "language": "linguistics",
     "semantics": "linguistics",
     "syntax": "linguistics",
     "pragmatics": "linguistics",
     "phonology": "linguistics",
-    # Arts and media
     "arts": "arts",
     "art": "arts",
     "music": "arts",
     "film": "arts",
     "textiles": "arts",
-    # Military / competitive strategy
     "military": "military",
     "martial_arts": "military",
     "sports": "military",
-    # Agriculture / food systems
     "agriculture": "agriculture",
     "forestry": "agriculture",
     "cooking": "agriculture",
     "culinary": "agriculture",
-    # Psychology / social behavior
     "psychology": "psychology",
     "sociology": "psychology",
-    # Mathematics / formal abstraction
     "mathematics": "mathematics",
     "math": "mathematics",
     "philosophy": "mathematics",
     "logic": "mathematics",
-    # Engineering / computing / designed systems
     "engineering": "engineering",
     "cs": "engineering",
     "computer_science": "engineering",
@@ -116,7 +110,6 @@ _DOMAIN_FAMILY_BY_ALIAS: dict[str, str] = {
     "navigation": "engineering",
     "infrastructure": "engineering",
     "systems": "engineering",
-    # Explicit fallback family labels
     "general": "general",
 }
 
@@ -247,7 +240,6 @@ _DOMAIN_FAMILY_TOKEN_HINTS: dict[str, set[str]] = {
 
 
 def _normalize_domain_label(value: str | None) -> str:
-    """Normalize free-form domain labels to a predictable lowercase token."""
     if not value:
         return ""
     return str(value).strip().lower().replace("-", "_").replace(" ", "_")
@@ -258,13 +250,6 @@ def classify_domain_family(
     subdomain: str | None = None,
     explicit_family: str | None = None,
 ) -> str:
-    """
-    Resolve a domain/subdomain pair to a canonical high-level family.
-
-    Explicit family labels win if provided. Otherwise we classify using exact
-    aliases first, then broad token hints so decomposed native domains like
-    ``distributed_systems`` or ``finance`` also resolve sensibly.
-    """
     normalized_explicit = _normalize_domain_label(explicit_family)
     if normalized_explicit:
         return _DOMAIN_FAMILY_BY_ALIAS.get(normalized_explicit, normalized_explicit)
@@ -287,16 +272,32 @@ def classify_domain_family(
     return "general"
 
 
+def _slug(value: str) -> str:
+    return _normalize_domain_label(value) or "lens"
+
+
+def _reference_key_tokens(
+    reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None,
+) -> list[str]:
+    if not reference_context:
+        return []
+    if isinstance(reference_context, Mapping):
+        return [_slug(str(key)) for key in reference_context.keys()]
+    tokens: list[str] = []
+    for lot in reference_context:
+        tokens.append(_slug(getattr(lot, "kind", "")))
+        tokens.append(_slug(getattr(lot, "subject_key", "")))
+    return [token for token in tokens if token]
+
+
 @dataclass
 class StructuralPattern:
-    """A named pattern extracted from a domain with abstract description and problem mappings."""
-
     name: str
     abstract: str
     maps_to: list[str]
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "StructuralPattern":
+    def from_dict(cls, data: dict[str, Any]) -> StructuralPattern:
         missing = _REQUIRED_PATTERN_KEYS - data.keys()
         if missing:
             raise ValueError(f"Structural pattern missing required keys: {missing}")
@@ -306,17 +307,12 @@ class StructuralPattern:
         return cls(
             name=str(data["name"]),
             abstract=str(data["abstract"]),
-            maps_to=[str(m) for m in maps_to],
+            maps_to=[str(item) for item in maps_to],
         )
 
 
 @dataclass
 class Lens:
-    """
-    A cognitive lens — a curated set of axioms and patterns from one knowledge domain
-    that can be injected into an LLM's reasoning to force cross-domain thinking.
-    """
-
     name: str
     domain: str
     subdomain: str
@@ -324,19 +320,27 @@ class Lens:
     structural_patterns: list[StructuralPattern]
     injection_prompt: str
     source_file: Path = field(default_factory=Path)
-
-    # Optional metadata
     tags: list[str] = field(default_factory=list)
     distance_hints: dict[str, float] = field(default_factory=dict)
     domain_family: str = ""
+    source_kind: str = "library"
+    version: int = 1
+    explicit_lens_id: str = ""
+    parent_lens_ids: tuple[str, ...] = ()
+    reference_signature: str = ""
+    lineage_token: str = ""
+    metadata: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        self.domain = self.domain.lower().strip()
+        self.subdomain = self.subdomain.lower().strip()
         if not self.domain_family:
             self.domain_family = classify_domain_family(self.domain, self.subdomain)
+        self.source_kind = _slug(self.source_kind or "library")
+        self.parent_lens_ids = tuple(_slug(item) for item in self.parent_lens_ids if item)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], source_file: Path | None = None) -> "Lens":
-        """Parse and validate a lens from a raw YAML dictionary."""
+    def from_dict(cls, data: dict[str, Any], source_file: Path | None = None) -> Lens:
         missing = _REQUIRED_KEYS - data.keys()
         if missing:
             raise ValueError(f"Lens missing required keys: {missing!r}")
@@ -349,53 +353,50 @@ class Lens:
         if not isinstance(raw_patterns, list) or len(raw_patterns) < 1:
             raise ValueError("Lens 'structural_patterns' must be a non-empty list")
 
-        patterns = [StructuralPattern.from_dict(p) for p in raw_patterns]
-
+        patterns = [StructuralPattern.from_dict(pattern) for pattern in raw_patterns]
         injection = data["injection_prompt"]
         if not isinstance(injection, str) or len(injection.strip()) < 20:
             raise ValueError("Lens 'injection_prompt' must be a non-empty string (≥20 chars)")
 
         return cls(
             name=str(data["name"]),
-            domain=str(data["domain"]).lower().strip(),
-            subdomain=str(data["subdomain"]).lower().strip(),
-            axioms=[str(a) for a in axioms],
+            domain=str(data["domain"]),
+            subdomain=str(data["subdomain"]),
+            axioms=[str(item) for item in axioms],
             structural_patterns=patterns,
             injection_prompt=injection.strip(),
             source_file=source_file or Path(),
-            tags=[str(t) for t in data.get("tags", [])],
-            distance_hints=dict(data.get("distance_hints", {})),
+            tags=[str(item) for item in data.get("tags", [])],
+            distance_hints={str(k): float(v) for k, v in dict(data.get("distance_hints", {})).items()},
             domain_family=classify_domain_family(
-                data["domain"],
-                data["subdomain"],
-                data.get("domain_family"),
+                str(data["domain"]),
+                str(data["subdomain"]),
+                str(data.get("domain_family", "")),
             ),
+            source_kind=str(data.get("source_kind", "library")),
+            version=int(data.get("version", 1)),
+            explicit_lens_id=str(data.get("lens_id", "")),
+            parent_lens_ids=tuple(str(item) for item in list(data.get("parent_lens_ids", []) or [])),
+            reference_signature=str(data.get("reference_signature", "")),
+            metadata={str(k): str(v) for k, v in dict(data.get("metadata", {})).items()},
         )
 
     @property
     def lens_id(self) -> str:
-        """
-        Stable identifier derived from the YAML filename stem (e.g., biology_immune).
-
-        The filename stem is the canonical ID because some lenses have single-word
-        names (e.g., agriculture, epidemiology) where domain == subdomain would
-        produce a redundant double (agriculture_agriculture).
-        """
+        if self.explicit_lens_id:
+            return self.explicit_lens_id
         if self.source_file and self.source_file.stem:
             return self.source_file.stem
-        # Fallback: derive from domain_subdomain
         return f"{self.domain}_{self.subdomain}".replace(" ", "_")
 
     @property
     def all_maps_to(self) -> set[str]:
-        """Flat union of all maps_to tags across all structural patterns."""
         result: set[str] = set()
-        for p in self.structural_patterns:
-            result.update(p.maps_to)
+        for pattern in self.structural_patterns:
+            result.update(pattern.maps_to)
         return result
 
     def to_metadata_dict(self) -> dict[str, Any]:
-        """Return lightweight metadata (no axioms/injection_prompt) for listing."""
         return {
             "lens_id": self.lens_id,
             "name": self.name,
@@ -405,16 +406,17 @@ class Lens:
             "axiom_count": len(self.axioms),
             "pattern_count": len(self.structural_patterns),
             "maps_to": sorted(self.all_maps_to),
-            "tags": self.tags,
+            "tags": list(self.tags),
+            "source_kind": self.source_kind,
+            "version": self.version,
+            "parent_lens_ids": list(self.parent_lens_ids),
         }
 
     def __repr__(self) -> str:
-        return f"Lens(id={self.lens_id!r}, name={self.name!r})"
+        return f"Lens(id={self.lens_id!r}, kind={self.source_kind!r}, version={self.version})"
 
 
 class LensValidationError(Exception):
-    """Raised when a lens YAML fails schema validation."""
-
     def __init__(self, path: Path, reason: str) -> None:
         self.path = path
         self.reason = reason
@@ -422,35 +424,26 @@ class LensValidationError(Exception):
 
 
 class LensLoader:
-    """
-    Loads, validates, and caches cognitive lens YAML files from the library directory.
-
-    Features:
-    - Lazy loading (load on first access)
-    - In-memory cache for fast repeated access
-    - Hot-reload support for development (watches file mtime)
-    - Schema validation on every load
-    - Friendly error messages for malformed lenses
-    """
+    """Loads, versions, and caches library plus derived lenses."""
 
     def __init__(
         self,
         library_dir: Path | str | None = None,
         hot_reload: bool = False,
     ) -> None:
-        """
-        Args:
-            library_dir: Directory containing YAML lens files.
-                         Defaults to the bundled library/ directory.
-            hot_reload: If True, re-read files when mtime changes (dev mode).
-        """
         self._library_dir = Path(library_dir) if library_dir else _DEFAULT_LIBRARY_DIR
         self._hot_reload = hot_reload
-
-        # Cache: lens_id → (Lens, mtime_at_load)
         self._cache: dict[str, tuple[Lens, float]] = {}
-        # Errors encountered during bulk load
+        self._card_cache: dict[str, LensCard] = {}
+        self._lineage_cache: dict[str, LensLineage] = {}
         self._load_errors: dict[str, str] = {}
+        self._library_revision = 1
+
+        self._derived_lenses: dict[str, Lens] = {}
+        self._derived_cards: dict[str, LensCard] = {}
+        self._derived_lineages: dict[str, LensLineage] = {}
+        self._derived_invalid: dict[str, tuple[str, ...]] = {}
+        self._cell_index_cache: dict[str, CohesionCellIndex] = {}
 
     @property
     def library_dir(self) -> Path:
@@ -460,14 +453,16 @@ class LensLoader:
     def hot_reload(self) -> bool:
         return self._hot_reload
 
+    @property
+    def library_revision(self) -> int:
+        return self._library_revision
+
     def _yaml_files(self) -> list[Path]:
-        """Return sorted list of .yaml files in the library directory."""
         if not self._library_dir.is_dir():
             raise FileNotFoundError(f"Lens library directory not found: {self._library_dir}")
         return sorted(self._library_dir.glob("*.yaml"))
 
     def _load_file(self, path: Path) -> Lens:
-        """Parse a single YAML file into a Lens object, with full validation."""
         try:
             raw = path.read_text(encoding="utf-8")
         except OSError as exc:
@@ -495,45 +490,79 @@ class LensLoader:
             return 0.0
 
     def _cache_get(self, lens_id: str, path: Path) -> Lens | None:
-        """Return cached lens if valid (or if hot_reload is False)."""
         if lens_id not in self._cache:
             return None
         cached_lens, cached_mtime = self._cache[lens_id]
-        if self._hot_reload:
-            current_mtime = self._get_mtime(path)
-            if current_mtime != cached_mtime:
-                logger.debug("Hot-reload: %s mtime changed, reloading", path.name)
-                return None
+        if self._hot_reload and self._get_mtime(path) != cached_mtime:
+            logger.debug("Hot-reload detected change in %s", path.name)
+            return None
         return cached_lens
 
+    def _invalidate_index_cache(self) -> None:
+        self._cell_index_cache.clear()
+
     def _cache_put(self, lens: Lens, path: Path) -> None:
+        card = compile_lens_card(lens)
+        lineage = build_native_lineage(
+            lens_id=lens.lens_id,
+            version=lens.version,
+            card_fingerprint64=card.fingerprint64,
+            loader_revision=self._library_revision,
+            source_kind=lens.source_kind,
+        )
+        lens.lineage_token = lineage.proof_token
+        card.lineage_token = lineage.proof_token
         self._cache[lens.lens_id] = (lens, self._get_mtime(path))
+        self._card_cache[lens.lens_id] = card
+        self._lineage_cache[lens.lens_id] = lineage
+        self._invalidate_index_cache()
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # Public API
-    # ──────────────────────────────────────────────────────────────────────────
+    def _validate_derived(
+        self,
+        *,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> list[str]:
+        valid_ids: list[str] = []
+        current_cards = {
+            **self._card_cache,
+            **self._derived_cards,
+        }
+        current_lineages = {
+            **self._lineage_cache,
+            **self._derived_lineages,
+        }
+        for lens_id, lineage in list(self._derived_lineages.items()):
+            validation = validate_lineage(
+                lineage,
+                current_cards=current_cards,
+                current_lineages=current_lineages,
+                loader_revision=self._library_revision,
+                reference_context=reference_context,
+            )
+            if validation.valid:
+                self._derived_invalid.pop(lens_id, None)
+                valid_ids.append(lens_id)
+                continue
+            self._derived_invalid[lens_id] = validation.reasons
+            self._derived_lineages[lens_id] = lineage.mark_stale(*validation.reasons)
+        return valid_ids
 
-    def load_all(self, skip_errors: bool = False) -> dict[str, Lens]:
-        """
-        Load every lens YAML in the library directory.
-
-        Args:
-            skip_errors: If True, log errors and continue. If False, raise on first error.
-
-        Returns:
-            Mapping of lens_id → Lens for all successfully loaded lenses.
-        """
+    def load_all(
+        self,
+        skip_errors: bool = False,
+        *,
+        include_derived: bool = True,
+        include_stale: bool = False,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> dict[str, Lens]:
         self._load_errors.clear()
         lenses: dict[str, Lens] = {}
-
         for path in self._yaml_files():
-            # Derive expected lens_id from filename (before loading)
-            stem = path.stem  # e.g. "biology_immune"
+            stem = path.stem
             cached = self._cache_get(stem, path)
             if cached is not None:
                 lenses[cached.lens_id] = cached
                 continue
-
             try:
                 lens = self._load_file(path)
                 self._cache_put(lens, path)
@@ -545,16 +574,28 @@ class LensLoader:
                 else:
                     raise
 
+        if include_derived and self._derived_lenses:
+            valid_ids = set(self._validate_derived(reference_context=reference_context))
+            for lens_id, lens in self._derived_lenses.items():
+                if lens_id in valid_ids or (include_stale and lens_id in self._derived_invalid):
+                    lenses[lens_id] = lens
+
         return lenses
 
-    def load_one(self, lens_id: str) -> Lens:
-        """
-        Load a single lens by its ID (e.g., 'biology_immune').
+    def load_one(
+        self,
+        lens_id: str,
+        *,
+        include_stale: bool = False,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> Lens:
+        if lens_id in self._derived_lenses:
+            valid_ids = set(self._validate_derived(reference_context=reference_context))
+            if lens_id in valid_ids or include_stale:
+                return self._derived_lenses[lens_id]
+            reasons = ", ".join(self._derived_invalid.get(lens_id, ()))
+            raise ValueError(f"Derived lens {lens_id!r} is stale: {reasons}")
 
-        Raises:
-            FileNotFoundError: If the lens file doesn't exist.
-            LensValidationError: If the file is invalid.
-        """
         path = self._library_dir / f"{lens_id}.yaml"
         if not path.exists():
             raise FileNotFoundError(f"Lens not found: {lens_id!r} (looked for {path})")
@@ -568,51 +609,365 @@ class LensLoader:
         return lens
 
     def list_available(self, skip_errors: bool = True) -> list[dict[str, Any]]:
-        """
-        Return lightweight metadata for all available lenses (no heavy axiom text).
-
-        Args:
-            skip_errors: Skip malformed files instead of raising.
-
-        Returns:
-            List of metadata dicts (sorted by lens_id).
-        """
         lenses = self.load_all(skip_errors=skip_errors)
         return sorted(
             [lens.to_metadata_dict() for lens in lenses.values()],
-            key=lambda d: d["lens_id"],
+            key=lambda item: item["lens_id"],
         )
 
     def get_by_domain(self, domain: str) -> list[Lens]:
-        """Return all lenses whose domain matches (case-insensitive)."""
-        all_lenses = self.load_all(skip_errors=True)
         target = domain.lower().strip()
-        return [l for l in all_lenses.values() if l.domain == target]
+        return [
+            lens
+            for lens in self.load_all(skip_errors=True).values()
+            if lens.domain == target
+        ]
 
     def get_by_maps_to(self, problem_type: str) -> list[Lens]:
-        """Return lenses that have the given problem_type in any pattern's maps_to."""
-        all_lenses = self.load_all(skip_errors=True)
         target = problem_type.lower().strip()
-        return [l for l in all_lenses.values() if target in {m.lower() for m in l.all_maps_to}]
+        return [
+            lens
+            for lens in self.load_all(skip_errors=True).values()
+            if target in {item.lower() for item in lens.all_maps_to}
+        ]
 
     def reload(self) -> dict[str, Lens]:
-        """Force-clear cache and reload everything from disk."""
+        self._library_revision += 1
         self._cache.clear()
+        self._card_cache.clear()
+        self._lineage_cache.clear()
+        self._invalidate_index_cache()
+        if self._derived_lenses:
+            self.invalidate_derived_lenses("library reloaded")
         return self.load_all(skip_errors=False)
 
+    def invalidate_derived_lenses(self, reason: str) -> None:
+        for lens_id, lineage in list(self._derived_lineages.items()):
+            self._derived_lineages[lens_id] = lineage.mark_stale(reason)
+            self._derived_invalid[lens_id] = self._derived_lineages[lens_id].stale_reasons
+        self._invalidate_index_cache()
+
+    def register_derived_lens(
+        self,
+        lens: Lens,
+        *,
+        card: LensCard | None = None,
+        lineage: LensLineage | None = None,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> Lens:
+        if lens.lens_id in self._cache:
+            raise ValueError(f"Cannot overwrite library lens {lens.lens_id!r} with derived lens")
+
+        derived_card = card or compile_lens_card(lens, reference_context=reference_context or {})
+        if lineage is None:
+            if lens.source_kind == "derived_composite" and lens.parent_lens_ids:
+                parent_cards = [self.get_card(parent_id) for parent_id in lens.parent_lens_ids]
+                parent_lineages = [self.get_lineage(parent_id) for parent_id in lens.parent_lens_ids]
+                lineage = build_composite_lineage(
+                    lens_id=lens.lens_id,
+                    version=lens.version,
+                    card_fingerprint64=derived_card.fingerprint64,
+                    loader_revision=self._library_revision,
+                    parent_cards=parent_cards,
+                    parent_lineages=parent_lineages,
+                    derivation=lens.metadata.get("derivation", "composite"),
+                    reference_context=reference_context,
+                    metadata=lens.metadata,
+                )
+            else:
+                lineage = build_native_lineage(
+                    lens_id=lens.lens_id,
+                    version=lens.version,
+                    card_fingerprint64=derived_card.fingerprint64,
+                    loader_revision=self._library_revision,
+                    source_kind=lens.source_kind,
+                    derivation=lens.metadata.get("derivation", "derived"),
+                )
+
+        lens.lineage_token = lineage.proof_token
+        lens.reference_signature = lineage.reference_digest or lens.reference_signature
+        derived_card.lineage_token = lineage.proof_token
+        derived_card.reference_signature = lineage.reference_digest or derived_card.reference_signature
+        self._derived_lenses[lens.lens_id] = lens
+        self._derived_cards[lens.lens_id] = derived_card
+        self._derived_lineages[lens.lens_id] = lineage
+        self._derived_invalid.pop(lens.lens_id, None)
+        self._invalidate_index_cache()
+        return lens
+
+    def derive_composite_lens(
+        self,
+        *,
+        name: str,
+        parent_lens_ids: Sequence[str],
+        injection_prompt: str | None = None,
+        tags: Sequence[str] | None = None,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+        lens_id: str | None = None,
+    ) -> Lens:
+        unique_parent_ids = tuple(dict.fromkeys(_slug(parent_id) for parent_id in parent_lens_ids if parent_id))
+        if len(unique_parent_ids) < 2:
+            raise ValueError("Composite lenses require at least two parent lenses")
+
+        parents = [self.load_one(parent_id) for parent_id in unique_parent_ids]
+        parent_cards = [self.get_card(parent_id) for parent_id in unique_parent_ids]
+        parent_lineages = [self.get_lineage(parent_id) for parent_id in unique_parent_ids]
+        maps_to = sorted({shape for card in parent_cards for shape in card.transfer_shape})
+        ref_signature = compute_reference_signature(reference_context)
+
+        axioms: list[str] = []
+        for card in parent_cards:
+            if card.evidence_atoms:
+                axioms.append(f"{card.domain_name} contributes {card.evidence_atoms[0]}.")
+        shared_terms = sorted(
+            set.intersection(*[set(card.transfer_shape) for card in parent_cards])
+        ) if parent_cards else []
+        if shared_terms:
+            axioms.append(
+                "Composite transfer is stabilized by shared structural commitments: "
+                + ", ".join(shared_terms[:6])
+                + "."
+            )
+        axioms.append(
+            "The bundle remains valid only while all parent cards and reference anchors remain current."
+        )
+
+        patterns = [
+            StructuralPattern(
+                name="composite_bridge",
+                abstract=(
+                    "Merge structurally distant mechanisms into a coordinated fold-state bundle "
+                    "while preserving lineage-proof traceability."
+                ),
+                maps_to=maps_to[:8] or ["composite_transfer"],
+            )
+        ]
+        if len(maps_to) > 3:
+            patterns.append(
+                StructuralPattern(
+                    name="conditional_cohesion",
+                    abstract=(
+                        "Higher-order compatibility appears only when the combined transfer shape "
+                        "covers multiple complementary query terms."
+                    ),
+                    maps_to=maps_to[3:10],
+                )
+            )
+
+        composite_lens_id = lens_id or (
+            f"composite_{_slug(name)}_{hashlib.sha256('|'.join(unique_parent_ids).encode('utf-8')).hexdigest()[:8]}"
+        )
+        merged_tags = sorted(
+            {
+                *[tag for parent in parents for tag in parent.tags],
+                *(tags or ()),
+                *_reference_key_tokens(reference_context),
+                "composite",
+                "bundle",
+            }
+        )
+        prompt = injection_prompt or (
+            f"Reason using the composite fold-state of {', '.join(parent.name for parent in parents)}. "
+            "Preserve each parent mechanism, respect lineage invalidation, and only transfer mechanisms "
+            "that survive bundle proof validation."
+        )
+        lens = Lens(
+            name=name,
+            domain="composite",
+            subdomain=_slug(name),
+            axioms=axioms[:8],
+            structural_patterns=patterns,
+            injection_prompt=prompt,
+            source_file=Path(),
+            tags=merged_tags,
+            domain_family="general",
+            source_kind="derived_composite",
+            version=max(parent.version for parent in parents) + 1,
+            explicit_lens_id=composite_lens_id,
+            parent_lens_ids=unique_parent_ids,
+            reference_signature=ref_signature,
+            metadata={
+                "derivation": "bundle_composite",
+                "parent_count": str(len(unique_parent_ids)),
+            },
+        )
+        card = compile_lens_card(
+            lens,
+            parent_cards=parent_cards,
+            reference_context={"reference_keys": _reference_key_tokens(reference_context)},
+        )
+        lineage = build_composite_lineage(
+            lens_id=lens.lens_id,
+            version=lens.version,
+            card_fingerprint64=card.fingerprint64,
+            loader_revision=self._library_revision,
+            parent_cards=parent_cards,
+            parent_lineages=parent_lineages,
+            derivation="bundle_composite",
+            reference_context=reference_context,
+            metadata=lens.metadata,
+        )
+        return self.register_derived_lens(
+            lens,
+            card=card,
+            lineage=lineage,
+            reference_context=reference_context,
+        )
+
+    def get_card(self, lens_id: str) -> LensCard:
+        if lens_id in self._derived_cards:
+            valid_ids = set(self._validate_derived(reference_context=None))
+            if lens_id not in valid_ids and lens_id in self._derived_invalid:
+                reasons = ", ".join(self._derived_invalid[lens_id])
+                raise ValueError(f"Derived lens card {lens_id!r} is stale: {reasons}")
+            return self._derived_cards[lens_id]
+        if lens_id not in self._card_cache:
+            lens = self.load_one(lens_id)
+            self._cache_put(lens, lens.source_file)
+        return self._card_cache[lens_id]
+
+    def get_all_cards(
+        self,
+        *,
+        skip_errors: bool = True,
+        include_derived: bool = True,
+        include_stale: bool = False,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> dict[str, LensCard]:
+        self.load_all(
+            skip_errors=skip_errors,
+            include_derived=include_derived,
+            include_stale=include_stale,
+            reference_context=reference_context,
+        )
+        cards = dict(self._card_cache)
+        if include_derived:
+            valid_ids = set(self._validate_derived(reference_context=reference_context))
+            for lens_id, card in self._derived_cards.items():
+                if lens_id in valid_ids or (include_stale and lens_id in self._derived_invalid):
+                    cards[lens_id] = card
+        return cards
+
+    def get_lineage(
+        self,
+        lens_id: str,
+        *,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> LensLineage:
+        if lens_id in self._derived_lineages:
+            valid_ids = set(self._validate_derived(reference_context=reference_context))
+            if lens_id not in valid_ids and lens_id in self._derived_invalid:
+                reasons = ", ".join(self._derived_invalid[lens_id])
+                raise ValueError(f"Derived lens lineage {lens_id!r} is stale: {reasons}")
+            return self._derived_lineages[lens_id]
+        if lens_id not in self._lineage_cache:
+            lens = self.load_one(lens_id)
+            self._cache_put(lens, lens.source_file)
+        return self._lineage_cache[lens_id]
+
+    def get_all_lineages(
+        self,
+        *,
+        skip_errors: bool = True,
+        include_derived: bool = True,
+        include_stale: bool = False,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+    ) -> dict[str, LensLineage]:
+        self.load_all(
+            skip_errors=skip_errors,
+            include_derived=include_derived,
+            include_stale=include_stale,
+            reference_context=reference_context,
+        )
+        lineages = dict(self._lineage_cache)
+        if include_derived:
+            valid_ids = set(self._validate_derived(reference_context=reference_context))
+            for lens_id, lineage in self._derived_lineages.items():
+                if lens_id in valid_ids or (include_stale and lens_id in self._derived_invalid):
+                    lineages[lens_id] = lineage
+        return lineages
+
+    def get_cell_index(
+        self,
+        *,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+        include_derived: bool = True,
+    ) -> CohesionCellIndex:
+        ref_signature = compute_reference_signature(reference_context)
+        state_signature = self.state_signature(
+            reference_context=reference_context,
+            include_derived=include_derived,
+        )
+        cache_key = f"{state_signature}:{ref_signature}"
+        if cache_key in self._cell_index_cache:
+            return self._cell_index_cache[cache_key]
+
+        cards = self.get_all_cards(
+            include_derived=include_derived,
+            reference_context=reference_context,
+        )
+        lineages = self.get_all_lineages(
+            include_derived=include_derived,
+            reference_context=reference_context,
+        )
+        index = CohesionCellIndex.build(
+            cards,
+            lineages=lineages,
+            reference_context=reference_context,
+        )
+        self._cell_index_cache = {cache_key: index}
+        return index
+
+    def state_signature(
+        self,
+        *,
+        reference_context: Mapping[str, Any] | Sequence[ReferenceLot] | None = None,
+        include_derived: bool = True,
+    ) -> str:
+        cards = self.get_all_cards(
+            include_derived=include_derived,
+            reference_context=reference_context,
+        )
+        lineages = self.get_all_lineages(
+            include_derived=include_derived,
+            reference_context=reference_context,
+        )
+        parts = [
+            f"rev:{self._library_revision}",
+            *[
+                f"{lens_id}:{card.fingerprint64}:{lineages[lens_id].proof_token}"
+                for lens_id, card in sorted(cards.items())
+                if lens_id in lineages
+            ],
+        ]
+        digest = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+        return digest[:16]
+
     def get_load_errors(self) -> dict[str, str]:
-        """Return any errors encountered during the last load_all() call."""
         return dict(self._load_errors)
 
     def __len__(self) -> int:
-        """Number of successfully cached lenses."""
-        return len(self._cache)
+        return len(self._cache) + len(
+            [lens_id for lens_id in self._derived_lenses if lens_id not in self._derived_invalid]
+        )
 
     def __contains__(self, lens_id: str) -> bool:
-        return (self._library_dir / f"{lens_id}.yaml").exists()
+        return lens_id in self._derived_lenses or (self._library_dir / f"{lens_id}.yaml").exists()
 
     def __repr__(self) -> str:
         return (
-            f"LensLoader(library_dir={self._library_dir!r}, "
-            f"cached={len(self._cache)}, hot_reload={self._hot_reload})"
+            f"LensLoader(library_dir={self._library_dir!r}, cached={len(self._cache)}, "
+            f"derived={len(self._derived_lenses)}, hot_reload={self._hot_reload}, "
+            f"revision={self._library_revision})"
         )
+
+
+__all__ = [
+    "Lens",
+    "LensLoader",
+    "LensValidationError",
+    "StructuralPattern",
+    "_DEFAULT_LIBRARY_DIR",
+    "_SUPPORTED_DOMAIN_FAMILIES",
+    "classify_domain_family",
+]

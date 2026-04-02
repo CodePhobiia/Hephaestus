@@ -38,6 +38,7 @@ from typing import Any
 from hephaestus.core.decomposer import ProblemStructure
 from hephaestus.core.translator import Translation
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
+from hephaestus.lenses.cells import build_reference_state
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +204,11 @@ class VerifiedInvention:
         "POSSIBLE_PRIOR_ART", "SEARCH_UNAVAILABLE").
     prior_art_report:
         Full PriorArtReport if search was performed, else None.
+    grounding_report:
+        Perplexity-grounded external annex: related work, adjacent fields,
+        and practitioner references.
+    implementation_risk_review:
+        Perplexity-grounded implementation / operational risk review.
     verification_notes:
         Combined human-readable verification summary.
     validity_notes:
@@ -230,6 +236,8 @@ class VerifiedInvention:
     adversarial_result: AdversarialResult
     prior_art_status: str = "SEARCH_UNAVAILABLE"
     prior_art_report: Any = None
+    grounding_report: Any = None
+    implementation_risk_review: Any = None
     verification_notes: str = ""
     validity_notes: str = ""
     feasibility_notes: str = ""
@@ -239,6 +247,11 @@ class VerifiedInvention:
     mechanism_differs_from_baseline: str = ""  # from translation
     subtraction_test: str = ""  # from translation
     baseline_comparison: str = ""  # from translation
+    bundle_acceptance_status: str = "singleton"
+    guard_failures: list[str] = field(default_factory=list)
+    lineage_stale: bool = False
+    orchestration_mode: str = "singleton"
+    recomposition_events: list[dict[str, Any]] = field(default_factory=list)
     recommended_next_steps: list[str] = field(default_factory=list)
     verification_cost_usd: float = 0.0
     verification_duration_seconds: float = 0.0
@@ -304,27 +317,49 @@ class NoveltyVerifier:
         attack_harness: DeepForgeHarness,
         defend_harness: DeepForgeHarness | None = None,
         run_prior_art: bool = True,
+        use_perplexity_research: bool = True,
+        perplexity_model: str | None = None,
         system: str | None = None,
     ) -> None:
         self._attack_harness = attack_harness
         self._defend_harness = defend_harness or attack_harness
         self._run_prior_art = run_prior_art
+        self._use_perplexity_research = use_perplexity_research
+        self._perplexity_model = perplexity_model
         self._system_override = system
         self._prior_art_searcher: Any = None
+        self._perplexity_client: Any = None
 
         if run_prior_art:
             self._init_prior_art_searcher()
+        self._init_perplexity_client()
 
     def _init_prior_art_searcher(self) -> None:
         """Lazily initialise the prior art searcher with graceful fallback."""
         try:
             from hephaestus.output.prior_art import PriorArtSearcher
-            self._prior_art_searcher = PriorArtSearcher()
+            self._prior_art_searcher = PriorArtSearcher(
+                use_perplexity_review=self._use_perplexity_research,
+                perplexity_model=self._perplexity_model,
+            )
             logger.info("Prior art searcher initialised")
         except ImportError:
             logger.warning("Prior art searcher not available (missing dependencies)")
         except Exception as exc:
             logger.warning("Prior art searcher init failed: %s", exc)
+
+    def _init_perplexity_client(self) -> None:
+        """Initialise the Perplexity research client if configured."""
+        try:
+            from hephaestus.research.perplexity import PerplexityClient
+            client = PerplexityClient(
+                enabled=self._use_perplexity_research,
+                model=self._perplexity_model,
+            )
+            if client.available():
+                self._perplexity_client = client
+        except Exception as exc:
+            logger.warning("Perplexity research client init failed: %s", exc)
 
     async def verify(
         self,
@@ -406,26 +441,66 @@ class NoveltyVerifier:
         # Step 2: Prior art check (concurrent with or after attack)
         prior_art_status = "SEARCH_UNAVAILABLE"
         prior_art_report = None
+        grounding_report = None
+        implementation_risk_review = None
+
+        import asyncio
+
+        research_tasks: list[Any] = []
+        task_names: list[str] = []
 
         if self._run_prior_art and self._prior_art_searcher is not None:
-            try:
-                query = (
-                    f"{translation.key_insight} "
-                    f"{translation.source_domain} "
-                    f"{structure.native_domain}"
-                )
-                prior_art_report = await self._prior_art_searcher.search(
-                    query=query,
+            research_tasks.append(
+                self._prior_art_searcher.search(
+                    query=(
+                        f"{translation.key_insight} "
+                        f"{translation.source_domain} "
+                        f"{structure.native_domain}"
+                    ),
                     invention_name=translation.invention_name,
                 )
-                prior_art_status = prior_art_report.novelty_status
-                logger.debug(
-                    "Prior art for %s: %s",
-                    translation.invention_name,
-                    prior_art_status,
-                )
+            )
+            task_names.append("prior_art")
+
+        if self._perplexity_client is not None:
+            research_tasks.extend([
+                self._perplexity_client.ground_invention_report(
+                    problem=structure.original_problem,
+                    invention_name=translation.invention_name,
+                    source_domain=translation.source_domain,
+                    key_insight=translation.key_insight,
+                    architecture=translation.architecture,
+                ),
+                self._perplexity_client.review_implementation_risks(
+                    problem=structure.original_problem,
+                    invention_name=translation.invention_name,
+                    architecture=translation.architecture,
+                    key_insight=translation.key_insight,
+                ),
+            ])
+            task_names.extend(["grounding", "risk_review"])
+
+        if research_tasks:
+            try:
+                research_results = await asyncio.gather(*research_tasks, return_exceptions=True)
+                for name, result in zip(task_names, research_results):
+                    if isinstance(result, Exception):
+                        logger.warning("%s research failed for %s: %s", name, translation.invention_name, result)
+                        continue
+                    if name == "prior_art":
+                        prior_art_report = result
+                        prior_art_status = prior_art_report.novelty_status
+                        logger.debug(
+                            "Prior art for %s: %s",
+                            translation.invention_name,
+                            prior_art_status,
+                        )
+                    elif name == "grounding":
+                        grounding_report = result
+                    elif name == "risk_review":
+                        implementation_risk_review = result
             except Exception as exc:
-                logger.warning("Prior art search failed for %s: %s", translation.invention_name, exc)
+                logger.warning("Research annex failed for %s: %s", translation.invention_name, exc)
                 prior_art_status = "SEARCH_UNAVAILABLE"
 
         # Step 3: Structural validity + feasibility assessment
@@ -483,6 +558,24 @@ class NoveltyVerifier:
             subtraction_test=translation.subtraction_test,
             baseline_comparison=translation.baseline_comparison,
         )
+        reference_state = build_reference_state(
+            structure,
+            branch_genome=getattr(getattr(translation, "source_candidate", None), "branch_genome", None),
+        )
+        guard_failures = [
+            check.detail
+            for guard in getattr(translation, "guard_results", [])
+            for check in getattr(guard, "checks", [])
+            if not getattr(check, "passed", True)
+        ]
+        lineage = getattr(translation, "bundle_lineage", None)
+        lineage_stale = bool(lineage is not None and hasattr(lineage, "is_continuous") and not lineage.is_continuous(reference_state))
+        orchestration_mode = str(getattr(translation, "selection_mode", "bundle" if getattr(translation, "bundle_proof", None) else "singleton"))
+        bundle_acceptance_status = "bundle_accepted" if getattr(translation, "bundle_proof", None) is not None else "singleton"
+        if guard_failures:
+            bundle_acceptance_status = "bundle_recomposed" if getattr(translation, "recomposition_events", []) else "bundle_guarded"
+        if lineage_stale:
+            bundle_acceptance_status = "bundle_invalidated"
 
         # Step 4: Compute final novelty score
         novelty_score = self._compute_novelty_score(
@@ -513,6 +606,11 @@ class NoveltyVerifier:
                 novelty_score, translation.invention_name,
             )
 
+        if guard_failures:
+            novelty_score *= 0.75
+        if lineage_stale:
+            novelty_score *= 0.60
+
         # Combine verification notes
         notes_parts = [
             f"Adversarial verdict: {attack_result.verdict}",
@@ -520,6 +618,14 @@ class NoveltyVerifier:
             f"Feasibility: {validity.get('feasibility_rating', 'UNKNOWN')}",
             f"Load-bearing: {'PASS' if load_bearing_passed else 'FAIL'}",
         ]
+        if guard_failures:
+            notes_parts.append(f"Guard failures: {' | '.join(guard_failures[:3])}")
+        if lineage_stale:
+            notes_parts.append("Lineage continuity failed against current reference state.")
+        if grounding_report is not None and getattr(grounding_report, "summary", ""):
+            notes_parts.append(f"Grounding: {grounding_report.summary}")
+        if implementation_risk_review is not None and getattr(implementation_risk_review, "summary", ""):
+            notes_parts.append(f"Risk review: {implementation_risk_review.summary}")
         if attack_result.strongest_objection:
             notes_parts.append(f"Main challenge: {attack_result.strongest_objection}")
 
@@ -533,6 +639,8 @@ class NoveltyVerifier:
             adversarial_result=attack_result,
             prior_art_status=prior_art_status,
             prior_art_report=prior_art_report,
+            grounding_report=grounding_report,
+            implementation_risk_review=implementation_risk_review,
             verification_notes="\n".join(notes_parts),
             validity_notes=str(validity.get("validity_notes", "")),
             feasibility_notes=str(validity.get("feasibility_notes", "")),
@@ -542,6 +650,11 @@ class NoveltyVerifier:
             mechanism_differs_from_baseline=translation.mechanism_differs_from_baseline,
             subtraction_test=translation.subtraction_test,
             baseline_comparison=translation.baseline_comparison,
+            bundle_acceptance_status=bundle_acceptance_status,
+            guard_failures=guard_failures,
+            lineage_stale=lineage_stale,
+            orchestration_mode=orchestration_mode,
+            recomposition_events=list(getattr(translation, "recomposition_events", []) or []),
             recommended_next_steps=list(validity.get("recommended_next_steps", [])),
             verification_cost_usd=total_cost,
             verification_duration_seconds=time.monotonic() - t_start,

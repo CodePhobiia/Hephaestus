@@ -18,6 +18,8 @@ import pytest
 from click.testing import CliRunner
 
 from hephaestus.cli.main import cli
+from hephaestus.lenses.state import LensBundleMember, LensBundleProof, LensEngineState
+from hephaestus.research.perplexity import BenchmarkCase, BenchmarkCorpus
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +202,33 @@ def _make_invention_report(
     return report
 
 
+def _lens_engine_state() -> LensEngineState:
+    return LensEngineState(
+        session_reference_generation=2,
+        active_bundle_id="bundle:adaptive:main",
+        members=[
+            LensBundleMember(
+                lens_id="biology_immune",
+                lens_name="Immune System",
+                domain_name="biology::Immune System",
+            )
+        ],
+        bundles=[
+            LensBundleProof(
+                bundle_id="bundle:adaptive:main",
+                bundle_kind="adaptive_bundle",
+                member_ids=["biology_immune"],
+                status="active",
+                proof_status="fallback",
+                cohesion_score=0.60,
+                proof_fingerprint="proof-main",
+                reference_generation=2,
+                summary="CLI bridge lens state.",
+            )
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Async iterator helper
 # ---------------------------------------------------------------------------
@@ -306,6 +335,8 @@ class TestHelpVersion:
         assert "--output" in result.output
         assert "--cost" in result.output
         assert "--quiet" in result.output
+        assert "--research / --no-research" in result.output or "--research" in result.output
+        assert "--benchmark-corpus" in result.output
 
     def test_short_help_flag(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["-h"])
@@ -504,6 +535,51 @@ class TestSuccessfulInvocation:
         content = output_file.read_text()
         assert "HEPHAESTUS" in content
 
+    def test_benchmark_corpus_json(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("PERPLEXITY_API_KEY", "pplx-test")
+        corpus = BenchmarkCorpus(
+            topic="distributed systems",
+            summary="Grounded corpus",
+            cases=[BenchmarkCase(problem="Handle failover")],
+        )
+
+        with patch("hephaestus.research.BenchmarkCorpusBuilder.build", new=AsyncMock(return_value=corpus)):
+            result = runner.invoke(
+                cli,
+                ["--benchmark-corpus", "distributed systems", "--format", "json"],
+            )
+
+        assert result.exit_code == 0
+        assert '"topic": "distributed systems"' in result.output
+
+    def test_benchmark_corpus_output_file(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
+    ) -> None:
+        monkeypatch.setenv("PERPLEXITY_API_KEY", "pplx-test")
+        corpus = BenchmarkCorpus(
+            topic="distributed systems",
+            summary="Grounded corpus",
+            cases=[BenchmarkCase(problem="Handle failover")],
+        )
+        output_file = tmp_path / "benchmark.md"
+
+        with patch("hephaestus.research.BenchmarkCorpusBuilder.build", new=AsyncMock(return_value=corpus)):
+            result = runner.invoke(
+                cli,
+                ["--benchmark-corpus", "distributed systems", "--output", str(output_file)],
+            )
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+        assert "Handle failover" in output_file.read_text()
+
 
 # ---------------------------------------------------------------------------
 # Error handling
@@ -540,6 +616,21 @@ class TestErrorHandling:
     def test_invalid_candidates(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--candidates", "99", "test problem"])
         assert result.exit_code != 0
+
+    def test_benchmark_corpus_requires_research(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("PERPLEXITY_API_KEY", "pplx-test")
+        result = runner.invoke(cli, ["--no-research", "--benchmark-corpus", "distributed systems"])
+        assert result.exit_code == 1
+        assert "Benchmark corpus generation failed" in result.output
+
+    def test_benchmark_corpus_rejects_problem_argument(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["--benchmark-corpus", "distributed systems", "test problem"])
+        assert result.exit_code == 1
+        assert "standalone research mode" in result.output
 
     @patch("hephaestus.core.genesis.Genesis")
     def test_no_inventions_produced(self, MockGenesis: MagicMock, runner: CliRunner) -> None:
@@ -691,6 +782,19 @@ class TestDisplay:
         # Should contain key sections
         assert "HEPHAESTUS" in output or "Invention" in output
 
+    def test_print_invention_report_with_lens_engine(self) -> None:
+        from io import StringIO
+        from rich.console import Console
+        from hephaestus.cli.display import print_invention_report
+
+        report = _make_invention_report()
+        report.lens_engine_state = _lens_engine_state()
+        console = Console(file=StringIO(), highlight=False)
+        print_invention_report(console, report, show_trace=False, show_cost=False)
+        output = console.file.getvalue()  # type: ignore
+        assert "Lens Engine" in output
+        assert "bundle:adaptive:main" in output
+
     def test_print_cost_table(self) -> None:
         """Smoke test for cost table rendering."""
         from io import StringIO
@@ -735,6 +839,17 @@ class TestDisplay:
         print_quiet_result(console, report)
         output = console.file.getvalue()  # type: ignore
         assert "Immune Trust Protocol" in output or "0.91" in output
+
+    def test_bridge_report_preserves_lens_engine_state(self) -> None:
+        from hephaestus.cli.main import _bridge_report
+        from hephaestus.output.formatter import OutputFormatter
+
+        report = _make_invention_report()
+        report.lens_engine_state = _lens_engine_state()
+        bridged = _bridge_report(report)
+        payload = json.loads(OutputFormatter().to_json(bridged))
+        lens = payload["hephaestus_invention_report"]["lens_engine"]
+        assert lens["active_bundle_id"] == "bundle:adaptive:main"
 
 
 # ---------------------------------------------------------------------------

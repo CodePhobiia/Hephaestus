@@ -65,6 +65,8 @@ that could benefit from novel engineering solutions.
 
 {workspace_context}
 
+{research_context}
+
 Return a JSON array of problems to solve.
 """
 
@@ -109,6 +111,7 @@ class WorkspaceInventionReport:
     inventions_attempted: int = 0
     inventions_succeeded: int = 0
     inventions: list[WorkspaceInvention] = field(default_factory=list)
+    research_dossier: Any | None = None
     total_cost_usd: float = 0.0
 
 
@@ -139,13 +142,40 @@ class WorkspaceInventor:
         self.depth = depth
         self.model = model
         self.intensity = intensity
+        self._research_dossier: Any | None = None
+
+    async def _build_research_dossier(self, context: WorkspaceContext) -> Any | None:
+        """Build a Perplexity research dossier for this repo when configured."""
+        try:
+            from hephaestus.research.perplexity import PerplexityClient
+
+            client = PerplexityClient()
+            if not client.available():
+                return None
+            dossier = await client.build_workspace_dossier(
+                workspace_name=self.root.name,
+                workspace_context=context.to_prompt_text(),
+            )
+            await client.close()
+            return dossier
+        except Exception as exc:
+            logger.warning("Workspace research dossier skipped: %s", exc)
+            return None
 
     async def analyze_codebase(self) -> list[IdentifiedProblem]:
         """Use the model to analyze the codebase and identify problems."""
         from hephaestus.deepforge.harness import DeepForgeHarness, HarnessConfig
 
         context = WorkspaceContext.from_directory(self.root, budget_chars=20_000)
-        prompt = _ANALYSIS_PROMPT.format(workspace_context=context.to_prompt_text())
+        self._research_dossier = await self._build_research_dossier(context)
+        prompt = _ANALYSIS_PROMPT.format(
+            workspace_context=context.to_prompt_text(),
+            research_context=(
+                self._research_dossier.to_prompt_text()
+                if self._research_dossier and hasattr(self._research_dossier, "to_prompt_text")
+                else ""
+            ),
+        )
 
         harness = DeepForgeHarness(
             adapter=self.adapter,
@@ -173,6 +203,11 @@ class WorkspaceInventor:
             f"{problem.problem}\n\n"
             f"Context: This is for a {self.root.name} codebase. {problem.context}"
         )
+        if self._research_dossier is not None:
+            enriched += (
+                "\n\nExternal repo dossier:\n"
+                f"{self._research_dossier.to_prompt_text() if hasattr(self._research_dossier, 'to_prompt_text') else self._research_dossier}"
+            )
 
         try:
             import os
@@ -235,6 +270,7 @@ class WorkspaceInventor:
             return report
 
         report.problems_found = len(problems)
+        report.research_dossier = self._research_dossier
         problems = problems[:self.max_inventions]
 
         if console:
@@ -275,6 +311,25 @@ class WorkspaceInventor:
             f"**Inventions succeeded:** {report.inventions_succeeded}",
             "",
         ]
+
+        dossier = getattr(report, "research_dossier", None)
+        if dossier is not None:
+            lines.extend([
+                "## External Research Dossier",
+                "",
+                getattr(dossier, "summary", "") or "No external summary available.",
+                "",
+            ])
+            for title, values in [
+                ("Comparable Tools", getattr(dossier, "comparable_tools", [])),
+                ("Architecture Patterns", getattr(dossier, "architecture_patterns", [])),
+                ("Differentiation Opportunities", getattr(dossier, "differentiation_opportunities", [])),
+                ("Implementation Risks", getattr(dossier, "implementation_risks", [])),
+            ]:
+                if values:
+                    lines.append(f"### {title}")
+                    lines.extend([f"- {item}" for item in values[:8]])
+                    lines.append("")
 
         for i, inv in enumerate(report.inventions, 1):
             if inv.success:

@@ -5,11 +5,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import yaml
 
-from hephaestus.lenses.loader import Lens, LensLoader, StructuralPattern
+from hephaestus.lenses.loader import Lens, StructuralPattern
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +80,8 @@ def validate_lens_file(path: Path) -> list[LensValidationIssue]:
         return [LensValidationIssue(fname, "format", "Expected a YAML mapping")]
 
     try:
-        loader = LensLoader()
-        lens = loader._parse_lens(data, path)  # type: ignore[attr-defined]
+        lens = Lens.from_dict(data, source_file=path)
     except Exception:
-        # Fall back to manual construction
         try:
             patterns = [
                 StructuralPattern(

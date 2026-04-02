@@ -8,12 +8,17 @@ from hephaestus.session.schema import (
     SessionMeta,
     TranscriptEntry,
 )
+from hephaestus.session.reference_lots import ReferenceLot, ResumeGateReport
 from hephaestus.session.todos import TodoItem, TodoList
+from hephaestus.lenses.state import LensEngineState
 
 __all__ = [
     "InventionSnapshot",
     "Session",
     "SessionMeta",
+    "ReferenceLot",
+    "ResumeGateReport",
+    "LensEngineState",
     "TodoItem",
     "TodoList",
     "TranscriptEntry",

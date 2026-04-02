@@ -86,6 +86,9 @@ class TestDefaults:
         assert cfg.theme == "rich"
         assert cfg.divergence_intensity == "STANDARD"
         assert cfg.output_mode == "MECHANISM"
+        assert cfg.use_perplexity_research is True
+        assert cfg.perplexity_model == "sonar-pro"
+        assert cfg.use_branchgenome_v1 is False
 
     def test_sources_all_builtin(self, tmp_path: Path) -> None:
         lc = _make_lc(tmp_path)
@@ -194,6 +197,23 @@ class TestEnvVars:
         monkeypatch.setenv("HEPHAESTUS_CANDIDATES", "15")
         lc = _make_lc(tmp_path)
         assert lc.resolve().candidates == 15
+
+    def test_env_research_overrides(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HEPHAESTUS_USE_PERPLEXITY_RESEARCH", "false")
+        monkeypatch.setenv("HEPHAESTUS_PERPLEXITY_MODEL", "sonar-deep-research")
+        lc = _make_lc(tmp_path)
+        cfg = lc.resolve()
+        assert cfg.use_perplexity_research is False
+        assert cfg.perplexity_model == "sonar-deep-research"
+
+    def test_env_branchgenome_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HEPHAESTUS_USE_BRANCHGENOME_V1", "true")
+        lc = _make_lc(tmp_path)
+        assert lc.resolve().use_branchgenome_v1 is True
 
 
 # ── Full precedence ──────────────────────────────────────────────────────

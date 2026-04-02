@@ -123,6 +123,13 @@ class WorkspaceMode:
             name=f"workspace:{root.name}",
             model=getattr(adapter, "model", "unknown"),
         ))
+        session.bind_reference_lot(
+            kind="workspace",
+            subject_key=root.name,
+            op_id=0,
+            exact={"root": str(root)},
+            dependents=[0],
+        )
 
         # Build system prompt
         system_prompt = _WORKSPACE_SYSTEM_PROMPT.format(

@@ -107,6 +107,8 @@ class Hephaestus:
         domain: str | None = None,
         num_translations: int = 3,
         run_prior_art: bool = True,
+        use_perplexity_research: bool | None = None,
+        perplexity_model: str | None = None,
     ) -> None:
         self._anthropic_key = anthropic_key or os.environ.get("ANTHROPIC_API_KEY")
         self._openai_key = openai_key or os.environ.get("OPENAI_API_KEY")
@@ -116,6 +118,14 @@ class Hephaestus:
         self._domain = domain
         self._num_translations = num_translations
         self._run_prior_art = run_prior_art
+        self._use_perplexity_research = (
+            _env_bool("HEPHAESTUS_USE_PERPLEXITY_RESEARCH", True)
+            if use_perplexity_research is None
+            else use_perplexity_research
+        )
+        self._perplexity_model = (
+            perplexity_model or os.environ.get("HEPHAESTUS_PERPLEXITY_MODEL", "sonar-pro")
+        )
 
         # Validate keys early
         self._validate_keys()
@@ -134,6 +144,8 @@ class Hephaestus:
         model: str = "both",
         depth: int = 3,
         candidates: int = 8,
+        use_perplexity_research: bool | None = None,
+        perplexity_model: str | None = None,
     ) -> "Hephaestus":
         """
         Create a Hephaestus client using API keys from environment variables.
@@ -167,6 +179,8 @@ class Hephaestus:
             model=model,
             depth=depth,
             candidates=candidates,
+            use_perplexity_research=use_perplexity_research,
+            perplexity_model=perplexity_model,
         )
 
     # ------------------------------------------------------------------
@@ -329,6 +343,29 @@ class Hephaestus:
             return await harness.forge(prompt, system=system)
         except Exception as exc:
             raise HephaestusError(f"DeepForge failed: {exc}") from exc
+
+    async def build_benchmark_corpus(
+        self,
+        topic: str,
+        *,
+        count: int = 8,
+        model: str | None = None,
+    ) -> Any:
+        """Build a grounded benchmark corpus using the configured Perplexity settings."""
+        from hephaestus.research import PerplexityClient
+
+        client = PerplexityClient(
+            model=model or self._perplexity_model,
+            enabled=self._use_perplexity_research,
+        )
+        if not client.available():
+            raise ConfigurationError(client.unavailability_reason())
+        try:
+            return await client.build_benchmark_corpus(topic=topic, count=count)
+        except Exception as exc:
+            raise HephaestusError(f"Benchmark corpus generation failed: {exc}") from exc
+        finally:
+            await client.close()
 
     # ------------------------------------------------------------------
     # Lens introspection
@@ -544,6 +581,8 @@ class Hephaestus:
             num_candidates=self._candidates,
             num_translations=self._num_translations,
             run_prior_art=self._run_prior_art,
+            use_perplexity_research=self._use_perplexity_research,
+            perplexity_model=self._perplexity_model,
         )
 
         return Genesis(config)
@@ -567,3 +606,10 @@ class Hephaestus:
             f"Hephaestus(model={self._model!r}, depth={self._depth}, "
             f"candidates={self._candidates})"
         )
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}

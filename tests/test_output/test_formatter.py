@@ -5,9 +5,22 @@ Tests for the Output Formatter.
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
+from hephaestus.lenses.state import (
+    CompositeLens,
+    GuardDecision,
+    InvalidationEvent,
+    LensBundleMember,
+    LensBundleProof,
+    LensEngineState,
+    LensLineage,
+    RecompositionEvent,
+    ResearchReferenceArtifact,
+    ResearchReferenceState,
+)
 from hephaestus.output.formatter import (
     AlternativeInvention,
     InventionReport,
@@ -69,6 +82,103 @@ def _make_report(**overrides: object) -> InventionReport:
     )
     defaults.update(overrides)
     return InventionReport(**defaults)  # type: ignore[arg-type]
+
+
+def _lens_engine_state() -> LensEngineState:
+    return LensEngineState(
+        session_reference_generation=5,
+        active_bundle_id="bundle:adaptive:fmt",
+        members=[
+            LensBundleMember(
+                lens_id="biology_immune",
+                lens_name="Immune System",
+                domain_name="biology::Immune System",
+                matched_patterns=["allocation", "memory"],
+            ),
+            LensBundleMember(
+                lens_id="economics_markets",
+                lens_name="Market Making",
+                domain_name="economics::Market Making",
+                matched_patterns=["feedback"],
+            ),
+        ],
+        bundles=[
+            LensBundleProof(
+                bundle_id="bundle:adaptive:fmt",
+                bundle_kind="adaptive_bundle",
+                member_ids=["biology_immune", "economics_markets"],
+                status="active",
+                proof_status="proven",
+                cohesion_score=0.73,
+                higher_order_score=0.61,
+                proof_fingerprint="fmt-proof",
+                reference_generation=5,
+                summary="Adaptive bundle selected.",
+            )
+        ],
+        lineages=[
+            LensLineage(
+                lineage_id="lineage:biology_immune:g1",
+                entity_id="biology_immune",
+                fingerprint="lineage-immune",
+                reference_generation=5,
+            )
+        ],
+        guards=[
+            GuardDecision(
+                guard_id="guard:fmt",
+                kind="bundle_cohesion_floor",
+                status="passed",
+                target_id="bundle:adaptive:fmt",
+                summary="Cohesion floor passed.",
+            )
+        ],
+        invalidations=[
+            InvalidationEvent(
+                invalidation_id="inval:fmt",
+                target_kind="composite",
+                target_id="composite:fmt",
+                cause="research_reference_refresh",
+                status="pending",
+                from_reference_generation=4,
+                to_reference_generation=5,
+                summary="Composite needs recomposition after research refresh.",
+            )
+        ],
+        recompositions=[
+            RecompositionEvent(
+                event_id="recomp:fmt",
+                trigger="research_reference_refresh",
+                status="completed",
+                from_reference_generation=4,
+                to_reference_generation=5,
+                summary="Recomposed at generation 5.",
+            )
+        ],
+        composites=[
+            CompositeLens(
+                composite_id="composite:fmt",
+                component_lineage_ids=["lineage:biology_immune:g1"],
+                component_lens_ids=["biology_immune", "economics_markets"],
+                derived_from_bundle_id="bundle:adaptive:fmt",
+                version=2,
+                reference_generation=5,
+                fingerprint="composite-fmt",
+            )
+        ],
+        research=ResearchReferenceState(
+            reference_generation=5,
+            reference_signature="research-fmt",
+            artifacts=[
+                ResearchReferenceArtifact(
+                    artifact_name="baseline_dossier",
+                    signature="artifact-fmt",
+                    citation_count=1,
+                    citations=["https://example.com/fmt"],
+                )
+            ],
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +358,36 @@ class TestMarkdownOutput:
         # Score should appear
         assert str(proof.confidence) in md
 
+    def test_includes_research_sections(self) -> None:
+        report = _make_report(
+            baseline_dossier=SimpleNamespace(summary="Queues and token buckets dominate today.", keywords_to_avoid=["retry with backoff"]),
+            external_grounding_report=SimpleNamespace(
+                summary="Closest public systems use adaptive routing.",
+                closest_related_work=["System A"],
+                adjacent_fields=["traffic engineering"],
+                practitioner_risks=["operational tuning"],
+                notable_projects=["Envoy adaptive concurrency"],
+            ),
+            implementation_risk_review=SimpleNamespace(
+                summary="Biggest risk is instability under feedback delay.",
+                major_risks=["feedback oscillation"],
+                operational_constraints=["telemetry freshness"],
+                likely_failure_modes=["runaway reweighting"],
+                mitigations=["cap update step size"],
+            ),
+        )
+        md = OutputFormatter().to_markdown(report)
+        assert "STATE OF THE ART RECON" in md
+        assert "EXTERNAL GROUNDING" in md
+        assert "IMPLEMENTATION RISK REVIEW" in md
+
+    def test_includes_lens_engine_section(self) -> None:
+        md = OutputFormatter().to_markdown(_make_report(lens_engine_state=_lens_engine_state()))
+        assert "LENS ENGINE" in md
+        assert "bundle:adaptive:fmt" in md
+        assert "composite:fmt" in md
+        assert "research refresh" in md.lower()
+
 
 # ---------------------------------------------------------------------------
 # JSON output
@@ -283,6 +423,13 @@ class TestJsonOutput:
         assert meta["cost_usd"] == pytest.approx(1.18, abs=1e-2)
         assert meta["depth"] == 3
         assert "claude-opus-4-6" in meta["models_used"]
+
+    def test_lens_engine_in_json(self) -> None:
+        data = json.loads(OutputFormatter().to_json(_make_report(lens_engine_state=_lens_engine_state())))
+        lens = data["hephaestus_invention_report"]["lens_engine"]
+        assert lens["active_bundle_id"] == "bundle:adaptive:fmt"
+        assert lens["research"]["reference_generation"] == 5
+        assert lens["composites"][0]["composite_id"] == "composite:fmt"
 
     def test_alternatives_in_json(self) -> None:
         alts = [
@@ -329,6 +476,17 @@ class TestJsonOutput:
         proof_json = data["hephaestus_invention_report"]["novelty_proof"]
         assert proof_json is not None
         assert "novelty_score" in proof_json
+
+    def test_research_sections_in_json(self) -> None:
+        data = json.loads(OutputFormatter().to_json(_make_report(
+            baseline_dossier=SimpleNamespace(summary="Baseline summary", keywords_to_avoid=["queue + backoff"]),
+            external_grounding_report=SimpleNamespace(summary="Grounding summary", closest_related_work=["Project X"]),
+            implementation_risk_review=SimpleNamespace(summary="Risk summary", major_risks=["oscillation"]),
+        )))
+        report = data["hephaestus_invention_report"]
+        assert report["state_of_the_art"]["summary"] == "Baseline summary"
+        assert report["external_grounding"]["summary"] == "Grounding summary"
+        assert report["implementation_risk_review"]["summary"] == "Risk summary"
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +541,12 @@ class TestPlainOutput:
     def test_contains_ascii_bar(self) -> None:
         plain = OutputFormatter().to_plain(_make_report())
         assert "[=========" in plain  # 0.94 -> 9 filled
+
+    def test_includes_lens_engine_in_plain_output(self) -> None:
+        plain = OutputFormatter().to_plain(_make_report(lens_engine_state=_lens_engine_state()))
+        assert "LENS ENGINE" in plain
+        assert "bundle:adaptive:fmt" in plain
+        assert "Composite: composite:fmt" in plain
 
 
 # ---------------------------------------------------------------------------

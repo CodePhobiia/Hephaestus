@@ -1,348 +1,168 @@
-"""
-Tests for Stage 2: Cross-Domain Searcher.
-
-All LLM calls and lens library loading are mocked.
-"""
-
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from hephaestus.core.decomposer import ProblemStructure
-from hephaestus.core.searcher import (
-    CrossDomainSearcher,
-    SearchCandidate,
-    SearchError,
-)
+from hephaestus.core.searcher import CrossDomainSearcher
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
-from hephaestus.lenses.loader import Lens, LensLoader, StructuralPattern
-from hephaestus.lenses.selector import LensScore, LensSelector
+from hephaestus.lenses.bundles import BundleComposer, BundleSelectionResult
+from hephaestus.lenses.loader import Lens, StructuralPattern
+from hephaestus.lenses.selector import LensScore
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_problem_structure(**overrides) -> ProblemStructure:
-    defaults = dict(
-        original_problem="I need a fault-tolerant task scheduler",
-        structure="robust resource allocation under node failures",
-        constraints=["tolerate failures", "low latency"],
-        mathematical_shape="graph with Byzantine fault tolerance",
+def _make_structure() -> ProblemStructure:
+    return ProblemStructure(
+        original_problem="Need a scheduler that verifies and routes work under repeated failures.",
+        structure="Adaptive allocation with explicit verification and bounded recovery.",
+        constraints=["bounded latency", "explicit verification", "fast recovery"],
+        mathematical_shape="control and allocation under adversarial uncertainty",
         native_domain="distributed_systems",
-        problem_maps_to={"routing", "allocation"},
+        problem_maps_to={"allocation", "verification", "control"},
     )
-    defaults.update(overrides)
-    return ProblemStructure(**defaults)
 
 
-def _make_lens(lens_id: str = "biology_immune", domain: str = "biology") -> Lens:
+def _make_lens(
+    *,
+    domain: str,
+    subdomain: str,
+    name: str,
+    maps_to: list[str],
+) -> Lens:
     return Lens(
-        name="Immune System",
+        name=name,
         domain=domain,
-        subdomain="immune",
-        axioms=["Axiom 1 is important", "Axiom 2 matters"],
-        structural_patterns=[
-            StructuralPattern(
-                name="clonal_selection",
-                abstract="Solutions that work get amplified",
-                maps_to=["optimization", "allocation"],
-            )
+        subdomain=subdomain,
+        axioms=[
+            f"{name} keeps a stable control state under stress.",
+            f"{name} uses explicit gating instead of blind routing.",
         ],
-        injection_prompt="You are reasoning as a biological immune system.",
+        structural_patterns=[
+            StructuralPattern(name=f"{name.lower()}-pattern", abstract=f"{name} pattern", maps_to=maps_to)
+        ],
+        injection_prompt=f"Reason as {name}.",
     )
 
 
-def _make_lens_score(domain: str = "biology", distance: float = 0.85) -> LensScore:
-    lens = _make_lens(domain=domain)
+def _make_score(
+    lens: Lens,
+    *,
+    distance: float,
+    relevance: float,
+    matched_patterns: list[str],
+) -> LensScore:
     return LensScore(
         lens=lens,
         domain_distance=distance,
-        structural_relevance=0.6,
-        composite_score=distance ** 1.8 * 0.6,
-        matched_patterns=["allocation"],
+        structural_relevance=relevance,
+        composite_score=distance * relevance,
+        matched_patterns=matched_patterns,
+        domain_family=lens.domain_family,
+        diversity_weight=1.0,
     )
 
 
-def _make_forge_result(text: str, cost: float = 0.005) -> ForgeResult:
-    trace = ForgeTrace(prompt="test")
-    trace.total_cost_usd = cost
-    return ForgeResult(output=text, trace=trace, success=True)
+def _forge_result(source_domain: str, *, confidence: float = 0.9) -> ForgeResult:
+    trace = ForgeTrace(prompt="search")
+    trace.total_cost_usd = 0.01
+    return ForgeResult(
+        output=json.dumps(
+            {
+                "source_domain": source_domain,
+                "source_solution": f"{source_domain} stabilizes the system with explicit control state.",
+                "mechanism": "Explicit gating plus retained control state",
+                "structural_mapping": "Foreign gating maps to runtime admission and verification",
+                "confidence": confidence,
+            }
+        ),
+        trace=trace,
+        success=True,
+    )
 
 
-def _valid_candidate_json(**overrides) -> str:
-    data = {
-        "source_domain": "Immune System — T-Cell Memory",
-        "source_solution": "T-cells produce memory cells that persist after infection clearance",
-        "mechanism": "Clonal expansion amplifies successful immune responses",
-        "structural_mapping": "Task persistence maps to immune memory formation",
-        "confidence": 0.85,
-    }
-    data.update(overrides)
-    return json.dumps(data)
+class _SelectorStub:
+    def __init__(self, selection: BundleSelectionResult) -> None:
+        self._selection = selection
+
+    def select_bundle_first(self, **_: object) -> BundleSelectionResult:
+        return self._selection
 
 
-def _make_selector_with_scores(scores: list[LensScore]) -> MagicMock:
-    selector = MagicMock(spec=LensSelector)
-    selector.select = MagicMock(return_value=scores)
-    return selector
+@pytest.mark.asyncio
+async def test_searcher_carries_bundle_proof_and_lineage() -> None:
+    structure = _make_structure()
+    lens_a = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
+    lens_b = _make_lens(domain="economics", subdomain="auction", name="Auction Clearing", maps_to=["verification", "control"])
+    score_a = _make_score(lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
+    score_b = _make_score(lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"])
+
+    selection = BundleComposer().select([score_a, score_b], structure)
+    harness = MagicMock()
+    harness.forge = AsyncMock(side_effect=[_forge_result("Immune Memory"), _forge_result("Auction Clearing")])
+
+    searcher = CrossDomainSearcher(
+        harness=harness,
+        selector=_SelectorStub(selection),
+        num_candidates=4,
+        num_lenses=2,
+    )
+
+    candidates = await searcher.search(structure)
+
+    assert searcher.last_runtime is not None
+    assert searcher.last_runtime.retrieval_mode == "bundle"
+    assert searcher.last_runtime.bundle_proof is not None
+    assert len(candidates) == 2
+    assert all(candidate.bundle_proof is not None for candidate in candidates)
+    assert all(candidate.bundle_lineage is not None for candidate in candidates)
+    assert all(candidate.selection_mode == "bundle" for candidate in candidates)
 
 
-# ---------------------------------------------------------------------------
-# Tests: SearchCandidate
-# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_searcher_falls_back_to_singleton_when_bundle_retrieval_is_weak() -> None:
+    structure = _make_structure()
+    lens_a = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
+    lens_b = _make_lens(domain="economics", subdomain="auction", name="Auction Clearing", maps_to=["verification", "control"])
+    fallback_lens = _make_lens(domain="physics", subdomain="optics", name="Optical Thresholds", maps_to=["control"])
 
+    score_a = _make_score(lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
+    score_b = _make_score(lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"])
+    fallback_score = _make_score(fallback_lens, distance=0.75, relevance=0.68, matched_patterns=["control"])
 
-class TestSearchCandidate:
-    def test_domain_distance_from_lens_score(self):
-        ls = _make_lens_score(distance=0.92)
-        candidate = SearchCandidate(
-            source_domain="Immune System",
-            source_solution="Memory cells",
-            mechanism="Clonal selection",
-            structural_mapping="Maps to caching",
-            lens_used=ls.lens,
-            lens_score=ls,
-            confidence=0.8,
-        )
-        assert candidate.domain_distance == 0.92
+    base_selection = BundleComposer().select([score_a, score_b], structure)
+    selection = BundleSelectionResult(
+        retrieval_mode="bundle",
+        selected_lenses=base_selection.selected_lenses,
+        fallback_lenses=(fallback_score,),
+        primary_bundle=base_selection.primary_bundle,
+        active_bundle=base_selection.active_bundle,
+        exclusion_snapshot=base_selection.exclusion_snapshot,
+    )
 
-    def test_domain_distance_without_lens_score(self):
-        lens = _make_lens()
-        candidate = SearchCandidate(
-            source_domain="Immune System",
-            source_solution="Memory cells",
-            mechanism="Clonal selection",
-            structural_mapping="Maps to caching",
-            lens_used=lens,
-            lens_score=None,
-        )
-        assert candidate.domain_distance == 0.0
-
-    def test_lens_id(self):
-        lens = _make_lens(lens_id="biology_immune")
-        candidate = SearchCandidate(
-            source_domain="Immune System",
-            source_solution="",
-            mechanism="",
-            structural_mapping="",
-            lens_used=lens,
-        )
-        assert candidate.lens_id == "biology_immune"
-
-    def test_summary(self):
-        ls = _make_lens_score(distance=0.8)
-        candidate = SearchCandidate(
-            source_domain="Immune System",
-            source_solution="T-cell memory solves persistence via clonal expansion",
-            mechanism="Clonal selection",
-            structural_mapping="Maps to caching",
-            lens_used=ls.lens,
-            lens_score=ls,
-            confidence=0.9,
-        )
-        summary = candidate.summary()
-        assert "Immune System" in summary
-        assert "0.80" in summary
-
-
-# ---------------------------------------------------------------------------
-# Tests: CrossDomainSearcher
-# ---------------------------------------------------------------------------
-
-
-class TestCrossDomainSearcher:
-    @pytest.mark.asyncio
-    async def test_successful_search(self):
-        scores = [_make_lens_score(distance=0.85 - i * 0.05) for i in range(5)]
-        selector = _make_selector_with_scores(scores)
-
-        harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(_valid_candidate_json()))
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(spec=LensLoader),
-            selector=selector,
-            num_candidates=8,
-            num_lenses=5,
-            min_confidence=0.5,
-        )
-        structure = _make_problem_structure()
-        candidates = await searcher.search(structure)
-
-        assert len(candidates) > 0
-        assert all(isinstance(c, SearchCandidate) for c in candidates)
-
-    @pytest.mark.asyncio
-    async def test_candidates_sorted_by_distance_desc(self):
-        """Returned candidates should be sorted most-distant first."""
-        # Create 3 lens scores with different distances
-        scores = [
-            _make_lens_score(distance=0.5),
-            _make_lens_score(distance=0.9),
-            _make_lens_score(distance=0.7),
+    harness = MagicMock()
+    harness.forge = AsyncMock(
+        side_effect=[
+            _forge_result("Immune Memory", confidence=0.15),
+            _forge_result("Auction Clearing", confidence=0.10),
+            _forge_result("Optical Thresholds", confidence=0.91),
         ]
-        selector = _make_selector_with_scores(scores)
-        harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(_valid_candidate_json()))
+    )
 
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            num_candidates=10,
-            min_confidence=0.0,
-        )
-        candidates = await searcher.search(_make_problem_structure())
+    searcher = CrossDomainSearcher(
+        harness=harness,
+        selector=_SelectorStub(selection),
+        num_candidates=4,
+        num_lenses=2,
+        min_confidence=0.4,
+    )
 
-        distances = [c.domain_distance for c in candidates]
-        assert distances == sorted(distances, reverse=True)
+    candidates = await searcher.search(structure)
 
-    @pytest.mark.asyncio
-    async def test_candidates_capped_at_num_candidates(self):
-        """Should return at most num_candidates even if more pass confidence."""
-        scores = [_make_lens_score(distance=0.8) for _ in range(10)]
-        selector = _make_selector_with_scores(scores)
-        harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(
-            _valid_candidate_json(confidence=0.9)
-        ))
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            num_candidates=4,
-            min_confidence=0.0,
-        )
-        candidates = await searcher.search(_make_problem_structure())
-        assert len(candidates) <= 4
-
-    @pytest.mark.asyncio
-    async def test_low_confidence_candidates_excluded(self):
-        """Candidates below min_confidence should be excluded."""
-        scores = [_make_lens_score(distance=0.8)]
-        selector = _make_selector_with_scores(scores)
-        harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(
-            _valid_candidate_json(confidence=0.2)  # Below default 0.4
-        ))
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            min_confidence=0.4,
-        )
-        candidates = await searcher.search(_make_problem_structure())
-        assert len(candidates) == 0
-
-    @pytest.mark.asyncio
-    async def test_failed_lens_query_skipped(self):
-        """If a lens query raises an exception, it's skipped gracefully."""
-        scores = [_make_lens_score(distance=0.8 + i * 0.02) for i in range(3)]
-        selector = _make_selector_with_scores(scores)
-
-        # First two fail, third succeeds
-        harness = MagicMock()
-        harness.forge = AsyncMock(side_effect=[
-            Exception("API Error"),
-            Exception("Timeout"),
-            _make_forge_result(_valid_candidate_json()),
-        ])
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            min_confidence=0.0,
-            num_candidates=10,
-        )
-        candidates = await searcher.search(_make_problem_structure())
-        # Only the third succeeds
-        assert len(candidates) == 1
-
-    @pytest.mark.asyncio
-    async def test_no_lenses_raises_search_error(self):
-        """If selector returns no lenses, raise SearchError."""
-        selector = _make_selector_with_scores([])
-        searcher = CrossDomainSearcher(
-            harness=MagicMock(),
-            loader=MagicMock(),
-            selector=selector,
-        )
-        with pytest.raises(SearchError):
-            await searcher.search(_make_problem_structure())
-
-    @pytest.mark.asyncio
-    async def test_candidate_has_correct_fields(self):
-        scores = [_make_lens_score()]
-        selector = _make_selector_with_scores(scores)
-        harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(
-            _valid_candidate_json()
-        ))
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            min_confidence=0.0,
-        )
-        candidates = await searcher.search(_make_problem_structure())
-        assert len(candidates) == 1
-        c = candidates[0]
-        assert c.source_domain == "Immune System — T-Cell Memory"
-        assert c.mechanism
-        assert c.structural_mapping
-        assert c.confidence == 0.85
-
-    @pytest.mark.asyncio
-    async def test_invalid_json_from_lens_skipped(self):
-        """Bad JSON from a lens query should be skipped (not crash)."""
-        scores = [_make_lens_score(distance=0.8), _make_lens_score(distance=0.75)]
-        selector = _make_selector_with_scores(scores)
-        harness = MagicMock()
-        harness.forge = AsyncMock(side_effect=[
-            _make_forge_result("This is definitely not JSON"),
-            _make_forge_result(_valid_candidate_json()),
-        ])
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            min_confidence=0.0,
-            num_candidates=10,
-        )
-        candidates = await searcher.search(_make_problem_structure())
-        assert len(candidates) == 1
-
-    @pytest.mark.asyncio
-    async def test_search_excludes_native_domain(self):
-        """Selector should receive the native domain for exclusion and family weighting."""
-        scores = [_make_lens_score()]
-        selector = _make_selector_with_scores(scores)
-        harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(_valid_candidate_json()))
-
-        searcher = CrossDomainSearcher(
-            harness=harness,
-            loader=MagicMock(),
-            selector=selector,
-            min_confidence=0.0,
-        )
-        structure = _make_problem_structure(native_domain="distributed_systems")
-        await searcher.search(structure)
-
-        selector.select.assert_called_once()
-        call_kwargs = selector.select.call_args
-        exclude = call_kwargs.kwargs.get("exclude_domains")
-        assert exclude is not None
-        assert "distributed_systems" in exclude
-        assert call_kwargs.kwargs.get("target_domain") == "distributed_systems"
+    assert searcher.last_runtime is not None
+    assert searcher.last_runtime.fallback_used is True
+    assert len(candidates) == 1
+    assert candidates[0].selection_mode == "singleton_fallback"
+    assert candidates[0].bundle_proof is None

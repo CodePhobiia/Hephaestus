@@ -45,6 +45,8 @@ from typing import Any
 
 import httpx
 
+from hephaestus.research.perplexity import PerplexityClient, PriorArtFinding
+
 logger = logging.getLogger(__name__)
 
 # API endpoints
@@ -164,6 +166,11 @@ class PriorArtReport:
     invention_name: str
     patents: list[PatentResult] = field(default_factory=list)
     papers: list[PaperResult] = field(default_factory=list)
+    related_work: list[PriorArtFinding] = field(default_factory=list)
+    overlap_verdict: str = "UNKNOWN"
+    overlap_confidence: float = 0.0
+    perplexity_summary: str = ""
+    citations: list[str] = field(default_factory=list)
     search_available: bool = True
     search_errors: list[str] = field(default_factory=list)
     searched_at: str = field(
@@ -173,7 +180,7 @@ class PriorArtReport:
     @property
     def has_prior_art(self) -> bool:
         """Whether any prior art was found."""
-        return bool(self.patents or self.papers)
+        return bool(self.patents or self.papers or self.related_work)
 
     @property
     def novelty_status(self) -> str:
@@ -192,6 +199,21 @@ class PriorArtReport:
                 "Prior art search was unavailable (API unreachable or rate-limited). "
                 "Manual review recommended."
             )
+        if self.perplexity_summary:
+            parts = [self.perplexity_summary]
+            if self.related_work:
+                parts.append("Closest grounded matches:")
+                for finding in self.related_work[:4]:
+                    rel = finding.relationship.replace("_", " ").title()
+                    line = f"  • {finding.title} [{rel}]"
+                    if finding.url:
+                        line += f" — {finding.url}"
+                    parts.append(line)
+            if self.patents or self.papers:
+                parts.append(
+                    f"Secondary search signals: {len(self.patents)} patent(s), {len(self.papers)} paper(s)."
+                )
+            return "\n".join(parts)
         total = len(self.patents) + len(self.papers)
         if total == 0:
             return (
@@ -242,11 +264,15 @@ class PriorArtSearcher:
         timeout: float = _DEFAULT_TIMEOUT,
         max_retries: int = _MAX_RETRIES,
         max_results_per_source: int = _MAX_RESULTS_PER_SOURCE,
+        use_perplexity_review: bool = True,
+        perplexity_model: str | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._timeout = timeout
         self._max_retries = max_retries
         self._max_results = max_results_per_source
+        self._use_perplexity_review = use_perplexity_review
+        self._perplexity_model = perplexity_model
         self._http_client = http_client
         self._owns_client = http_client is None
 
@@ -313,8 +339,8 @@ class PriorArtSearcher:
             tasks.append(self._search_google_patents(query))
         if include_papers:
             tasks.append(self._search_semantic_scholar(query))
-        # Always try Perplexity if key available
-        tasks.append(search_perplexity(query))
+        if self._use_perplexity_review:
+            tasks.append(self._search_perplexity_review(query, invention_name))
 
         if not tasks:
             report.search_available = False
@@ -337,22 +363,19 @@ class PriorArtSearcher:
                 elif result and isinstance(result[0], PaperResult):
                     report.papers.extend(result)
                     any_success = True
-                elif result and isinstance(result[0], PerplexityResult):
-                    # Store perplexity results as papers with special source
-                    for pr in result:
-                        report.papers.append(PaperResult(
-                            paper_id=f"perplexity-{hash(pr.title) % 10000}",
-                            title=pr.title,
-                            abstract=pr.snippet,
-                            authors=["Perplexity AI"],
-                            year=2026,
-                            venue="Web Search",
-                            citation_count=0,
-                            url=pr.url or "",
-                        ))
+                elif result and isinstance(result[0], PriorArtFinding):
+                    report.related_work.extend(result)
                     any_success = True
                 else:
                     any_success = True  # empty list but no error
+            elif isinstance(result, dict):
+                if result:
+                    report.perplexity_summary = str(result.get("summary", ""))
+                    report.overlap_verdict = str(result.get("overlap_verdict", "UNKNOWN"))
+                    report.overlap_confidence = float(result.get("overlap_confidence", 0.0) or 0.0)
+                    report.related_work.extend(result.get("findings", []))
+                    report.citations.extend(result.get("citations", []))
+                    any_success = True
             else:
                 any_success = True  # empty results but search worked
 
@@ -367,6 +390,33 @@ class PriorArtSearcher:
             report.search_available,
         )
         return report
+
+    async def _search_perplexity_review(self, query: str, invention_name: str) -> dict[str, Any]:
+        """Use Perplexity as the grounded prior-art layer when configured."""
+        client = PerplexityClient(
+            timeout=max(self._timeout, 30.0),
+            model=self._perplexity_model,
+            enabled=self._use_perplexity_review,
+        )
+        if not client.available():
+            return {}
+
+        try:
+            summary, overlap_verdict, overlap_confidence, findings, citations, _raw = (
+                await client.assess_prior_art(
+                    invention_name=invention_name or query[:80],
+                    problem=query,
+                )
+            )
+            return {
+                "summary": summary,
+                "overlap_verdict": overlap_verdict,
+                "overlap_confidence": overlap_confidence,
+                "findings": findings,
+                "citations": [c.url for c in citations],
+            }
+        finally:
+            await client.close()
 
     # ------------------------------------------------------------------
     # Google Patents
@@ -581,77 +631,3 @@ class PriorArtSearcher:
             logger.debug("Error parsing Semantic Scholar response: %s", exc)
 
         return results
-
-
-# ---------------------------------------------------------------------------
-# Perplexity Search
-# ---------------------------------------------------------------------------
-
-class PerplexityResult:
-    """A single result from Perplexity search."""
-    def __init__(self, title: str, url: str, snippet: str):
-        self.title = title
-        self.url = url
-        self.snippet = snippet
-
-
-async def search_perplexity(query: str, timeout: float = 30.0) -> list[PerplexityResult]:
-    """Search Perplexity for prior art. Returns list of results."""
-    import os
-    api_key = os.environ.get("PERPLEXITY_API_KEY")
-    if not api_key:
-        return []
-
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        try:
-            resp = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "sonar",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a prior art research assistant. Search for existing implementations, papers, patents, or systems similar to the described invention. Return specific names, URLs, and brief descriptions of the closest matches.",
-                        },
-                        {
-                            "role": "user",
-                            "content": f"Find existing prior art, research papers, patents, or implementations similar to this invention:\n\n{query}\n\nList the 5 closest matches with title, URL (if available), and a one-sentence description of why it's similar.",
-                        },
-                    ],
-                },
-            )
-            if resp.status_code != 200:
-                logger.warning("Perplexity search returned %d", resp.status_code)
-                return []
-
-            data = resp.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            citations = data.get("citations", [])
-
-            # Parse the response into results
-            results = []
-            if citations:
-                for url in citations[:5]:
-                    results.append(PerplexityResult(
-                        title=url.split("/")[-1][:60] if "/" in url else url[:60],
-                        url=url,
-                        snippet="",
-                    ))
-
-            # Always include the full AI summary as the first result
-            if content:
-                results.insert(0, PerplexityResult(
-                    title="Perplexity AI Summary",
-                    url="",
-                    snippet=content[:500],
-                ))
-
-            return results
-
-        except Exception as exc:
-            logger.warning("Perplexity search failed: %s", exc)
-            return []

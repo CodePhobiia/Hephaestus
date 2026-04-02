@@ -145,6 +145,20 @@ class TestPriorArtReport:
         )
         assert "2" in r.summary
 
+    def test_summary_prefers_grounded_perplexity_review(self) -> None:
+        from hephaestus.research.perplexity import PriorArtFinding
+
+        r = PriorArtReport(
+            query="q",
+            invention_name="I",
+            perplexity_summary="Closest public work is adjacent, not identical.",
+            related_work=[
+                PriorArtFinding(title="Paper A", url="https://example.com/a", relationship="ADJACENT_MECHANISM"),
+            ],
+        )
+        assert "adjacent" in r.summary.lower()
+        assert "Paper A" in r.summary
+
 
 # ---------------------------------------------------------------------------
 # PatentResult & PaperResult

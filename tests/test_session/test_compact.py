@@ -4,6 +4,17 @@ from __future__ import annotations
 
 import pytest
 
+from hephaestus.lenses.state import (
+    CompositeLens,
+    FoldState,
+    GuardDecision,
+    LensBundleMember,
+    LensBundleProof,
+    LensEngineState,
+    LensLineage,
+    ResearchReferenceArtifact,
+    ResearchReferenceState,
+)
 from hephaestus.session.schema import (
     EntryType,
     InventionSnapshot,
@@ -53,6 +64,84 @@ def _large_session(n: int = 120) -> Session:
         score=8.0,
     )
     return s
+
+
+def _lens_engine_state() -> LensEngineState:
+    return LensEngineState(
+        session_reference_generation=3,
+        active_bundle_id="bundle:adaptive:compact",
+        members=[
+            LensBundleMember(
+                lens_id="biology_immune",
+                lens_name="Immune System",
+                domain_name="biology::Immune System",
+                matched_patterns=["allocation"],
+            )
+        ],
+        bundles=[
+            LensBundleProof(
+                bundle_id="bundle:adaptive:compact",
+                bundle_kind="adaptive_bundle",
+                member_ids=["biology_immune"],
+                status="active",
+                proof_status="fallback",
+                cohesion_score=0.64,
+                proof_fingerprint="proof-compact",
+                reference_generation=3,
+                summary="Compact summary bundle.",
+            )
+        ],
+        lineages=[
+            LensLineage(
+                lineage_id="lineage:biology_immune:g1",
+                entity_id="biology_immune",
+                fingerprint="lineage-compact",
+                reference_generation=3,
+            )
+        ],
+        fold_states=[
+            FoldState(
+                fold_id="fold:compact",
+                bundle_id="bundle:adaptive:compact",
+                status="singleton_fallback",
+                reference_generation=3,
+                active_lineage_ids=["lineage:biology_immune:g1"],
+                summary="Fallback fold active.",
+            )
+        ],
+        guards=[
+            GuardDecision(
+                guard_id="guard:compact",
+                kind="singleton_fallback",
+                status="triggered",
+                target_id="bundle:adaptive:compact",
+                summary="Singleton fallback active.",
+            )
+        ],
+        composites=[
+            CompositeLens(
+                composite_id="composite:compact",
+                component_lineage_ids=["lineage:biology_immune:g1"],
+                component_lens_ids=["biology_immune"],
+                derived_from_bundle_id="bundle:adaptive:compact",
+                version=1,
+                reference_generation=3,
+                fingerprint="composite-compact",
+            )
+        ],
+        research=ResearchReferenceState(
+            reference_generation=3,
+            reference_signature="research-compact",
+            artifacts=[
+                ResearchReferenceArtifact(
+                    artifact_name="baseline_dossier",
+                    signature="artifact-compact",
+                    citations=["https://example.com/compact"],
+                    citation_count=1,
+                )
+            ],
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +266,15 @@ class TestBuildContinuationSummary:
         _add_entries(s, 3)
         summary = build_continuation_summary(s.transcript, s)
         assert summary.startswith("# Continuation Summary")
+
+    def test_includes_lens_engine_state(self):
+        s = _make_session()
+        s.apply_lens_engine_state(_lens_engine_state(), op_id=2)
+        _add_entries(s, 6)
+        summary = build_continuation_summary(s.transcript, s)
+        assert "Lens Engine State" in summary
+        assert "bundle:adaptive:compact" in summary
+        assert "composite:compact" in summary
 
 
 # ---------------------------------------------------------------------------

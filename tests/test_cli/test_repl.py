@@ -22,6 +22,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
+from hephaestus.lenses.state import (
+    LensBundleMember,
+    LensBundleProof,
+    LensEngineState,
+    ResearchReferenceArtifact,
+    ResearchReferenceState,
+)
 
 # ---------------------------------------------------------------------------
 # Mock factories (reuse patterns from test_main.py)
@@ -158,6 +165,45 @@ def _make_report(
     return report
 
 
+def _lens_engine_state() -> LensEngineState:
+    return LensEngineState(
+        session_reference_generation=3,
+        active_bundle_id="bundle:adaptive:repl",
+        members=[
+            LensBundleMember(
+                lens_id="biology_immune",
+                lens_name="Immune System",
+                domain_name="biology::Immune System",
+            )
+        ],
+        bundles=[
+            LensBundleProof(
+                bundle_id="bundle:adaptive:repl",
+                bundle_kind="adaptive_bundle",
+                member_ids=["biology_immune"],
+                status="active",
+                proof_status="fallback",
+                cohesion_score=0.61,
+                proof_fingerprint="proof-repl",
+                reference_generation=3,
+                summary="Singleton fallback active.",
+            )
+        ],
+        research=ResearchReferenceState(
+            reference_generation=3,
+            reference_signature="research-repl",
+            artifacts=[
+                ResearchReferenceArtifact(
+                    artifact_name="baseline_dossier",
+                    signature="artifact-repl",
+                    citations=["https://example.com/repl"],
+                    citation_count=1,
+                )
+            ],
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test helpers
 # ---------------------------------------------------------------------------
@@ -220,6 +266,20 @@ class TestCoreCommands:
         output = _get_output(console)
         assert "api" in output  # backend
         assert "claude-sonnet" in output  # model
+
+    @pytest.mark.asyncio
+    async def test_cmd_status_includes_lens_engine_summary(self) -> None:
+        from hephaestus.cli.repl import _cmd_status
+        from hephaestus.session.schema import Session
+
+        console = _console()
+        state = _make_session()
+        state.session = Session()
+        state.session.apply_lens_engine_state(_lens_engine_state(), op_id=1)
+        await _cmd_status(console, state, "")
+        output = _get_output(console)
+        assert "Lens engine" in output
+        assert "bundle:adaptive:repl" in output
 
     @pytest.mark.asyncio
     async def test_cmd_model_show(self) -> None:
@@ -514,6 +574,21 @@ class TestPersistence:
         assert state.current.problem == "loaded via path"
         assert state.current.report.top_invention.invention_name == "Path Load"
 
+    def test_loaded_report_restores_lens_engine_state(self) -> None:
+        from hephaestus.cli.repl import _loaded_report
+
+        payload = {
+            "problem": "loaded via helper",
+            "native_domain": "biology",
+            "mathematical_shape": "feedback loop",
+            "top_invention": {"name": "Helper Load", "source_domain": "Biology", "novelty_score": 0.81},
+            "lens_engine": _lens_engine_state().to_dict(),
+        }
+        report = _loaded_report(payload, meta={"problem": "loaded via helper"})
+        assert report.lens_engine_state is not None
+        assert report.lens_engine_state.active_bundle_id == "bundle:adaptive:repl"
+        assert report.lens_engine_state.research is not None
+
     @pytest.mark.asyncio
     async def test_cmd_load_session_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         from hephaestus.cli.repl import _cmd_load
@@ -803,6 +878,7 @@ class TestOnboarding:
             depth=5,
             divergence_intensity="MAXIMUM",
             output_mode="SYSTEM",
+            use_branchgenome_v1=True,
         )
         save_config(cfg)
 
@@ -812,6 +888,7 @@ class TestOnboarding:
         assert loaded.depth == 5
         assert loaded.divergence_intensity == "MAXIMUM"
         assert loaded.output_mode == "SYSTEM"
+        assert loaded.use_branchgenome_v1 is True
 
 
 class TestTabCompletion:

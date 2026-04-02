@@ -122,6 +122,9 @@ class ProblemStructure:
         Wall-clock time taken for this decomposition.
     trace:
         Full DeepForge trace for debugging.
+    baseline_dossier:
+        Optional state-of-the-art / baseline reconnaissance attached after
+        decomposition and used to avoid reinventing conventional patterns.
     """
 
     original_problem: str
@@ -134,6 +137,7 @@ class ProblemStructure:
     cost_usd: float = 0.0
     duration_seconds: float = 0.0
     trace: ForgeTrace | None = None
+    baseline_dossier: Any | None = None
 
     def __post_init__(self) -> None:
         # Ensure problem_maps_to is a set

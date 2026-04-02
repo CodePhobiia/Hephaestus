@@ -1,37 +1,50 @@
-"""
-Cognitive Lens Library — the knowledge base powering Hephaestus's cross-domain invention.
+"""Public lens-system exports."""
 
-A lens is a curated set of axioms and structural patterns from one knowledge domain
-that, when injected into an LLM's reasoning mid-thought, forces it to reason from
-a structurally foreign frame.
-
-The further the source domain from the problem's native domain, the more inventive
-pressure it creates — but it must still structurally map onto the problem.
-
-Typical usage::
-
-    from hephaestus.lenses import LensLoader, LensSelector
-
-    # Load all 50 lenses
-    loader = LensLoader()
-    lenses = loader.load_all()
-    print(f"Loaded {len(lenses)} lenses")
-
-    # Select top 5 most distant lenses for a distributed systems problem
-    selector = LensSelector(loader)
-    scores = selector.select(
-        problem_description="I need a trust system for anonymous actors with no persistent identity",
-        problem_maps_to={"trust", "verification", "fraud_detection"},
-        exclude_domains={"cs"},  # exclude the problem's native domain
-        top_n=5,
-    )
-
-    for score in scores:
-        print(f"{score.lens.name}: distance={score.domain_distance:.2f}, "
-              f"relevance={score.structural_relevance:.2f}")
-        print(f"  Inject: {score.lens.injection_prompt[:100]}...")
-"""
-
+from hephaestus.lenses.bundles import (
+    BundleCandidate,
+    BundleComposer,
+    BundleProof,
+    BundleRecomposition,
+    BundleSelectionResult,
+    BundleValidationResult,
+    CompatibilityEvidence,
+    FoldState,
+    RuntimeBundleProof,
+    build_bundle_candidates,
+    build_fold_state,
+)
+from hephaestus.lenses.cards import LensCard, SpanRef, compile_lens_card, score_query_against_card
+from hephaestus.lenses.cells import (
+    CohesionCell,
+    CohesionCellIndex,
+    LensMembership,
+    RuntimeCohesionCell,
+    RuntimeFoldState,
+    RuntimeReferenceState,
+    build_cohesion_cell,
+    build_reference_state,
+    build_runtime_fold_state,
+)
+from hephaestus.lenses.exclusion_ledger import (
+    AdaptiveExclusionLedger,
+    DomainFatigueRecord,
+    LedgerDecision,
+    LedgerEvent,
+)
+from hephaestus.lenses.guards import GuardCheck, HandoffGuardResult, evaluate_handoff_guards
+from hephaestus.lenses.lineage import (
+    LensLineage,
+    LineageSource,
+    LineageValidationResult,
+    build_composite_lineage,
+    build_lineage_token,
+    build_native_lineage,
+    compute_reference_signature,
+    lineage_from_bundle_proof,
+    lineage_from_singleton,
+    validate_lineage,
+    validate_lineages,
+)
 from hephaestus.lenses.loader import (
     Lens,
     LensLoader,
@@ -42,16 +55,78 @@ from hephaestus.lenses.selector import (
     EmbeddingModel,
     LensScore,
     LensSelector,
+    SelectionPlan,
+)
+from hephaestus.lenses.state import (
+    CompositeLens,
+    GuardDecision,
+    InvalidationEvent,
+    LensBundleMember,
+    LensBundleProof,
+    LensEngineState,
+    RecompositionEvent,
+    ResearchReferenceArtifact,
+    ResearchReferenceState,
 )
 
 __all__ = [
-    # Loader
-    "LensLoader",
-    "Lens",
-    "StructuralPattern",
-    "LensValidationError",
-    # Selector
-    "LensSelector",
-    "LensScore",
+    "AdaptiveExclusionLedger",
+    "BundleCandidate",
+    "BundleComposer",
+    "BundleProof",
+    "BundleRecomposition",
+    "BundleSelectionResult",
+    "BundleValidationResult",
+    "CohesionCell",
+    "CohesionCellIndex",
+    "CompatibilityEvidence",
+    "CompositeLens",
+    "DomainFatigueRecord",
     "EmbeddingModel",
+    "FoldState",
+    "GuardCheck",
+    "GuardDecision",
+    "HandoffGuardResult",
+    "InvalidationEvent",
+    "LedgerDecision",
+    "LedgerEvent",
+    "Lens",
+    "LensBundleMember",
+    "LensBundleProof",
+    "LensCard",
+    "LensEngineState",
+    "LensLineage",
+    "LensLoader",
+    "LensMembership",
+    "LensScore",
+    "LensSelector",
+    "LensValidationError",
+    "LineageSource",
+    "LineageValidationResult",
+    "RecompositionEvent",
+    "ResearchReferenceArtifact",
+    "ResearchReferenceState",
+    "RuntimeBundleProof",
+    "RuntimeCohesionCell",
+    "RuntimeFoldState",
+    "RuntimeReferenceState",
+    "SelectionPlan",
+    "SpanRef",
+    "StructuralPattern",
+    "build_bundle_candidates",
+    "build_cohesion_cell",
+    "build_composite_lineage",
+    "build_fold_state",
+    "build_lineage_token",
+    "build_native_lineage",
+    "build_reference_state",
+    "build_runtime_fold_state",
+    "compile_lens_card",
+    "compute_reference_signature",
+    "evaluate_handoff_guards",
+    "lineage_from_bundle_proof",
+    "lineage_from_singleton",
+    "score_query_against_card",
+    "validate_lineage",
+    "validate_lineages",
 ]

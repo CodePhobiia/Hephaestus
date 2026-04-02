@@ -140,6 +140,53 @@ def build_continuation_summary(
         ctx_bullets = "\n".join(f"  - {c}" for c in session.pinned_context)
         sections.append("## Pinned Context\n" + ctx_bullets)
 
+    # -- Reference lots -----------------------------------------------------
+    if getattr(session, "reference_lots", None):
+        lot_lines: list[str] = []
+        for lot in session.reference_lots[:12]:
+            line = f"  - [{lot.kind}] {lot.subject_key}"
+            if lot.floor:
+                line += f" floor={lot.floor}"
+            if lot.exact:
+                line += f" exact={lot.exact}"
+            if lot.realized:
+                line += " [realized]"
+            lot_lines.append(line)
+        sections.append("## Operational Anchors (Reference Lots)\n" + "\n".join(lot_lines))
+
+    # -- Lens engine state --------------------------------------------------
+    lens_engine_state = getattr(session, "lens_engine_state", None)
+    if lens_engine_state is not None:
+        lens_lines: list[str] = [f"  - {lens_engine_state.summary()}"]
+        active_bundle = getattr(lens_engine_state, "active_bundle", None)
+        if active_bundle is not None:
+            lens_lines.append(
+                f"  - active bundle={active_bundle.bundle_id} "
+                f"kind={active_bundle.bundle_kind} members={', '.join(active_bundle.member_ids)}"
+            )
+        active_composites = getattr(lens_engine_state, "active_composites", [])
+        for composite in active_composites[:3]:
+            lens_lines.append(
+                f"  - composite={composite.composite_id} "
+                f"version={composite.version} parents={', '.join(composite.component_lens_ids)}"
+            )
+        guards = getattr(lens_engine_state, "guards", [])
+        for guard in guards[:4]:
+            lens_lines.append(
+                f"  - guard[{guard.kind}] {guard.status}: {guard.summary}"
+            )
+        invalidations = getattr(lens_engine_state, "pending_invalidations", [])
+        for item in invalidations[:4]:
+            lens_lines.append(
+                f"  - invalidation[{item.target_kind}] {item.target_id}: {item.summary}"
+            )
+        recompositions = getattr(lens_engine_state, "recompositions", [])
+        for item in recompositions[-3:]:
+            lens_lines.append(
+                f"  - recomposition {item.status}: {item.summary}"
+            )
+        sections.append("## Lens Engine State\n" + "\n".join(lens_lines))
+
     # -- Entry statistics ----------------------------------------------------
     role_counts: dict[str, int] = {}
     type_counts: dict[str, int] = {}

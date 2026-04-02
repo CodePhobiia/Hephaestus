@@ -349,6 +349,25 @@ class TestNoveltyVerifier:
         assert result[0].prior_art_status == "SEARCH_UNAVAILABLE"
 
     @pytest.mark.asyncio
+    async def test_attaches_grounding_and_risk_reviews(self):
+        attack_harness = MagicMock()
+        attack_harness.forge = AsyncMock(side_effect=[
+            _make_forge_result(_valid_attack_json("NOVEL")),
+            _make_forge_result(_valid_validity_json("HIGH")),
+        ])
+
+        verifier = NoveltyVerifier(attack_harness=attack_harness, run_prior_art=False)
+        verifier._perplexity_client = MagicMock()
+        verifier._perplexity_client.ground_invention_report = AsyncMock(return_value=MagicMock(summary="Grounded against adjacent systems"))
+        verifier._perplexity_client.review_implementation_risks = AsyncMock(return_value=MagicMock(summary="Main risk is feedback delay"))
+
+        result = await verifier.verify([_make_translation()], _make_structure())
+        assert result[0].grounding_report is not None
+        assert result[0].implementation_risk_review is not None
+        assert "Grounding:" in result[0].verification_notes
+        assert "Risk review:" in result[0].verification_notes
+
+    @pytest.mark.asyncio
     async def test_novelty_score_penalised_by_fatal_flaws(self):
         """Fatal flaws from adversarial attack should reduce novelty score."""
         attack_harness = MagicMock()

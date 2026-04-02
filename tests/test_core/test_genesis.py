@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -543,6 +544,7 @@ class TestGenesis:
         assert config.min_domain_distance == 0.3
         assert config.use_interference_in_translate is True
         assert config.run_prior_art is True
+        assert config.use_branchgenome_v1 is False
 
     def test_genesis_from_env(self):
         """from_env should create Genesis without errors."""
@@ -554,3 +556,136 @@ class TestGenesis:
         assert genesis is not None
         assert genesis._config.anthropic_api_key == "test-anthropic"
         assert genesis._config.openai_api_key == "test-openai"
+
+    @pytest.mark.asyncio
+    async def test_genesis_retries_singleton_fallback_when_bundle_translation_returns_empty(self):
+        genesis = Genesis(
+            GenesisConfig(
+                anthropic_api_key="test-key",
+                openai_api_key="test-key",
+                num_translations=2,
+            )
+        )
+
+        structure = _make_problem_structure()
+        candidates = []
+        scored = []
+        for domain in ["biology", "economics", "physics"]:
+            lens = _make_lens()
+            lens.domain = domain
+            search_candidate = SearchCandidate(
+                source_domain=f"{domain.title()} Mechanism",
+                source_solution=f"{domain.title()} mechanism",
+                mechanism=f"{domain.title()} control state",
+                structural_mapping="Maps to adaptive control",
+                lens_used=lens,
+                lens_score=LensScore(
+                    lens=lens,
+                    domain_distance=0.9 if domain == "biology" else (0.82 if domain == "economics" else 0.7),
+                    structural_relevance=0.8,
+                    composite_score=0.7,
+                    matched_patterns=["allocation"],
+                ),
+                confidence=0.85,
+                cost_usd=0.005,
+            )
+            candidates.append(search_candidate)
+            scored.append(
+                ScoredCandidate(
+                    candidate=search_candidate,
+                    structural_fidelity=0.82,
+                    domain_distance=search_candidate.lens_score.domain_distance if search_candidate.lens_score else 0.7,
+                    combined_score=0.78 if domain == "biology" else (0.71 if domain == "economics" else 0.62),
+                    fidelity_reasoning="Strong mapping",
+                )
+            )
+
+        mock_decomposer = MagicMock()
+        mock_decomposer.decompose = AsyncMock(return_value=structure)
+
+        mock_searcher = MagicMock()
+        mock_searcher.search = AsyncMock(return_value=candidates)
+        mock_searcher.last_runtime = SimpleNamespace(
+            retrieval_mode="bundle",
+            to_dict=lambda: {"retrieval_mode": "bundle", "selected_lens_ids": [c.lens_id for c in candidates[:2]]},
+        )
+
+        mock_scorer = MagicMock()
+        mock_scorer.score = AsyncMock(return_value=scored)
+
+        def _translation_from(candidate: ScoredCandidate, name: str) -> Translation:
+            return Translation(
+                invention_name=name,
+                mapping=[ElementMapping("source", "target", "maps cleanly")],
+                architecture="Concrete bounded architecture.",
+                mathematical_proof="T maps to T'",
+                limitations=["Needs bounded state"],
+                implementation_notes="Use explicit control state",
+                key_insight="Bound the state and keep recovery explicit.",
+                source_candidate=candidate,
+            )
+
+        class _TranslatorStub:
+            def __init__(self) -> None:
+                self.calls: list[list[str]] = []
+                self.last_runtime = None
+
+            async def translate(self, inputs, _structure, top_n=None):
+                self.calls.append([candidate.lens_id for candidate in inputs])
+                if len(self.calls) == 1:
+                    self.last_runtime = SimpleNamespace(
+                        invalidated_lens_ids=(),
+                        to_dict=lambda: {"retrieval_mode": "bundle", "invalidated_lens_ids": []},
+                    )
+                    return []
+                self.last_runtime = SimpleNamespace(
+                    invalidated_lens_ids=(),
+                    to_dict=lambda: {"retrieval_mode": "singleton", "invalidated_lens_ids": []},
+                )
+                return [_translation_from(inputs[0], "Fallback Translation")]
+
+        translator_stub = _TranslatorStub()
+
+        mock_verifier = MagicMock()
+        mock_verifier.verify = AsyncMock(
+            side_effect=lambda translations, _structure: [_make_verified_invention() if False else VerifiedInvention(
+                invention_name=translations[0].invention_name,
+                translation=translations[0],
+                novelty_score=0.77,
+                structural_validity=0.8,
+                implementation_feasibility=0.75,
+                feasibility_rating="HIGH",
+                adversarial_result=AdversarialResult(
+                    attack_valid=False,
+                    fatal_flaws=[],
+                    structural_weaknesses=[],
+                    strongest_objection="",
+                    novelty_risk=0.2,
+                    verdict="NOVEL",
+                ),
+                prior_art_status="NO_PRIOR_ART_FOUND",
+            )]
+        )
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mock_decomposer),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mock_searcher),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mock_scorer),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=translator_stub),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mock_verifier),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._adapters = {}
+
+            report = await genesis.invent("test problem")
+
+        assert len(translator_stub.calls) == 2
+        assert translator_stub.calls[0] == [candidate.lens_id for candidate in scored]
+        assert translator_stub.calls[1] == [scored[2].lens_id]
+        assert report.translations[0].invention_name == "Fallback Translation"
+        assert report.lens_runtime["translation_retry"]["retrieval_mode"] == "singleton"

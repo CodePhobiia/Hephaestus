@@ -21,6 +21,9 @@ from hephaestus.core.translator import (
     TranslationError,
 )
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
+from hephaestus.lenses.bundles import BundleComposer
+from hephaestus.lenses.cells import build_reference_state
+from hephaestus.lenses.lineage import lineage_from_bundle_proof
 from hephaestus.lenses.loader import Lens, StructuralPattern
 from hephaestus.lenses.selector import LensScore
 
@@ -347,3 +350,146 @@ class TestSolutionTranslator:
 
         if translations:
             assert translations[0].cost_usd == pytest.approx(0.025)
+
+    @pytest.mark.asyncio
+    async def test_bundle_guard_recomposes_and_uses_singleton_fallback(self):
+        harness = MagicMock()
+        harness.adapter = MagicMock()
+        harness.adapter.model_name = "claude-opus-4-5"
+        harness.adapter.config.provider = "anthropic"
+
+        structure = _make_structure()
+
+        immune_lens = _make_lens(domain="biology")
+        market_lens = _make_lens(domain="economics")
+        fallback_lens = _make_lens(domain="physics")
+
+        immune_candidate = SearchCandidate(
+            source_domain="Immune System",
+            source_solution="Immune memory retains successful responses.",
+            mechanism="Retained control state",
+            structural_mapping="Retained response maps to retained recovery path",
+            lens_used=immune_lens,
+            lens_score=LensScore(
+                lens=immune_lens,
+                domain_distance=0.91,
+                structural_relevance=0.82,
+                composite_score=0.75,
+                matched_patterns=["allocation", "control"],
+            ),
+            confidence=0.9,
+        )
+        market_candidate = SearchCandidate(
+            source_domain="Auction Theory",
+            source_solution="Clearing rules explicitly gate and verify participation.",
+            mechanism="Explicit verification gates",
+            structural_mapping="Clearing rule maps to admission gate",
+            lens_used=market_lens,
+            lens_score=LensScore(
+                lens=market_lens,
+                domain_distance=0.87,
+                structural_relevance=0.79,
+                composite_score=0.71,
+                matched_patterns=["verification", "control"],
+            ),
+            confidence=0.88,
+        )
+        fallback_candidate = SearchCandidate(
+            source_domain="Optics",
+            source_solution="Threshold optics flips state once a bounded signal crosses a gate.",
+            mechanism="Threshold gating",
+            structural_mapping="Threshold gate maps to bounded admission gate",
+            lens_used=fallback_lens,
+            lens_score=LensScore(
+                lens=fallback_lens,
+                domain_distance=0.73,
+                structural_relevance=0.64,
+                composite_score=0.56,
+                matched_patterns=["control"],
+            ),
+            confidence=0.85,
+        )
+
+        immune_scored = ScoredCandidate(
+            candidate=immune_candidate,
+            structural_fidelity=0.84,
+            domain_distance=0.91,
+            combined_score=0.79,
+        )
+        market_scored = ScoredCandidate(
+            candidate=market_candidate,
+            structural_fidelity=0.82,
+            domain_distance=0.87,
+            combined_score=0.74,
+        )
+        fallback_scored = ScoredCandidate(
+            candidate=fallback_candidate,
+            structural_fidelity=0.72,
+            domain_distance=0.73,
+            combined_score=0.54,
+        )
+
+        bundle_selection = BundleComposer(
+            min_bundle_strength=0.0,
+            min_bundle_gain=-1.0,
+        ).select([immune_candidate.lens_score, market_candidate.lens_score], structure)
+        assert bundle_selection.active_bundle is not None
+        bundle_proof = bundle_selection.active_bundle
+        lineage = lineage_from_bundle_proof(bundle_proof)
+        reference_state = build_reference_state(structure)
+
+        for candidate, role in [(immune_candidate, "critical"), (market_candidate, "conditional")]:
+            candidate.bundle_proof = bundle_proof
+            candidate.bundle_lineage = lineage
+            candidate.selection_mode = "bundle"
+            candidate.bundle_role = role
+            candidate.runtime_context = {"reference_state": reference_state.to_dict()}
+
+        first_translation = _valid_translation_json(
+            invention_name="Retained Recovery Controller",
+            architecture=(
+                "The controller retains successful recovery paths, keeps admission bounded with low latency, "
+                "and runs explicit verification before reuse so failures never collapse into a single point of failure."
+            ),
+            key_insight="Retain recovery paths so repeated failures recover faster.",
+            subtraction_test="The runtime keeps a target-side retained recovery table with bounded decay.",
+        )
+        collapsing_translation = _valid_translation_json(
+            invention_name="Collapsed Controller",
+            architecture=(
+                "Immune memory immune controller immune table immune routing immune guard. "
+                "Immune memory keeps the immune scheduler stable."
+            ),
+            key_insight="Immune memory keeps the scheduler stable.",
+            subtraction_test="",
+            recovery_commitments=[],
+        )
+        fallback_translation = _valid_translation_json(
+            invention_name="Threshold Admission Gate",
+            architecture="A bounded threshold gate admits work only when a retained control budget remains within policy.",
+            key_insight="Gate admission by bounded threshold instead of blind retries.",
+            subtraction_test="The runtime applies a target-side threshold gate with bounded control state.",
+        )
+
+        with patch("hephaestus.core.translator.DeepForgeHarness") as MockHarness:
+            instance = MockHarness.return_value
+            instance.forge = AsyncMock(
+                side_effect=[
+                    _make_forge_result(first_translation),
+                    _make_forge_result(collapsing_translation),
+                    _make_forge_result(fallback_translation),
+                ]
+            )
+
+            translator = SolutionTranslator(harness=harness, top_n=3)
+            translations = await translator.translate(
+                [immune_scored, market_scored, fallback_scored],
+                structure,
+            )
+
+        assert len(translations) == 2
+        assert any(translation.selection_mode == "singleton_fallback" for translation in translations)
+        assert translator.last_runtime is not None
+        assert translator.last_runtime.fallback_used is True
+        assert market_scored.lens_id in translator.last_runtime.invalidated_lens_ids
+        assert translator.last_runtime.recomposition_events

@@ -147,6 +147,16 @@ class ConversationRuntime:
             metadata={"tool_use_id": tool_use_id, "name": name, "input": tool_input},
         )
 
+        # Bind reference lots for resume safety.
+        current_op = max(0, len(self.session.transcript) - 1)
+        self.session.bind_reference_lot(
+            kind="tool",
+            subject_key=name,
+            op_id=current_op,
+            floor={"available": "1"},
+            dependents=[current_op],
+        )
+
         # Permission check.
         if not self.policy.check(name):
             denial = self.policy.explain_denial(name)
@@ -164,6 +174,14 @@ class ConversationRuntime:
                 output=denial,
                 is_error=True,
             )
+
+        self.session.bind_reference_lot(
+            kind="permission",
+            subject_key=name,
+            op_id=current_op,
+            floor={"allowed": "1"},
+            dependents=[current_op],
+        )
 
         # Look up handler.
         tool_def = self.registry.get(name)

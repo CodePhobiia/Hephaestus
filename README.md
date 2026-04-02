@@ -45,6 +45,11 @@ pip install hephaestus-ai
 # Both required for default cross-model mode
 export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...
+
+# Optional but recommended for grounded research features
+export PERPLEXITY_API_KEY=pplx-...
+export HEPHAESTUS_USE_PERPLEXITY_RESEARCH=true
+export HEPHAESTUS_PERPLEXITY_MODEL=sonar-pro
 ```
 
 ### Run your first invention
@@ -76,6 +81,27 @@ heph --model opus "my problem"       # Claude only
 heph --model gpt5 "my problem"      # OpenAI only
 heph --model claude-max "my problem" # Claude Max (no API key needed)
 ```
+
+### Grounded research and benchmark corpora
+
+```bash
+heph --research "Design a scheduler that remains stable under flash crowds"
+heph --no-research "Design a scheduler that remains stable under flash crowds"
+heph --benchmark-corpus "distributed systems" --benchmark-count 12 -o corpora/distributed-systems.md
+```
+
+### Adaptive Bundle-Proof lens-engine surfaces
+
+Every modern invention report can now carry an inspectable lens-engine state in addition to the top invention text. The surfaced state is meant for debugging, reproducibility, and safe resume behavior:
+
+- bundle proofs with cohesion and higher-order support scores
+- proof-carrying lineage for selected and derived lenses
+- fold-state summaries for active/supporting/fallback bundles
+- guards, invalidations, and recomposition events
+- derived composite lenses with versioned invalidation metadata
+- research/reference generations bound to Perplexity-backed evidence
+
+These surfaces appear in session JSON (`lens_engine_state`), invention-report JSON (`lens_engine`), markdown/plain exports (`LENS ENGINE`), and the REPL status/full-report views.
 
 ---
 
@@ -139,6 +165,7 @@ Control how far from consensus the engine pushes, with `--intensity`:
 - **80+ domain lenses** — curated axiom sets spanning biology, physics, mathematics, economics, military strategy, arts, agriculture, psychology, engineering, earth sciences, linguistics, and mythology
 - **DeepForge harness** — cognitive interference injection, convergence pruning, and anti-training pressure to prevent predictable output
 - **Session management** — typed transcripts, session persistence, and compaction with continuation summaries that preserve invention state
+- **Adaptive lens-engine state** — bundle proofs, lineage, fold states, guards, invalidations, recomposition history, and composites
 - **MCP tool integration** — JSON-RPC 2.0 stdio client with multi-server manager and namespaced tool routing
 - **Multiple backends** — Anthropic (Claude), OpenAI (GPT), OpenRouter, Claude Max, and Claude CLI
 - **Interactive REPL** — 22+ slash commands with aliases, categories, tab completion, session history, refinement loops, and live cost tracking
@@ -255,6 +282,8 @@ depth: 3                        # Anti-training pressure rounds (1-10)
 candidates: 8                   # Cross-domain search candidates (1-20)
 divergence_intensity: STANDARD  # STANDARD | AGGRESSIVE | MAXIMUM
 output_mode: MECHANISM          # MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM | PROTOCOL | TAXONOMY | INTERFACE
+use_perplexity_research: true   # Enable grounded research annexes and dossier mode
+perplexity_model: sonar-pro     # Perplexity model for research and benchmark tasks
 auto_save: true                 # Auto-save session transcripts
 ```
 
@@ -275,8 +304,11 @@ defaults < ~/.hephaestus/config.yaml < .hephaestus/config.yaml < .hephaestus/loc
 | `ANTHROPIC_API_KEY` | For opus/both modes | Anthropic API key |
 | `OPENAI_API_KEY` | For gpt5/both modes | OpenAI API key |
 | `OPENROUTER_API_KEY` | For OpenRouter backend | OpenRouter API key |
+| `PERPLEXITY_API_KEY` | No | Perplexity API key for research annexes and benchmark corpora |
 | `HEPHAESTUS_DEPTH` | No | Default pressure depth |
 | `HEPHAESTUS_MODEL` | No | Default model preset |
+| `HEPHAESTUS_USE_PERPLEXITY_RESEARCH` | No | Enable or disable grounded research features by default |
+| `HEPHAESTUS_PERPLEXITY_MODEL` | No | Default Perplexity model for research tasks |
 | `HEPHAESTUS_LENS_DIR` | No | Custom lens library directory |
 | `HEPHAESTUS_LOG_LEVEL` | No | Log level (DEBUG/INFO/WARNING) |
 
@@ -294,6 +326,7 @@ src/hephaestus/
 │   └── adapters/       #   Anthropic, OpenAI, OpenRouter, Claude Max, Claude CLI
 ├── lenses/             # Domain lens library (80+ YAML axiom sets)
 │   ├── loader.py       #   Lens discovery and validation
+│   ├── state.py        #   Adaptive Bundle-Proof state, lineage, invalidation, composites
 │   └── library/        #   Individual lens files by domain
 ├── cli/                # Command-line interface
 │   ├── main.py         #   Click CLI with all flags and options
@@ -304,6 +337,7 @@ src/hephaestus/
 │   └── layered.py      #   5-level config precedence resolver
 ├── session/            # Session management
 │   ├── schema.py       #   Typed transcript model with persistence
+│   ├── reference_lots.py # Resume-safety anchors for tools, permissions, and lens state
 │   ├── todos.py        #   Working-memory todo list
 │   └── compact.py      #   Session compaction with continuation summaries
 ├── prompts/            # Prompt construction

@@ -143,6 +143,16 @@ class InventionReport:
         Honest description of the analogy's limitations.
     prior_art_report:
         Optional :class:`~hephaestus.output.prior_art.PriorArtReport` object.
+    baseline_dossier:
+        Optional state-of-the-art reconnaissance summary collected before
+        invention.
+    external_grounding_report:
+        Optional grounded report connecting the invention to related work and
+        adjacent systems.
+    implementation_risk_review:
+        Optional grounded implementation / operational risk review.
+    lens_engine_state:
+        Optional Adaptive Bundle-Proof lens-engine state attached to the run.
     novelty_proof:
         Optional :class:`~hephaestus.output.proof.NoveltyProof` object.
     alternatives:
@@ -169,6 +179,10 @@ class InventionReport:
     architecture: str
     where_analogy_breaks: str
     prior_art_report: Any | None = None    # PriorArtReport
+    baseline_dossier: Any | None = None
+    external_grounding_report: Any | None = None
+    implementation_risk_review: Any | None = None
+    lens_engine_state: Any | None = None
     novelty_proof: Any | None = None       # NoveltyProof
     alternatives: list[AlternativeInvention] = field(default_factory=list)
     cost_usd: float = 0.0
@@ -252,6 +266,20 @@ class OutputFormatter:
             "",
         ]
 
+        if report.baseline_dossier is not None:
+            lines += [
+                "**STATE OF THE ART RECON:**",
+                "",
+                f"  {_as_text(getattr(report.baseline_dossier, 'summary', ''), 'No external reconnaissance summary available.')}",
+                "",
+            ]
+            avoid = getattr(report.baseline_dossier, "keywords_to_avoid", [])
+            if avoid:
+                lines.append("  Conventional target-domain mechanisms to avoid reinventing:")
+                for item in avoid[:8]:
+                    lines.append(f"  - {item}")
+                lines.append("")
+
         # ── Primary invention ────────────────────────────────────────────────
         lines += [
             "───────────────────────────────────────────────────",
@@ -328,6 +356,54 @@ class OutputFormatter:
         else:
             lines.append("  Prior art search not performed.")
         lines.append("")
+
+        if report.external_grounding_report is not None:
+            lines += [
+                "**EXTERNAL GROUNDING:**",
+                "",
+                f"  {_as_text(getattr(report.external_grounding_report, 'summary', ''), 'No external grounding summary available.')}",
+                "",
+            ]
+            for heading, key in [
+                ("Closest related work", "closest_related_work"),
+                ("Adjacent fields", "adjacent_fields"),
+                ("Practitioner risks", "practitioner_risks"),
+                ("Notable projects", "notable_projects"),
+            ]:
+                values = getattr(report.external_grounding_report, key, [])
+                if values:
+                    lines.append(f"  {heading}:")
+                    for item in values[:6]:
+                        lines.append(f"  - {item}")
+                    lines.append("")
+
+        if report.implementation_risk_review is not None:
+            lines += [
+                "**IMPLEMENTATION RISK REVIEW:**",
+                "",
+                f"  {_as_text(getattr(report.implementation_risk_review, 'summary', ''), 'No grounded risk review available.')}",
+                "",
+            ]
+            for heading, key in [
+                ("Major risks", "major_risks"),
+                ("Operational constraints", "operational_constraints"),
+                ("Likely failure modes", "likely_failure_modes"),
+                ("Mitigations", "mitigations"),
+            ]:
+                values = getattr(report.implementation_risk_review, key, [])
+                if values:
+                    lines.append(f"  {heading}:")
+                    for item in values[:6]:
+                        lines.append(f"  - {item}")
+                lines.append("")
+
+        if report.lens_engine_state is not None:
+            lines += [
+                "**LENS ENGINE:**",
+                "",
+            ]
+            lines.extend(_lens_engine_markdown_lines(report.lens_engine_state))
+            lines.append("")
 
         # ── Novelty proof ────────────────────────────────────────────────────
         lines += [
@@ -443,6 +519,10 @@ class OutputFormatter:
                     "where_analogy_breaks": report.where_analogy_breaks,
                 },
                 "prior_art": _prior_art_to_dict(report.prior_art_report),
+                "state_of_the_art": _research_obj_to_dict(report.baseline_dossier),
+                "external_grounding": _research_obj_to_dict(report.external_grounding_report),
+                "implementation_risk_review": _research_obj_to_dict(report.implementation_risk_review),
+                "lens_engine": _lens_engine_to_dict(report.lens_engine_state),
                 "novelty_proof": _proof_to_dict(report.novelty_proof),
                 "alternatives": [
                     {
@@ -483,6 +563,19 @@ class OutputFormatter:
             "STRUCTURAL FORM:",
             f"  {_as_text(report.structural_form, 'Not available.')}",
             "",
+        ]
+
+        if report.baseline_dossier is not None:
+            lines.append("STATE OF THE ART RECON:")
+            lines.append(_indent_block(getattr(report.baseline_dossier, "summary", ""), fallback="No external reconnaissance summary available."))
+            avoid = getattr(report.baseline_dossier, "keywords_to_avoid", [])
+            if avoid:
+                lines.append("  Conventional mechanisms to avoid:")
+                for item in avoid[:8]:
+                    lines.append(f"  - {item}")
+            lines.append("")
+
+        lines += [
             "-" * 60,
             f"INVENTION: {report.invention_name}",
             f"SOURCE DOMAIN: {report.source_domain}",
@@ -519,6 +612,43 @@ class OutputFormatter:
         else:
             lines.append("  Not performed.")
         lines.append("")
+
+        if report.external_grounding_report is not None:
+            lines.append("EXTERNAL GROUNDING:")
+            lines.append(_indent_block(getattr(report.external_grounding_report, "summary", ""), fallback="No external grounding summary available."))
+            for heading, key in [
+                ("Closest related work", "closest_related_work"),
+                ("Adjacent fields", "adjacent_fields"),
+                ("Practitioner risks", "practitioner_risks"),
+                ("Notable projects", "notable_projects"),
+            ]:
+                values = getattr(report.external_grounding_report, key, [])
+                if values:
+                    lines.append(f"  {heading}:")
+                    for item in values[:6]:
+                        lines.append(f"  - {item}")
+            lines.append("")
+
+        if report.implementation_risk_review is not None:
+            lines.append("IMPLEMENTATION RISK REVIEW:")
+            lines.append(_indent_block(getattr(report.implementation_risk_review, "summary", ""), fallback="No grounded risk review available."))
+            for heading, key in [
+                ("Major risks", "major_risks"),
+                ("Operational constraints", "operational_constraints"),
+                ("Likely failure modes", "likely_failure_modes"),
+                ("Mitigations", "mitigations"),
+            ]:
+                values = getattr(report.implementation_risk_review, key, [])
+                if values:
+                    lines.append(f"  {heading}:")
+                    for item in values[:6]:
+                        lines.append(f"  - {item}")
+            lines.append("")
+
+        if report.lens_engine_state is not None:
+            lines.append("LENS ENGINE:")
+            lines.extend(_lens_engine_plain_lines(report.lens_engine_state))
+            lines.append("")
 
         # Novelty proof
         lines.append("NOVELTY PROOF:")
@@ -694,15 +824,50 @@ def _prior_art_to_dict(report: Any | None) -> dict[str, Any]:
         for p in getattr(report, "papers", [])
     ]
 
+    related_work = [
+        {
+            "title": getattr(item, "title", ""),
+            "url": getattr(item, "url", ""),
+            "relationship": getattr(item, "relationship", ""),
+            "why_similar": getattr(item, "why_similar", ""),
+        }
+        for item in getattr(report, "related_work", [])
+    ]
+
     return {
         "available": getattr(report, "search_available", False),
         "status": getattr(report, "novelty_status", "UNKNOWN"),
         "summary": getattr(report, "summary", ""),
+        "overlap_verdict": getattr(report, "overlap_verdict", "UNKNOWN"),
+        "overlap_confidence": getattr(report, "overlap_confidence", 0.0),
         "patents": patents,
         "papers": papers,
+        "related_work": related_work,
+        "citations": getattr(report, "citations", []),
         "errors": getattr(report, "search_errors", []),
         "searched_at": getattr(report, "searched_at", ""),
     }
+
+
+def _research_obj_to_dict(obj: Any | None) -> dict[str, Any] | None:
+    """Convert a simple research dataclass/object into a JSON-safe dict."""
+    if obj is None:
+        return None
+    return _json_safe(obj)
+
+
+def _json_safe(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if hasattr(value, "__dict__"):
+        return {str(k): _json_safe(v) for k, v in value.__dict__.items()}
+    return str(value)
 
 
 def _proof_to_dict(proof: Any | None) -> dict[str, Any] | None:
@@ -712,3 +877,80 @@ def _proof_to_dict(proof: Any | None) -> dict[str, Any] | None:
     if hasattr(proof, "to_dict"):
         return proof.to_dict()  # type: ignore[return-value]
     return {"novelty_score": getattr(proof, "novelty_score", 0.0)}
+
+
+def _lens_engine_to_dict(state: Any | None) -> dict[str, Any] | None:
+    if state is None:
+        return None
+    if hasattr(state, "to_dict"):
+        return state.to_dict()  # type: ignore[return-value]
+    return _json_safe(state)
+
+
+def _lens_engine_markdown_lines(state: Any) -> list[str]:
+    lines: list[str] = [f"  {_state_summary_text(state)}"]
+    active_bundle = getattr(state, "active_bundle", None)
+    if active_bundle is not None:
+        lines.append("")
+        lines.append(
+            f"  - Active bundle: `{active_bundle.bundle_id}` "
+            f"({active_bundle.bundle_kind}, {active_bundle.proof_status})"
+        )
+        lines.append(
+            f"  - Cohesion: `{active_bundle.cohesion_score:.2f}` | "
+            f"Higher-order support: `{active_bundle.higher_order_score:.2f}`"
+        )
+        lines.append(
+            f"  - Members: {', '.join(f'`{member}`' for member in active_bundle.member_ids)}"
+        )
+    for composite in getattr(state, "active_composites", [])[:3]:
+        lines.append(
+            f"  - Composite: `{composite.composite_id}` "
+            f"(v{composite.version}) from {', '.join(f'`{member}`' for member in composite.component_lens_ids)}"
+        )
+    for guard in getattr(state, "guards", [])[:5]:
+        lines.append(
+            f"  - Guard `{guard.kind}`: **{guard.status.upper()}** — {guard.summary}"
+        )
+    for item in getattr(state, "pending_invalidations", [])[:5]:
+        lines.append(
+            f"  - Invalidation `{item.target_kind}` `{item.target_id}`: {item.summary}"
+        )
+    for item in getattr(state, "recompositions", [])[-3:]:
+        lines.append(f"  - Recomposition `{item.status}`: {item.summary}")
+    return lines
+
+
+def _lens_engine_plain_lines(state: Any) -> list[str]:
+    lines = [f"  {_state_summary_text(state)}"]
+    active_bundle = getattr(state, "active_bundle", None)
+    if active_bundle is not None:
+        lines.append(
+            f"  Active bundle: {active_bundle.bundle_id} "
+            f"({active_bundle.bundle_kind}, {active_bundle.proof_status})"
+        )
+        lines.append(
+            f"  Members: {', '.join(active_bundle.member_ids)}"
+        )
+        lines.append(
+            f"  Cohesion: {active_bundle.cohesion_score:.2f}  "
+            f"Higher-order support: {active_bundle.higher_order_score:.2f}"
+        )
+    for composite in getattr(state, "active_composites", [])[:3]:
+        lines.append(
+            f"  Composite: {composite.composite_id} "
+            f"(v{composite.version}) from {', '.join(composite.component_lens_ids)}"
+        )
+    for guard in getattr(state, "guards", [])[:5]:
+        lines.append(f"  Guard [{guard.kind}] {guard.status}: {guard.summary}")
+    for item in getattr(state, "pending_invalidations", [])[:5]:
+        lines.append(f"  Invalidation [{item.target_kind}] {item.target_id}: {item.summary}")
+    for item in getattr(state, "recompositions", [])[-3:]:
+        lines.append(f"  Recomposition {item.status}: {item.summary}")
+    return lines
+
+
+def _state_summary_text(state: Any) -> str:
+    summary_value = getattr(state, "summary", "")
+    summary = summary_value() if callable(summary_value) else summary_value
+    return _as_text(summary, "Lens engine state attached.")

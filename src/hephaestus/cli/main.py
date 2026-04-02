@@ -169,6 +169,31 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     help="Output structure shape (e.g. MECHANISM, FRAMEWORK, SYSTEM).",
 )
 @click.option(
+    "--research/--no-research",
+    "use_research",
+    default=True,
+    show_default=True,
+    help="Enable Perplexity-backed research features and benchmark generation.",
+)
+@click.option(
+    "--research-model",
+    default=None,
+    help="Perplexity model override for research features (defaults to config or HEPHAESTUS_PERPLEXITY_MODEL).",
+)
+@click.option(
+    "--benchmark-corpus",
+    "benchmark_topic",
+    default=None,
+    help="Generate a grounded benchmark corpus for a topic instead of running the invention pipeline.",
+)
+@click.option(
+    "--benchmark-count",
+    default=8,
+    show_default=True,
+    type=click.IntRange(1, 50),
+    help="Number of benchmark cases to generate when --benchmark-corpus is used.",
+)
+@click.option(
     "--interactive",
     "-i",
     is_flag=True,
@@ -208,6 +233,10 @@ def cli(
     verbose: bool,
     intensity: str,
     output_mode: str,
+    use_research: bool,
+    research_model: str | None,
+    benchmark_topic: str | None,
+    benchmark_count: int,
 ) -> None:
     """Main CLI entry point."""
     import logging as _logging
@@ -219,6 +248,7 @@ def cli(
             datefmt="%H:%M:%S",
         )
     console = make_console(quiet=quiet)
+    use_branchgenome_v1 = False
 
     # ── Layered config ────────────────────────────────────────────────────────
     layered = None
@@ -243,8 +273,52 @@ def cli(
             intensity = resolved.divergence_intensity
         if src("output_mode") != click.core.ParameterSource.COMMANDLINE:
             output_mode = resolved.output_mode
+        if src("use_research") != click.core.ParameterSource.COMMANDLINE:
+            use_research = resolved.use_perplexity_research
+        if src("research_model") != click.core.ParameterSource.COMMANDLINE:
+            research_model = resolved.perplexity_model
+        use_branchgenome_v1 = getattr(resolved, "use_branchgenome_v1", False)
     except Exception:
         pass  # Fall back to CLI defaults
+
+    # ── Benchmark corpus mode ────────────────────────────────────────────────
+    if benchmark_topic:
+        if problem or raw or interactive:
+            print_error(
+                console,
+                "--benchmark-corpus runs as a standalone research mode.",
+                hint="Use `heph --benchmark-corpus \"topic\"` without a problem, --raw, or --interactive.",
+            )
+            sys.exit(1)
+
+        if not quiet:
+            print_banner(console)
+
+        try:
+            asyncio.run(
+                _run_benchmark_corpus(
+                    console=console,
+                    topic=benchmark_topic,
+                    count=benchmark_count,
+                    output_format=output_format,
+                    output=output,
+                    quiet=quiet,
+                    use_research=use_research,
+                    research_model=research_model,
+                )
+            )
+        except KeyboardInterrupt:
+            console.print(f"\n  [dim]Interrupted by user.[/]")
+            sys.exit(130)
+        except Exception as exc:
+            msg = str(exc) or exc.__class__.__name__
+            print_error(
+                console,
+                "Benchmark corpus generation failed.",
+                hint=_error_hint(msg) or msg,
+            )
+            sys.exit(1)
+        return
 
     # ── Interactive mode ──────────────────────────────────────────────────────
     if interactive or (not problem and not raw):
@@ -342,6 +416,9 @@ def cli(
                     openai_key=openai_key,
                     divergence_intensity=intensity,
                     output_mode=output_mode,
+                    use_research=use_research,
+                    research_model=research_model,
+                    use_branchgenome_v1=use_branchgenome_v1,
                 )
             )
     except KeyboardInterrupt:
@@ -378,6 +455,9 @@ async def _run_genesis(
     openai_key: str | None,
     divergence_intensity: str = "STANDARD",
     output_mode: str = "MECHANISM",
+    use_research: bool = True,
+    research_model: str | None = None,
+    use_branchgenome_v1: bool = False,
 ) -> None:
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
@@ -396,6 +476,9 @@ async def _run_genesis(
         openai_key=openai_key,
         divergence_intensity=divergence_intensity,
         output_mode=output_mode,
+        use_perplexity_research=use_research,
+        research_model=research_model,
+        use_branchgenome_v1=use_branchgenome_v1,
     )
 
     genesis = Genesis(config)
@@ -504,6 +587,48 @@ def _handle_pipeline_update(update: Any, stage_progress: StageProgress) -> None:
         current = getattr(stage_progress, "_current_stage", 0)
         if current > 0:
             stage_progress.fail_stage(current, update.message[:80])
+
+
+async def _run_benchmark_corpus(
+    console: Console,
+    topic: str,
+    count: int,
+    output_format: str,
+    output: Path | None,
+    quiet: bool,
+    use_research: bool,
+    research_model: str | None,
+) -> None:
+    """Generate and render a grounded benchmark corpus."""
+    from hephaestus.research import BenchmarkCorpusBuilder, PerplexityClient
+
+    availability = PerplexityClient(enabled=use_research, model=research_model)
+    if not availability.available():
+        raise RuntimeError(availability.unavailability_reason())
+    await availability.close()
+
+    if not quiet:
+        model_label = research_model or "configured default"
+        console.print(
+            f"  [dim]Generating benchmark corpus for[/] [cyan]{topic}[/] "
+            f"[dim]({count} cases, model={model_label})[/]\n"
+        )
+
+    corpus = await BenchmarkCorpusBuilder(
+        topic=topic,
+        count=count,
+        enabled=use_research,
+        model=research_model,
+    ).build()
+
+    if not corpus.cases:
+        raise RuntimeError("Perplexity returned no benchmark cases for that topic")
+
+    rendered = _serialize_benchmark_corpus(corpus, output_format)
+    console.print(rendered)
+
+    if output:
+        _save_benchmark_corpus(console, corpus, output, output_format)
 
 
 # ---------------------------------------------------------------------------
@@ -634,6 +759,32 @@ def _save_report(console: Console, report: Any, path: Path, fmt: str) -> None:
     print_success(console, f"Saved to [cyan]{path}[/]")
 
 
+def _serialize_benchmark_corpus(corpus: Any, fmt: str) -> str:
+    """Serialize a benchmark corpus for stdout or file export."""
+    if fmt == "json":
+        return corpus.to_json()
+    return corpus.to_markdown()
+
+
+def _save_benchmark_corpus(console: Console, corpus: Any, path: Path, fmt: str) -> None:
+    """Save a benchmark corpus to disk."""
+    ext = path.suffix.lower()
+    serialize_as = "json" if ext == ".json" or fmt == "json" else "markdown"
+    content = _serialize_benchmark_corpus(corpus, serialize_as)
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    except OSError:
+        print_error(
+            console,
+            f"Could not write benchmark corpus file: {path}",
+            hint="Check that the directory exists and that this shell can write to it.",
+        )
+        return
+    print_success(console, f"Saved to [cyan]{path}[/]")
+
+
 def _bridge_report(genesis_report: Any) -> Any:
     """
     Bridge a genesis.InventionReport to the formatter's InventionReport dataclass.
@@ -645,6 +796,12 @@ def _bridge_report(genesis_report: Any) -> Any:
         AlternativeInvention,
         InventionReport as FmtReport,
     )
+
+    def _explicit_attr(obj: Any, name: str, default: Any = None) -> Any:
+        data = getattr(obj, "__dict__", {})
+        if isinstance(data, dict) and name in data:
+            return data[name]
+        return default
 
     top = genesis_report.top_invention
     if not top:
@@ -697,7 +854,11 @@ def _bridge_report(genesis_report: Any) -> Any:
         translation=mapping_str,
         architecture=getattr(trans, "architecture", ""),
         where_analogy_breaks="\n".join(getattr(trans, "limitations", [])),
-        prior_art_report=getattr(top, "prior_art_report", None),
+        prior_art_report=_explicit_attr(top, "prior_art_report", None),
+        baseline_dossier=_explicit_attr(genesis_report, "baseline_dossier", None),
+        external_grounding_report=_explicit_attr(top, "grounding_report", None),
+        implementation_risk_review=_explicit_attr(top, "implementation_risk_review", None),
+        lens_engine_state=_explicit_attr(genesis_report, "lens_engine_state", None),
         alternatives=alternatives,
         cost_usd=genesis_report.total_cost_usd,
         input_tokens=getattr(genesis_report, "total_input_tokens", 0),
@@ -722,6 +883,9 @@ def _build_genesis_config(
     openai_key: str | None,
     divergence_intensity: str = "STANDARD",
     output_mode: str = "MECHANISM",
+    use_perplexity_research: bool = True,
+    research_model: str | None = None,
+    use_branchgenome_v1: bool = False,
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
     from hephaestus.core.cross_model import get_model_preset
@@ -744,6 +908,9 @@ def _build_genesis_config(
             use_interference_in_translate=True,
             divergence_intensity=divergence_intensity.upper(),
             output_mode=output_mode.upper(),
+            use_perplexity_research=use_perplexity_research,
+            perplexity_model=research_model,
+            use_branchgenome_v1=use_branchgenome_v1,
         )
 
     if model == "claude-cli":
@@ -763,6 +930,9 @@ def _build_genesis_config(
             use_interference_in_translate=True,
             divergence_intensity=divergence_intensity.upper(),
             output_mode=output_mode.upper(),
+            use_perplexity_research=use_perplexity_research,
+            perplexity_model=research_model,
+            use_branchgenome_v1=use_branchgenome_v1,
         )
 
     if model == "codex":
@@ -782,6 +952,9 @@ def _build_genesis_config(
             use_interference_in_translate=True,
             divergence_intensity=divergence_intensity.upper(),
             output_mode=output_mode.upper(),
+            use_perplexity_research=use_perplexity_research,
+            perplexity_model=research_model,
+            use_branchgenome_v1=use_branchgenome_v1,
         )
 
     # Map CLI flag names to preset names
@@ -801,6 +974,9 @@ def _build_genesis_config(
         use_interference_in_translate=True,
         divergence_intensity=divergence_intensity.upper(),
         output_mode=output_mode.upper(),
+        use_perplexity_research=use_perplexity_research,
+        perplexity_model=research_model,
+        use_branchgenome_v1=use_branchgenome_v1,
     )
 
 
@@ -967,6 +1143,9 @@ def init_cmd() -> None:
         "# candidates: 8\n"
         "# divergence_intensity: STANDARD\n"
         "# output_mode: MECHANISM\n"
+        "# use_perplexity_research: true\n"
+        "# perplexity_model: sonar-pro\n"
+        "# use_branchgenome_v1: false\n"
         "# auto_save: true\n",
         encoding="utf-8",
     )

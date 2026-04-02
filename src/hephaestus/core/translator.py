@@ -39,6 +39,9 @@ from hephaestus.core.scorer import ScoredCandidate
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace, HarnessConfig
 from hephaestus.deepforge.interference import InjectionStrategy, Lens
 from hephaestus.deepforge.interference import Lens as ForgeLens
+from hephaestus.lenses.bundles import BundleComposer
+from hephaestus.lenses.cells import build_reference_state
+from hephaestus.lenses.guards import evaluate_handoff_guards
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +97,14 @@ already known in the target domain under a different name?" If yes, your
 transfer added no value. Set mechanism_is_decorative to true and explain
 what known pattern it collapses to.
 
+If active branch recovery operators are provided, you MUST preserve them as
+concrete architectural commitments, not just mention them. For example:
+- attractor breaker: explicitly forbid the closest obvious baseline as the
+  primary organizing primitive
+- subtraction probe: explain what still differs after source-domain words are removed
+- order inversion: derive the normal path from failure/recovery logic first
+- load-bearing ablation: identify what breaks if the imported mechanism is removed
+
 You must output ONLY valid JSON matching this schema:
 {
   "invention_name": "<short name (3-5 words MAX) that describes what the mechanism DOES in the target domain. NOT the source domain name. Good: 'Prediction-Error Rate Controller'. Bad: 'Immune-Memory Inspired Scheduler'. The name should make sense to a target-domain engineer who has never heard of the source domain.>",
@@ -117,7 +128,9 @@ You must output ONLY valid JSON matching this schema:
   "key_insight": "<the ONE insight that makes this work — must be statable WITHOUT source domain words>",
   "mechanism_differs_from_baseline": "<What does this do that the obvious solution does not?>",
   "subtraction_test": "<Architecture described using ONLY target-domain language>",
-  "baseline_comparison": "<Simplest conventional solution vs this invention's structural advantage>"
+  "baseline_comparison": "<Simplest conventional solution vs this invention's structural advantage>",
+  "recovery_commitments": ["<for each active recovery operator, state the concrete commitment preserved in the architecture>"],
+  "future_option_preservation": "<Which future implementation options remain open because this branch avoided early collapse, and what must not be collapsed into a standard baseline?>"
 }
 
 REQUIREMENTS:
@@ -152,6 +165,9 @@ DOMAIN LENS (active cognitive interference):
 
 STRUCTURAL FIDELITY SCORE: {fidelity:.2f}
 DOMAIN DISTANCE: {distance:.2f}
+{branch_commitments_section}
+{bundle_proof_section}
+{handoff_section}
 
 Build the complete structural translation. Map every element. Write concrete architecture.
 Be honest about limitations. Return JSON only.
@@ -218,13 +234,29 @@ class Translation:
     mechanism_differs_from_baseline: str = ""
     subtraction_test: str = ""
     baseline_comparison: str = ""
+    recovery_commitments: list[str] = field(default_factory=list)
+    future_option_preservation: str = ""
     cost_usd: float = 0.0
     duration_seconds: float = 0.0
     trace: ForgeTrace | None = None
+    bundle_proof: Any | None = None
+    bundle_lineage: Any | None = None
+    guard_results: list[Any] = field(default_factory=list)
+    guard_failed: bool = False
+    selection_mode: str = "singleton"
+    bundle_role: str = ""
+    reference_signature: str = ""
+    research_signature: str = ""
+    branch_signature: str = ""
+    recomposition_events: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def source_domain(self) -> str:
         return self.source_candidate.source_domain
+
+    @property
+    def lens_id(self) -> str:
+        return self.source_candidate.lens_id
 
     @property
     def combined_score(self) -> float:
@@ -255,6 +287,30 @@ class TranslationError(Exception):
     """Raised when translation fails for a candidate."""
 
 
+@dataclass
+class TranslationRuntimeResult:
+    """Adaptive runtime metadata for translation orchestration."""
+
+    retrieval_mode: str
+    bundle_proof: Any | None = None
+    guard_history: list[Any] = field(default_factory=list)
+    recomposition_events: list[dict[str, Any]] = field(default_factory=list)
+    invalidated_lens_ids: tuple[str, ...] = ()
+    fallback_used: bool = False
+    translations: list[Translation] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "retrieval_mode": self.retrieval_mode,
+            "bundle_proof": self.bundle_proof.to_dict() if self.bundle_proof is not None else None,
+            "guard_history": [guard.to_dict() for guard in self.guard_history],
+            "recomposition_events": list(self.recomposition_events),
+            "invalidated_lens_ids": list(self.invalidated_lens_ids),
+            "fallback_used": self.fallback_used,
+            "translation_count": len(self.translations),
+        }
+
+
 class SolutionTranslator:
     """
     Stage 4 of the Genesis pipeline: Solution Translation.
@@ -277,10 +333,18 @@ class SolutionTranslator:
         harness: DeepForgeHarness,
         top_n: int = 3,
         system: str | None = None,
+        max_bundle_recompositions: int = 2,
     ) -> None:
         self._harness = harness
         self._top_n = top_n
         self._system_override = system
+        self._max_bundle_recompositions = max(1, max_bundle_recompositions)
+        self._bundle_composer = BundleComposer()
+        self._last_runtime: TranslationRuntimeResult | None = None
+
+    @property
+    def last_runtime(self) -> TranslationRuntimeResult | None:
+        return self._last_runtime
 
     async def translate(
         self,
@@ -314,6 +378,25 @@ class SolutionTranslator:
         logger.info("Translating top %d candidates", len(candidates))
         t_start = time.monotonic()
 
+        bundle_group = self._select_bundle_group(candidates)
+        if bundle_group is not None:
+            bundle_proof, bundle_members = bundle_group
+            translations = await self._translate_bundle_group(
+                bundle_proof,
+                bundle_members,
+                candidates,
+                structure,
+            )
+            duration = time.monotonic() - t_start
+            total_cost = sum(t.cost_usd for t in translations)
+            logger.info(
+                "Translation complete | count=%d duration=%.1fs cost=$%.4f mode=bundle",
+                len(translations),
+                duration,
+                total_cost,
+            )
+            return translations
+
         import asyncio
 
         tasks = [
@@ -334,11 +417,18 @@ class SolutionTranslator:
             if result is not None:
                 translations.append(result)
 
-        # Sort by combined score of source candidate
-        translations.sort(key=lambda t: t.combined_score, reverse=True)
+        # Sort by branch-aware rank when present, otherwise by combined score.
+        translations.sort(
+            key=lambda t: getattr(t.source_candidate, "branch_rank_score", t.combined_score),
+            reverse=True,
+        )
 
         duration = time.monotonic() - t_start
         total_cost = sum(t.cost_usd for t in translations)
+        self._last_runtime = TranslationRuntimeResult(
+            retrieval_mode="singleton",
+            translations=list(translations),
+        )
         logger.info(
             "Translation complete | count=%d duration=%.1fs cost=$%.4f",
             len(translations),
@@ -348,10 +438,181 @@ class SolutionTranslator:
 
         return translations
 
+    def _select_bundle_group(
+        self,
+        candidates: list[ScoredCandidate],
+    ) -> tuple[Any, list[ScoredCandidate]] | None:
+        grouped: dict[str, list[ScoredCandidate]] = {}
+        bundle_by_id: dict[str, Any] = {}
+        for candidate in candidates:
+            bundle = getattr(candidate, "bundle_proof", None)
+            if bundle is None:
+                continue
+            bundle_id = str(getattr(bundle, "bundle_id", ""))
+            grouped.setdefault(bundle_id, []).append(candidate)
+            bundle_by_id[bundle_id] = bundle
+        if not grouped:
+            return None
+        ranked_bundle_id = max(
+            grouped,
+            key=lambda bundle_id: (
+                float(getattr(bundle_by_id[bundle_id], "proof_confidence", 0.0)),
+                len(grouped[bundle_id]),
+            ),
+        )
+        return bundle_by_id[ranked_bundle_id], grouped[ranked_bundle_id]
+
+    async def _translate_bundle_group(
+        self,
+        bundle_proof: Any,
+        bundle_candidates: list[ScoredCandidate],
+        all_candidates: list[ScoredCandidate],
+        structure: ProblemStructure,
+    ) -> list[Translation]:
+        pending = {candidate.lens_id: candidate for candidate in bundle_candidates}
+        runtime = TranslationRuntimeResult(retrieval_mode="bundle", bundle_proof=bundle_proof)
+        invalidated: set[str] = set()
+
+        available_lens_ids = tuple(pending.keys())
+        missing_lens_ids = tuple(
+            lens_id for lens_id in getattr(bundle_proof, "active_lens_ids", ()) if lens_id not in set(available_lens_ids)
+        )
+        active_bundle = bundle_proof
+        if missing_lens_ids:
+            recomposition = self._bundle_composer.recompose(
+                bundle_proof,
+                structure,
+                invalidated_lens_ids=missing_lens_ids,
+                reason="bundle member missing before translation",
+            )
+            runtime.recomposition_events.append(recomposition.to_dict())
+            active_bundle = recomposition.new_bundle
+            invalidated.update(recomposition.invalidated_lens_ids)
+
+        current_reference_state = build_reference_state(structure)
+        if active_bundle is not None:
+            continuous = (
+                getattr(active_bundle, "reference_signature", "") == current_reference_state.reference_signature
+                and getattr(active_bundle, "research_signature", "") == current_reference_state.research_signature
+            )
+            if not continuous:
+                runtime.recomposition_events.append(
+                    {
+                        "original_bundle_id": getattr(active_bundle, "bundle_id", ""),
+                        "invalidated_lens_ids": list(getattr(active_bundle, "active_lens_ids", ())),
+                        "reason": "reference generation or research state changed after bundle proofing",
+                        "new_bundle": None,
+                        "fallback_required": True,
+                    }
+                )
+                invalidated.update(getattr(active_bundle, "active_lens_ids", ()))
+                active_bundle = None
+
+        translations: list[Translation] = []
+        recompositions = 0
+
+        while True:
+            if active_bundle is None:
+                break
+            order = [
+                lens_id
+                for lens_id in getattr(active_bundle, "translation_order", ())
+                if lens_id in pending and lens_id not in invalidated
+            ]
+            if not order:
+                break
+
+            lens_id = order[0]
+            candidate = pending.pop(lens_id)
+            translation = await self._translate_candidate(
+                candidate,
+                structure,
+                bundle_proof=active_bundle,
+                previous_translation=translations[-1] if translations else None,
+            )
+            guard = evaluate_handoff_guards(
+                structure=structure,
+                candidate=candidate,
+                translation=translation,
+                bundle_proof=active_bundle,
+                previous_translation=translations[-1] if translations else None,
+                current_reference_state=build_reference_state(
+                    structure,
+                    branch_genome=getattr(candidate, "branch_genome", None),
+                ),
+            )
+            translation.guard_results.append(guard)
+            translation.guard_failed = not guard.passed
+            translation.recomposition_events = list(runtime.recomposition_events)
+            runtime.guard_history.append(guard)
+            if not guard.passed:
+                invalidated.update(guard.invalidated_lens_ids)
+                if recompositions >= self._max_bundle_recompositions:
+                    runtime.recomposition_events.append(
+                        {
+                            "original_bundle_id": getattr(active_bundle, "bundle_id", ""),
+                            "invalidated_lens_ids": list(guard.invalidated_lens_ids),
+                            "reason": "max bundle recompositions reached",
+                            "new_bundle": None,
+                            "fallback_required": True,
+                        }
+                    )
+                    active_bundle = None
+                    break
+                recomposition = self._bundle_composer.recompose(
+                    active_bundle,
+                    structure,
+                    invalidated_lens_ids=guard.invalidated_lens_ids,
+                    reason=guard.summary(),
+                )
+                runtime.recomposition_events.append(recomposition.to_dict())
+                recompositions += 1
+                active_bundle = recomposition.new_bundle
+                if active_bundle is None:
+                    break
+                continue
+
+            translations.append(translation)
+
+        translated_lens_ids = {translation.lens_id for translation in translations}
+        fallback_candidates = [
+            candidate
+            for candidate in all_candidates
+            if candidate.lens_id not in invalidated and candidate.lens_id not in translated_lens_ids
+        ]
+        if (not translations or active_bundle is None) and fallback_candidates:
+            runtime.fallback_used = True
+            for candidate in fallback_candidates[: self._top_n]:
+                if candidate.lens_id in invalidated:
+                    continue
+                translation = await self._translate_candidate(
+                    candidate,
+                    structure,
+                    force_singleton=True,
+                )
+                translation.recomposition_events = list(runtime.recomposition_events)
+                translations.append(translation)
+                if len(translations) >= self._top_n:
+                    break
+
+        translations.sort(
+            key=lambda t: getattr(t.source_candidate, "branch_rank_score", t.combined_score),
+            reverse=True,
+        )
+        runtime.bundle_proof = active_bundle
+        runtime.invalidated_lens_ids = tuple(sorted(invalidated))
+        runtime.translations = list(translations)
+        self._last_runtime = runtime
+        return translations
+
     async def _translate_candidate(
         self,
         candidate: ScoredCandidate,
         structure: ProblemStructure,
+        *,
+        bundle_proof: Any | None = None,
+        previous_translation: Translation | None = None,
+        force_singleton: bool = False,
     ) -> Translation:
         """Translate a single candidate with cognitive interference active."""
         t_start = time.monotonic()
@@ -390,6 +651,45 @@ class SolutionTranslator:
         else:
             banned_text = ""
 
+        branch_commitments_section = ""
+        branch = getattr(candidate, "branch_genome", None)
+        if branch is not None:
+            commitment_lines = "\n".join(
+                f"- [{commitment.kind.value}] {commitment.statement}"
+                for commitment in branch.commitments[:8]
+            )
+            recovery_lines = "\n".join(
+                (
+                    f"- [{operator.kind.value}] trigger: {operator.trigger}; "
+                    f"intervention: {operator.intervention}; preserve: {operator.preservation_goal}"
+                )
+                for operator in branch.recovery_operators[:4]
+            ) or "- none"
+            open_questions = "\n".join(f"- {question}" for question in branch.open_questions[:4]) or "- none"
+            rejected_patterns = "\n".join(f"- {pattern}" for pattern in branch.rejected_patterns[:4]) or "- none"
+            branch_commitments_section = (
+                "\nPARTIAL BRANCH COMMITMENTS:\n"
+                "Treat these as the currently accepted structural commitments for this branch.\n"
+                "Preserve them where possible while resolving the open questions in a non-baseline way.\n"
+                f"{commitment_lines}\n"
+                "ACTIVE RECOVERY OPERATORS:\n"
+                f"{recovery_lines}\n"
+                "OPEN QUESTIONS TO RESOLVE:\n"
+                f"{open_questions}\n"
+                "RECENT REJECTION PRESSURE:\n"
+                f"{rejected_patterns}\n"
+                "You must preserve the recovery operators concretely and describe how the resulting architecture keeps future non-obvious options open rather than collapsing into the closest known pattern.\n"
+            )
+
+        active_bundle_proof = None if force_singleton else (bundle_proof or getattr(candidate, "bundle_proof", None))
+        bundle_proof_section = self._bundle_proof_section(
+            candidate,
+            bundle_proof=active_bundle_proof,
+        )
+        handoff_section = self._handoff_section(
+            previous_translation,
+            structure=structure,
+        )
         prompt = _TRANSLATE_PROMPT_TEMPLATE.format(
             original_problem=structure.original_problem,
             banned_baselines_section=banned_text,
@@ -402,6 +702,9 @@ class SolutionTranslator:
             lens_axioms=axioms_text,
             fidelity=candidate.structural_fidelity,
             distance=candidate.domain_distance,
+            branch_commitments_section=branch_commitments_section,
+            bundle_proof_section=bundle_proof_section,
+            handoff_section=handoff_section,
         )
 
         # Create a temporary harness with the interference lens active
@@ -459,6 +762,23 @@ class SolutionTranslator:
         elif not isinstance(lims, list):
             lims = [str(lims)] if lims else []
 
+        recovery_commitments = parsed.get("recovery_commitments", [])
+        if isinstance(recovery_commitments, str):
+            recovery_commitments = [recovery_commitments]
+        elif not isinstance(recovery_commitments, list):
+            recovery_commitments = []
+        recovery_commitments = [str(commitment) for commitment in recovery_commitments if commitment]
+
+        future_option_preservation = parsed.get("future_option_preservation", "")
+        if not isinstance(future_option_preservation, str):
+            future_option_preservation = (
+                str(future_option_preservation) if future_option_preservation else ""
+            )
+        reference_state = build_reference_state(
+            structure,
+            branch_genome=getattr(candidate, "branch_genome", None),
+        )
+
         translation = Translation(
             invention_name=parsed.get("invention_name", f"{lens.name}-Inspired Solution"),
             mapping=mappings,
@@ -475,9 +795,18 @@ class SolutionTranslator:
             mechanism_differs_from_baseline=parsed.get("mechanism_differs_from_baseline", ""),
             subtraction_test=parsed.get("subtraction_test", ""),
             baseline_comparison=parsed.get("baseline_comparison", ""),
+            recovery_commitments=recovery_commitments,
+            future_option_preservation=future_option_preservation,
             cost_usd=result.trace.total_cost_usd,
             duration_seconds=time.monotonic() - t_start,
             trace=result.trace,
+            bundle_proof=active_bundle_proof,
+            bundle_lineage=None if force_singleton else getattr(candidate, "bundle_lineage", None),
+            selection_mode="singleton_fallback" if force_singleton else str(getattr(candidate, "selection_mode", "singleton")),
+            bundle_role="" if force_singleton else str(getattr(candidate, "bundle_role", "")),
+            reference_signature=reference_state.reference_signature,
+            research_signature=reference_state.research_signature,
+            branch_signature=reference_state.branch_signature,
         )
 
         logger.info(
@@ -488,6 +817,46 @@ class SolutionTranslator:
             translation.cost_usd,
         )
         return translation
+
+    @staticmethod
+    def _bundle_proof_section(
+        candidate: ScoredCandidate,
+        *,
+        bundle_proof: Any | None,
+    ) -> str:
+        if bundle_proof is None:
+            return ""
+        conditions = getattr(bundle_proof, "conditional_requirements", {}).get(candidate.lens_id, ())
+        critical = "yes" if candidate.lens_id in set(getattr(bundle_proof, "critical_lens_ids", ())) else "no"
+        return (
+            "\nACTIVE LENS BUNDLE PROOF:\n"
+            f"- bundle_id: {getattr(bundle_proof, 'bundle_id', '')}\n"
+            f"- active_lenses: {', '.join(getattr(bundle_proof, 'active_lens_ids', ()))}\n"
+            f"- derived_bundle_signature: {', '.join(getattr(getattr(bundle_proof, 'derived_card', None), 'mechanism_signature', [])[:8])}\n"
+            f"- proof_confidence: {getattr(bundle_proof, 'proof_confidence', 0.0):.2f}\n"
+            f"- current_lens_role: {getattr(candidate, 'bundle_role', '') or 'support'}\n"
+            f"- critical_for_bundle: {critical}\n"
+            f"- conditional_requirements_for_this_lens: {', '.join(conditions) or 'none'}\n"
+            "- preserve compatibility with the active bundle instead of re-solving the full problem from scratch.\n"
+        )
+
+    @staticmethod
+    def _handoff_section(
+        previous_translation: Translation | None,
+        *,
+        structure: ProblemStructure,
+    ) -> str:
+        if previous_translation is None:
+            return ""
+        constraint_lines = "\n".join(f"- {constraint}" for constraint in structure.constraints[:4]) or "- none"
+        return (
+            "\nPREVIOUS BUNDLE HANDOFF CONTEXT:\n"
+            f"- previous_invention: {previous_translation.invention_name}\n"
+            f"- previous_key_insight: {previous_translation.key_insight}\n"
+            f"- preserve_constraints:\n{constraint_lines}\n"
+            "- reset the abstraction to target-domain language instead of carrying over source-domain vocabulary.\n"
+            "- if the new architecture depends on the previous lens, make that dependency explicit rather than implicit.\n"
+        )
 
     def _parse_translation(self, raw: str) -> dict[str, Any]:
         """Parse the translation JSON output."""
@@ -519,6 +888,8 @@ class SolutionTranslator:
         data.setdefault("mechanism_differs_from_baseline", "")
         data.setdefault("subtraction_test", "")
         data.setdefault("baseline_comparison", "")
+        data.setdefault("recovery_commitments", [])
+        data.setdefault("future_option_preservation", "")
 
         # Use phase2 as architecture if architecture is missing/empty
         if not data.get("architecture") and data.get("phase2_target_architecture"):
@@ -526,5 +897,10 @@ class SolutionTranslator:
 
         if "mapping" not in data or not isinstance(data.get("mapping"), dict):
             data["mapping"] = {"elements": []}
+
+        if isinstance(data.get("recovery_commitments"), str):
+            data["recovery_commitments"] = [data["recovery_commitments"]]
+        elif not isinstance(data.get("recovery_commitments"), list):
+            data["recovery_commitments"] = []
 
         return data

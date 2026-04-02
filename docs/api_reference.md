@@ -191,6 +191,7 @@ The complete output of a Genesis pipeline run.
 | `scored_candidates` | `list[ScoredCandidate]` | Stage 3 output: scored candidates |
 | `translations` | `list[Translation]` | Stage 4 output: full translations |
 | `verified_inventions` | `list[VerifiedInvention]` | Stage 5 output: verified inventions |
+| `lens_engine_state` | `LensEngineState \| None` | Adaptive Bundle-Proof state: active bundle, lineage, guards, invalidations, composites, and recomposition history |
 | `cost_breakdown` | `CostBreakdown` | Per-stage USD costs |
 | `total_cost_usd` | `float` | *(property)* Total cost |
 | `total_duration_seconds` | `float` | Wall-clock pipeline time |
@@ -201,6 +202,17 @@ The complete output of a Genesis pipeline run.
 **Methods:**
 - `to_dict() -> dict` — serialize to dictionary
 - `summary() -> str` — one-line human-readable summary
+
+When present, `lens_engine_state.to_dict()` exposes:
+
+- `bundles` — proof-carrying bundle records and cohesion scores
+- `lineages` — lineage IDs, generations, and proof bundle bindings
+- `fold_states` — active/supporting/fallback fold-state summaries
+- `guards` — runtime handoff guards and statuses
+- `invalidations` — reference-generation or composite invalidations
+- `recompositions` — recomposition history after invalidation
+- `composites` — derived composite lenses with version/fingerprint metadata
+- `research` — research-backed `reference_generation` and `reference_signature`
 
 ---
 
@@ -702,6 +714,10 @@ heph [OPTIONS] PROBLEM
 | `--output` | `-o` | path | None | Save report to file |
 | `--cost` | | flag | False | Show cost breakdown |
 | `--quiet` | `-q` | flag | False | Minimal output |
+| `--research` / `--no-research` | | flag | True | Enable or disable Perplexity-backed research features |
+| `--research-model` | | str | config/env default | Override the Perplexity model for research tasks |
+| `--benchmark-corpus` | | str | None | Generate a grounded benchmark corpus instead of running an invention |
+| `--benchmark-count` | | int 1-50 | 8 | Number of benchmark cases to generate |
 | `--version` | `-v` | flag | | Show version |
 | `--help` | `-h` | flag | | Show help |
 
@@ -719,7 +735,10 @@ heph [OPTIONS] PROBLEM
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
+| `PERPLEXITY_API_KEY` | Perplexity API key for grounded research features |
 | `HEPHAESTUS_DEPTH` | Default depth (overrides CLI default) |
 | `HEPHAESTUS_MODEL` | Default model |
+| `HEPHAESTUS_USE_PERPLEXITY_RESEARCH` | Enable or disable Perplexity-backed research by default |
+| `HEPHAESTUS_PERPLEXITY_MODEL` | Default Perplexity model for research tasks |
 | `HEPHAESTUS_LENS_DIR` | Custom lens library directory |
 | `HEPHAESTUS_LOG_LEVEL` | Log level: `DEBUG`, `INFO`, `WARNING` |

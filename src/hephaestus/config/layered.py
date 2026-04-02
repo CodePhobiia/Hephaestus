@@ -38,10 +38,13 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_THEME": "theme",
     "HEPHAESTUS_INTENSITY": "divergence_intensity",
     "HEPHAESTUS_OUTPUT_MODE": "output_mode",
+    "HEPHAESTUS_USE_PERPLEXITY_RESEARCH": "use_perplexity_research",
+    "HEPHAESTUS_PERPLEXITY_MODEL": "perplexity_model",
+    "HEPHAESTUS_USE_BRANCHGENOME_V1": "use_branchgenome_v1",
 }
 
 _INT_FIELDS = {"depth", "candidates"}
-_BOOL_FIELDS = {"auto_save"}
+_BOOL_FIELDS = {"auto_save", "use_perplexity_research", "use_branchgenome_v1"}
 
 _VALIDATORS: dict[str, tuple[str, tuple[str, ...]]] = {
     "backend": ("backend", VALID_BACKENDS),

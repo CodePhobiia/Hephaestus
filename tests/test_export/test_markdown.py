@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -124,6 +125,17 @@ class TestExportConfig:
         ])
         md = export_markdown(report, cfg)
         assert "Alternative Approaches" not in md
+
+    def test_research_sections_render(self):
+        report = _make_report(
+            baseline_dossier=SimpleNamespace(summary="Token buckets are common.", keywords_to_avoid=["retry with backoff"]),
+            external_grounding_report=SimpleNamespace(summary="Adaptive routing systems are adjacent.", closest_related_work=["Project X"]),
+            implementation_risk_review=SimpleNamespace(summary="Feedback oscillation is the main risk.", major_risks=["oscillation"]),
+        )
+        md = export_markdown(report)
+        assert "State of the Art Recon" in md
+        assert "External Grounding" in md
+        assert "Implementation Risk Review" in md
 
 
 class TestExportToFile:

@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import sys
@@ -48,6 +49,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import Mock
 
 from rich import box
 from rich.console import Console
@@ -96,6 +98,8 @@ from hephaestus.session.schema import (
     TranscriptEntry,
 )
 from hephaestus.session.todos import TodoList
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Session state
@@ -199,6 +203,16 @@ def _prompt_text(state: SessionState) -> str:
         slug = entry.slug
         return f"[bold yellow]heph[/][dim][{slug}][/]> "
     return "[bold yellow]heph[/]> "
+
+
+def _maybe_attr(obj: Any, name: str, default: Any = None) -> Any:
+    """Avoid MagicMock fabricating optional attributes that were never set."""
+    if isinstance(obj, Mock):
+        data = getattr(obj, "__dict__", {})
+        if isinstance(data, dict) and name in data:
+            return data[name]
+        return default
+    return getattr(obj, name, default)
 
 
 def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
@@ -368,6 +382,9 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
     table.add_row("Output mode", f"[cyan]{getattr(state.config, 'output_mode', 'MECHANISM')}[/]")
     table.add_row("Context additions", f"[cyan]{len(state.context_items)} items[/]")
     table.add_row("Auto-save", f"[cyan]{'ON' if state.config.auto_save else 'OFF'}[/]")
+    if state.session is not None and getattr(state.session, "lens_engine_state", None) is not None:
+        lens_state = state.session.lens_engine_state
+        table.add_row("Lens engine", f"[cyan]{lens_state.summary()}[/]")
 
     console.print(Panel(table, title="[bold yellow]Session Status[/]", border_style="yellow"))
     console.print(f"  [dim]{backend_hint}[/]")
@@ -1140,6 +1157,7 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
     top_data = payload.get("top_invention") or {}
     alternatives_data = payload.get("alternatives") or []
     cost_breakdown = _loaded_cost_breakdown(payload.get("cost_breakdown"))
+    lens_engine_payload = payload.get("lens_engine")
 
     def _translation_from(data: dict[str, Any]) -> Any:
         return SimpleNamespace(
@@ -1203,6 +1221,12 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
         total_duration_seconds=float(payload.get("total_duration_seconds", 0.0) or 0.0),
         model_config=payload.get("models", {}) or {},
         total_cost_usd=cost_breakdown.total,
+        lens_engine_state=(
+            __import__("hephaestus.lenses.state", fromlist=["LensEngineState"])
+            .LensEngineState.from_dict(lens_engine_payload)
+            if isinstance(lens_engine_payload, dict)
+            else None
+        ),
         to_dict=lambda: payload,
     )
     return report
@@ -1253,6 +1277,18 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
         state.last_loaded_path = target
         n_entries = len(loaded_session.transcript)
         n_inv = len(loaded_session.inventions)
+        gate_summary = None
+        if loaded_session.reference_lots:
+            from hephaestus.session.reference_lots import default_probe_factory, evaluate_resume_gate
+
+            probe = default_probe_factory(
+                workspace_root=str(state.workspace_root) if state.workspace_root else None,
+                active_tools=set(loaded_session.active_tools),
+                permission_checker=lambda tool_name: True,  # REPL resume check is advisory here
+                lens_engine_state=loaded_session.lens_engine_state,
+            )
+            gate = evaluate_resume_gate(loaded_session.reference_lots, probe)
+            gate_summary = gate.summary()
         console.print(
             f"  [{GREEN}]\u2713[/] Loaded session transcript"
             f" ({n_entries} entries) from [cyan]{target.name}[/]"
@@ -1261,6 +1297,8 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
             console.print(
                 f"  [dim]{n_inv} invention snapshot(s) in session.[/]"
             )
+        if gate_summary:
+            console.print(f"  [dim]{gate_summary}[/]")
         console.print()
         return
 
@@ -1413,6 +1451,10 @@ async def _cmd_history_v2(console: Console, state: SessionState, args: str) -> N
             console.print("  [dim]No inventions yet in this session or on disk.[/]")
             console.print("  [dim]Type a problem to start, or use [cyan]/load <name|path>[/] to restore saved work.[/]\n")
         return
+
+    session_names = [str(entry["name"]) for entry in entries if entry["source"] == "session" and entry.get("name")]
+    if session_names:
+        console.print(f"  [dim]Session inventions:[/] {', '.join(session_names[:4])}")
 
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), show_header=True)
     table.add_column("#", style=CYAN, width=4)
@@ -1813,6 +1855,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             use_interference_in_translate=True,
             divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
             output_mode=getattr(cfg, "output_mode", "MECHANISM"),
+            use_branchgenome_v1=getattr(cfg, "use_branchgenome_v1", False),
         )
 
     if selected_model in {"opus", "gpt5", "codex", "both"}:
@@ -1834,6 +1877,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             use_interference_in_translate=True,
             divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
             output_mode=getattr(cfg, "output_mode", "MECHANISM"),
+            use_branchgenome_v1=getattr(cfg, "use_branchgenome_v1", False),
         )
 
     return GenesisConfig(
@@ -1850,6 +1894,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         use_interference_in_translate=True,
         divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
         output_mode=getattr(cfg, "output_mode", "MECHANISM"),
+        use_branchgenome_v1=getattr(cfg, "use_branchgenome_v1", False),
     )
 
 
@@ -1930,10 +1975,49 @@ async def _run_pipeline(
 
     # Record invention in session transcript and check auto-compaction
     if state.session is not None:
+        previous_lens_state = getattr(state.session, "lens_engine_state", None)
+        try:
+            from hephaestus.lenses.state import LensEngineState
+
+            report.lens_engine_state = LensEngineState.from_report(
+                report,
+                previous_state=previous_lens_state,
+            )
+            state.session.apply_lens_engine_state(report.lens_engine_state)
+        except Exception as exc:
+            logger.warning("Could not attach lens-engine session state: %s", exc)
+
         inv_name = (
             report.top_invention.invention_name
             if report.top_invention
             else "N/A"
+        )
+        state.session.add_invention(
+            invention_name=inv_name,
+            source_domain=(
+                report.top_invention.source_domain
+                if report.top_invention is not None
+                else ""
+            ),
+            architecture=(
+                getattr(getattr(report.top_invention, "translation", None), "architecture", "")
+                if report.top_invention is not None
+                else ""
+            ),
+            key_insight=(
+                getattr(getattr(report.top_invention, "translation", None), "key_insight", "")
+                if report.top_invention is not None
+                else ""
+            ),
+            mapping_summary=(
+                "\n".join(
+                    f"{m.source_element} -> {m.target_element}"
+                    for m in getattr(getattr(report.top_invention, "translation", None), "mapping", [])[:6]
+                )
+                if report.top_invention is not None
+                else ""
+            ),
+            score=float(getattr(report.top_invention, "novelty_score", 0.0) or 0.0),
         )
         state.session.append_entry(
             Role.ASSISTANT.value,
@@ -2032,6 +2116,33 @@ def _invention_to_markdown(entry: InventionEntry, report: Any) -> str:
         for step in top.recommended_next_steps:
             lines.append(f"- {step}")
         lines.append("")
+    lens_state = _maybe_attr(report, "lens_engine_state", None)
+    if lens_state is not None:
+        lines.extend(
+            [
+                "## Lens Engine",
+                "",
+                str(lens_state.summary()),
+                "",
+            ]
+        )
+        active_bundle = _maybe_attr(lens_state, "active_bundle", None)
+        if active_bundle is not None:
+            lines.append(
+                f"- Active bundle: {active_bundle.bundle_id} "
+                f"({active_bundle.bundle_kind}, {active_bundle.proof_status})"
+            )
+            lines.append(f"- Members: {', '.join(active_bundle.member_ids)}")
+        for composite in _maybe_attr(lens_state, "active_composites", [])[:3]:
+            lines.append(
+                f"- Composite: {composite.composite_id} "
+                f"(v{composite.version}) from {', '.join(composite.component_lens_ids)}"
+            )
+        for item in _maybe_attr(lens_state, "pending_invalidations", [])[:4]:
+            lines.append(f"- Invalidation: {item.summary}")
+        for item in _maybe_attr(lens_state, "recompositions", [])[-3:]:
+            lines.append(f"- Recomposition: {item.summary}")
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -2061,6 +2172,9 @@ def _display_invention_result(console: Console, state: SessionState) -> None:
         f"[dim]Cost:[/] [{GREEN}]${cost:.4f}[/]  "
         f"[dim]Time:[/] [{CYAN}]{dur:.0f}s[/]"
     )
+    lens_state = _maybe_attr(report, "lens_engine_state", None)
+    if lens_state is not None:
+        console.print(f"  [dim]Lens engine:[/] [cyan]{lens_state.summary()}[/]")
     if state.last_auto_save_path is not None:
         console.print(f"  [dim]Saved snapshot:[/] [cyan]{state.last_auto_save_path.name}[/]")
     console.print()

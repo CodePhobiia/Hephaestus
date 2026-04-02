@@ -114,6 +114,13 @@ class TestWorkspaceInventor:
             problems_found=2,
             inventions_attempted=2,
             inventions_succeeded=1,
+            research_dossier=type("Dossier", (), {
+                "summary": "Comparable tools all use queue-backed workers.",
+                "comparable_tools": ["Tool A"],
+                "architecture_patterns": ["queue-backed workers"],
+                "differentiation_opportunities": ["better grounding"],
+                "implementation_risks": ["prompt drift"],
+            })(),
             inventions=[
                 WorkspaceInvention(
                     problem=IdentifiedProblem("Slow queries", "performance", "high", ""),
@@ -132,6 +139,7 @@ class TestWorkspaceInventor:
         )
 
         md = inventor.format_report(report)
+        assert "External Research Dossier" in md
         assert "Immune Cache" in md
         assert "biology" in md
         assert "Pipeline timeout" in md

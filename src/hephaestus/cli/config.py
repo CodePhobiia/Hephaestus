@@ -58,6 +58,9 @@ class HephaestusConfig:
     theme: str = "rich"
     divergence_intensity: str = "STANDARD"
     output_mode: str = "MECHANISM"
+    use_perplexity_research: bool = True
+    perplexity_model: str = "sonar-pro"
+    use_branchgenome_v1: bool = False
 
     # API keys (resolved from env at load time, never persisted)
     anthropic_api_key: str | None = field(default=None, repr=False)
@@ -75,6 +78,9 @@ class HephaestusConfig:
             "theme": self.theme,
             "divergence_intensity": self.divergence_intensity,
             "output_mode": self.output_mode,
+            "use_perplexity_research": self.use_perplexity_research,
+            "perplexity_model": self.perplexity_model,
+            "use_branchgenome_v1": self.use_branchgenome_v1,
         }
 
 
@@ -104,6 +110,13 @@ def load_config() -> HephaestusConfig | None:
         output_mode = str(data.get("output_mode", "MECHANISM")).upper()
         if output_mode not in VALID_OUTPUT_MODES:
             output_mode = "MECHANISM"
+        use_perplexity_research = data.get("use_perplexity_research", True)
+        if not isinstance(use_perplexity_research, bool):
+            use_perplexity_research = str(use_perplexity_research).strip().lower() in ("1", "true", "yes", "on")
+        perplexity_model = str(data.get("perplexity_model", "sonar-pro")).strip() or "sonar-pro"
+        use_branchgenome_v1 = data.get("use_branchgenome_v1", False)
+        if not isinstance(use_branchgenome_v1, bool):
+            use_branchgenome_v1 = str(use_branchgenome_v1).strip().lower() in ("1", "true", "yes", "on")
         cfg = HephaestusConfig(
             backend=backend,
             default_model=data.get("default_model", _DEFAULT_MODEL),
@@ -113,6 +126,9 @@ def load_config() -> HephaestusConfig | None:
             theme=data.get("theme", "rich"),
             divergence_intensity=divergence_intensity,
             output_mode=output_mode,
+            use_perplexity_research=use_perplexity_research,
+            perplexity_model=perplexity_model,
+            use_branchgenome_v1=use_branchgenome_v1,
         )
     except Exception:
         cfg = HephaestusConfig()

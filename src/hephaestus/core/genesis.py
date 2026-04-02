@@ -58,6 +58,45 @@ def _import_stage_classes() -> tuple[Any, Any, Any, Any, Any]:
     return ProblemDecomposer, CrossDomainSearcher, CandidateScorer, SolutionTranslator, NoveltyVerifier
 
 
+def _branchgenome_outcome_for_verified(
+    invention: Any,
+    baselines: list[str],
+) -> str:
+    """Map verifier output onto the trimmed BranchGenome V1 ledger outcomes."""
+    translation = getattr(invention, "translation", None)
+    if translation is None:
+        return "invalid"
+
+    verdict = str(getattr(invention, "verdict", "")).upper()
+    feasibility = str(getattr(invention, "feasibility_rating", "")).upper()
+    if getattr(translation, "mechanism_is_decorative", False) or not getattr(invention, "load_bearing_passed", True):
+        return "decorative"
+    if verdict == "DERIVATIVE" or str(getattr(invention, "prior_art_status", "")) == "PRIOR_ART_FOUND":
+        return "derivative"
+    if verdict == "INVALID" or feasibility in {"LOW", "THEORETICAL"} or getattr(invention.adversarial_result, "fatal_flaws", []):
+        return "invalid"
+
+    try:
+        from hephaestus.analytics.failure_log import detect_baseline_overlaps
+
+        invention_text = " ".join(
+            filter(
+                None,
+                [
+                    str(getattr(translation, "key_insight", "") or ""),
+                    str(getattr(translation, "architecture", "") or ""),
+                    str(getattr(translation, "baseline_comparison", "") or ""),
+                ],
+            )
+        )
+        if detect_baseline_overlaps(invention_text, baselines):
+            return "baseline_overlap"
+    except Exception:
+        pass
+
+    return "accepted"
+
+
 # These are set at module level so they can be patched by tests.
 # They start as None and are populated the first time Genesis._ensure_built is called.
 ProblemDecomposer: Any = None
@@ -111,6 +150,9 @@ class GenesisConfig:
         Whether to enable cognitive interference during translation (default: True).
     run_prior_art:
         Whether to run the prior art search in Stage 5 (default: True).
+    use_perplexity_research:
+        Whether to attach Perplexity grounding/reconnaissance when a key is
+        configured (default: True).
     max_tokens_decompose:
         Max output tokens for decomposition (default: 1024).
     max_tokens_search:
@@ -151,6 +193,10 @@ class GenesisConfig:
     use_interference_in_search: bool = False
     use_interference_in_translate: bool = True
     run_prior_art: bool = True
+    use_perplexity_research: bool = True
+    use_branchgenome_v1: bool = False
+    perplexity_model: str | None = None
+    branchgenome_rejection_ledger_path: str | None = None
 
     # V2 system prompt parameters
     divergence_intensity: str = "STANDARD"  # STANDARD | AGGRESSIVE | MAXIMUM
@@ -168,6 +214,8 @@ class GenesisConfig:
     exclusion_zone: list[str] | None = None
     banned_baselines: list[str] | None = None
     max_rejection_retries: int = 1
+    max_bundle_size: int = 3
+    max_bundle_recompositions: int = 2
 
     # Library override
     lens_library_dir: str | None = None
@@ -288,6 +336,10 @@ class InventionReport:
     scored_candidates: list[Any]  # list[ScoredCandidate]
     translations: list[Any]  # list[Translation]
     verified_inventions: list[Any]  # list[VerifiedInvention]
+    baseline_dossier: Any | None = None
+    lens_runtime: dict[str, Any] = field(default_factory=dict)
+    lens_engine_state: Any | None = None
+    branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
     total_duration_seconds: float = 0.0
     model_config: dict[str, str] = field(default_factory=dict)
@@ -369,7 +421,16 @@ class InventionReport:
                 "adversarial_critique": getattr(top, 'adversarial_result', None) if top else None,
                 "validity_notes": getattr(top, 'validity_notes', None) if top else None,
                 "recommended_next_steps": getattr(top, 'recommended_next_steps', None) if top else None,
+                "grounding_report": getattr(top, 'grounding_report', None) if top else None,
+                "implementation_risk_review": getattr(top, 'implementation_risk_review', None) if top else None,
+                "bundle_acceptance_status": getattr(top, 'bundle_acceptance_status', None) if top else None,
+                "orchestration_mode": getattr(top, 'orchestration_mode', None) if top else None,
+                "guard_failures": getattr(top, 'guard_failures', None) if top else None,
+                "lineage_stale": getattr(top, 'lineage_stale', None) if top else None,
             } if top else None,
+            "baseline_dossier": self._research_to_dict(self.baseline_dossier),
+            "lens_runtime": self._research_to_dict(self.lens_runtime),
+            "lens_engine": self._research_to_dict(self.lens_engine_state),
             "alternatives": [
                 {
                     "name": inv.invention_name,
@@ -377,13 +438,33 @@ class InventionReport:
                     "novelty_score": inv.novelty_score,
                     "architecture": getattr(inv.translation, 'architecture', None) if hasattr(inv, 'translation') else None,
                     "key_insight": getattr(inv.translation, 'key_insight', None) if hasattr(inv, 'translation') else None,
+                    "bundle_acceptance_status": getattr(inv, 'bundle_acceptance_status', None),
+                    "orchestration_mode": getattr(inv, 'orchestration_mode', None),
                 }
                 for inv in self.alternative_inventions
             ],
             "cost_breakdown": self.cost_breakdown.to_dict(),
             "total_duration_seconds": self.total_duration_seconds,
             "models": self.model_config,
+            "branchgenome": dict(self.branchgenome_metrics),
         }
+
+    @staticmethod
+    def _research_to_dict(obj: Any | None) -> Any:
+        if obj is None:
+            return None
+        if isinstance(obj, (str, int, float, bool)):
+            return obj
+        if isinstance(obj, list):
+            return [InventionReport._research_to_dict(item) for item in obj]
+        if isinstance(obj, dict):
+            return {k: InventionReport._research_to_dict(v) for k, v in obj.items()}
+        if hasattr(obj, "__dict__"):
+            return {
+                k: InventionReport._research_to_dict(v)
+                for k, v in obj.__dict__.items()
+            }
+        return str(obj)
 
     def summary(self) -> str:
         """Human-readable one-line summary."""
@@ -487,6 +568,9 @@ class Genesis:
         """
         t_start = time.monotonic()
         cost = CostBreakdown()
+        branchgenome_metrics: dict[str, Any] = {}
+        branchgenome_ledger: Any = None
+        lens_runtime: dict[str, Any] = {}
 
         def elapsed() -> float:
             return time.monotonic() - t_start
@@ -608,6 +692,33 @@ class Genesis:
                 elapsed_seconds=elapsed(),
             )
 
+            # ── Stage 1.5: External reconnaissance (Perplexity) ──────────
+            baseline_dossier = None
+            if self._config.use_perplexity_research:
+                try:
+                    from hephaestus.research.perplexity import PerplexityClient
+
+                    perplexity = PerplexityClient(
+                        enabled=self._config.use_perplexity_research,
+                        model=self._config.perplexity_model,
+                    )
+                    if perplexity.available():
+                        baseline_dossier = await perplexity.build_baseline_dossier(
+                            problem=problem,
+                            native_domain=structure.native_domain,
+                            mathematical_shape=structure.mathematical_shape,
+                        )
+                        structure.baseline_dossier = baseline_dossier
+                        logger.info(
+                            "Perplexity baseline dossier attached | standard=%d failures=%d avoid=%d",
+                            len(getattr(baseline_dossier, "standard_approaches", [])),
+                            len(getattr(baseline_dossier, "common_failure_modes", [])),
+                            len(getattr(baseline_dossier, "keywords_to_avoid", [])),
+                        )
+                    await perplexity.close()
+                except Exception as exc:
+                    logger.warning("Perplexity baseline dossier skipped: %s", exc)
+
             # ── Stage 2: Search ─────────────────────────────────────────────
             yield PipelineUpdate(
                 stage=PipelineStage.SEARCHING,
@@ -627,6 +738,7 @@ class Genesis:
                 num_candidates=self._config.num_candidates,
                 num_lenses=self._config.num_search_lenses,
                 min_confidence=self._config.min_search_confidence,
+                max_bundle_size=self._config.max_bundle_size,
             )
             try:
                 candidates = await searcher.search(structure)
@@ -649,6 +761,8 @@ class Genesis:
                 return
 
             cost.search_cost = sum(c.cost_usd for c in candidates)
+            if getattr(searcher, "last_runtime", None) is not None:
+                lens_runtime["search"] = searcher.last_runtime.to_dict()
 
             yield PipelineUpdate(
                 stage=PipelineStage.SEARCHED,
@@ -692,10 +806,116 @@ class Genesis:
                 elapsed_seconds=elapsed(),
             )
 
+            translation_inputs = scored
+            if self._config.use_branchgenome_v1:
+                from hephaestus.branchgenome import (
+                    RejectionLedger,
+                    assay_branch,
+                    branch_candidate_for_translation,
+                    fingerprint_branch,
+                    seed_branches_from_translation_inputs,
+                    strategy_for_mode,
+                )
+
+                branch_strategy = strategy_for_mode(
+                    self._config.divergence_intensity,
+                    max_tokens_translate=self._config.max_tokens_translate,
+                )
+                branchgenome_ledger = RejectionLedger(self._config.branchgenome_rejection_ledger_path)
+                branch_arena = seed_branches_from_translation_inputs(
+                    scored,
+                    structure,
+                    branch_strategy,
+                    banned_patterns=tuple(baselines),
+                )
+
+                for branch in branch_arena.active_branches():
+                    candidate = scored[branch.source_candidate_index]
+                    branch.metrics = assay_branch(
+                        branch,
+                        structure=structure,
+                        candidate=candidate,
+                        strategy=branch_strategy,
+                        banned_patterns=tuple(baselines),
+                        ledger=branchgenome_ledger,
+                    )
+
+                recovery_branches = branch_arena.spawn_recovery_branches(
+                    branch_strategy,
+                    structure=structure,
+                    scored_candidates=scored,
+                )
+                for branch in recovery_branches:
+                    candidate = scored[branch.source_candidate_index]
+                    branch.metrics = assay_branch(
+                        branch,
+                        structure=structure,
+                        candidate=candidate,
+                        strategy=branch_strategy,
+                        banned_patterns=tuple(baselines),
+                        ledger=branchgenome_ledger,
+                    )
+
+                pruned = branch_arena.prune_over_budget(branch_strategy)
+                for branch in pruned:
+                    failed_checks = branch.metrics.perturbations_run - branch.metrics.perturbations_passed
+                    if branch.metrics.rejection_overlap >= branch_strategy.baseline_equivalent_overlap:
+                        outcome = "baseline_overlap"
+                    elif (
+                        branch.metrics.comfort_penalty >= branch_strategy.recovery_activation_threshold
+                        and branch.metrics.future_option_preservation < branch_strategy.min_option_preservation
+                    ):
+                        outcome = "decorative"
+                    elif failed_checks > branch_strategy.max_failed_perturbations or branch.metrics.collapse_risk >= 0.65:
+                        outcome = "decorative"
+                    else:
+                        outcome = "invalid"
+                    branchgenome_ledger.record(
+                        fingerprint_branch(branch),
+                        outcome,
+                        f"Pre-translation prune for {branch.branch_id} (survival={branch.metrics.score_survival:.3f})",
+                    )
+
+                promote_limit = max(
+                    1,
+                    min(self._config.num_translations, branch_strategy.max_promoted_branches),
+                )
+                promoted_branches = branch_arena.promote_top_k(promote_limit)
+                if not promoted_branches:
+                    yield PipelineUpdate(
+                        stage=PipelineStage.FAILED,
+                        message="BranchGenome pruned all branches before translation",
+                        data=None,
+                        elapsed_seconds=elapsed(),
+                    )
+                    return
+
+                translation_inputs = [
+                    branch_candidate_for_translation(branch, scored[branch.source_candidate_index])
+                    for branch in promoted_branches
+                ]
+                branchgenome_metrics = branch_arena.observability_snapshot()
+                logger.info(
+                    "BranchGenome promoted %d/%d branches | recovered=%d avg_spread=%.2f avg_option=%.2f avg_comfort=%.2f avg_baseline_attractor=%.2f avg_branch_fatigue=%.2f avg_collapse=%.2f",
+                    branchgenome_metrics["branches_promoted"],
+                    branchgenome_metrics["branches_seeded"],
+                    branchgenome_metrics["branches_recovered"],
+                    branchgenome_metrics["avg_spread_score"],
+                    branchgenome_metrics["avg_future_option_preservation"],
+                    branchgenome_metrics["avg_comfort_penalty"],
+                    branchgenome_metrics["avg_baseline_attractor"],
+                    branchgenome_metrics["avg_branch_fatigue"],
+                    branchgenome_metrics["avg_collapse_risk"],
+                )
+
             # ── Stage 4: Translate ──────────────────────────────────────────
             yield PipelineUpdate(
                 stage=PipelineStage.TRANSLATING,
-                message=f"Stage 4/5: Translating top {self._config.num_translations} candidates (interference active)…",
+                message=(
+                    f"Stage 4/5: Translating BranchGenome-promoted {len(translation_inputs)} branches…"
+                    if self._config.use_branchgenome_v1
+                    else f"Stage 4/5: Translating top {self._config.num_translations} candidates (interference active)…"
+                ),
                 elapsed_seconds=elapsed(),
             )
 
@@ -707,9 +927,52 @@ class Genesis:
             translator = _SolutionTranslator(
                 harness=self._harnesses["translate"],
                 top_n=self._config.num_translations,
+                max_bundle_recompositions=self._config.max_bundle_recompositions,
             )
             translator._banned_baselines = baselines if baselines else []
-            translations = await translator.translate(scored, structure)
+            attempted_translation_inputs = translation_inputs[: self._config.num_translations]
+            translations = await translator.translate(translation_inputs, structure)
+            translation_runtime = getattr(translator, "last_runtime", None)
+            if translation_runtime is not None:
+                lens_runtime["translation"] = translation_runtime.to_dict()
+
+            if self._config.use_branchgenome_v1:
+                from hephaestus.branchgenome.models import BranchStatus
+
+                for translation in translations:
+                    branch = getattr(getattr(translation, "source_candidate", None), "branch_genome", None)
+                    if branch is not None:
+                        branch.status = BranchStatus.TRANSLATED
+                invalidated_lens_ids = set(
+                    getattr(translation_runtime, "invalidated_lens_ids", ()) if translation_runtime is not None else ()
+                )
+                if invalidated_lens_ids:
+                    for candidate in translation_inputs:
+                        branch = getattr(candidate, "branch_genome", None)
+                        if branch is not None and candidate.lens_id in invalidated_lens_ids:
+                            branch.status = BranchStatus.PRUNED
+
+            if not translations and getattr(searcher, "last_runtime", None) is not None:
+                fallback_inputs = self._singleton_fallback_inputs(
+                    scored=scored,
+                    attempted=attempted_translation_inputs,
+                    invalidated_lens_ids=set(
+                        getattr(translation_runtime, "invalidated_lens_ids", ()) if translation_runtime is not None else ()
+                    ),
+                )
+                if fallback_inputs:
+                    logger.info(
+                        "Bundle translation produced no valid outputs; retrying singleton fallback with %d candidates",
+                        len(fallback_inputs),
+                    )
+                    translations = await translator.translate(
+                        fallback_inputs,
+                        structure,
+                        top_n=min(self._config.num_translations, len(fallback_inputs)),
+                    )
+                    translation_runtime = getattr(translator, "last_runtime", None)
+                    if translation_runtime is not None:
+                        lens_runtime["translation_retry"] = translation_runtime.to_dict()
 
             if not translations:
                 yield PipelineUpdate(
@@ -743,8 +1006,65 @@ class Genesis:
                 attack_harness=self._harnesses["attack"],
                 defend_harness=self._harnesses["defend"],
                 run_prior_art=self._config.run_prior_art,
+                use_perplexity_research=self._config.use_perplexity_research,
+                perplexity_model=self._config.perplexity_model,
             )
             verified = await verifier.verify(translations, structure)
+            lens_runtime["verification"] = {
+                "count": len(verified),
+                "bundle_acceptance_statuses": [
+                    getattr(invention, "bundle_acceptance_status", "singleton")
+                    for invention in verified
+                ],
+                "orchestration_modes": [
+                    getattr(invention, "orchestration_mode", "singleton")
+                    for invention in verified
+                ],
+                "lineage_stale_count": sum(
+                    1 for invention in verified if getattr(invention, "lineage_stale", False)
+                ),
+            }
+
+            if branchgenome_ledger is not None:
+                from hephaestus.branchgenome import fingerprint_translation
+                from hephaestus.branchgenome.models import BranchStatus
+
+                promoted_outcomes: dict[str, Any] = {}
+                for invention in verified:
+                    translation = getattr(invention, "translation", None)
+                    branch = getattr(getattr(translation, "source_candidate", None), "branch_genome", None)
+                    if branch is None or translation is None:
+                        continue
+                    branch.status = BranchStatus.VERIFIED
+                    outcome = _branchgenome_outcome_for_verified(invention, baselines)
+                    branchgenome_ledger.record(
+                        fingerprint_translation(translation),
+                        outcome,
+                        (
+                            f"{invention.invention_name} "
+                            f"(branch={branch.branch_id}, verdict={getattr(invention, 'verdict', 'UNKNOWN')}, "
+                            f"novelty={getattr(invention, 'novelty_score', 0.0):.2f})"
+                        ),
+                    )
+                    promoted_outcomes[branch.branch_id] = {
+                        "invention_name": invention.invention_name,
+                        "verdict": getattr(invention, "verdict", "UNKNOWN"),
+                        "novelty_score": getattr(invention, "novelty_score", 0.0),
+                        "feasibility_rating": getattr(invention, "feasibility_rating", "UNKNOWN"),
+                        "ledger_outcome": outcome,
+                        "bundle_acceptance_status": getattr(invention, "bundle_acceptance_status", "singleton"),
+                        "orchestration_mode": getattr(invention, "orchestration_mode", "singleton"),
+                        "operator_family_pattern": branch.operator_family_pattern(),
+                        "operator_families": [family.value for family in branch.operator_family_history],
+                        "repeated_family_streak": branch.metrics.repeated_family_streak,
+                        "branch_state": {
+                            "mechanism_purity": branch.state_summary.mechanism_purity,
+                            "baseline_attractor": branch.state_summary.baseline_attractor,
+                            "transfer_slack": branch.state_summary.transfer_slack,
+                            "branch_fatigue": branch.state_summary.branch_fatigue,
+                        },
+                    }
+                branchgenome_metrics["promoted_branch_outcomes"] = promoted_outcomes
 
             cost.verification_cost = sum(v.verification_cost_usd for v in verified)
 
@@ -803,6 +1123,9 @@ class Genesis:
                 scored_candidates=scored,
                 translations=translations,
                 verified_inventions=verified,
+                baseline_dossier=baseline_dossier,
+                lens_runtime=lens_runtime,
+                branchgenome_metrics=branchgenome_metrics,
                 cost_breakdown=cost,
                 total_duration_seconds=elapsed(),
                 model_config={
@@ -814,6 +1137,12 @@ class Genesis:
                     "defend": self._config.defend_model,
                 },
             )
+            try:
+                from hephaestus.lenses.state import LensEngineState
+
+                report.lens_engine_state = LensEngineState.from_report(report)
+            except Exception as exc:
+                logger.warning("Lens-engine report surface skipped: %s", exc)
 
             logger.info(
                 "Genesis complete | %s | cost=$%.3f | time=%.1fs",
@@ -841,6 +1170,21 @@ class Genesis:
     # ------------------------------------------------------------------
     # Internal: build adapters and harnesses
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _singleton_fallback_inputs(
+        *,
+        scored: list[Any],
+        attempted: list[Any],
+        invalidated_lens_ids: set[str],
+    ) -> list[Any]:
+        attempted_ids = {candidate.lens_id for candidate in attempted}
+        fallback: list[Any] = []
+        for candidate in scored:
+            if candidate.lens_id in attempted_ids or candidate.lens_id in invalidated_lens_ids:
+                continue
+            fallback.append(candidate)
+        return fallback
 
     def _ensure_built(self) -> None:
         """Lazily build all adapters and harnesses."""

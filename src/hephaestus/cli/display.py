@@ -14,6 +14,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 from typing import Any
+from unittest.mock import Mock
 
 from rich import box
 from rich.columns import Columns
@@ -225,6 +226,11 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
             "WHERE THE ANALOGY BREAKS",
             "\n".join(f"  • {lim}" for lim in top.translation.limitations),
         )
+
+    # ── Lens engine state ───────────────────────────────────────────────────
+    lens_state = _maybe_attr(report, "lens_engine_state", None)
+    if lens_state is not None:
+        _print_lens_engine(console, lens_state)
 
     # ── Adversarial verdict ──────────────────────────────────────────────────
     _print_adversarial(console, top)
@@ -502,7 +508,8 @@ def print_trace(console: Console, report: Any) -> None:
         console.print("  [dim]No trace available.[/]")
         return
 
-    if hasattr(top, "trace") and top.trace:
+    has_trace = bool(hasattr(top, "trace") and top.trace)
+    if has_trace:
         trace = top.trace
         console.print(f"  [dim]Attempts:[/] {getattr(trace, 'attempts', '?')}")
         console.print(f"  [dim]Pruner kills:[/] {getattr(trace, 'pruner_kills', 0)}")
@@ -531,7 +538,14 @@ def print_trace(console: Console, report: Any) -> None:
             console.print(f"  [dim]Rounds completed:[/] {rounds}")
             console.print(f"  [dim]Paths blocked:[/] {len(blocked)}")
             console.print()
-    else:
+    lens_state = _maybe_attr(report, "lens_engine_state", None)
+    if lens_state is not None:
+        console.print(f"  [{AMBER}]Lens Engine:[/]")
+        console.print(f"  [dim]{lens_state.summary()}[/]")
+        for item in getattr(lens_state, "recompositions", [])[-3:]:
+            console.print(f"  [dim]Recomposition:[/] {item.summary}")
+        console.print()
+    elif not has_trace:
         console.print("  [dim]No detailed trace available.[/]")
 
 
@@ -592,3 +606,63 @@ def _safe_text(value: Any, fallback: str = "") -> str:
         stripped = value.strip()
         return stripped or fallback
     return str(value)
+
+
+def _maybe_attr(obj: Any, name: str, default: Any = None) -> Any:
+    """Avoid MagicMock fabricating optional attributes that were never set."""
+    if isinstance(obj, Mock):
+        data = getattr(obj, "__dict__", {})
+        if isinstance(data, dict) and name in data:
+            return data[name]
+        return default
+    return getattr(obj, name, default)
+
+
+def _print_lens_engine(console: Console, lens_state: Any) -> None:
+    """Render a concise lens-engine state panel."""
+    table = Table(box=box.SIMPLE, border_style="dim yellow", show_header=False, padding=(0, 1))
+    table.add_column("Key", style=DIM, no_wrap=True)
+    table.add_column("Value", style="white")
+
+    table.add_row("Summary", _safe_text(lens_state.summary(), "No lens-engine summary."))
+    active_bundle = _maybe_attr(lens_state, "active_bundle", None)
+    if active_bundle is not None:
+        table.add_row(
+            "Active bundle",
+            (
+                f"{active_bundle.bundle_id} "
+                f"({active_bundle.bundle_kind}, {active_bundle.proof_status})"
+            ),
+        )
+        table.add_row("Members", ", ".join(active_bundle.member_ids))
+        table.add_row(
+            "Scores",
+            (
+                f"cohesion={active_bundle.cohesion_score:.2f} "
+                f"higher-order={active_bundle.higher_order_score:.2f}"
+            ),
+        )
+
+    composites = _maybe_attr(lens_state, "active_composites", [])
+    if composites:
+        table.add_row(
+            "Composites",
+            ", ".join(f"{item.composite_id} (v{item.version})" for item in composites[:3]),
+        )
+
+    pending_invalidations = _maybe_attr(lens_state, "pending_invalidations", [])
+    if pending_invalidations:
+        table.add_row(
+            "Invalidations",
+            "; ".join(item.summary for item in pending_invalidations[:2]),
+        )
+
+    guards = _maybe_attr(lens_state, "guards", [])
+    if guards:
+        table.add_row(
+            "Guards",
+            "; ".join(f"{guard.kind}={guard.status}" for guard in guards[:4]),
+        )
+
+    console.print(Panel(table, title="[bold yellow]Lens Engine[/]", border_style="dim yellow"))
+    console.print()

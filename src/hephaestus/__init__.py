@@ -47,6 +47,13 @@ from hephaestus.deepforge.harness import (
     ForgeResult,
     ForgeTrace,
 )
+from hephaestus.research import (
+    BenchmarkCase,
+    BenchmarkCorpus,
+    BenchmarkCorpusBuilder,
+    PerplexityClient,
+    ResearchError,
+)
 
 __all__ = [
     "__version__",
@@ -67,4 +74,10 @@ __all__ = [
     "HarnessConfig",
     "ForgeResult",
     "ForgeTrace",
+    # Research
+    "BenchmarkCase",
+    "BenchmarkCorpus",
+    "BenchmarkCorpusBuilder",
+    "PerplexityClient",
+    "ResearchError",
 ]

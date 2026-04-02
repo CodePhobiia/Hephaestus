@@ -7,6 +7,17 @@ from pathlib import Path
 
 import pytest
 
+from hephaestus.lenses.state import (
+    CompositeLens,
+    FoldState,
+    GuardDecision,
+    LensBundleMember,
+    LensBundleProof,
+    LensEngineState,
+    LensLineage,
+    ResearchReferenceArtifact,
+    ResearchReferenceState,
+)
 from hephaestus.session.schema import (
     EntryType,
     InventionSnapshot,
@@ -48,6 +59,136 @@ def _populated_session() -> Session:
         score=8.5,
     )
     return s
+
+
+def _lens_engine_state() -> LensEngineState:
+    return LensEngineState(
+        session_reference_generation=2,
+        active_bundle_id="bundle:adaptive:abc123",
+        members=[
+            LensBundleMember(
+                lens_id="biology_immune",
+                lens_name="Immune System",
+                domain_name="biology::Immune System",
+                source_domain="Immune System",
+                domain_family="biology",
+                domain_distance=0.91,
+                structural_relevance=0.72,
+                retrieval_score=0.86,
+                fidelity_score=0.80,
+                confidence=0.84,
+                matched_patterns=["allocation", "memory"],
+                evidence_atoms=["Memory persists."],
+                card_fingerprint64=111,
+            ),
+            LensBundleMember(
+                lens_id="economics_markets",
+                lens_name="Market Making",
+                domain_name="economics::Market Making",
+                source_domain="Market Making",
+                domain_family="economics",
+                domain_distance=0.88,
+                structural_relevance=0.66,
+                retrieval_score=0.79,
+                fidelity_score=0.74,
+                confidence=0.76,
+                matched_patterns=["allocation", "feedback"],
+                evidence_atoms=["Prices encode pressure."],
+                card_fingerprint64=222,
+            ),
+        ],
+        bundles=[
+            LensBundleProof(
+                bundle_id="bundle:adaptive:abc123",
+                bundle_kind="adaptive_bundle",
+                member_ids=["biology_immune", "economics_markets"],
+                status="active",
+                proof_status="proven",
+                cohesion_score=0.74,
+                higher_order_score=0.63,
+                proof_fingerprint="proof-abc123",
+                reference_generation=2,
+                shared_patterns=["allocation", "feedback"],
+                complementary_axes=["biology", "economics"],
+                clauses=["Bundle cleared cohesion floor."],
+                summary="Adaptive bundle selected.",
+            )
+        ],
+        lineages=[
+            LensLineage(
+                lineage_id="lineage:biology_immune:g1",
+                entity_id="biology_immune",
+                proof_bundle_id="bundle:adaptive:abc123",
+                fingerprint="lineage-immune",
+                reference_generation=2,
+            ),
+            LensLineage(
+                lineage_id="lineage:economics_markets:g1",
+                entity_id="economics_markets",
+                proof_bundle_id="bundle:adaptive:abc123",
+                fingerprint="lineage-markets",
+                reference_generation=2,
+            ),
+        ],
+        fold_states=[
+            FoldState(
+                fold_id="fold:bundle:adaptive:abc123",
+                bundle_id="bundle:adaptive:abc123",
+                status="composed",
+                reference_generation=2,
+                active_lineage_ids=[
+                    "lineage:biology_immune:g1",
+                    "lineage:economics_markets:g1",
+                ],
+                guard_ids=["guard:cohesion"],
+                summary="Adaptive fold is active.",
+            )
+        ],
+        guards=[
+            GuardDecision(
+                guard_id="guard:cohesion",
+                kind="bundle_cohesion_floor",
+                status="passed",
+                target_id="bundle:adaptive:abc123",
+                summary="Cohesion floor passed.",
+                details=["cohesion=0.74"],
+            )
+        ],
+        composites=[
+            CompositeLens(
+                composite_id="composite:abc123",
+                component_lineage_ids=[
+                    "lineage:biology_immune:g1",
+                    "lineage:economics_markets:g1",
+                ],
+                component_lens_ids=["biology_immune", "economics_markets"],
+                derived_from_bundle_id="bundle:adaptive:abc123",
+                version=1,
+                reference_generation=2,
+                status="active",
+                fingerprint="composite-fingerprint",
+                summary="Composite lens derived from active bundle.",
+            )
+        ],
+        research=ResearchReferenceState(
+            reference_generation=2,
+            provider="perplexity",
+            model="sonar-pro",
+            reference_signature="research-signature",
+            artifacts=[
+                ResearchReferenceArtifact(
+                    artifact_name="baseline_dossier",
+                    provider="perplexity",
+                    model="sonar-pro",
+                    summary="Modern systems use queues.",
+                    signature="artifact-signature",
+                    citation_count=1,
+                    citations=["https://example.com/baseline"],
+                    raw_digest="raw-digest",
+                )
+            ],
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +285,15 @@ class TestSessionSerialization:
         with pytest.raises(KeyError):
             Session.from_json("{}")
 
+    def test_roundtrip_preserves_lens_engine_state(self):
+        s = Session()
+        s.apply_lens_engine_state(_lens_engine_state(), op_id=3)
+        s2 = Session.from_json(s.to_json())
+        assert s2.lens_engine_state is not None
+        assert s2.lens_engine_state.active_bundle_id == "bundle:adaptive:abc123"
+        assert s2.lens_engine_state.research is not None
+        assert s2.lens_engine_state.research.reference_generation == 2
+
 
 # ---------------------------------------------------------------------------
 # Session — file persistence
@@ -174,6 +324,17 @@ class TestSessionPersistence:
         bad.write_text("{corrupt", encoding="utf-8")
         with pytest.raises(json.JSONDecodeError):
             Session.load(bad)
+
+    def test_save_load_after_compaction_preserves_lens_engine_state(self, tmp_path: Path):
+        s = _populated_session()
+        s.apply_lens_engine_state(_lens_engine_state(), op_id=4)
+        s.compact_transcript(keep_last_n=5)
+        path = s.save(tmp_path / "session.json")
+
+        loaded = Session.load(path)
+        assert loaded.lens_engine_state is not None
+        assert loaded.lens_engine_state.active_bundle_id == "bundle:adaptive:abc123"
+        assert any(lot.kind == "lens_bundle" for lot in loaded.reference_lots)
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +369,18 @@ class TestSessionMutation:
         )
         assert len(s.inventions) == 1
         assert snap.score == 7.0
+
+    def test_add_invention_inherits_lens_engine_summary(self):
+        s = Session()
+        s.apply_lens_engine_state(_lens_engine_state(), op_id=1)
+        snap = s.add_invention(
+            invention_name="Adaptive Widget",
+            source_domain="biology",
+            score=8.1,
+        )
+        assert snap.lens_bundle_id == "bundle:adaptive:abc123"
+        assert snap.lens_reference_generation == 2
+        assert snap.lens_composites == ["composite:abc123"]
 
 
 # ---------------------------------------------------------------------------
