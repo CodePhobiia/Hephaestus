@@ -294,6 +294,22 @@ class TestSessionSerialization:
         assert s2.lens_engine_state.research is not None
         assert s2.lens_engine_state.research.reference_generation == 2
 
+    def test_from_report_coerces_research_reference_dict(self) -> None:
+        from unittest.mock import MagicMock
+
+        report = MagicMock()
+        report.baseline_dossier = MagicMock(summary="Queues dominate", raw_text="baseline raw", citations=[])
+        report.top_invention = None
+        report.model_config = {"search": "sonar-pro"}
+        report.scored_candidates = []
+        report.all_candidates = []
+
+        state = LensEngineState.from_report(report)
+
+        assert state.research is not None
+        assert isinstance(state.research, ResearchReferenceState)
+        assert state.research.reference_generation == 1
+
 
 # ---------------------------------------------------------------------------
 # Session — file persistence

@@ -724,6 +724,8 @@ class LensEngineState:
     ) -> "LensEngineState":
         """Return a copy invalidated by a new research/reference generation."""
         state = LensEngineState.from_dict(self.to_dict())
+        if isinstance(new_research, dict):
+            new_research = ResearchReferenceState.from_dict(new_research)
         previous_generation = state.session_reference_generation
         state.session_reference_generation = max(
             previous_generation + 1,
@@ -820,6 +822,8 @@ class LensEngineState:
             ),
             model=str(getattr(getattr(report, "model_config", {}), "get", lambda *_: "")("search", "")),
         )
+        if isinstance(research, dict):
+            research = ResearchReferenceState.from_dict(research)
 
         previous_generation = previous_state.session_reference_generation if previous_state else 0
         reference_generation = 0
