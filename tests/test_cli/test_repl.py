@@ -584,11 +584,20 @@ class TestPersistence:
             "mathematical_shape": "feedback loop",
             "top_invention": {"name": "Helper Load", "source_domain": "Biology", "novelty_score": 0.81},
             "lens_engine": _lens_engine_state().to_dict(),
+            "pantheon": {
+                "mode": "pantheon",
+                "consensus_achieved": True,
+                "final_verdict": "NOVEL",
+                "winning_candidate_id": "candidate-1:biology_immune",
+            },
         }
         report = _loaded_report(payload, meta={"problem": "loaded via helper"})
         assert report.lens_engine_state is not None
         assert report.lens_engine_state.active_bundle_id == "bundle:adaptive:repl"
         assert report.lens_engine_state.research is not None
+        assert report.pantheon_state is not None
+        assert report.pantheon_state.consensus_achieved is True
+        assert report.pantheon_state.final_verdict == "NOVEL"
 
     @pytest.mark.asyncio
     async def test_cmd_load_session_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

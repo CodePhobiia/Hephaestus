@@ -274,12 +274,14 @@ class TestGenesis:
 
         mock_searcher = MagicMock()
         mock_searcher.search = AsyncMock(return_value=candidates)
+        mock_searcher.last_runtime = None
 
         mock_scorer = MagicMock()
         mock_scorer.score = AsyncMock(return_value=scored)
 
         mock_translator = MagicMock()
         mock_translator.translate = AsyncMock(return_value=translations)
+        mock_translator.last_runtime = None
 
         mock_verifier = MagicMock()
         mock_verifier.verify = AsyncMock(return_value=verified)
@@ -344,6 +346,8 @@ class TestGenesis:
         mocks["translator"].last_runtime = None
         mocks["verifier"].verify = AsyncMock(return_value=[_make_verified_invention()])
 
+        revised_structure = _make_problem_structure()
+        revised_structure.structure = "canonical topology"
         pantheon_state = _make_pantheon_state(
             total_cost_usd=0.12,
             total_input_tokens=210,
@@ -351,6 +355,9 @@ class TestGenesis:
             total_duration_seconds=3.5,
         )
         pantheon_stub = MagicMock()
+        pantheon_stub.prepare_pipeline = AsyncMock(return_value=(revised_structure, pantheon_state))
+        pantheon_stub.translation_guidance.return_value = object()
+        pantheon_stub.screen_translations = AsyncMock(return_value=([_make_translation()], pantheon_state))
         pantheon_stub.deliberate = AsyncMock(return_value=([revised_translation], pantheon_state))
         pantheon_stub.finalize_with_verified.return_value = pantheon_state
 
@@ -383,6 +390,9 @@ class TestGenesis:
         assert report.cost_breakdown.pantheon_cost == pytest.approx(0.12)
         assert report.total_input_tokens == 210
         assert report.total_output_tokens == 70
+        assert mocks["searcher"].search.await_args.args[0] is revised_structure
+        assert mocks["translator"].translate.await_args.kwargs["guidance"] is pantheon_stub.translation_guidance.return_value
+        pantheon_stub.screen_translations.assert_awaited_once()
         assert len(report.all_candidates) == 1
         assert len(report.scored_candidates) == 1
         assert len(report.translations) == 1

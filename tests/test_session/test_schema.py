@@ -245,10 +245,18 @@ class TestInventionSnapshot:
             invention_name="BioLens",
             source_domain="optics",
             score=9.1,
+            pantheon_state={"mode": "pantheon", "final_verdict": "NOVEL"},
+            pantheon_consensus_achieved=True,
+            pantheon_final_verdict="NOVEL",
+            pantheon_rounds=2,
+            pantheon_winning_candidate_id="candidate-1:biology_immune",
         )
         snap2 = InventionSnapshot.from_dict(snap.to_dict())
         assert snap2.invention_name == "BioLens"
         assert snap2.score == pytest.approx(9.1)
+        assert snap2.pantheon_state == {"mode": "pantheon", "final_verdict": "NOVEL"}
+        assert snap2.pantheon_consensus_achieved is True
+        assert snap2.pantheon_rounds == 2
 
 
 # ---------------------------------------------------------------------------
@@ -397,6 +405,20 @@ class TestSessionMutation:
         assert snap.lens_bundle_id == "bundle:adaptive:abc123"
         assert snap.lens_reference_generation == 2
         assert snap.lens_composites == ["composite:abc123"]
+
+    def test_add_invention_preserves_pantheon_snapshot(self):
+        s = Session()
+        snap = s.add_invention(
+            invention_name="Council Widget",
+            pantheon_state={"mode": "pantheon", "final_verdict": "NOVEL"},
+            pantheon_consensus_achieved=True,
+            pantheon_final_verdict="NOVEL",
+            pantheon_rounds=3,
+            pantheon_winning_candidate_id="candidate-1:biology_immune",
+        )
+        assert snap.pantheon_state is not None
+        assert snap.pantheon_consensus_achieved is True
+        assert snap.pantheon_rounds == 3
 
 
 # ---------------------------------------------------------------------------

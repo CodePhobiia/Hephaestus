@@ -165,6 +165,7 @@ DOMAIN LENS (active cognitive interference):
 
 STRUCTURAL FIDELITY SCORE: {fidelity:.2f}
 DOMAIN DISTANCE: {distance:.2f}
+{guidance_section}
 {branch_commitments_section}
 {bundle_proof_section}
 {handoff_section}
@@ -278,6 +279,38 @@ class Translation:
         )
 
 
+@dataclass
+class TranslationGuidance:
+    """Pipeline-native guidance injected into translation prompts."""
+
+    structural_form: str = ""
+    mandatory_constraints: list[str] = field(default_factory=list)
+    anti_goals: list[str] = field(default_factory=list)
+    success_criteria: list[str] = field(default_factory=list)
+    false_framings: list[str] = field(default_factory=list)
+    reality_summary: str = ""
+    ecosystem_constraints: list[str] = field(default_factory=list)
+    user_operator_constraints: list[str] = field(default_factory=list)
+    adoption_risks: list[str] = field(default_factory=list)
+    implementation_leverage_points: list[str] = field(default_factory=list)
+
+    def has_content(self) -> bool:
+        return any(
+            [
+                self.structural_form.strip(),
+                self.mandatory_constraints,
+                self.anti_goals,
+                self.success_criteria,
+                self.false_framings,
+                self.reality_summary.strip(),
+                self.ecosystem_constraints,
+                self.user_operator_constraints,
+                self.adoption_risks,
+                self.implementation_leverage_points,
+            ]
+        )
+
+
 # ---------------------------------------------------------------------------
 # Translator
 # ---------------------------------------------------------------------------
@@ -353,6 +386,7 @@ class SolutionTranslator:
         scored_candidates: list[ScoredCandidate],
         structure: ProblemStructure,
         top_n: int | None = None,
+        guidance: TranslationGuidance | None = None,
     ) -> list[Translation]:
         """
         Translate the top-N scored candidates into target-domain architectures.
@@ -388,6 +422,7 @@ class SolutionTranslator:
                 bundle_members,
                 candidates,
                 structure,
+                guidance=guidance,
             )
             duration = time.monotonic() - t_start
             total_cost = sum(t.cost_usd for t in translations)
@@ -402,7 +437,7 @@ class SolutionTranslator:
         import asyncio
 
         tasks = [
-            self._translate_candidate(candidate, structure)
+            self._translate_candidate(candidate, structure, guidance=guidance)
             for candidate in candidates
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -470,6 +505,8 @@ class SolutionTranslator:
         bundle_candidates: list[ScoredCandidate],
         all_candidates: list[ScoredCandidate],
         structure: ProblemStructure,
+        *,
+        guidance: TranslationGuidance | None = None,
     ) -> list[Translation]:
         pending = {candidate.lens_id: candidate for candidate in bundle_candidates}
         runtime = TranslationRuntimeResult(retrieval_mode="bundle", bundle_proof=bundle_proof)
@@ -531,6 +568,7 @@ class SolutionTranslator:
                 structure,
                 bundle_proof=active_bundle,
                 previous_translation=translations[-1] if translations else None,
+                guidance=guidance,
             )
             guard = evaluate_handoff_guards(
                 structure=structure,
@@ -591,6 +629,7 @@ class SolutionTranslator:
                     candidate,
                     structure,
                     force_singleton=True,
+                    guidance=guidance,
                 )
                 translation.recomposition_events = list(runtime.recomposition_events)
                 translations.append(translation)
@@ -615,6 +654,7 @@ class SolutionTranslator:
         bundle_proof: Any | None = None,
         previous_translation: Translation | None = None,
         force_singleton: bool = False,
+        guidance: TranslationGuidance | None = None,
     ) -> Translation:
         """Translate a single candidate with cognitive interference active."""
         t_start = time.monotonic()
@@ -692,6 +732,7 @@ class SolutionTranslator:
             previous_translation,
             structure=structure,
         )
+        guidance_section = self._guidance_section(guidance)
         prompt = _TRANSLATE_PROMPT_TEMPLATE.format(
             original_problem=structure.original_problem,
             banned_baselines_section=banned_text,
@@ -704,6 +745,7 @@ class SolutionTranslator:
             lens_axioms=axioms_text,
             fidelity=candidate.structural_fidelity,
             distance=candidate.domain_distance,
+            guidance_section=guidance_section,
             branch_commitments_section=branch_commitments_section,
             bundle_proof_section=bundle_proof_section,
             handoff_section=handoff_section,
@@ -724,91 +766,16 @@ class SolutionTranslator:
             temperature=0.7,
         )
 
-        parsed = self._parse_translation(result.output)
-
-        # Build element mappings
-        mappings: list[ElementMapping] = []
-        for elem in parsed.get("mapping", {}).get("elements", []):
-            if isinstance(elem, dict):
-                mappings.append(
-                    ElementMapping(
-                        source_element=elem.get("source_element", ""),
-                        target_element=elem.get("target_element", ""),
-                        mechanism=elem.get("mechanism", ""),
-                    )
-                )
-
-        # Ensure all fields are strings (V2 prompt may cause dict returns)
-        arch = parsed.get("architecture", "")
-        if isinstance(arch, dict):
-            import json as _json
-            arch = _json.dumps(arch, indent=2)
-        elif not isinstance(arch, str):
-            arch = str(arch) if arch else ""
-
-        key_ins = parsed.get("key_insight", "")
-        if not isinstance(key_ins, str):
-            key_ins = str(key_ins) if key_ins else ""
-
-        impl_notes = parsed.get("implementation_notes", "")
-        if not isinstance(impl_notes, str):
-            impl_notes = str(impl_notes) if impl_notes else ""
-
-        math_proof = parsed.get("mathematical_proof", "")
-        if not isinstance(math_proof, str):
-            math_proof = str(math_proof) if math_proof else ""
-
-        lims = parsed.get("limitations", [])
-        if isinstance(lims, str):
-            lims = [lims]
-        elif not isinstance(lims, list):
-            lims = [str(lims)] if lims else []
-
-        recovery_commitments = parsed.get("recovery_commitments", [])
-        if isinstance(recovery_commitments, str):
-            recovery_commitments = [recovery_commitments]
-        elif not isinstance(recovery_commitments, list):
-            recovery_commitments = []
-        recovery_commitments = [str(commitment) for commitment in recovery_commitments if commitment]
-
-        future_option_preservation = parsed.get("future_option_preservation", "")
-        if not isinstance(future_option_preservation, str):
-            future_option_preservation = (
-                str(future_option_preservation) if future_option_preservation else ""
-            )
-        reference_state = build_reference_state(
-            structure,
-            branch_genome=getattr(candidate, "branch_genome", None),
-        )
-
-        translation = Translation(
-            invention_name=parsed.get("invention_name", f"{lens.name}-Inspired Solution"),
-            mapping=mappings,
-            architecture=arch,
-            mathematical_proof=math_proof,
-            limitations=lims,
-            implementation_notes=impl_notes,
-            key_insight=key_ins,
-            source_candidate=candidate,
-            phase1_abstract_mechanism=parsed.get("phase1_abstract_mechanism", ""),
-            phase2_target_architecture=parsed.get("phase2_target_architecture", ""),
-            mechanism_is_decorative=bool(parsed.get("mechanism_is_decorative", False)),
-            known_pattern_if_decorative=parsed.get("known_pattern_if_decorative", ""),
-            mechanism_differs_from_baseline=parsed.get("mechanism_differs_from_baseline", ""),
-            subtraction_test=parsed.get("subtraction_test", ""),
-            baseline_comparison=parsed.get("baseline_comparison", ""),
-            recovery_commitments=recovery_commitments,
-            future_option_preservation=future_option_preservation,
-            cost_usd=result.trace.total_cost_usd,
-            duration_seconds=time.monotonic() - t_start,
+        parsed = self.parse_translation(result.output)
+        translation = self._build_translation(
+            parsed=parsed,
+            candidate=candidate,
+            structure=structure,
             trace=result.trace,
+            started_at=t_start,
             bundle_proof=active_bundle_proof,
-            bundle_lineage=None if force_singleton else getattr(candidate, "bundle_lineage", None),
-            selection_mode="singleton_fallback" if force_singleton else str(getattr(candidate, "selection_mode", "singleton")),
-            bundle_role="" if force_singleton else str(getattr(candidate, "bundle_role", "")),
-            reference_signature=reference_state.reference_signature,
-            research_signature=reference_state.research_signature,
-            branch_signature=reference_state.branch_signature,
+            force_singleton=force_singleton,
+            fallback_name=f"{lens.name}-Inspired Solution",
         )
 
         logger.info(
@@ -818,6 +785,44 @@ class SolutionTranslator:
             len(translation.limitations),
             translation.cost_usd,
         )
+        return translation
+
+    async def reforge(
+        self,
+        *,
+        prompt: str,
+        structure: ProblemStructure,
+        source_translation: Translation,
+        system: str | None = None,
+    ) -> Translation:
+        """Run a guided reforge using the translator's base harness."""
+        t_start = time.monotonic()
+        result = await self._harness.forge(
+            prompt,
+            system=system,
+            max_tokens=16000,
+            temperature=0.7,
+        )
+        parsed = self.parse_translation(result.output)
+        translation = self._build_translation(
+            parsed=parsed,
+            candidate=source_translation.source_candidate,
+            structure=structure,
+            trace=result.trace,
+            started_at=t_start,
+            bundle_proof=source_translation.bundle_proof,
+            force_singleton=source_translation.selection_mode == "singleton_fallback",
+            fallback_name=source_translation.invention_name or "Reforged invention",
+        )
+        translation.bundle_lineage = source_translation.bundle_lineage
+        translation.selection_mode = source_translation.selection_mode
+        translation.bundle_role = source_translation.bundle_role
+        translation.reference_signature = source_translation.reference_signature
+        translation.research_signature = source_translation.research_signature
+        translation.branch_signature = source_translation.branch_signature
+        translation.guard_results = list(source_translation.guard_results)
+        translation.guard_failed = source_translation.guard_failed
+        translation.recomposition_events = list(source_translation.recomposition_events)
         return translation
 
     @staticmethod
@@ -858,6 +863,131 @@ class SolutionTranslator:
             f"- preserve_constraints:\n{constraint_lines}\n"
             "- reset the abstraction to target-domain language instead of carrying over source-domain vocabulary.\n"
             "- if the new architecture depends on the previous lens, make that dependency explicit rather than implicit.\n"
+        )
+
+    @staticmethod
+    def _guidance_section(guidance: TranslationGuidance | None) -> str:
+        if guidance is None or not guidance.has_content():
+            return ""
+
+        def _items(values: list[str]) -> str:
+            return "\n".join(f"- {value}" for value in values[:6]) or "- none"
+
+        return (
+            "\nPIPELINE GUIDANCE (apply during first-pass invention, not as post-hoc commentary):\n"
+            "ATHENA CANON:\n"
+            f"- structural_form: {guidance.structural_form or 'n/a'}\n"
+            f"- mandatory_constraints:\n{_items(guidance.mandatory_constraints)}\n"
+            f"- anti_goals:\n{_items(guidance.anti_goals)}\n"
+            f"- success_criteria:\n{_items(guidance.success_criteria)}\n"
+            f"- false_framings_to_avoid:\n{_items(guidance.false_framings)}\n"
+            "HERMES DOSSIER:\n"
+            f"- repo_reality_summary: {guidance.reality_summary or 'n/a'}\n"
+            f"- ecosystem_constraints:\n{_items(guidance.ecosystem_constraints)}\n"
+            f"- user_operator_constraints:\n{_items(guidance.user_operator_constraints)}\n"
+            f"- adoption_risks:\n{_items(guidance.adoption_risks)}\n"
+            f"- implementation_leverage_points:\n{_items(guidance.implementation_leverage_points)}\n"
+            "- preserve novelty while satisfying the canon and reality constraints from the first draft.\n"
+        )
+
+    def parse_translation(self, raw: str) -> dict[str, Any]:
+        """Public wrapper for translation JSON parsing."""
+        return self._parse_translation(raw)
+
+    def _build_translation(
+        self,
+        *,
+        parsed: dict[str, Any],
+        candidate: ScoredCandidate,
+        structure: ProblemStructure,
+        trace: ForgeTrace | None,
+        started_at: float,
+        bundle_proof: Any | None,
+        force_singleton: bool,
+        fallback_name: str,
+    ) -> Translation:
+        mappings: list[ElementMapping] = []
+        for elem in parsed.get("mapping", {}).get("elements", []):
+            if isinstance(elem, dict):
+                mappings.append(
+                    ElementMapping(
+                        source_element=elem.get("source_element", ""),
+                        target_element=elem.get("target_element", ""),
+                        mechanism=elem.get("mechanism", ""),
+                    )
+                )
+
+        arch = parsed.get("architecture", "")
+        if isinstance(arch, dict):
+            arch = json.dumps(arch, indent=2)
+        elif not isinstance(arch, str):
+            arch = str(arch) if arch else ""
+
+        key_ins = parsed.get("key_insight", "")
+        if not isinstance(key_ins, str):
+            key_ins = str(key_ins) if key_ins else ""
+
+        impl_notes = parsed.get("implementation_notes", "")
+        if not isinstance(impl_notes, str):
+            impl_notes = str(impl_notes) if impl_notes else ""
+
+        math_proof = parsed.get("mathematical_proof", "")
+        if not isinstance(math_proof, str):
+            math_proof = str(math_proof) if math_proof else ""
+
+        lims = parsed.get("limitations", [])
+        if isinstance(lims, str):
+            lims = [lims]
+        elif not isinstance(lims, list):
+            lims = [str(lims)] if lims else []
+
+        recovery_commitments = parsed.get("recovery_commitments", [])
+        if isinstance(recovery_commitments, str):
+            recovery_commitments = [recovery_commitments]
+        elif not isinstance(recovery_commitments, list):
+            recovery_commitments = []
+        recovery_commitments = [str(commitment) for commitment in recovery_commitments if commitment]
+
+        future_option_preservation = parsed.get("future_option_preservation", "")
+        if not isinstance(future_option_preservation, str):
+            future_option_preservation = (
+                str(future_option_preservation) if future_option_preservation else ""
+            )
+
+        reference_state = build_reference_state(
+            structure,
+            branch_genome=getattr(candidate, "branch_genome", None),
+        )
+        trace_cost = getattr(trace, "total_cost_usd", 0.0) if trace is not None else 0.0
+
+        return Translation(
+            invention_name=parsed.get("invention_name", fallback_name),
+            mapping=mappings,
+            architecture=arch,
+            mathematical_proof=math_proof,
+            limitations=lims,
+            implementation_notes=impl_notes,
+            key_insight=key_ins,
+            source_candidate=candidate,
+            phase1_abstract_mechanism=parsed.get("phase1_abstract_mechanism", ""),
+            phase2_target_architecture=parsed.get("phase2_target_architecture", ""),
+            mechanism_is_decorative=bool(parsed.get("mechanism_is_decorative", False)),
+            known_pattern_if_decorative=parsed.get("known_pattern_if_decorative", ""),
+            mechanism_differs_from_baseline=parsed.get("mechanism_differs_from_baseline", ""),
+            subtraction_test=parsed.get("subtraction_test", ""),
+            baseline_comparison=parsed.get("baseline_comparison", ""),
+            recovery_commitments=recovery_commitments,
+            future_option_preservation=future_option_preservation,
+            cost_usd=trace_cost,
+            duration_seconds=time.monotonic() - started_at,
+            trace=trace,
+            bundle_proof=bundle_proof,
+            bundle_lineage=None if force_singleton else getattr(candidate, "bundle_lineage", None),
+            selection_mode="singleton_fallback" if force_singleton else str(getattr(candidate, "selection_mode", "singleton")),
+            bundle_role="" if force_singleton else str(getattr(candidate, "bundle_role", "")),
+            reference_signature=reference_state.reference_signature,
+            research_signature=reference_state.research_signature,
+            branch_signature=reference_state.branch_signature,
         )
 
     def _parse_translation(self, raw: str) -> dict[str, Any]:

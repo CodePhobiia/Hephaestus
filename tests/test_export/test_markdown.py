@@ -137,6 +137,32 @@ class TestExportConfig:
         assert "External Grounding" in md
         assert "Implementation Risk Review" in md
 
+    def test_pantheon_section_renders(self):
+        report = _make_report(
+            pantheon_state=SimpleNamespace(
+                mode="pantheon",
+                consensus_achieved=True,
+                final_verdict="NOVEL",
+                winning_candidate_id="candidate-1:biology_immune",
+                canon=SimpleNamespace(structural_form="canonical topology"),
+                dossier=SimpleNamespace(repo_reality_summary="operators need rollout safety"),
+                screenings=[
+                    SimpleNamespace(
+                        candidate_id="candidate-1:biology_immune",
+                        survived=True,
+                        priority_score=2.4,
+                        summary="Apollo cleared candidate for council.",
+                    )
+                ],
+                rounds=[SimpleNamespace(round_index=1, candidate_id="candidate-1:biology_immune", consensus=True, revision_summary="Council assented.")],
+                unresolved_vetoes=[],
+            )
+        )
+        md = export_markdown(report)
+        assert "Pantheon Council" in md
+        assert "Pre-Council Screening" in md
+        assert "Council Rounds" in md
+
 
 class TestExportToFile:
     def test_writes_markdown(self, tmp_path: Path):

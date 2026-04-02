@@ -19,6 +19,7 @@ from hephaestus.core.translator import (
     SolutionTranslator,
     Translation,
     TranslationError,
+    TranslationGuidance,
 )
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
 from hephaestus.lenses.bundles import BundleComposer
@@ -350,6 +351,65 @@ class TestSolutionTranslator:
 
         if translations:
             assert translations[0].cost_usd == pytest.approx(0.025)
+
+    @pytest.mark.asyncio
+    async def test_pipeline_guidance_is_injected_into_prompt(self):
+        harness = MagicMock()
+        harness.adapter = MagicMock()
+        forge_result = _make_forge_result(_valid_translation_json())
+
+        with patch("hephaestus.core.translator.DeepForgeHarness") as MockHarness:
+            instance = MockHarness.return_value
+            instance.forge = AsyncMock(return_value=forge_result)
+
+            translator = SolutionTranslator(harness=harness, top_n=1)
+            guidance = TranslationGuidance(
+                structural_form="canonical topology",
+                mandatory_constraints=["preserve operator trust"],
+                reality_summary="operators need incremental rollout",
+                adoption_risks=["migration fatigue"],
+            )
+            await translator.translate(
+                [_make_scored_candidate()],
+                _make_structure(),
+                guidance=guidance,
+            )
+
+        prompt = instance.forge.await_args.args[0]
+        assert "PIPELINE GUIDANCE" in prompt
+        assert "canonical topology" in prompt
+        assert "operators need incremental rollout" in prompt
+
+    @pytest.mark.asyncio
+    async def test_reforge_uses_base_harness(self):
+        harness = MagicMock()
+        harness.forge = AsyncMock(return_value=_make_forge_result(_valid_translation_json(
+            invention_name="Reforged Scheduler",
+            architecture="Reforged architecture",
+        )))
+
+        translator = SolutionTranslator(harness=harness, top_n=1)
+        source_translation = Translation(
+            invention_name="Base",
+            mapping=[],
+            architecture="Base architecture",
+            mathematical_proof="proof",
+            limitations=["none"],
+            implementation_notes="notes",
+            key_insight="insight",
+            source_candidate=_make_scored_candidate(),
+        )
+
+        result = await translator.reforge(
+            prompt="reforge prompt",
+            structure=_make_structure(),
+            source_translation=source_translation,
+            system="system prompt",
+        )
+
+        assert result.invention_name == "Reforged Scheduler"
+        assert result.architecture == "Reforged architecture"
+        harness.forge.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_bundle_guard_recomposes_and_uses_singleton_fallback(self):

@@ -4,6 +4,7 @@ from hephaestus.pantheon.models import (
     AthenaCanon,
     HermesDossier,
     PantheonRound,
+    PantheonScreening,
     PantheonState,
     PantheonVote,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "HermesDossier",
     "PantheonCoordinator",
     "PantheonRound",
+    "PantheonScreening",
     "PantheonState",
     "PantheonVote",
 ]

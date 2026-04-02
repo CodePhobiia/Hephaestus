@@ -1186,6 +1186,7 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
     alternatives_data = payload.get("alternatives") or []
     cost_breakdown = _loaded_cost_breakdown(payload.get("cost_breakdown"))
     lens_engine_payload = payload.get("lens_engine")
+    pantheon_payload = payload.get("pantheon")
 
     def _translation_from(data: dict[str, Any]) -> Any:
         return SimpleNamespace(
@@ -1253,6 +1254,12 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
             __import__("hephaestus.lenses.state", fromlist=["LensEngineState"])
             .LensEngineState.from_dict(lens_engine_payload)
             if isinstance(lens_engine_payload, dict)
+            else None
+        ),
+        pantheon_state=(
+            __import__("hephaestus.pantheon.models", fromlist=["PantheonState"])
+            .PantheonState.from_dict(pantheon_payload)
+            if isinstance(pantheon_payload, dict)
             else None
         ),
         to_dict=lambda: payload,
@@ -2055,6 +2062,14 @@ async def _run_pipeline(
             if report.top_invention
             else "N/A"
         )
+        pantheon_state = getattr(report, "pantheon_state", None)
+        pantheon_payload = (
+            pantheon_state.to_dict()
+            if hasattr(pantheon_state, "to_dict")
+            else pantheon_state
+            if isinstance(pantheon_state, dict)
+            else None
+        )
         state.session.add_invention(
             invention_name=inv_name,
             source_domain=(
@@ -2081,11 +2096,25 @@ async def _run_pipeline(
                 else ""
             ),
             score=float(getattr(report.top_invention, "novelty_score", 0.0) or 0.0),
+            pantheon_state=pantheon_payload if isinstance(pantheon_payload, dict) else None,
+            pantheon_consensus_achieved=bool(getattr(pantheon_state, "consensus_achieved", False)),
+            pantheon_final_verdict=str(getattr(pantheon_state, "final_verdict", "") or ""),
+            pantheon_rounds=len(getattr(pantheon_state, "rounds", []) or []),
+            pantheon_winning_candidate_id=str(getattr(pantheon_state, "winning_candidate_id", "") or ""),
         )
         state.session.append_entry(
             Role.ASSISTANT.value,
             f"Invention: {inv_name}",
             entry_type=EntryType.INVENTION.value,
+            metadata=(
+                {
+                    "pantheon_consensus_achieved": bool(getattr(pantheon_state, "consensus_achieved", False)),
+                    "pantheon_final_verdict": str(getattr(pantheon_state, "final_verdict", "") or ""),
+                    "pantheon_rounds": len(getattr(pantheon_state, "rounds", []) or []),
+                }
+                if pantheon_state is not None
+                else {}
+            ),
         )
         if should_compact(state.session):
             summary = compact_session(state.session)
@@ -2206,6 +2235,31 @@ def _invention_to_markdown(entry: InventionEntry, report: Any) -> str:
         for item in _maybe_attr(lens_state, "recompositions", [])[-3:]:
             lines.append(f"- Recomposition: {item.summary}")
         lines.append("")
+    pantheon_state = _maybe_attr(report, "pantheon_state", None)
+    if pantheon_state is not None:
+        lines.extend(
+            [
+                "## Pantheon Mode",
+                "",
+                f"- Consensus achieved: {bool(_maybe_attr(pantheon_state, 'consensus_achieved', False))}",
+                f"- Final verdict: {_maybe_attr(pantheon_state, 'final_verdict', 'UNKNOWN')}",
+            ]
+        )
+        winning_candidate_id = _maybe_attr(pantheon_state, "winning_candidate_id", "")
+        if winning_candidate_id:
+            lines.append(f"- Winning candidate: {winning_candidate_id}")
+        lines.append(
+            f"- Council rounds: {len(_maybe_attr(pantheon_state, 'rounds', []) or [])}"
+        )
+        for screening in _maybe_attr(pantheon_state, "screenings", [])[:4]:
+            lines.append(
+                f"- Pre-council screening: {screening.candidate_id} "
+                f"survived={screening.survived} score={screening.priority_score:.2f}"
+            )
+        unresolved = _maybe_attr(pantheon_state, "unresolved_vetoes", []) or []
+        for item in unresolved[:4]:
+            lines.append(f"- Unresolved veto: {item}")
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -2238,6 +2292,13 @@ def _display_invention_result(console: Console, state: SessionState) -> None:
     lens_state = _maybe_attr(report, "lens_engine_state", None)
     if lens_state is not None:
         console.print(f"  [dim]Lens engine:[/] [cyan]{lens_state.summary()}[/]")
+    pantheon_state = _maybe_attr(report, "pantheon_state", None)
+    if pantheon_state is not None:
+        console.print(
+            f"  [dim]Pantheon:[/] [cyan]consensus={bool(_maybe_attr(pantheon_state, 'consensus_achieved', False))} "
+            f"verdict={_maybe_attr(pantheon_state, 'final_verdict', 'UNKNOWN')} "
+            f"rounds={len(_maybe_attr(pantheon_state, 'rounds', []) or [])}[/]"
+        )
     if state.last_auto_save_path is not None:
         console.print(f"  [dim]Saved snapshot:[/] [cyan]{state.last_auto_save_path.name}[/]")
     console.print()

@@ -739,8 +739,10 @@ class Genesis:
 
             # ── Stage 1.5: External reconnaissance (Perplexity) ──────────
             baseline_dossier = None
+            pantheon = None
             pantheon_state = None
             pantheon_runtime = None
+            pantheon_guidance = None
             if self._config.use_perplexity_research:
                 try:
                     from hephaestus.research.perplexity import PerplexityClient
@@ -765,6 +767,33 @@ class Genesis:
                     await perplexity.close()
                 except Exception as exc:
                     logger.warning("Perplexity baseline dossier skipped: %s", exc)
+
+            if self._config.use_pantheon_mode:
+                try:
+                    from hephaestus.pantheon import PantheonCoordinator
+
+                    pantheon = PantheonCoordinator(
+                        athena_harness=self._harnesses["decompose"],
+                        hermes_harness=self._harnesses["search"],
+                        apollo_harness=self._harnesses["defend"],
+                        max_rounds=self._config.pantheon_max_rounds,
+                        require_unanimity=self._config.pantheon_require_unanimity,
+                        allow_fail_closed=self._config.pantheon_allow_fail_closed,
+                        max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
+                    )
+                    structure, pantheon_state = await pantheon.prepare_pipeline(
+                        problem=problem,
+                        structure=structure,
+                        baseline_dossier=baseline_dossier,
+                    )
+                    pantheon_guidance = pantheon.translation_guidance(pantheon_state)
+                    if pantheon_state is not None:
+                        lens_runtime["pantheon"] = pantheon_state.to_dict()
+                except Exception as exc:
+                    pantheon = None
+                    pantheon_state = None
+                    pantheon_guidance = None
+                    logger.warning("Pantheon pipeline preparation skipped: %s", exc)
 
             # ── Stage 2: Search ─────────────────────────────────────────────
             yield PipelineUpdate(
@@ -984,7 +1013,14 @@ class Genesis:
             )
             translator._banned_baselines = baselines if baselines else []
             attempted_translation_inputs = translation_inputs[: self._config.num_translations]
-            translations = await translator.translate(translation_inputs, structure)
+            translate_kwargs: dict[str, Any] = {}
+            if pantheon_guidance is not None:
+                translate_kwargs["guidance"] = pantheon_guidance
+            translations = await translator.translate(
+                translation_inputs,
+                structure,
+                **translate_kwargs,
+            )
             translation_runtime = getattr(translator, "last_runtime", None)
             if translation_runtime is not None:
                 lens_runtime["translation"] = translation_runtime.to_dict()
@@ -1022,10 +1058,15 @@ class Genesis:
                         "Bundle translation produced no valid outputs; retrying singleton fallback with %d candidates",
                         len(fallback_inputs),
                     )
+                    retry_kwargs: dict[str, Any] = {
+                        "top_n": min(self._config.num_translations, len(fallback_inputs)),
+                    }
+                    if pantheon_guidance is not None:
+                        retry_kwargs["guidance"] = pantheon_guidance
                     translations = await translator.translate(
                         fallback_inputs,
                         structure,
-                        top_n=min(self._config.num_translations, len(fallback_inputs)),
+                        **retry_kwargs,
                     )
                     translation_runtime = getattr(translator, "last_runtime", None)
                     if translation_runtime is not None:
@@ -1040,27 +1081,28 @@ class Genesis:
                 )
                 return
 
+            # Translation stage cost should reflect the forge output prior to
+            # Pantheon screening/reforge. Pantheon revisions are tracked in the
+            # dedicated pantheon cost bucket/runtime surface instead.
             cost.translation_cost = sum(t.cost_usd for t in translations)
 
-            if self._config.use_pantheon_mode and translations:
+            if pantheon is not None and pantheon_state is not None and translations:
                 try:
-                    from hephaestus.pantheon import PantheonCoordinator
-
-                    pantheon = PantheonCoordinator(
-                        athena_harness=self._harnesses.get("pantheon_athena", self._harnesses["decompose"]),
-                        hermes_harness=self._harnesses.get("pantheon_hermes", self._harnesses["search"]),
-                        apollo_harness=self._harnesses.get("pantheon_apollo", self._harnesses["defend"]),
-                        max_rounds=self._config.pantheon_max_rounds,
-                        require_unanimity=self._config.pantheon_require_unanimity,
-                        allow_fail_closed=self._config.pantheon_allow_fail_closed,
-                        max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
+                    screened_translations, pantheon_state = await pantheon.screen_translations(
+                        translations=translations,
+                        state=pantheon_state,
                     )
+                    if pantheon_state is not None:
+                        pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
+                        cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
+                        lens_runtime["pantheon"] = pantheon_state.to_dict()
                     translations, pantheon_state = await pantheon.deliberate(
                         problem=problem,
                         structure=structure,
-                        translations=translations,
+                        translations=screened_translations,
                         translator=translator,
                         baseline_dossier=baseline_dossier,
+                        state=pantheon_state,
                     )
                     if pantheon_state is not None:
                         pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
@@ -1109,15 +1151,9 @@ class Genesis:
                 perplexity_model=self._config.perplexity_model,
             )
             verified = await verifier.verify(translations, structure)
-            if self._config.use_pantheon_mode and pantheon_state is not None:
+            if pantheon is not None and pantheon_state is not None:
                 try:
-                    from hephaestus.pantheon import PantheonCoordinator
-
-                    pantheon_state = PantheonCoordinator(
-                        athena_harness=self._harnesses.get("pantheon_athena", self._harnesses["decompose"]),
-                        hermes_harness=self._harnesses.get("pantheon_hermes", self._harnesses["search"]),
-                        apollo_harness=self._harnesses.get("pantheon_apollo", self._harnesses["defend"]),
-                    ).finalize_with_verified(pantheon_state, verified)
+                    pantheon_state = pantheon.finalize_with_verified(pantheon_state, verified)
                     pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
                     cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
                     lens_runtime["pantheon"] = pantheon_state.to_dict()

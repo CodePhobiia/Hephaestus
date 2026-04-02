@@ -102,6 +102,13 @@ def build_continuation_summary(
                 line += f" (source: {inv.source_domain})"
             if inv.score:
                 line += f" [score: {inv.score}]"
+            if inv.pantheon_state is not None:
+                verdict = inv.pantheon_final_verdict or "UNKNOWN"
+                line += (
+                    f" [pantheon: verdict={verdict}"
+                    f", consensus={inv.pantheon_consensus_achieved}"
+                    f", rounds={inv.pantheon_rounds}]"
+                )
             inv_lines.append(line)
         sections.append("## Inventions\n" + "\n".join(inv_lines))
 

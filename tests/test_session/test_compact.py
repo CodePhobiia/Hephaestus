@@ -224,11 +224,16 @@ class TestShouldCompact:
 class TestBuildContinuationSummary:
     def test_includes_inventions(self):
         s = _large_session()
+        s.inventions[0].pantheon_state = {"mode": "pantheon"}
+        s.inventions[0].pantheon_final_verdict = "NOVEL"
+        s.inventions[0].pantheon_consensus_achieved = True
+        s.inventions[0].pantheon_rounds = 2
         entries = s.transcript[:50]
         summary = build_continuation_summary(entries, s)
         assert "Solar Widget" in summary
         assert "biology" in summary
         assert "8.0" in summary
+        assert "pantheon" in summary.lower()
 
     def test_includes_user_requests(self):
         s = _make_session()

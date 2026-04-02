@@ -140,6 +140,11 @@ class InventionSnapshot:
     lens_bundle_id: str = ""
     lens_reference_generation: int = 0
     lens_composites: list[str] = field(default_factory=list)
+    pantheon_state: dict[str, Any] | None = None
+    pantheon_consensus_achieved: bool = False
+    pantheon_final_verdict: str = ""
+    pantheon_rounds: int = 0
+    pantheon_winning_candidate_id: str = ""
     timestamp: str = field(default_factory=_now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -153,6 +158,11 @@ class InventionSnapshot:
             "lens_bundle_id": self.lens_bundle_id,
             "lens_reference_generation": self.lens_reference_generation,
             "lens_composites": list(self.lens_composites),
+            "pantheon_state": dict(self.pantheon_state) if isinstance(self.pantheon_state, dict) else None,
+            "pantheon_consensus_achieved": self.pantheon_consensus_achieved,
+            "pantheon_final_verdict": self.pantheon_final_verdict,
+            "pantheon_rounds": self.pantheon_rounds,
+            "pantheon_winning_candidate_id": self.pantheon_winning_candidate_id,
             "timestamp": self.timestamp,
         }
 
@@ -168,6 +178,15 @@ class InventionSnapshot:
             lens_bundle_id=data.get("lens_bundle_id", ""),
             lens_reference_generation=int(data.get("lens_reference_generation", 0) or 0),
             lens_composites=list(data.get("lens_composites", []) or []),
+            pantheon_state=(
+                dict(data.get("pantheon_state", {}) or {})
+                if isinstance(data.get("pantheon_state"), dict)
+                else None
+            ),
+            pantheon_consensus_achieved=bool(data.get("pantheon_consensus_achieved", False)),
+            pantheon_final_verdict=data.get("pantheon_final_verdict", ""),
+            pantheon_rounds=int(data.get("pantheon_rounds", 0) or 0),
+            pantheon_winning_candidate_id=data.get("pantheon_winning_candidate_id", ""),
             timestamp=data.get("timestamp", _now()),
         )
 

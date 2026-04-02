@@ -206,6 +206,55 @@ def export_markdown(report: Any, config: ExportConfig | None = None) -> str:
                     lines.append(f"- {item}")
                 lines.append("")
 
+    pantheon = getattr(report, "pantheon_state", None)
+    if pantheon is not None:
+        lines.append("## Pantheon Council")
+        lines.append("")
+        lines.append(f"- Mode: `{getattr(pantheon, 'mode', 'inactive')}`")
+        lines.append(f"- Consensus achieved: `{bool(getattr(pantheon, 'consensus_achieved', False))}`")
+        lines.append(f"- Final verdict: `{getattr(pantheon, 'final_verdict', 'UNKNOWN')}`")
+        winning_candidate_id = getattr(pantheon, "winning_candidate_id", "")
+        if winning_candidate_id:
+            lines.append(f"- Winning candidate: `{winning_candidate_id}`")
+        canon = getattr(pantheon, "canon", None)
+        if canon is not None and getattr(canon, "structural_form", ""):
+            lines.append(f"- Athena canon: {getattr(canon, 'structural_form', '')}")
+        dossier = getattr(pantheon, "dossier", None)
+        if dossier is not None and getattr(dossier, "repo_reality_summary", ""):
+            lines.append(f"- Hermes dossier: {getattr(dossier, 'repo_reality_summary', '')}")
+        screenings = getattr(pantheon, "screenings", []) or []
+        if screenings:
+            lines.append("")
+            lines.append("### Pre-Council Screening")
+            for screening in screenings[:6]:
+                lines.append(
+                    f"- `{screening.candidate_id}` survived=`{bool(getattr(screening, 'survived', False))}` "
+                    f"priority={float(getattr(screening, 'priority_score', 0.0) or 0.0):.2f}"
+                )
+                summary = getattr(screening, "summary", "")
+                if summary:
+                    lines.append(f"  {summary}")
+        rounds = getattr(pantheon, "rounds", []) or []
+        if rounds:
+            lines.append("")
+            lines.append("### Council Rounds")
+            for round_ in rounds[-4:]:
+                lines.append(
+                    f"- Round {getattr(round_, 'round_index', '?')}: "
+                    f"`{getattr(round_, 'candidate_id', '')}` "
+                    f"consensus=`{bool(getattr(round_, 'consensus', False))}`"
+                )
+                summary = getattr(round_, "revision_summary", "")
+                if summary:
+                    lines.append(f"  {summary}")
+        unresolved = getattr(pantheon, "unresolved_vetoes", []) or []
+        if unresolved:
+            lines.append("")
+            lines.append("### Unresolved Vetoes")
+            for item in unresolved[:8]:
+                lines.append(f"- {item}")
+        lines.append("")
+
     # Cost
     if cfg.include_cost:
         lines.append("## Generation Metadata")

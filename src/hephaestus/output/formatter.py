@@ -1002,6 +1002,13 @@ def _pantheon_markdown_lines(state: Any) -> list[str]:
         f"  Consensus achieved: `{bool(_lookup(state, 'consensus_achieved', False))}`",
         f"  Final verdict: `{_as_text(_lookup(state, 'final_verdict', ''), 'UNKNOWN')}`",
     ]
+    initial_structure = getattr(state, "initial_structure", None)
+    pipeline_structure = getattr(state, "pipeline_structure", None)
+    if isinstance(initial_structure, dict) and isinstance(pipeline_structure, dict):
+        lines.append(
+            f"  - Athena revised structure: `{initial_structure.get('structure', '')}` → "
+            f"`{pipeline_structure.get('structure', '')}`"
+        )
     canon = _lookup(state, "canon", None)
     if canon is not None:
         lines.append(f"  - Athena canon: {_as_text(_lookup(canon, 'structural_form', ''), 'n/a')}")
@@ -1016,6 +1023,12 @@ def _pantheon_markdown_lines(state: Any) -> list[str]:
         lines.append(f"  - Unresolved vetoes: {', '.join(f'`{item}`' for item in unresolved)}")
     if failure_reason:
         lines.append(f"  - Failure reason: {_as_text(failure_reason)}")
+    for screening in getattr(state, "screenings", [])[:4]:
+        lines.append(
+            f"  - Pre-council: `{getattr(screening, 'candidate_id', '')}` "
+            f"survived=`{bool(getattr(screening, 'survived', False))}` "
+            f"priority=`{float(getattr(screening, 'priority_score', 0.0) or 0.0):.2f}`"
+        )
     for round_ in list(_lookup(state, "rounds", []) or [])[-3:]:
         lines.append(
             f"  - Round {_lookup(round_, 'round_index', '?')}: "
@@ -1034,6 +1047,13 @@ def _pantheon_plain_lines(state: Any) -> list[str]:
         f"  Consensus achieved: {bool(_lookup(state, 'consensus_achieved', False))}",
         f"  Final verdict: {_as_text(_lookup(state, 'final_verdict', ''), 'UNKNOWN')}",
     ]
+    initial_structure = getattr(state, "initial_structure", None)
+    pipeline_structure = getattr(state, "pipeline_structure", None)
+    if isinstance(initial_structure, dict) and isinstance(pipeline_structure, dict):
+        lines.append(
+            f"  Athena revised structure: {initial_structure.get('structure', '')} -> "
+            f"{pipeline_structure.get('structure', '')}"
+        )
     canon = _lookup(state, "canon", None)
     if canon is not None:
         lines.append(f"  Athena canon: {_as_text(_lookup(canon, 'structural_form', ''), 'n/a')}")
@@ -1048,6 +1068,12 @@ def _pantheon_plain_lines(state: Any) -> list[str]:
         lines.append(f"  Unresolved vetoes: {', '.join(unresolved)}")
     if failure_reason:
         lines.append(f"  Failure reason: {_as_text(failure_reason)}")
+    for screening in getattr(state, "screenings", [])[:4]:
+        lines.append(
+            f"  Pre-council: {getattr(screening, 'candidate_id', '')} "
+            f"survived={bool(getattr(screening, 'survived', False))} "
+            f"priority={float(getattr(screening, 'priority_score', 0.0) or 0.0):.2f}"
+        )
     for round_ in list(_lookup(state, "rounds", []) or [])[-3:]:
         lines.append(
             f"  Round {_lookup(round_, 'round_index', '?')}: "
