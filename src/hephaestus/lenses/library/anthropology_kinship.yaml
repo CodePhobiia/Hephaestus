@@ -1,0 +1,39 @@
+name: Kinship Systems
+domain: anthropology
+subdomain: kinship_systems
+
+axioms:
+  - "Kinship is a classificatory technology, not a biological description: every culture groups relatives into named categories that determine rights, obligations, and prohibitions, and these classifications diverge dramatically from genetic relatedness."
+  - "Descent rules determine group membership: patrilineal systems trace group belonging through fathers only; matrilineal through mothers only; bilateral through both — the rule chosen determines who is inside and outside every social unit."
+  - "Alliance theory treats marriage as a transaction between groups, not individuals: marriage exchanges create or reinforce alliances between clans, tribes, or lineages; the individuals are conduits for inter-group relationship formation."
+  - "Incest taboos function to force exogamy: prohibiting mating within the group forces members to form bonds with outside groups, creating a network of alliance obligations that would not exist if in-group reproduction were permitted."
+  - "Avunculate asymmetry reveals descent logic: in matrilineal societies, the mother's brother often holds the authority role over a child that the father holds in patrilineal societies — tracing power through descent lines exposes hidden structural logic."
+  - "Teknonymy and name taboos encode power relations: prohibitions on using certain names, or renaming practices after key events, are not superstition — they encode and reinforce social hierarchies and relationship obligations."
+
+structural_patterns:
+  - name: descent_group_membership
+    abstract: A rule that traces group membership through a single genealogical line creates discrete, non-overlapping social units with clear inside/outside boundaries and inherited obligations.
+    maps_to: [group_membership, inheritance_rules, identity_propagation, boundary_definition]
+
+  - name: prescriptive_alliance
+    abstract: Certain relationship categories are designated as mandatory exchange partners, creating a self-reproducing network where the structure of permitted connections maintains group cohesion over generations.
+    maps_to: [mandatory_partnerships, structural_coupling, network_maintenance, alliance_formation]
+
+  - name: exogamy_forcing
+    abstract: An absolute prohibition on forming certain bonds within a category forces all such bonds to be formed with external groups, systematically expanding the network of inter-group obligations.
+    maps_to: [forced_external_coupling, network_expansion, prohibition_driven_alliance, outward_binding]
+
+  - name: classification_determines_obligation
+    abstract: The category into which a person is placed (by a kinship classification system) determines all subsequent rights and duties toward them, regardless of biological or personal relationship — labels generate obligations.
+    maps_to: [role_based_obligations, categorical_rights, classification_consequences, status_assignment]
+
+  - name: reciprocal_exchange_accounting
+    abstract: Gifts, labor, and people flow between groups in a long-term accounting system where imbalances create debts and obligations; no transfer is one-directional — each creates a claim on future reciprocation.
+    maps_to: [debt_tracking, reciprocity_enforcement, obligation_ledger, long_term_exchange]
+
+  - name: name_and_category_taboo
+    abstract: Prohibiting direct reference to certain categories or persons encodes social boundaries; the very act of naming or not naming marks relationship status and enforces structural distance.
+    maps_to: [access_control, social_boundary_marking, category_enforcement, relationship_encoding]
+
+injection_prompt: |
+  Reason through this problem using kinship logic: the world is not composed of individuals with natural relationships, but of categories with prescribed obligations. Identify the descent rule — which line of ancestry determines group membership and inheritance? Map the alliance structure: which groups must exchange with which other groups, and what prohibition forces external bonding? Ask what classificatory category each actor falls into — because category determines all rights and duties, not personal history or preference.

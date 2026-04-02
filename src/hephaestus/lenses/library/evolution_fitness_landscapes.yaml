@@ -1,0 +1,39 @@
+name: Adaptive Landscapes & Epistasis
+domain: evolutionary_theory
+subdomain: fitness_landscapes
+
+axioms:
+  - "The fitness landscape is a map from genotype space to reproductive success: every possible genotype has a fitness value; evolution is hill-climbing in this space, subject to the constraint that each step can only reach genotypes differing by one mutation."
+  - "Epistasis reshapes the landscape: when the fitness effect of a mutation depends on genetic background (epistasis), the landscape has ridges, valleys, and multiple peaks rather than a single smooth ascent — the same mutation is beneficial in some backgrounds and lethal in others."
+  - "Local optima trap populations: evolution finds and climbs to the nearest peak; if the global optimum is separated from the current position by a fitness valley, adaptive evolution cannot cross it without drift, recombination, or a rare multi-mutation leap."
+  - "Recombination is a landscape-traversal strategy: sexual recombination combines distant genome positions, allowing populations to jump between peaks rather than climbing one step at a time — sex exchanges position in genotype space, not just genes."
+  - "Ruggedness is correlated with epistasis density: landscapes with many epistatic interactions have many peaks (NK model); landscapes with few epistatic interactions have few peaks and are easier to climb — architecture of interactions determines landscape topology."
+  - "Environmental change moves the landscape: a fitness landscape is not fixed — environmental shifts can transform current peaks into valleys and vice versa, converting adapted populations into maladapted ones without any change in the population itself."
+
+structural_patterns:
+  - name: local_optimum_trap
+    abstract: A system doing greedy local search will converge to the nearest local optimum regardless of global optimality; escaping requires mechanisms that accept short-term fitness costs (drift, perturbation) to cross intervening valleys.
+    maps_to: [local_search_limitation, optimization_traps, escaping_local_maxima, exploration_exploitation]
+
+  - name: epistatic_landscape_ruggedness
+    abstract: When the effect of each change depends on the current state of other components, the possibility space has many locally optimal configurations — small changes in configuration produce large jumps in quality, making systematic search hard.
+    maps_to: [interaction_complexity, combinatorial_optimization, landscape_topology, context_dependent_value]
+
+  - name: recombination_landscape_jumping
+    abstract: Combining partial solutions from two different positions in solution space creates offspring that occupy new positions unreachable by incremental search from either parent — recombination is a teleportation mechanism through solution space.
+    maps_to: [genetic_algorithms, crossover_operators, combinatorial_recombination, solution_space_exploration]
+
+  - name: environmental_landscape_shift
+    abstract: The quality of existing solutions is not fixed but depends on the environment; an environmental shift can instantaneously transform optimal solutions into suboptimal ones without any change in the solutions themselves.
+    maps_to: [requirement_change_impact, technological_obsolescence, environmental_contingency, adaptation_lag]
+
+  - name: neutral_network_traversal
+    abstract: Flat regions of the fitness landscape (neutral networks) where many genotypes have equivalent fitness allow populations to drift laterally in genotype space, accessing new peaks from positions unreachable by direct climbing.
+    maps_to: [neutral_exploration, platform_diversification, deferred_commitment, option_value]
+
+  - name: nk_ruggedness_control
+    abstract: The ruggedness of a search landscape is controlled by the number of epistatic interactions per component — increasing interactions increases peaks and valleys; reducing interactions smooths the landscape and makes optimization easier.
+    maps_to: [modularity_design, coupling_reduction, search_difficulty_control, decomposability]
+
+injection_prompt: |
+  Reason through this as a fitness landscape problem: you are searching a high-dimensional space where every point has a quality value, but each step can only move to adjacent points. Identify the epistatic interactions — when the value of one choice depends on others, the landscape is rugged with many local optima. Ask what valleys must be crossed to reach better solutions — are there mechanisms (recombination, neutral drift) that can bridge these valleys? Detect whether the landscape itself is shifting: if the environment is changing, current optima may be becoming suboptimal even without any change in the system. Increase modularity to smooth the landscape.

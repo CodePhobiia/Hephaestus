@@ -1,0 +1,39 @@
+name: Principal-Agent Problems
+domain: organizational_theory
+subdomain: principal_agent
+
+axioms:
+  - "Information asymmetry is the root of all agency problems: the agent always knows more about their own effort, ability, and context than the principal — contracts and monitoring systems are attempts to work around this irreducible gap."
+  - "Moral hazard emerges when risk is transferred: once an agent is insulated from the consequences of their actions (by insurance, employment guarantees, or limited liability), they will take on more risk than the principal would choose."
+  - "Adverse selection in hiring: screening for unobservable quality is structurally impossible without clever mechanism design — market pressure drives out high-quality agents when buyers cannot distinguish them from low-quality agents (lemon problem)."
+  - "High-powered incentives create multi-tasking distortions: paying an agent strongly for measurable outcomes causes them to neglect unmeasured ones; the more complex the job, the more dangerous a single-metric incentive system becomes."
+  - "Signaling separates types in equilibrium: high-quality agents who cannot prove their quality will invest in costly signals (education, credentials) that low-quality agents cannot cost-effectively imitate, creating a separating equilibrium."
+  - "Ratchet effect destroys incentive to perform: if current high performance becomes the baseline for future targets, agents learn to suppress output to avoid raising their own benchmarks — dynamic incentive problems are harder than static ones."
+
+structural_patterns:
+  - name: moral_hazard_mitigation
+    abstract: When an actor does not bear the full cost of their risk choices, they take on excess risk; the mechanism must realign costs with choices, either by reducing insurance coverage or increasing the agent's stake in outcomes.
+    maps_to: [risk_alignment, incentive_design, skin_in_game, accountability_restoration]
+
+  - name: adverse_selection_screening
+    abstract: When buyers cannot observe quality before purchase, market competition drives out high-quality sellers; the mechanism must create observable signals or screening devices that separate high from low quality at tolerable cost.
+    maps_to: [quality_screening, market_design, adverse_selection_prevention, signal_design]
+
+  - name: multi_task_incentive_distortion
+    abstract: Strengthening incentives on a subset of an agent's activities causes the agent to reallocate effort away from unincentivized activities; complex jobs require incentive systems that preserve balance across all important tasks.
+    maps_to: [balanced_incentives, multi_objective_alignment, gaming_prevention, metric_design]
+
+  - name: separating_equilibrium_signaling
+    abstract: Costly signals that are affordable only to high-type agents create equilibria where types reveal themselves voluntarily through signal investment, enabling principals to sort without direct observation of the underlying quality.
+    maps_to: [credentialing, quality_signaling, type_revelation, costly_commitment]
+
+  - name: ratchet_effect
+    abstract: When future targets are set based on current performance, agents respond by suppressing output to avoid raising their own benchmarks — dynamic incentive systems must break the link between revealed capability and future expectations.
+    maps_to: [dynamic_incentives, benchmark_gaming, output_suppression, target_setting]
+
+  - name: monitoring_substitution
+    abstract: Direct monitoring of effort is often impossible; the principal can substitute output monitoring, peer monitoring, or market competition as indirect effort-elicitation mechanisms, each with different gaming vulnerabilities.
+    maps_to: [outcome_based_control, indirect_monitoring, gaming_vulnerability, effort_elicitation]
+
+injection_prompt: |
+  Apply principal-agent reasoning: assume the agent always knows more than the principal and has private interests that diverge from the principal's objectives. Identify the information asymmetry — what does the agent know that the principal cannot observe? Design incentives that account for multi-tasking distortion: strengthening reward on measured tasks will cause neglect of unmeasured ones. Watch for the ratchet effect: will agents suppress performance to avoid raising future baselines? Ask what costly signals reveal true type, and what adverse selection pressures drive out quality when type is unobservable.

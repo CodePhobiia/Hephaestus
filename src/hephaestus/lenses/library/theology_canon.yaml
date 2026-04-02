@@ -1,0 +1,39 @@
+name: Canon & Orthodoxy Formation
+domain: theology
+subdomain: canon_formation
+
+axioms:
+  - "Canon formation is retrospective authorization: texts and teachings are declared authoritative after they have already circulated and shaped communities; the canon ratifies a de facto consensus rather than imposing a new one."
+  - "Orthodoxy requires heresy to define itself: correct doctrine is only specifiable by contrast with incorrect doctrine; heresy is not prior to orthodoxy but simultaneous with it — they define each other through exclusion."
+  - "Apostolic succession as authentication chain: authority is transmitted through an unbroken lineage of ordained successors; the validity of a claim depends entirely on the integrity of the chain, not the merit of the claimant."
+  - "Interpretation controls meaning more than text: fixing the canonical text does not fix meaning — each generation re-interprets the text to address contemporary questions, using hermeneutical principles that are themselves contested."
+  - "Councils function as distributed consensus mechanisms: doctrine is settled by assembling representatives from multiple independent centers, requiring supermajority agreement across geographically distributed communities to achieve legitimacy."
+  - "Apocrypha and deuterocanon mark the boundary problem: the edges of the canon are always contested — inclusion and exclusion of marginal texts reveals the contested values that the core texts do not resolve."
+
+structural_patterns:
+  - name: retrospective_canonization
+    abstract: A distributed community produces outputs that circulate informally; at a later point, an authority reviews the circulated outputs and formally designates some as canonical, transforming de facto influence into de jure authority.
+    maps_to: [standard_ratification, de_facto_to_de_jure, community_driven_standards, post_hoc_authorization]
+
+  - name: mutual_constitution_through_exclusion
+    abstract: A category is defined by explicitly excluding its boundary cases; the act of identifying and condemning deviant variants is not incidental to definition but constitutive of it — identity requires defined others.
+    maps_to: [boundary_definition, negative_definition, adversarial_specification, identity_through_contrast]
+
+  - name: authentication_chain
+    abstract: Validity of an actor's authority depends not on their demonstrated competence or merit but on the integrity of an unbroken transmission chain from an original authorizing source — authority is genealogical, not functional.
+    maps_to: [chain_of_trust, certificate_hierarchy, authority_delegation, legitimacy_provenance]
+
+  - name: interpretive_plasticity
+    abstract: A fixed canonical text can generate indefinitely many interpretations across time because the hermeneutical principles used to read it are distinct from the text itself and evolve independently.
+    maps_to: [specification_ambiguity, interpretation_divergence, semantic_drift, living_document]
+
+  - name: distributed_supermajority_consensus
+    abstract: Doctrine is settled only when independent representatives from geographically separated communities each achieve agreement, requiring that consensus emerge from distributed deliberation rather than central decree.
+    maps_to: [distributed_consensus, supermajority_requirement, multi_stakeholder_agreement, legitimacy_through_breadth]
+
+  - name: boundary_contestation
+    abstract: The core of a canonical set is stable while its edges are perpetually contested; marginal cases reveal the unresolved value conflicts that the core cases cannot adjudicate — boundary disputes are diagnostic of deeper disagreements.
+    maps_to: [edge_case_analysis, boundary_conflicts, contested_inclusion, value_conflict_diagnosis]
+
+injection_prompt: |
+  Reason through this using canon formation logic: canonical authority is rarely created top-down — it ratifies existing de facto consensus. What has already achieved widespread informal adoption that could now be formally recognized? Define the boundaries by their exclusions: what must be labeled heretical or out-of-scope to make the core definition coherent? Identify the authentication chain — does authority here flow through a genealogy of delegation, or through demonstrated merit? Where are the apocryphal borderline cases, and what unresolved value conflicts do they reveal?

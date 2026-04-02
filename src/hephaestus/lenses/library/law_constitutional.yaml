@@ -1,0 +1,39 @@
+name: Checks & Balances
+domain: law
+subdomain: constitutional_design
+
+axioms:
+  - "Power corrupts monotonically: any single actor given uncontested authority will over time optimize for self-perpetuation rather than the stated purpose. Structural constraints must prevent power concentration, not rely on virtue."
+  - "Veto points as friction: constitutional design deliberately inserts multiple independent approval requirements for consequential actions, ensuring that no single actor can unilaterally impose irreversible change."
+  - "Separation of powers is functional, not formal: the key insight is not that functions must be labeled differently, but that no single actor should be simultaneously the rule-maker, the executor, and the judge of their own compliance."
+  - "Federalism distributes power spatially: by allocating different functions to different territorial levels, the system creates multiple independent power centers that can check each other geographically."
+  - "Constitutional entrenchment requires supermajority: the rules about rules are harder to change than ordinary rules, creating a hierarchy of commitments that resists short-term majorities rewriting the game."
+  - "Rights as side-constraints on majority rule: certain outcomes are taken off the table entirely regardless of democratic preference — some decisions cannot be made even by unanimous vote."
+
+structural_patterns:
+  - name: veto_point_architecture
+    abstract: Multiple independent actors must each approve a consequential action before it takes effect; any one actor's refusal blocks the action, distributing blocking power across the system.
+    maps_to: [multi_party_approval, deadlock_prevention, power_distribution, consensus_requirement]
+
+  - name: separation_of_functions
+    abstract: Rule-making, rule-execution, and rule-adjudication are assigned to distinct actors who cannot simultaneously hold all three roles, preventing any actor from being judge in their own case.
+    maps_to: [role_separation, conflict_of_interest_prevention, audit_independence, accountability]
+
+  - name: entrenchment_layering
+    abstract: A hierarchy of rules where higher-level rules require greater consensus to change, making foundational commitments resistant to short-term political pressure while keeping ordinary rules flexible.
+    maps_to: [immutability_gradients, constitutional_constraints, rule_hierarchy, change_resistance]
+
+  - name: rights_as_side_constraints
+    abstract: Certain outcomes are categorically excluded from the decision space regardless of aggregate preference, establishing domains where collective choice mechanisms do not apply.
+    maps_to: [hard_constraints, inalienable_properties, off_limits_design, veto_rights]
+
+  - name: federalism_redundancy
+    abstract: Authority is distributed across multiple independent territorial nodes, each capable of experimenting, failing, and providing alternative governance models without system-wide consequences.
+    maps_to: [distributed_authority, redundant_governance, local_experimentation, jurisdictional_diversity]
+
+  - name: mutual_surveillance
+    abstract: Each power center is given both the incentive and the institutional tools to monitor and constrain the other power centers, creating a network of reciprocal accountability without a central supervisor.
+    maps_to: [mutual_monitoring, decentralized_accountability, adversarial_oversight, peer_auditing]
+
+injection_prompt: |
+  Approach this problem through constitutional design: assume that any actor given unchecked power will eventually abuse it, so the architecture itself must enforce constraints. Identify which actors hold rule-making, execution, and adjudication power — are they separated? Map the veto points: which independent actors must each approve consequential actions? Distinguish ordinary rules (easy to change) from constitutional rules (requiring supermajority). Identify which outcomes should be placed off the table entirely as rights-constraints, immune to aggregate preference.

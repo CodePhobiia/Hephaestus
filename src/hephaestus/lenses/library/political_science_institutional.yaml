@@ -1,0 +1,39 @@
+name: Institutional Checks
+domain: political_science
+subdomain: separation_of_powers
+
+axioms:
+  - "Ambition must be made to counteract ambition: institutional design cannot rely on virtuous actors — it must create structural incentives where each power center's self-interest requires it to constrain the other power centers."
+  - "Principal-agent chains multiply distortion: every layer of delegation between a principal and the ultimate actor introduces slack where agents pursue private interests; long chains of delegation produce severe policy distortion."
+  - "Veto players determine policy stability: the number of actors with the formal or informal ability to block change determines how difficult it is to alter the status quo; more veto players produce more stable but less adaptable systems."
+  - "Legislative-executive deadlock is a feature, not a bug: in systems with separated powers, gridlock during divided government is the predictable outcome of deliberate design — it prevents rapid bad policy as well as rapid good policy."
+  - "Judicial review creates a constitutional referee: the assignment of constitution-interpretation authority to a non-elected body insulates certain decisions from majoritarian pressure, at the cost of creating a third veto player accountable to no constituency."
+  - "Bureaucratic autonomy trades responsiveness for expertise: insulated agencies make technically superior decisions but are less accountable to democratic preferences; the optimal insulation level depends on the technical intensity of the policy domain."
+
+structural_patterns:
+  - name: interest_aligned_constraint
+    abstract: Rather than relying on altruism or external enforcement, the system assigns each actor a role whose private interests naturally motivate them to constrain other actors, making self-interest and system function coincide.
+    maps_to: [incentive_alignment, self_enforcing_constraints, mechanism_design, interest_based_governance]
+
+  - name: veto_player_count
+    abstract: The number of actors who must individually agree before a change occurs directly determines the status quo bias of the system — each additional veto player multiplicatively increases the cost of collective action.
+    maps_to: [change_resistance, status_quo_protection, consensus_requirement, reform_difficulty]
+
+  - name: delegation_chain_distortion
+    abstract: Authority delegated through multiple intermediaries accumulates distortion at each link; the final output reflects the preferences and constraints of every intermediate agent, not just the original principal.
+    maps_to: [delegation_distortion, hierarchy_fidelity, agency_slack, chain_of_command_analysis]
+
+  - name: insulation_expertise_tradeoff
+    abstract: Removing an agency from direct political control increases its technical quality but decreases its responsiveness to democratic preferences; the optimal insulation level depends on whether the task is primarily technical or primarily normative.
+    maps_to: [independence_design, expert_autonomy, accountability_tradeoff, technical_governance]
+
+  - name: divided_government_stasis
+    abstract: When different actors control different veto points and have incompatible preferences, the system defaults to policy stasis — change requires the alignment of multiple independently elected veto players, which happens rarely.
+    maps_to: [gridlock_analysis, coalition_building, preference_alignment_requirement, reform_windows]
+
+  - name: constitutional_referee_legitimacy
+    abstract: An unelected actor given authority to invalidate decisions by elected bodies derives legitimacy not from democratic authorization but from procedural neutrality and the appearance of mechanical rule-application.
+    maps_to: [counter_majoritarian_authority, procedural_legitimacy, arbitration_design, neutral_arbiter]
+
+injection_prompt: |
+  Reason through this using separation of powers logic: do not assume actors will behave virtuously — instead, design the structure so that self-interest motivates constraint. Map the veto players: how many actors must each affirmatively agree before any change can occur, and what does this imply about the system's capacity for adaptation versus stability? Identify delegation chains and measure their distortion. When you find an insulated expert body, ask: is this domain primarily technical or normative, and is the current insulation level appropriate? Seek the structural conditions for alignment of veto players rather than expecting voluntary cooperation.

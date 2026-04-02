@@ -1,0 +1,39 @@
+name: Institutional Evolution
+domain: history
+subdomain: institutional_evolution
+
+axioms:
+  - "Institutions are rules that reduce transaction costs: they persist because they lower the cost of repeated interactions between parties by making behavior predictable — not because they are optimal, but because the cost of changing them exceeds their inefficiency."
+  - "Path dependence locks in early choices: the first institution to occupy a function gains self-reinforcing advantages as complementary institutions, behaviors, and skills accumulate around it, making later reversal exponentially costly."
+  - "Institutional complementarities create coherent clusters: institutions in a society co-evolve to reinforce each other; a labor market institution, a legal system, and an educational system form an interdependent cluster that resists piecemeal reform."
+  - "Critical junctures are windows of plasticity: institutions are stable most of the time but experience brief high-malleability windows (wars, crises, revolutions) when the existing equilibrium is disrupted and new paths become possible."
+  - "Organizational interests and institutional survival decouple: institutions persist long after the original purpose is obsolete because the humans embedded in them have private interests in their continuation — personnel outlast purpose."
+  - "Gradual institutional change through layering and conversion: institutions rarely die; they accumulate new rules on top of old ones (layering) or are repurposed for new functions while retaining old forms (conversion)."
+
+structural_patterns:
+  - name: path_dependence_lock_in
+    abstract: The costs of switching to an alternative path increase over time as complementary adaptations accumulate; the system becomes more locked in to its initial choice regardless of whether a superior alternative exists.
+    maps_to: [lock_in, switching_cost_escalation, legacy_dependency, first_mover_advantage]
+
+  - name: critical_juncture_plasticity
+    abstract: A normally rigid system enters a brief high-malleability phase during exogenous shocks, during which competing alternatives have genuine probability of adoption; outside this window, change costs become prohibitive again.
+    maps_to: [window_of_opportunity, crisis_driven_change, punctuated_change, regime_transition]
+
+  - name: institutional_layering
+    abstract: New rules are added on top of existing rules rather than replacing them, creating accumulated strata of sometimes-contradictory policies that interact in complex ways while preserving all prior vested interests.
+    maps_to: [backward_compatibility, legacy_accumulation, policy_stratification, incremental_addition]
+
+  - name: institutional_conversion
+    abstract: An existing institution retains its formal structure while being redirected toward a new purpose by actors who exploit its existing legitimacy and infrastructure without triggering the resistance that formal abolition would cause.
+    maps_to: [repurposing, functional_redirect, legacy_exploitation, stealth_transformation]
+
+  - name: complementarity_cluster
+    abstract: A set of institutions mutually reinforce each other such that reform of any one member without simultaneously reforming the others produces perverse outcomes — the system can only be changed as a coherent package.
+    maps_to: [systemic_reform, interdependency, co_evolution, package_change_requirement]
+
+  - name: vested_interest_persistence
+    abstract: Institutions survive beyond their functional purpose because embedded actors with private interests in their continuation will mobilize to prevent abolition, decoupling organizational survival from social utility.
+    maps_to: [incumbent_protection, change_resistance, organizational_self_preservation, stakeholder_capture]
+
+injection_prompt: |
+  Analyze this through the lens of institutional evolution: institutions persist not because they are optimal but because switching costs escalate over time as complementary adaptations accumulate around them. Identify the path dependencies — which early choices have locked in current constraints? Look for the critical juncture: is the system currently in a rare high-plasticity window? Map the institutional complementarities: which elements must change together, because piecemeal reform of one element alone will fail? Identify layering and conversion — are new functions being added on top of old structures?

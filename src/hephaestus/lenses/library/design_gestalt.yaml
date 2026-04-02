@@ -1,0 +1,39 @@
+name: Gestalt Principles
+domain: design
+subdomain: gestalt_psychology
+
+axioms:
+  - "The whole is different from the sum of its parts: perception organizes elements into unified wholes before analyzing components — the perceived gestalt has properties that no individual element possesses."
+  - "Proximity creates grouping without instruction: elements close together are perceived as belonging to the same group regardless of any explicit marking — spatial arrangement imposes structure on perception before cognition engages."
+  - "Similarity groups across distance: elements sharing visual properties (color, shape, texture) are perceived as a group even when widely separated — shared properties create virtual connections that override spatial distance."
+  - "Closure fills in absent information: the mind completes incomplete shapes using the simplest possible completion consistent with available evidence — gaps are filled by predictive extrapolation, not by registering absence."
+  - "Figure-ground segregation is ambiguous and bistable: any configuration can be perceived as either figure or ground; the assignment is not in the stimulus but in the perceptual act, and bistable figures prove that the same signal supports multiple interpretations."
+  - "Prägnanz (good form) is the governing principle: perception always resolves toward the simplest, most regular, most symmetric interpretation that is consistent with the available evidence."
+
+structural_patterns:
+  - name: emergent_whole
+    abstract: A configuration of elements generates a perceived entity whose properties are not present in any element; the emergent entity has its own structure, meaning, and behavior that cannot be derived by summing element-level analysis.
+    maps_to: [emergence, system_properties, holistic_analysis, composition_effects]
+
+  - name: proximity_grouping
+    abstract: Spatial or temporal closeness of elements creates implicit grouping without explicit markers — the arrangement of elements in space or time imposes organizational structure on the perceiver.
+    maps_to: [implicit_organization, layout_design, clustering, spatial_encoding]
+
+  - name: figure_ground_ambiguity
+    abstract: Any configuration can be parsed as figure against ground in multiple valid ways; the selected parsing determines what is attended to and what recedes — the same stimulus supports multiple valid organizational frames.
+    maps_to: [framing_effects, perspective_switching, multi_stable_interpretation, context_dependency]
+
+  - name: closure_extrapolation
+    abstract: A system perceives a complete pattern from partial evidence by extrapolating using the simplest consistent completion — gaps in information are filled by predictive inference rather than represented as absence.
+    maps_to: [pattern_completion, gap_filling, predictive_inference, incomplete_data_handling]
+
+  - name: common_fate_grouping
+    abstract: Elements that move together or change together are perceived as belonging to the same group, even when static they would appear unrelated — shared dynamics create grouping that static form does not.
+    maps_to: [co_movement_detection, dynamic_grouping, correlated_behavior, synchrony_detection]
+
+  - name: praegnanz_simplification
+    abstract: When multiple interpretations are consistent with available evidence, the perceived interpretation is the simplest, most regular, most symmetric one — systems converge on minimum-description-length interpretations automatically.
+    maps_to: [parsimony, occams_razor, minimum_complexity, default_to_simplest]
+
+injection_prompt: |
+  Reason through this using Gestalt perception logic: the whole is perceived before the parts, and the whole has properties no part possesses. Ask what implicit groupings are being created by the proximity and similarity structure — are elements that should be seen as separate being accidentally grouped? Identify the figure-ground assignment: what is being foregrounded as figure and what is receding as background, and could this assignment be inverted? Apply Prägnanz: the system will default to the simplest consistent interpretation — design with that default in mind, or disrupt it deliberately.

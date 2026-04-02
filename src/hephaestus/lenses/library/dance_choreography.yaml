@@ -1,0 +1,39 @@
+name: Choreography & Ensemble Coordination
+domain: dance
+subdomain: choreography
+
+axioms:
+  - "Unison creates power through temporal alignment: when multiple bodies execute the same movement at the same instant, the visual and kinesthetic impact is multiplicative, not additive — synchrony amplifies perceived force, intention, and coherence."
+  - "Canon and phase offset create visual depth: the same movement phrase performed by different dancers at staggered time offsets produces a ripple effect that makes the choreographic architecture visible — temporal displacement reveals spatial structure."
+  - "Effort qualities define movement character: Laban's effort framework (weight, time, space, flow) classifies movement not by its shape but by its quality — a punch and a dab occupy different effort space regardless of similar trajectory."
+  - "Counterpoint between bodies creates compositional complexity: two or more dancers performing contrasting phrases simultaneously create visual counterpoint where the audience perceives relationships between the phrases that neither phrase contains alone."
+  - "Breath is the fundamental organizing rhythm: the inhalation-exhalation cycle structures all movement phrasing — movement initiated on the breath feels organic and continuous; movement against the breath feels percussive and intentional."
+  - "Spatial formations carry meaning: circles suggest community and ritual; lines suggest hierarchy and direction; clusters suggest intimacy; scattered formations suggest isolation — the spatial arrangement of bodies is an independent meaning channel."
+
+structural_patterns:
+  - name: unison_synchronization
+    abstract: Multiple independent agents performing the same action at the same time produce an emergent effect far exceeding the sum of individual actions — precise temporal alignment is a force multiplier for collective impact.
+    maps_to: [synchronization_amplification, coordinated_action, collective_impact, temporal_alignment]
+
+  - name: canon_phase_offset
+    abstract: The same sequence performed by different agents at staggered time offsets reveals the structural architecture of the sequence — temporal displacement makes spatial and logical relationships visible that simultaneous execution hides.
+    maps_to: [staggered_rollout, wave_propagation, phased_deployment, temporal_architecture]
+
+  - name: effort_quality_classification
+    abstract: Actions are classified not by their trajectory or outcome but by the quality of energy invested — weight (light/strong), time (sudden/sustained), space (direct/indirect), and flow (bound/free) define character independent of form.
+    maps_to: [qualitative_classification, execution_style, manner_of_action, energy_profile]
+
+  - name: movement_counterpoint
+    abstract: Two or more agents performing contrasting actions simultaneously create a perceived compositional relationship between their actions that does not exist in either action alone — complexity emerges from juxtaposition.
+    maps_to: [contrastive_composition, parallel_processing_insights, juxtaposition_design, emergent_relationship]
+
+  - name: spatial_formation_semantics
+    abstract: The geometric arrangement of agents in space carries meaning independent of what any agent is doing — the shape of the group communicates hierarchy, community, isolation, or direction without any individual action.
+    maps_to: [topology_as_meaning, spatial_encoding, formation_design, group_geometry]
+
+  - name: breath_phrasing_rhythm
+    abstract: A fundamental biological oscillation (inhalation-exhalation) provides the organizing rhythm for all action phrases — movements initiated with the breath feel organic and sustained; movements against it feel percussive and deliberate.
+    maps_to: [natural_rhythm, phrasing_structure, organic_timing, cyclical_coordination]
+
+injection_prompt: |
+  Apply choreographic ensemble reasoning: coordination between independent agents is not just about executing the same task but about the timing relationships between their actions. Unison (simultaneous identical action) creates amplified collective impact. Canon (staggered identical action) reveals structural architecture invisible in simultaneous execution. Counterpoint (simultaneous contrasting action) creates perceived relationships between independent processes. Classify actions not by outcome but by effort quality — the manner of execution carries independent meaning. Spatial formation encodes structure: the geometry of agents communicates relationships independent of individual actions.

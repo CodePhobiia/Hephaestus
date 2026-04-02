@@ -1,0 +1,39 @@
+name: Discourse & Conversation Analysis
+domain: linguistics
+subdomain: discourse_analysis
+
+axioms:
+  - "Conversation is turn-taking governed by implicit rules: speakers project completion points through intonation, syntax, and gaze; listeners predict these points to minimize gap (average 200ms) between turns. Overlap and gap are deviations from the normative timing, each carrying distinct pragmatic meaning."
+  - "Repair organization: when communication breaks down, participants deploy a structured repair mechanism ranging from self-initiated self-repair (simplest) to other-initiated other-repair (most socially costly). The repair escalation ladder reveals the cost of coordination failure and the resources available to resolve it."
+  - "Adjacency pairs are the fundamental structural unit: question→answer, greeting→greeting, offer→acceptance/rejection. The first pair part creates a normative expectation — the second part is conditionally relevant, and its absence is noticed and interpreted."
+  - "Context is not a container — it is built moment by moment through interaction. What 'this conversation is about' is itself a jointly constructed achievement, not a pre-existing frame. Participants constantly negotiate contextual boundaries through contextualization cues (code-switching, register shift, laughter)."
+  - "Preference organization: speakers design their turns to display a preference for certain types of responses (acceptance over rejection, agreement over disagreement). Dispreferred responses are marked by delay, hedging, mitigation, and accounts. The asymmetry between preferred and dispreferred responses reveals the normative structure of the interaction."
+  - "Footing and frame shifts: speakers constantly change their relationship to their own utterances — quoting someone else, speaking 'as a professional', speaking ironically. These footing shifts recontextualize what counts as the speaker's actual commitment to the content."
+
+structural_patterns:
+  - name: turn_taking_projection
+    abstract: Participants predict transition points through structural signals, coordinating hand-off with minimal gap. The projection mechanism reveals when one unit of processing is expected to complete and the next is invited.
+    maps_to: [transition_points, timing_prediction, coordination_handoff, flow_control]
+
+  - name: repair_escalation_ladder
+    abstract: When coordination fails, a structured escalation from simplest/cheapest repair (self-initiated self-repair) to most complex/costly (other-initiated other-repair) provides a graceful recovery path. The escalation path reveals failure severity.
+    maps_to: [error_recovery, graceful_degradation, repair_cost_scaling, escalation_protocol]
+
+  - name: adjacency_pair_completion
+    abstract: An initial action creates a normative expectation for a specific type of responsive action. The absence of the expected response is itself meaningful — silence communicates. The system tracks outstanding expectations.
+    maps_to: [request_response, expectation_tracking, missing_response_detection, social_protocol]
+
+  - name: contextual_construction
+    abstract: The frame of interaction is built incrementally through participant actions rather than pre-specified. Contextualization cues (register, style, framing devices) continuously signal what kind of activity is underway.
+    maps_to: [context_negotiation, frame_building, contextualization_cues, dynamic_framing]
+
+  - name: preference_asymmetry
+    abstract: Responses to actions are structurally asymmetric — some responses require more work (delay, hedging, elaboration) than others. This asymmetry reveals the normative valence built into the interaction structure.
+    maps_to: [response_cost, normative_valence, structural_bias, effort_signaling]
+
+  - name: footing_shift
+    abstract: A participant changes their relationship to their own message — the source, commitment level, or frame shifts without changing the channel. This recontextualizes the authority, accountability, and stance associated with content.
+    maps_to: [frame_shifting, source_attribution, accountability_transfer, stance_management]
+
+injection_prompt: |
+  You are now reasoning through discourse and conversation analysis. Communication is a structured activity with turn-taking rules, repair mechanisms, adjacency pairs, and preference organization. The context is not pre-given — participants build it moment by moment through their actions. Ask: what are the adjacency pairs in this system (what action creates what expectation)? How does repair work when coordination fails — is there a structured escalation? What contextualization cues signal what kind of activity is underway? Where are the preference asymmetries (which responses are 'easier' and which require extra work)? Footing shifts — who is speaking, as what, with what commitment level?

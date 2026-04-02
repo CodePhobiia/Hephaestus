@@ -1,0 +1,39 @@
+name: Trophic Cascades
+domain: ecology
+subdomain: trophic_cascades
+
+axioms:
+  - "Apex predators regulate ecosystem structure through behavior modification: the fear of predation changes where prey animals go and what they eat, not just how many survive — the 'landscape of fear' shapes vegetation patterns through behavioral suppression alone."
+  - "Trophic cascades propagate across three or more levels: removing an apex predator releases mesopredators, which suppress prey, which releases primary producers — indirect effects often exceed direct effects in magnitude and reach."
+  - "Keystones hold disproportionate ecological weight: a keystone species has ecological impact far exceeding its biomass contribution; its removal causes ecosystem restructuring that much more abundant species could not counteract."
+  - "Mesopredator release is the primary cascading mechanism: when apex predators are removed, medium-sized predators that were previously suppressed expand dramatically, exerting control over lower trophic levels that the apex predator never directly influenced."
+  - "Trophic cascades are modulated by productivity: strong top-down control (carnivore regulation of herbivores) dominates in productive systems; bottom-up resource limitation dominates in low-productivity systems — the same removal has different consequences in different contexts."
+  - "Functional redundancy buffers against cascade: when multiple species can fill the same trophic role, the removal of one does not trigger a cascade because others compensate — redundancy at each trophic level is an ecosystem's shock absorber."
+
+structural_patterns:
+  - name: apex_cascade_propagation
+    abstract: Removal of or restoration to the highest control level propagates effects downward through multiple levels of a control hierarchy — indirect effects reach components that had no direct connection to the removed element.
+    maps_to: [hierarchical_cascade, indirect_effects, top_level_control, multi_level_dependency]
+
+  - name: behavior_modification_suppression
+    abstract: A controller shapes a system not primarily through direct elimination of elements but by modifying where and how lower-level actors operate — the threat of intervention changes behavior even when the intervention rarely occurs.
+    maps_to: [deterrence, threat_based_control, behavioral_constraint, indirect_governance]
+
+  - name: keystone_disproportionality
+    abstract: Certain components exert control over system structure far exceeding what their abundance or size would predict — their ecological role is structurally irreplaceable, and their removal triggers disproportionate restructuring.
+    maps_to: [critical_dependency, non_proportional_influence, single_point_of_failure, structural_importance]
+
+  - name: mesopredator_release
+    abstract: Suppressing a top-level controller releases an intermediate controller that then exerts strong pressure on a level the top controller never directly contacted — the middle layer magnifies and transmits the top-level removal effect.
+    maps_to: [middle_layer_amplification, indirect_control, suppression_removal_effects, hierarchical_release]
+
+  - name: productivity_context_dependence
+    abstract: Whether top-down or bottom-up controls dominate a system depends on the overall resource environment — the same structural intervention produces different outcomes in high-resource versus low-resource contexts.
+    maps_to: [context_dependent_outcomes, resource_mediated_effects, environmental_contingency, ecological_conditionality]
+
+  - name: functional_redundancy_buffering
+    abstract: When multiple components can perform the same function, removing one is absorbed by the others — the system's resilience depends on how many alternatives exist at each critical level, not just whether any alternatives exist.
+    maps_to: [redundancy_design, failover_capacity, resilience_quantification, single_point_elimination]
+
+injection_prompt: |
+  Apply trophic cascade logic: removing or restoring a single top-level element can restructure everything below through chains of indirect effects you would never detect by analyzing direct connections alone. Identify the keystones — which components hold disproportionate structural weight relative to their size or frequency? Map the mesopredator layer: what middle-tier controllers are currently suppressed by top-tier controllers, and what happens if the top tier is removed? Ask whether this system is top-down controlled (high-productivity) or bottom-up resource-limited — the same intervention has opposite implications in each regime.

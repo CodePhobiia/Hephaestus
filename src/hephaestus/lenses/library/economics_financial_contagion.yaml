@@ -1,0 +1,39 @@
+name: Financial Network Contagion
+domain: economics
+subdomain: financial_networks
+
+axioms:
+  - "Balance sheet linkages transmit shocks: when bank A holds assets that are liabilities of bank B, a shock to B's solvency immediately impairs A's assets — the network topology of interbank claims determines whether shocks remain local or propagate systemically."
+  - "Fire sale externalities amplify distress: a distressed institution selling assets depresses prices, impairing the balance sheets of all holders of those assets, forcing further sales — a liquidity spiral can transmit solvency problems to unconnected institutions."
+  - "Too-interconnected-to-fail differs from too-big-to-fail: size alone does not determine systemic importance — a small institution that is uniquely positioned in the network (high betweenness centrality) can be more systemically dangerous than a large peripheral one."
+  - "Short-term funding creates rollover vulnerability: institutions that fund long-term assets with short-term liabilities face rollover risk — even a solvent institution can fail if short-term creditors refuse to roll over simultaneously, producing self-fulfilling runs."
+  - "Network topology has phase transitions: financial networks exhibit robust-yet-fragile properties — a connected network is resilient to small shocks because risk is diversified, but catastrophically fragile to large shocks because connection channels become contagion channels."
+  - "Opacity amplifies systemic risk: when institutions cannot observe each other's balance sheets, uncertainty about who holds toxic assets causes indiscriminate counterparty withdrawal, spreading contagion beyond actual transmission channels."
+
+structural_patterns:
+  - name: balance_sheet_contagion
+    abstract: When actor A's assets include claims on actor B, a shock to B's solvency propagates directly to A through the accounting relationship — the network of financial obligations is the anatomy of contagion transmission.
+    maps_to: [dependency_chain_failure, cascading_defaults, liability_network_analysis, exposure_mapping]
+
+  - name: fire_sale_spiral
+    abstract: A forced seller's price impact on common assets impairs other holders' balance sheets, triggering their forced selling, further depressing prices — a liquidity mechanism transmits distress to parties with no direct financial relationship.
+    maps_to: [price_impact_externality, cascade_amplification, common_exposure, liquidity_crisis]
+
+  - name: rollover_run_equilibrium
+    abstract: "A system dependent on short-term funding faces a coordination game: if creditors expect others to withdraw, it is rational to withdraw first even from a solvent counterparty — self-fulfilling crises emerge from pure coordination failure."
+    maps_to: [bank_run_dynamics, coordination_failure, self_fulfilling_prophecy, short_term_funding_risk]
+
+  - name: centrality_based_systemic_importance
+    abstract: Systemic risk is determined by position in the network — specifically betweenness centrality and connectivity — not by size; a small but highly-connected node may be more dangerous than a large peripheral one.
+    maps_to: [network_centrality, systemic_importance, position_based_risk, graph_topology_analysis]
+
+  - name: robust_yet_fragile_topology
+    abstract: The same network property — connectivity — provides resilience to small shocks through diversification and catastrophic fragility to large shocks by creating efficient contagion channels; the network is safe or dangerous depending on shock magnitude relative to a threshold.
+    maps_to: [phase_transition_risk, connectivity_tradeoff, threshold_fragility, resilience_fragility_duality]
+
+  - name: opacity_driven_panic
+    abstract: When the holders of toxic assets cannot be identified, uncertainty spreads contagion fear to all counterparties; information asymmetry transforms a localized problem into a systemic crisis through precautionary withdrawal.
+    maps_to: [information_contagion, opacity_amplification, precautionary_withdrawal, transparency_design]
+
+injection_prompt: |
+  Reason through this as a financial contagion problem: the question is not the magnitude of the initial shock but how the network topology amplifies or absorbs it. Map the balance sheet linkages — who holds whose liabilities? Identify fire-sale common exposures: which assets are held by multiple actors such that a forced sale by one impairs all? Find the rollover vulnerability: who is funding long-term positions with short-term obligations that could fail to roll in a coordination equilibrium? Measure systemic importance by network centrality, not size. Ask whether opacity is converting a localized problem into a panic.

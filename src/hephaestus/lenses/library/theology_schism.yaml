@@ -1,0 +1,39 @@
+name: Schism Dynamics
+domain: theology
+subdomain: schism_and_reform
+
+axioms:
+  - "Schisms are precipitated by specific triggers but caused by accumulated structural strain: the visible dispute over a doctrine or practice is rarely the actual cause — it is the final stressor that makes visible a pre-existing fracture."
+  - "Reformation movements follow a predictable arc: charismatic founder identifies institutional corruption and proposes return to original purity; movement gains followers; either captured by existing institution or expelled into independent existence."
+  - "The reform movement reproduces the structure it opposes: schismatic groups establish their own hierarchy, canon, and orthodoxy over time — the pattern of institutionalization repeats regardless of the founding ideology."
+  - "Schism requires legitimizing narrative of original purity: splinter groups claim to represent the authentic original teaching that the main body has corrupted; both sides compete for the title of legitimate successor to the founding authority."
+  - "Geographic and linguistic boundaries accelerate doctrinal divergence: when communities cannot communicate frequently, small theological differences amplify over time into incompatible systems — separation enables divergence."
+  - "Syncretic heresies threaten identity coherence: when outside cultural elements are incorporated into a system without formal integration, they create internal incoherence that either must be purged (orthodoxy) or absorbed (syncretism) — unstable middle states generate schism."
+
+structural_patterns:
+  - name: accumulated_strain_trigger
+    abstract: A system accumulates structural stress through long-term drift between official doctrine and lived practice; a triggering event makes the gap visible, but the fracture was present long before the trigger appeared.
+    maps_to: [technical_debt, latent_failure, organizational_crisis, stress_accumulation]
+
+  - name: reformation_arc
+    abstract: A critic identifies the gap between stated ideals and current practice, proposes return to original purity, attracts a coalition, and either reforms the institution from within or is expelled and creates a competing institution.
+    maps_to: [disruption_cycle, reform_pattern, ideological_critique, founding_new_system]
+
+  - name: structural_reproduction
+    abstract: Movements that form in opposition to a structure consistently reproduce that same structure as they scale — hierarchy, orthodoxy, and bureaucracy re-emerge regardless of founding ideology because they solve the same coordination problems.
+    maps_to: [institutional_inevitability, coordination_convergence, anti_pattern_reproduction, scaling_constraints]
+
+  - name: legitimacy_competition
+    abstract: When a system fractures, both successor factions claim to be the authentic original, and the contest is decided not by objective historical accuracy but by control of key symbols, texts, and succession chains.
+    maps_to: [brand_dispute, origin_narrative_competition, legitimacy_signaling, fork_governance]
+
+  - name: separation_driven_divergence
+    abstract: Communities that are separated physically or communicatively will diverge in their interpretations over time through independent adaptation; the longer the separation, the greater the divergence, making reunification progressively harder.
+    maps_to: [version_divergence, fork_drift, network_partition_effects, reunification_cost]
+
+  - name: syncretic_instability
+    abstract: When incompatible conceptual elements from different systems are combined without formal reconciliation, they create internal contradictions that generate ongoing pressure for resolution — either through purge of the foreign element or its full integration.
+    maps_to: [integration_conflicts, incompatible_components, consistency_pressure, hybrid_instability]
+
+injection_prompt: |
+  Apply schism dynamics: the visible conflict is rarely the actual cause — identify the accumulated structural strain that the trigger event made visible. Is there a gap between official doctrine and lived practice that has been widening for years? Look for the reformation arc: who is the critic proposing return to original purity, and are they inside or outside the institution? When a fork occurs, analyze the legitimacy competition: both sides will claim original authenticity — which controls the key symbols, texts, and succession chains? Predict the reproduction pattern: the new movement will recreate hierarchy and orthodoxy regardless of founding ideology.

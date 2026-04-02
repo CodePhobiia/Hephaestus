@@ -1,0 +1,39 @@
+name: Spectral Graph Theory
+domain: math
+subdomain: spectral_graph_theory
+
+axioms:
+  - "The eigenvalues of the graph Laplacian encode global structure: the second smallest eigenvalue (algebraic connectivity / Fiedler value) measures how well-connected the graph is — small Fiedler value means the graph nearly disconnects; large means it is well-integrated."
+  - "The eigenvectors partition the graph: the eigenvector corresponding to the second smallest Laplacian eigenvalue (Fiedler vector) naturally partitions the vertices into two groups corresponding to the best balanced cut — the graph's geometry is encoded in its spectral decomposition."
+  - "Random walks and spectra are dual: the mixing time of a random walk on a graph — how long it takes to lose memory of starting position — is governed by the spectral gap (difference between the two largest eigenvalues of the walk matrix)."
+  - "Cheeger's inequality connects spectrum to geometry: the spectral gap lower-bounds the isoperimetric number (ratio of boundary to volume of sets), and vice versa — you can detect bottlenecks analytically without finding them geometrically."
+  - "Expander graphs achieve near-optimal connectivity at low cost: regular graphs with large spectral gaps maintain global connectivity while having few edges — they are efficient networks that resist removal of small edge sets."
+  - "Graph spectra reveal symmetry: two graphs with identical spectra (isospectral) have the same number of cycles of every length; detecting graph isomorphism is harder than spectral comparison but the spectrum is a fingerprint of structural regularity."
+
+structural_patterns:
+  - name: spectral_bottleneck_detection
+    abstract: The smallest non-trivial eigenvalue of the connection matrix identifies the system's most significant structural bottleneck — small eigenvalues signal where the system nearly fractures, even when the fracture is not geometrically obvious.
+    maps_to: [bottleneck_analysis, connectivity_weakness, network_vulnerability, partition_detection]
+
+  - name: eigenvector_partitioning
+    abstract: The eigenvectors associated with small eigenvalues provide a low-dimensional embedding of the network that places tightly connected nodes near each other, enabling geometric reasoning about network structure.
+    maps_to: [community_detection, clustering, dimensionality_reduction, graph_embedding]
+
+  - name: spectral_gap_mixing_rate
+    abstract: The gap between the leading eigenvalues governs how quickly information or random processes lose memory of their starting point — large spectral gap means fast mixing, small gap means slow diffusion and persistent clustering.
+    maps_to: [information_diffusion, consensus_speed, mixing_time, propagation_analysis]
+
+  - name: expander_efficient_connectivity
+    abstract: Sparse graphs with large spectral gaps achieve global connectivity and fast information diffusion with minimal edges — expander structure is the optimal tradeoff between connection cost and communication efficiency.
+    maps_to: [network_design_optimization, fault_tolerance, communication_efficiency, sparse_connectivity]
+
+  - name: cheeger_isoperimetric_bound
+    abstract: The ratio of boundary size to interior volume for any subset of the network is bounded above and below by functions of the spectral gap — detecting cuts, flows, and bottlenecks can be done algebraically without geometric enumeration.
+    maps_to: [flow_analysis, cut_detection, boundary_size_estimation, algebraic_geometry]
+
+  - name: spectral_fingerprinting
+    abstract: The spectrum of a network is a compact invariant that captures structural regularity — comparing spectra detects structural similarity between networks without requiring explicit isomorphism testing.
+    maps_to: [structural_comparison, network_fingerprint, invariant_extraction, similarity_detection]
+
+injection_prompt: |
+  Apply spectral graph theory reasoning: the structure of any network is encoded in the eigenvalues and eigenvectors of its connection matrix — you do not need to enumerate paths to understand connectivity. Find the bottleneck by computing the Fiedler value: the second-smallest eigenvalue reveals where the network is weakest. Measure mixing speed through the spectral gap: small gap means information diffuses slowly, clusters persist, consensus is hard. Look for expander-like structure — sparse but high-gap networks that achieve efficient global connectivity. Use eigenvector embeddings to place nodes in space where proximity indicates structural similarity.

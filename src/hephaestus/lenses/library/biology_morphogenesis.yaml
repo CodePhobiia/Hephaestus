@@ -1,0 +1,39 @@
+name: Morphogenesis & Embryogenesis
+domain: biology
+subdomain: developmental_biology
+
+axioms:
+  - "Positional information through morphogen gradients: a small number of cells secrete diffusible signaling molecules whose concentration gradient provides cells with positional coordinates — cells read their position and differentiate accordingly."
+  - "Induction is context-dependent competence: a cell's response to a signal depends on its prior history (competence state) — the same signal produces different responses in cells with different developmental histories."
+  - "Turing's reaction-diffusion mechanism generates patterns from homogeneity: a short-range activator and long-range inhibitor can spontaneously break uniform symmetry and generate periodic spatial patterns (stripes, spots) without a pre-existing template."
+  - "Cell fate decisions are bistable: cells toggle between discrete stable states (identities) rather than existing on a continuum; below a threshold they remain undifferentiated, above it they irreversibly commit to a fate."
+  - "Heterochrony — changes in developmental timing produce major morphological change: altering when a developmental event occurs (earlier, later, extended, truncated) transforms morphology without changing the underlying genetic instruction set."
+  - "Robustness through redundancy and canalization: developmental pathways are buffered against genetic and environmental perturbations by multiple redundant mechanisms; Waddington's epigenetic landscape has channels (canals) that guide outcomes even when perturbed."
+
+structural_patterns:
+  - name: morphogen_gradient_coordinates
+    abstract: A source-sink diffusion system creates a continuous spatial coordinate system; downstream actors read their position from local concentration and execute position-specific responses without direct communication with the source.
+    maps_to: [spatial_coordination, gradient_based_routing, distributed_sensing, positional_encoding]
+
+  - name: reaction_diffusion_symmetry_breaking
+    abstract: A homogeneous system with a local activator and longer-range inhibitor spontaneously generates periodic spatial patterns from a uniform initial state — complex structure emerges from simple local rules without a template.
+    maps_to: [spontaneous_pattern_formation, emergent_structure, self_organization, template_free_design]
+
+  - name: bistable_fate_commitment
+    abstract: A system with two stable attractor states and a threshold between them makes discrete, irreversible commitments when external signals push it past the threshold — intermediate states are unstable and rapidly resolve.
+    maps_to: [irreversible_commitment, threshold_decisions, digital_states, toggle_switch]
+
+  - name: inductive_context_dependence
+    abstract: The same signal produces different responses in receivers with different prior states — the response to an input is determined not by the input alone but by the interaction of the input with the receiver's accumulated history.
+    maps_to: [context_dependent_processing, state_dependent_response, history_sensitivity, conditional_execution]
+
+  - name: heterochronic_reprogramming
+    abstract: Changing the timing of a developmental event — accelerating, delaying, extending, or truncating it — produces major organizational change without altering the underlying instruction set; timing is an independent control variable.
+    maps_to: [scheduling_effects, timing_optimization, sequence_variation, temporal_reprogramming]
+
+  - name: canalized_robustness
+    abstract: Multiple partially redundant pathways converge on the same developmental outcome; perturbations are absorbed by rerouting through alternative pathways rather than disrupting the outcome — robust systems have many paths to the same destination.
+    maps_to: [fault_tolerance, redundant_pathways, robustness_design, graceful_degradation]
+
+injection_prompt: |
+  Reason through this using developmental biology: complex structure can emerge from simple local rules through reaction-diffusion dynamics — you do not need a blueprint to generate a pattern. Identify the morphogen gradients: where does a source-to-sink signal concentration create positional coordinates that downstream components can read? Look for bistable commitment points where the system is about to toggle irreversibly — these are the moments of maximum leverage. Apply canalization thinking: design multiple redundant pathways to the same output, not a single brittle route. Ask whether timing can be changed to transform the outcome heterochronically.

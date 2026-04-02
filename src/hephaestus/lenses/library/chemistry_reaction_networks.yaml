@@ -1,0 +1,39 @@
+name: Catalysis & Reaction Networks
+domain: chemistry
+subdomain: catalysis_networks
+
+axioms:
+  - "A catalyst lowers activation energy without being consumed: it provides an alternative reaction pathway with lower energy barrier; the catalyst participates in intermediates but is regenerated — it changes the rate without appearing in the stoichiometric equation."
+  - "Rate-determining steps compress complex pathways: in a multi-step reaction, the slowest step controls the overall rate — optimizing fast steps has no effect on total throughput; all leverage is concentrated in the single bottleneck step."
+  - "Reaction networks can oscillate and generate spatial patterns: coupled reactions far from equilibrium (Belousov-Zhabotinsky) produce temporal oscillations and traveling chemical waves — dissipative structures emerge from nonlinear kinetics."
+  - "Autocatalysis creates positive feedback: when a product catalyzes its own formation, the reaction starts slowly, then accelerates exponentially — autocatalytic systems exhibit bifurcation between null and self-sustaining states."
+  - "Le Chatelier's principle: any perturbation to a chemical equilibrium drives the system in the direction that partially opposes the perturbation — the system has homeostatic resistance to change that must be overcome by sustained force."
+  - "Enzyme kinetics follow Michaelis-Menten saturation: at low substrate concentration, rate is proportional to substrate; at high concentration, all enzyme sites are occupied and rate saturates regardless of additional substrate — resource saturation is universal."
+
+structural_patterns:
+  - name: catalytic_pathway_substitution
+    abstract: A facilitator provides an alternative lower-cost route between two states without being consumed in the process; the facilitator's presence changes the rate of transformation without changing the starting or ending states.
+    maps_to: [facilitation, intermediary_design, activation_cost_reduction, pathway_engineering]
+
+  - name: rate_limiting_step_concentration
+    abstract: In any multi-step process, one step controls total throughput; optimizing all other steps produces zero improvement; all productive intervention must target the single bottleneck in the sequence.
+    maps_to: [bottleneck_identification, throughput_optimization, constraint_theory, leverage_analysis]
+
+  - name: autocatalytic_runaway
+    abstract: A process in which the output accelerates its own production starts slowly, crosses a bifurcation threshold, and then grows supralinearly until resources are exhausted — the initial slow phase masks the approaching explosion.
+    maps_to: [positive_feedback, viral_growth, tipping_points, bifurcation_detection]
+
+  - name: le_chatelier_resistance
+    abstract: A system in equilibrium partially opposes any perturbation by shifting in the direction that counteracts the change — homeostatic feedback means external force must be sustained, not one-time, to produce lasting displacement.
+    maps_to: [homeostasis, feedback_resistance, equilibrium_restoration, sustained_intervention_requirement]
+
+  - name: saturation_kinetics
+    abstract: "A process mediated by a limited number of facilitators follows a hyperbolic rate curve: linear at low load, saturating at high load regardless of further increase — the facilitator count is the binding constraint at high utilization."
+    maps_to: [resource_saturation, capacity_limits, throughput_ceiling, queueing_theory]
+
+  - name: dissipative_oscillation
+    abstract: Coupled nonlinear processes far from equilibrium can settle into sustained oscillatory or spatially patterned states — these are not artifacts but stable dynamical attractors maintained by continuous energy input.
+    maps_to: [oscillatory_systems, limit_cycles, emergent_patterns, nonequilibrium_stability]
+
+injection_prompt: |
+  Apply catalytic network reasoning: every complex process has a rate-determining step — find it, because all optimization leverage is there and nowhere else. Look for catalytic opportunities: can you introduce a facilitator that lowers the activation cost of the bottleneck step without being consumed? Identify autocatalytic loops where outputs accelerate their own production — these are bifurcation risks that look slow until they are suddenly irreversible. Apply Le Chatelier: the system will resist your intervention; perturbations must be sustained, not one-time, to produce permanent displacement. Map saturation: where are facilitator resources fully occupied?

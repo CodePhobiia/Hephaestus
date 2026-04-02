@@ -1,0 +1,39 @@
+name: OS Kernel & Process Scheduling
+domain: cs
+subdomain: operating_systems
+
+axioms:
+  - "The kernel is a trusted intermediary that enforces resource isolation: every process believes it has a dedicated machine; the kernel maintains this illusion through hardware-enforced privilege levels and virtual address spaces that prevent cross-process interference."
+  - "Preemption prevents monopolization: a cooperative scheduler can be starved by a non-yielding process; preemptive scheduling uses hardware timer interrupts to forcibly reclaim the CPU from any process, guaranteeing fairness without cooperation."
+  - "Context switching costs are the tax on concurrency: every switch between processes requires saving all CPU state and restoring another — high context switch frequency buys responsiveness at the cost of CPU time spent doing useful work."
+  - "The scheduler makes three-way tradeoffs: maximizing throughput (total work done), minimizing latency (time to first response), and ensuring fairness (no starvation) are mutually conflicting goals; no scheduler optimizes all three simultaneously."
+  - "Virtual memory decouples logical from physical address spaces: processes operate in private virtual spaces; the kernel maps these to physical memory using page tables, enabling memory isolation, demand paging, and over-commitment."
+  - "Deadlock requires four simultaneous conditions: mutual exclusion, hold-and-wait, no preemption of resources, and circular waiting — removing any one condition breaks deadlock, and prevention strategies each target one condition."
+
+structural_patterns:
+  - name: privilege_level_isolation
+    abstract: A system enforces multiple privilege tiers where lower-privilege actors cannot directly access or modify higher-privilege resources; the boundary is enforced by hardware, not convention, making violation impossible rather than merely prohibited.
+    maps_to: [sandboxing, privilege_separation, security_boundary, access_control_enforcement]
+
+  - name: preemptive_scheduling
+    abstract: An external timer mechanism periodically interrupts every running process and forces a scheduling decision, preventing any single actor from monopolizing shared resources through non-cooperation.
+    maps_to: [fairness_enforcement, resource_timesharing, starvation_prevention, cooperative_dependency_removal]
+
+  - name: virtual_resource_multiplexing
+    abstract: Each consumer is given a private logical view of a resource that appears dedicated but is actually shared; the intermediary translates between logical and physical views, enabling isolation without physical dedication.
+    maps_to: [virtualization, resource_abstraction, namespace_isolation, logical_physical_separation]
+
+  - name: deadlock_condition_breaking
+    abstract: A circular dependency between resource holders can only occur when four conditions hold simultaneously; preventing deadlock requires eliminating any one condition — resource ordering, timeout-based preemption, or wait-die schemes each target one condition.
+    maps_to: [deadlock_prevention, circular_dependency, resource_ordering, lock_management]
+
+  - name: scheduler_tradeoff_surface
+    abstract: Scheduling algorithms occupy different points on a multi-dimensional tradeoff surface between throughput, latency, and fairness — understanding a workload means identifying which dimension matters most and choosing the scheduler accordingly.
+    maps_to: [performance_tradeoffs, workload_matching, qos_design, resource_allocation_strategy]
+
+  - name: demand_paging_over_commitment
+    abstract: Resources are not allocated fully at request time but are provisioned lazily when actually accessed; this enables over-commitment (promising more than physically available) with the bet that not all allocations will be used simultaneously.
+    maps_to: [lazy_provisioning, resource_over_commitment, just_in_time_allocation, capacity_planning]
+
+injection_prompt: |
+  Apply OS kernel reasoning: assume multiple competing actors share limited resources and cannot trust each other. The design question is not 'how do they cooperate?' but 'how does a trusted intermediary enforce isolation and fairness?' Identify the privilege boundaries: which actors can access which resources, enforced structurally, not by convention? Map the scheduling problem: are you optimizing throughput, latency, or fairness — pick one, because you can't maximize all three. Look for deadlock conditions: are there circular hold-and-wait dependencies? Apply virtual multiplexing: give each actor a private logical view while sharing physical resources.

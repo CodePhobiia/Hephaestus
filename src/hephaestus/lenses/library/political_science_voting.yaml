@@ -1,0 +1,39 @@
+name: Social Choice & Voting Paradoxes
+domain: political_science
+subdomain: voting_systems
+
+axioms:
+  - "Arrow's impossibility theorem: no voting system can simultaneously satisfy unanimity, independence of irrelevant alternatives, and non-dictatorship when there are three or more choices — any aggregation procedure must sacrifice at least one desirable property."
+  - "Condorcet cycles mean collective preference can be intransitive: even when every individual has transitive preferences, the group can prefer A over B, B over C, and C over A simultaneously — collective rationality is not guaranteed by individual rationality."
+  - "Agenda control is outcome control: in pairwise voting, the order in which alternatives are considered determines the winner; the agenda-setter has decisive power without ever casting a vote."
+  - "Strategic voting decouples revealed from true preference: rational actors vote not for their preferred option but for the option that best advances their interests given their beliefs about others' votes — sincere and strategic voting produce different social outcomes."
+  - "Single-peaked preferences enable median voter theorem: if preferences are one-dimensional and single-peaked, the median voter's preference is always in the Condorcet winning set — political competition converges on the median under these conditions."
+  - "Gibbard-Satterthwaite theorem: every non-dictatorial voting rule for three or more alternatives is susceptible to strategic manipulation — no aggregation mechanism can make truth-telling a dominant strategy for all voters simultaneously."
+
+structural_patterns:
+  - name: aggregation_impossibility
+    abstract: Any mechanism for combining individual preferences into a collective ranking must sacrifice at least one of a set of independently desirable properties; there is no perfect aggregation, only tradeoffs between failure modes.
+    maps_to: [aggregation_tradeoffs, impossibility_results, collective_decision_limits, preference_combination]
+
+  - name: agenda_power
+    abstract: In sequential pairwise comparison, the actor who controls the order of comparisons controls the outcome without any direct influence on individual preferences — structural position in the process substitutes for substantive power.
+    maps_to: [procedural_control, meeting_design, sequencing_power, process_manipulation]
+
+  - name: strategic_misrepresentation
+    abstract: Rational actors in collective decision processes will misrepresent their true preferences when doing so produces better outcomes given beliefs about others' behavior — eliciting true preferences requires mechanism design that makes honesty dominant.
+    maps_to: [incentive_compatibility, strategic_behavior, preference_revelation, mechanism_design]
+
+  - name: median_voter_convergence
+    abstract: When preferences are distributed along a single dimension and are single-peaked, competition converges on the median position; any position other than the median is dominated by a position closer to the median.
+    maps_to: [competitive_equilibrium, center_seeking, dimension_reduction, convergence_dynamics]
+
+  - name: condorcet_cycle_instability
+    abstract: A system of pairwise comparisons can produce cyclic collective preferences — A beats B, B beats C, C beats A — making the collective ranking unstable and highly sensitive to agenda-setting.
+    maps_to: [preference_cycling, instability_detection, collective_rationality_failure, transitivity_violation]
+
+  - name: irrelevant_alternative_effects
+    abstract: The introduction or removal of options that are not selected changes the outcome of the choice between remaining options, creating vulnerability to manipulation through the strategic addition of dominated choices.
+    maps_to: [decoy_effect, option_set_sensitivity, ranking_manipulation, independence_violation]
+
+injection_prompt: |
+  Reason through this using social choice theory: collective decisions are not simply the sum of individual preferences — they are artifacts of the aggregation mechanism, and different mechanisms produce different outcomes from identical preference distributions. Identify the agenda structure: who controls the order of consideration, and how does that determine the result? Ask whether the preference space is one-dimensional (enabling median voter analysis) or multi-dimensional (enabling cycling). Treat revealed preferences as potentially strategic misrepresentations of true preferences, and design the mechanism to make honesty the dominant strategy.

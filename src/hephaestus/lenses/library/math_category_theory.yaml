@@ -1,0 +1,39 @@
+name: Category Theory & Functoriality
+domain: math
+subdomain: category_theory
+
+axioms:
+  - "Objects are secondary to morphisms: category theory deliberately ignores the internal structure of objects and focuses entirely on the arrows between them — what a thing IS matters less than what it maps TO and FROM."
+  - "Composition is the fundamental operation: any two compatible morphisms can be composed into a single morphism; the entire structure of mathematics can be expressed as composition of maps rather than description of objects."
+  - "A functor is a structure-preserving map between categories: it translates objects and morphisms from one category to another while preserving composition and identity — it is a mathematical claim that two domains share the same abstract structure."
+  - "Natural transformations are maps between functors: when two functors translate the same category in different ways, a natural transformation is a coherent family of morphisms that relates the two translations — it is a morphism of morphisms."
+  - "Universal properties define objects uniquely up to isomorphism: rather than constructing a mathematical object, category theory defines it as 'the object such that all other objects relate to it in this specific way' — definition by role, not by substance."
+  - "Adjoint functors are everywhere: for nearly every mathematical construction, there is a corresponding adjoint — the existence of an adjunction between functors signals a deep duality between two operations that appear unrelated."
+
+structural_patterns:
+  - name: morphism_first_analysis
+    abstract: Rather than analyzing the internal structure of components, focus on the mappings between them — a component is fully characterized by all the things it maps to and from, not by its internal constitution.
+    maps_to: [interface_based_design, behavioral_specification, black_box_analysis, relationship_mapping]
+
+  - name: functor_structure_preservation
+    abstract: A translation between two domains that preserves compositional structure reveals that the two domains share the same abstract organizational pattern — functorial translations are proofs of structural identity between apparently different systems.
+    maps_to: [isomorphism_detection, cross_domain_translation, structure_preserving_mapping, abstraction_layer]
+
+  - name: universal_property_definition
+    abstract: An object is uniquely characterized by specifying the role it plays in relation to all other objects — the definition is by relational role, not by internal construction, and any two objects satisfying the same role are interchangeable.
+    maps_to: [role_based_specification, interface_definition, substitutability, canonical_form]
+
+  - name: natural_transformation_coherence
+    abstract: When two different mappings exist between the same domains, a natural transformation is a coherent family of connections that relates them — coherence means the connections work uniformly regardless of which path is taken.
+    maps_to: [consistency_across_implementations, polymorphism, interface_compatibility, canonical_equivalence]
+
+  - name: adjunction_duality
+    abstract: Many pairs of operations that appear unrelated are actually adjoint — one is the 'most efficient way to go left' and the other is the 'most efficient way to go right' — and recognizing the adjunction reveals the deep duality.
+    maps_to: [duality_detection, optimization_duality, inverse_operations, symmetry_recognition]
+
+  - name: composition_decomposition
+    abstract: Any complex map can be factored into a composition of simpler maps; any large problem can be decomposed into a sequence of morphisms; the problem of construction reduces to the problem of composability.
+    maps_to: [modular_decomposition, pipeline_design, compositional_architecture, factorization]
+
+injection_prompt: |
+  Reason through this using category theory: forget what the components ARE internally and focus entirely on what they map to and from. Two systems share structure if there is a functor between them — look for structure-preserving translations rather than surface analogies. Define each key component by its universal property: 'the object such that everything else relates to it in this way.' Ask whether any two operations are adjoint — if operation A and operation B always undo each other in a structured way, the adjunction reveals a deep duality worth exploiting. Compose rather than construct.

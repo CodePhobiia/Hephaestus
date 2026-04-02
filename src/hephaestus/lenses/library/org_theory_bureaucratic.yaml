@@ -1,0 +1,39 @@
+name: Organizational Inertia
+domain: organizational_theory
+subdomain: bureaucratic_pathologies
+
+axioms:
+  - "Goal displacement is universal: organizations created to achieve objectives develop over time into organisms primarily concerned with self-perpetuation; the original goal becomes a legitimizing myth rather than an operational target."
+  - "Parkinson's Law: work expands to fill the time available for its completion; bureaucracies expand not because there is more work but because administrators seek to build empires and justify their existence through subordinate headcount."
+  - "Trained incapacity: the skills and procedures that make an organization effective in stable environments become liabilities when conditions change — competence in the old regime is incompetence in the new one."
+  - "The iron law of oligarchy: democratic and participatory organizations inevitably evolve toward oligarchic control as leaders acquire information advantages, organizational resources, and self-perpetuating tenure."
+  - "Formal rules displace judgment: as organizations age, formal procedures replace individual discretion — rules accumulate faster than conditions change, eventually producing bureaucracies that can execute procedures but cannot solve problems."
+  - "Institutional memory as inertia: accumulated organizational routines, role definitions, and informal norms constitute a form of memory that resists change — the organization's past makes it slow to adapt to its present."
+
+structural_patterns:
+  - name: goal_displacement
+    abstract: An organization systematically substitutes the goal of organizational survival and growth for the original external purpose, such that measures of internal process compliance replace measures of external impact.
+    maps_to: [mission_drift, metric_substitution, self_preservation, purpose_erosion]
+
+  - name: empire_building
+    abstract: Individual actors within an organization expand their headcount and budget not because the function requires it but because status and resources are allocated as a function of scope, creating structural pressure for bureaucratic growth.
+    maps_to: [organizational_growth_bias, resource_accumulation, status_through_headcount, scope_creep]
+
+  - name: competency_trap
+    abstract: Repeated successful use of a particular approach deepens competence in that approach while reducing exploration of alternatives, making the organization increasingly capable at something that becomes increasingly irrelevant.
+    maps_to: [exploitation_over_exploration, single_approach_dependency, flexibility_loss, inertia]
+
+  - name: rule_accumulation_sclerosis
+    abstract: Each problem triggers a new rule that remains in force indefinitely; the accumulated weight of rules from all prior eras creates a compliance burden that crowds out adaptive judgment and slows all operations.
+    maps_to: [regulatory_debt, compliance_overhead, rule_sunset_need, procedure_accumulation]
+
+  - name: information_oligarchy
+    abstract: Leaders in nominally democratic or distributed organizations accumulate information advantages over time that translate into decision-making control; formal equality of voice coexists with structural inequality of influence.
+    maps_to: [information_asymmetry, elite_capture, governance_drift, participatory_decay]
+
+  - name: routine_as_constraint
+    abstract: Organizational routines encode past successful responses and execute them automatically; this reduces coordination costs in stable environments but prevents the organization from recognizing when the environment has changed enough to require new responses.
+    maps_to: [routine_dependency, adaptive_failure, organizational_memory, change_blindness]
+
+injection_prompt: |
+  Reason through this with bureaucratic pathology logic: assume any organization old enough to have routines has partially displaced its original goal with the goal of self-perpetuation. Ask whether measured outputs track actual impact or procedural compliance. Identify rule accumulation — which constraints are legacy responses to solved problems that now only impose friction? Diagnose competency traps: where is deep expertise in the wrong thing preventing recognition that the environment has changed? Look for information oligarchy in nominally flat or democratic structures.

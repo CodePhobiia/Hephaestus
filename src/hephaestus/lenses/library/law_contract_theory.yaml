@@ -1,0 +1,39 @@
+name: Contracts & Enforcement
+domain: law
+subdomain: contract_theory
+
+axioms:
+  - "A contract is a technology for moving obligations through time: parties in the present bind their future selves to perform, transforming uncertain future behavior into a current asset that can be relied upon."
+  - "Breach is priced, not forbidden: the legal system does not always demand performance — it prices non-performance via expectation damages, allowing efficient breach when the cost of performance exceeds its value."
+  - "Incomplete contracts are the norm, not the exception: no contract can specify all contingencies; the legal system fills gaps using default rules that approximate what the parties would have agreed to if they had specified."
+  - "Consideration doctrine requires mutual obligation: a promise without reciprocal exchange is unenforceable — the mechanism detects and rejects unilateral declarations disguised as contracts."
+  - "Specific performance is exceptional: courts generally award money damages rather than forcing performance, because coerced performance is inefficient and freedom-violating; economic substitution is usually superior."
+  - "Information asymmetry at formation can void contracts: if one party knows material facts the other cannot discover, enforcement of the resulting deal violates the premise of voluntary exchange."
+
+structural_patterns:
+  - name: future_obligation_crystallization
+    abstract: A present exchange of commitments creates legally enforceable obligations on future behavior, converting uncertain future actions into reliable present expectations that can be built upon.
+    maps_to: [precommitment, future_state_binding, reliability_guarantee, trust_creation]
+
+  - name: efficient_breach_pricing
+    abstract: Non-performance of a commitment is permitted but priced at the cost of the other party's disappointed expectations, allowing defection when it is economically superior while making the victim whole.
+    maps_to: [exit_cost_design, defection_pricing, option_value, performance_incentive]
+
+  - name: gap_filling_by_default_rule
+    abstract: When a commitment leaves a situation unspecified, a background rule supplies the missing term based on what typical parties in typical situations would have wanted, preventing every interaction from needing total specification.
+    maps_to: [default_behavior, protocol_defaults, incomplete_specification_handling, convention_filling]
+
+  - name: mutual_consideration_detection
+    abstract: A mechanism that distinguishes genuine bilateral exchanges from unilateral declarations by requiring that both parties give up something of value, filtering out commitments that lack the structure of genuine agreement.
+    maps_to: [bilateral_validation, exchange_verification, commitment_authenticity, reciprocity_check]
+
+  - name: material_information_disclosure
+    abstract: When one party holds material information the other cannot independently discover, concealment invalidates the resulting agreement — asymmetric knowledge must be surfaced before commitments bind.
+    maps_to: [information_disclosure, asymmetry_correction, informed_consent, transparency_requirement]
+
+  - name: remedial_substitution
+    abstract: When an obligation cannot or should not be specifically enforced, the system substitutes a monetary equivalent calibrated to restore the disappointed party to their expected position, preserving incentives without coercion.
+    maps_to: [compensatory_remedies, value_substitution, expectation_restoration, coercion_avoidance]
+
+injection_prompt: |
+  Reason through this as a contracts problem. What present commitments are being made to bind future behavior — and are they enforceable, or merely aspirational? Identify the default rules that fill the inevitable gaps in any incomplete specification. Ask whether both parties are giving up something of value (consideration), or whether one side is making unilateral declarations. When obligations might not be performed, price the breach rather than demanding compliance — what monetary equivalent restores the other party's expected position? Flag any information asymmetries that could invalidate the underlying exchange.

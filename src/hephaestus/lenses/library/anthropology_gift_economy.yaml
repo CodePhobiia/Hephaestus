@@ -1,0 +1,39 @@
+name: Gift Economy & Reciprocity
+domain: anthropology
+subdomain: gift_economy
+
+axioms:
+  - "The gift is never free: in gift economies, every gift creates an implicit obligation of return that is more binding than a contract because it is encoded in social identity — failure to reciprocate damages status, not just reputation."
+  - "Timing of reciprocation is strategic: immediate return of a gift of equal value cancels the social relationship; delayed and superior return is the norm because the delay maintains the obligation bond that holds the relationship together."
+  - "Potlatch paradox — destruction as dominance: competitive gift-giving and deliberate destruction of wealth is a mechanism for status competition; the ability to give away more than others proves surplus and social power."
+  - "The spirit of the gift (hau) must circulate: in Maori theory, a gift carries the essence of the giver; failing to pass it onward creates a dangerous spiritual imbalance — gifts demand circulation, not accumulation."
+  - "Market exchange and gift exchange are mutually hostile: introducing market logic into gift spheres destroys the social fabric (paying a friend for dinner transforms a relationship into a transaction); the two systems resist coexistence."
+  - "Generalized, balanced, and negative reciprocity form a spectrum: generalized reciprocity (give without expectation) operates within intimate groups; balanced reciprocity (equal exchange) governs trade partners; negative reciprocity (take without giving) marks strangers and enemies."
+
+structural_patterns:
+  - name: obligation_through_gift
+    abstract: A transfer without explicit price terms creates a diffuse obligation stronger than a contract because it is embedded in social identity rather than legal enforcement — the recipient must reciprocate or lose standing.
+    maps_to: [soft_power, implicit_commitment, social_debt, relationship_maintenance]
+
+  - name: delayed_superior_return
+    abstract: The optimal reciprocation strategy delays return and exceeds the original gift in value, maintaining the bond of obligation while establishing higher status — exact immediate return dissolves the relationship.
+    maps_to: [commitment_sustaining, status_signaling, strategic_timing, debt_renewal]
+
+  - name: competitive_generosity
+    abstract: Status competition occurs through maximizing outward transfer rather than accumulation; the winner is the one who gives the most, inverting the logic of accumulation-based status systems.
+    maps_to: [inverse_status_competition, surplus_demonstration, redistributive_signaling, dominance_through_giving]
+
+  - name: circulation_imperative
+    abstract: Certain resources must keep moving through the system; hoarding them violates the structural logic and triggers sanctions, while enabling their flow generates social credit and legitimacy.
+    maps_to: [mandatory_redistribution, liquidity_enforcement, resource_flow_design, anti_hoarding]
+
+  - name: reciprocity_sphere_segregation
+    abstract: Different categories of goods or relationships operate under incompatible exchange logics; mixing logics from different spheres (e.g., market into gift) destroys both the relationship and the market standing.
+    maps_to: [domain_separation, context_incompatibility, exchange_sphere_design, category_protection]
+
+  - name: generosity_as_power
+    abstract: The capacity to give without immediate return is the primary marker of social power; the ability to sustain obligations extended to many others simultaneously is the structural definition of high-status position.
+    maps_to: [power_through_surplus, asymmetric_obligation_capacity, patronage_structure, social_capital]
+
+injection_prompt: |
+  Apply gift economy logic: treat every transfer as creating invisible obligations rather than clearing accounts. Ask not "was the exchange balanced?" but "what obligation network has this gift created, and who now owes whom?" Identify the reciprocity sphere — intimate (generalized), trade partner (balanced), or stranger (negative) — and reason about what happens when those spheres collide. Find the circulation imperatives: which resources must keep moving, and what happens when they are hoarded? Competition here is won by giving more, not accumulating more.

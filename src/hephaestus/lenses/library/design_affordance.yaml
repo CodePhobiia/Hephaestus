@@ -1,0 +1,39 @@
+name: Affordance Theory
+domain: design
+subdomain: affordance
+
+axioms:
+  - "Affordances are relational, not intrinsic: an affordance is not a property of an object alone but of the relationship between an object's properties and an actor's capabilities — the same handle affords grasping to a human hand but not to a fin."
+  - "Perceived affordances differ from actual affordances: design must manage both the actual possibilities an artifact offers and the possibilities the user perceives — mismatches create confusion, failures, and accidents."
+  - "False affordances invite errors: an object that looks like it should afford an action but does not (a decorative handle on a fixed panel) creates a systematic source of errors that the user will repeat until they build a special case exception."
+  - "Signifiers communicate affordances: since affordances are invisible, design must add explicit or implicit signals (signifiers) that communicate what actions are possible — the signifier is the visible, the affordance is the structural possibility."
+  - "Constraints direct behavior as effectively as affordances: limiting which actions are structurally possible channels behavior without requiring instruction — physical, semantic, cultural, and logical constraints each operate differently."
+  - "Natural mappings reduce cognitive load: when the spatial relationship between controls and their effects matches the physical layout of the affected system, users can operate the interface without remembering mappings — the layout itself carries the instruction."
+
+structural_patterns:
+  - name: relational_affordance
+    abstract: A capability emerges from the relationship between an artifact's physical or logical properties and an actor's capabilities — the same artifact affords different actions to different actors, and affordance analysis must specify the actor.
+    maps_to: [user_capability_matching, accessibility_analysis, context_dependent_functionality, actor_specific_design]
+
+  - name: signifier_affordance_alignment
+    abstract: Visible design signals (signifiers) should accurately communicate the actual structural possibilities of an artifact; misalignment between what looks possible and what is possible is the primary source of systematic user error.
+    maps_to: [interface_clarity, error_prevention, visual_communication, action_legibility]
+
+  - name: constraint_channeling
+    abstract: Reducing the number of possible actions through physical, logical, semantic, or cultural constraints channels behavior toward intended paths more reliably than instruction, because constraints are enforced by structure rather than memory.
+    maps_to: [error_proofing, poka_yoke, structural_guidance, action_space_reduction]
+
+  - name: false_affordance_detection
+    abstract: An artifact signals an action as possible that is actually impossible or inadvisable — this creates a systematic source of predictable user errors that no amount of instruction will fully eliminate because the structural signal overrides verbal instruction.
+    maps_to: [error_source_analysis, misleading_interface_detection, systematic_error_prediction, design_antipattern]
+
+  - name: natural_mapping
+    abstract: When the spatial or conceptual relationship between controls and their effects matches intuitive expectations, users can operate complex systems without consulting documentation — the structure itself teaches correct use.
+    maps_to: [intuitive_design, spatial_metaphor, zero_instruction_operation, learning_curve_reduction]
+
+  - name: action_possibility_space
+    abstract: Every artifact defines a set of actions that are possible, impossible, or facilitated — design consists of explicitly defining this possibility space and ensuring it matches the intended use profile.
+    maps_to: [api_design, permission_modeling, capability_boundary, functional_scope]
+
+injection_prompt: |
+  Analyze this through affordance theory: every interface or system defines a possibility space of actions for specific actors. Identify the affordances: what does this system make easy to do, and for whom? Audit the signifiers — do visible signals accurately communicate the actual action possibilities, or do they create false affordances that invite systematic errors? Look for natural mappings: does the structural layout of controls match the layout of effects, enabling zero-instruction operation? Where constraints can replace instruction, prefer structure over documentation.

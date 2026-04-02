@@ -1,0 +1,39 @@
+name: Technological Paradigm Shifts
+domain: history
+subdomain: technological_punctuated
+
+axioms:
+  - "General-purpose technologies trigger cascading co-invention: the steam engine, electricity, and computing each required decades of complementary invention (factory organization, transmission grids, software) before their full productivity impact materialized."
+  - "Incumbent firms are structurally disadvantaged in paradigm shifts: their asset base, routines, and customer relationships are optimized for the old paradigm; these assets become liabilities rather than advantages during a transition."
+  - "Technology S-curves follow a predictable three-phase logic: slow adoption during infrastructure build-out, explosive growth once standards crystallize and complements accumulate, then saturation as improvement opportunities diminish."
+  - "The dominant design crystallizes the competitive space: among competing architectural variants, one design wins and defines the standard components and interfaces — subsequent competition shifts from architecture to efficiency within the chosen architecture."
+  - "Infrastructure investment precedes value extraction by a technology generation: the railroads required capital investments decades before the full economic value (land development, supply chain transformation) was extractable."
+  - "Architectural innovation decouples components from systems: a change that leaves individual components intact but changes how they connect can be more disruptive than a component innovation, because established firms optimize for the old architecture."
+
+structural_patterns:
+  - name: general_purpose_technology_diffusion
+    abstract: A foundational capability requires a constellation of complementary co-innovations before its potential is unlocked; the primary technology creates value only when combined with purpose-built adaptations across the economy.
+    maps_to: [platform_complementarity, ecosystem_development, enabling_infrastructure, co_innovation_requirement]
+
+  - name: dominant_design_crystallization
+    abstract: Competition among architectural variants eventually converges on a single winning architecture that defines standard interfaces; competition then shifts from architecture selection to performance optimization within the standard.
+    maps_to: [standards_convergence, architectural_selection, interface_standardization, competition_phase_shift]
+
+  - name: incumbent_asset_liability_inversion
+    abstract: Assets optimized for the old paradigm become liabilities during a transition — the incumbent's infrastructure, customer relationships, and organizational routines now impose costs rather than conferring advantages.
+    maps_to: [disruption_mechanism, legacy_liability, competency_trap, innovators_dilemma]
+
+  - name: infrastructure_investment_lead_time
+    abstract: Full value extraction from a foundational technology requires upfront infrastructure investment that precedes returns by years or decades; the investment phase and the harvest phase belong to different actors.
+    maps_to: [investment_horizon_mismatch, infrastructure_first, long_horizon_returns, value_lagging]
+
+  - name: architectural_innovation_disruption
+    abstract: Changing how existing components connect — rather than improving the components themselves — can invalidate the established firms' advantage without requiring any component-level breakthrough.
+    maps_to: [architectural_disruption, integration_strategy, system_redesign, interface_innovation]
+
+  - name: technology_s_curve_phase_recognition
+    abstract: The trajectory of a technology through emergence, rapid adoption, and saturation follows a predictable shape; strategic actions appropriate at each phase (investment, scale, harvest) differ radically and must be matched to phase.
+    maps_to: [lifecycle_management, adoption_forecasting, phase_appropriate_strategy, timing_optimization]
+
+injection_prompt: |
+  Apply technological paradigm shift logic: this problem may be at a phase transition, and the rules that governed the previous phase may be liabilities in the new one. Identify the dominant design moment — has a winning architecture emerged, shifting competition from architecture to execution? Look for general-purpose technology effects: what complementary co-inventions are required before the core capability delivers full value? Map which existing assets are about to invert from advantages to liabilities. Determine the S-curve phase and reason about what actions are appropriate here versus what worked in an earlier phase.

@@ -1,0 +1,39 @@
+name: Cartographic Projection & Distortion
+domain: cartography
+subdomain: projection_theory
+
+axioms:
+  - "Every map projection distorts — there is no faithful flat representation of a curved surface. Gauss's Theorema Egregium proves this mathematically: any mapping from a sphere to a plane must distort at least one of angle, area, distance, or direction. Every projection makes a *choice* about what to preserve and what to sacrifice."
+  - "The projection choice reveals the mapmaker's purpose: Mercator preserves angles (navigation) but inflates areas near poles; Gall-Peters preserves areas but distorts shapes; azimuthal equidistant preserves distances from one point but distorts everything else. The distortion pattern is the map's hidden argument."
+  - "Scale is never uniform: a single map cannot maintain a constant ratio between map distance and real distance across its entire surface. The scale factor varies by location, and the pattern of variation encodes structural information about the projection."
+  - "Projection determines what is visible at the center versus the edge: centering a map on the Pacific Ocean produces a fundamentally different worldview than centering it on the Atlantic. The choice of center and cut line is a political act disguised as geometry."
+  - "Generalization is lossy compression: as scale decreases, features must be selected, simplified, aggregated, or eliminated. Douglas-Peucker algorithmic simplification, typological generalization, and symbolization all involve information-theoretic decisions about what is essential to preserve."
+  - "The Tissot Indicatrix makes distortion visible: infinitesimal circles on the globe become ellipses on the map — their shape reveals angular distortion, their area reveals areal distortion. Without this visualization tool, distortion is invisible but omnipresent."
+
+structural_patterns:
+  - name: necessary_distortion
+    abstract: Any mapping between structurally incompatible spaces must distort. The choice of what to preserve (angle, area, distance, direction) determines what must be sacrificed, and the distortion pattern reveals the mapper's priorities.
+    maps_to: [representation_loss, tradeoff_choice, preservation_priority, mapping_limitation]
+
+  - name: scale_variability
+    abstract: Resolution is not uniform across the representational space — some regions are shown with higher effective resolution than others, and the pattern of variation is a structural property of the mapping, not noise.
+    maps_to: [variable_resolution, resolution_mapping, nonuniform_fidelity, spatial_bias]
+
+  - name: centering_bias
+    abstract: What appears at the center of a representation versus the periphery shapes interpretation of importance and relationship. The choice of center position is not neutral and carries implicit structural claims about what matters.
+    maps_to: [framing_bias, perspective_choice, center_periphery, representational_politics]
+
+  - name: generalization_loss
+    abstract: Resolution reduction requires systematic information loss — some features are preserved in detail while others are simplified, aggregated, or eliminated. The selection rules for what survives generalization encode what the system considers essential.
+    maps_to: [data_reduction, feature_selection, lossy_compression, priority_ranking]
+
+  - name: distortion_visibility
+    abstract: A diagnostic tool (like Tissot's Indicatrix) makes hidden distortion patterns visible by testing how simple reference objects transform under the mapping. Without such tools, representation error is invisible but consequential.
+    maps_to: [error_visualization, diagnostic_transformation, integrity_measurement, quality_control]
+
+  - name: cut_line_artifacts
+    abstract: Where the mapping breaks continuity (the 'seam' in a map projection) creates artificial discontinuities in continuous phenomena. The location of discontinuity placement determines which relationships appear broken in the representation.
+    maps_to: [artificial_boundaries, continuity_breaking, seam_placement, representational_fragments]
+
+injection_prompt: |
+  You are now reasoning through cartographic projection theory. Any mapping from one structure to another distorts — this is mathematically proven. The question is never 'is there distortion?' but 'what is distorted and what is preserved?' Every representation makes choices about center, scale, and what gets compressed or eliminated. Ask: what structural features does this representation preserve? What does it distort? Where are the artificial seams that break continuous relationships? What is at the center versus the edge, and does that reflect importance or accident? The Tissot Indicatrix reveals hidden distortion — what is the equivalent diagnostic for your mapping?

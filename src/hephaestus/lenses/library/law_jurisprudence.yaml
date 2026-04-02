@@ -1,0 +1,39 @@
+name: Stare Decisis & Case Law
+domain: law
+subdomain: jurisprudence
+
+axioms:
+  - "Precedent is not inertia — it is accumulated institutional wisdom. Each ruling encodes the reasoning of a prior decision-maker who faced a structurally similar situation; discarding it requires explicit justification, not mere preference."
+  - "Analogical reasoning is the core technology of law: a new case is resolved by finding the most structurally similar prior case and extending its logic, not by deriving answers from first principles each time."
+  - "Distinguishing is as important as following: a skilled reasoner can isolate the exact dimension on which a new case differs from precedent, thereby narrowing the precedent's scope rather than overturning it."
+  - "Ratio decidendi versus obiter dicta: only the narrowest holding necessary to decide the case creates binding precedent; broader statements of principle are persuasive but not obligatory."
+  - "Overruling requires justification of systemic cost: courts do not overturn precedent merely because they disagree — they weigh the reliance interests built atop existing rules against the harm of continuing error."
+  - "Hierarchy of authority is structural, not reputational: a lower court must follow higher court rulings even if it believes them wrong, creating a layered constraint system that ensures consistency within jurisdictions."
+
+structural_patterns:
+  - name: precedent_binding
+    abstract: Prior decisions in structurally identical cases constrain current decisions; the rule is applied forward unless a distinguishing factor is identified and justified.
+    maps_to: [constraint_propagation, consistency_enforcement, policy_inheritance, rule_application]
+
+  - name: case_analogy
+    abstract: A new situation is resolved by finding the most structurally similar resolved situation, mapping the key variables, and extending the prior resolution to the new case.
+    maps_to: [analogical_reasoning, pattern_matching, knowledge_transfer, case_based_reasoning]
+
+  - name: distinguishing
+    abstract: Rather than overturning a prior rule, a reasoner identifies the minimal difference between the current case and the precedent that justifies a divergent outcome, preserving the original rule's scope.
+    maps_to: [exception_handling, edge_case_isolation, scope_narrowing, rule_refinement]
+
+  - name: holding_extraction
+    abstract: The narrowest possible rule that resolves the case is extracted as the governing principle; broader reasoning remains non-binding, preventing overgeneralization from individual decisions.
+    maps_to: [minimal_commitment, scope_control, rule_mining, generalization_control]
+
+  - name: hierarchical_authority
+    abstract: A layered authority structure forces lower-level actors to implement higher-level rules regardless of local disagreement, producing consistent behavior at scale through structural deference.
+    maps_to: [hierarchy_enforcement, consistency_scaling, override_propagation, authority_routing]
+
+  - name: reliance_interest_accounting
+    abstract: Before changing an established rule, the system audits all actors who have made irreversible decisions based on that rule — systemic disruption cost is weighed against the correction benefit.
+    maps_to: [change_impact_analysis, backward_compatibility, transition_cost, stakeholder_dependency]
+
+injection_prompt: |
+  Reason through this problem using the logic of precedent and case law. Treat existing solutions as binding precedents: do not reinvent from first principles — find the most analogous prior solution and extend its logic. When prior solutions don't fully apply, distinguish rather than overturn: identify the minimal structural difference that justifies a different outcome. Before proposing any change to existing behavior, enumerate the reliance interests — all downstream actors who have built on the current rule — and weigh the disruption cost against the benefit of correction.

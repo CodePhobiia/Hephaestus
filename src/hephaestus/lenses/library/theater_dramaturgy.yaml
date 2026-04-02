@@ -1,0 +1,39 @@
+name: Dramaturgy & Scene Structure
+domain: theater
+subdomain: dramaturgy
+
+axioms:
+  - "Every scene must turn: a scene that ends with the same emotional or informational state as it began has failed — the dramaturgical unit of progress is the reversal, where a character's situation, knowledge, or intention shifts from one stable state to another."
+  - "Dramatic irony multiplies engagement: when the audience knows something a character does not, every action by that character acquires a second layer of meaning — information asymmetry between audience and character is the most powerful tool for sustaining attention."
+  - "Obstacles define character: who a person is cannot be communicated through description — it is revealed exclusively by what they do when facing resistance; character is action under pressure, and scenes without obstacles reveal nothing."
+  - "The through-line of action connects scenes into a plot: each character pursues a super-objective through the entire play; individual scene objectives are tactics in service of this through-line; coherence emerges from unity of intent across scenes."
+  - "Exposition must be smuggled, never delivered: information the audience needs to understand the story must be embedded in conflict scenes that have their own dramatic purpose — scenes that exist solely to deliver information are dramaturgically dead."
+  - "Rising stakes create momentum: each complication must raise the consequences of failure beyond the previous level; a play where a character risks the same thing twice at the same stakes has stalled — escalation is non-negotiable."
+
+structural_patterns:
+  - name: scene_turn_unit
+    abstract: The fundamental unit of narrative progress is the scene turn — a moment where new information, a decision, or an external event forces a shift in the situation's trajectory; scenes without turns are structurally inert.
+    maps_to: [state_transition, event_driven_progress, phase_shift, milestone_design]
+
+  - name: dramatic_irony_leverage
+    abstract: When the observer has information that the actor within the system does not, every action by the actor acquires a second layer of meaning — strategic information asymmetry between viewpoints multiplies the significance of ordinary actions.
+    maps_to: [information_asymmetry_exploitation, multi_layer_signaling, observer_advantage, suspense_engineering]
+
+  - name: obstacle_as_revelation
+    abstract: The nature of an agent is revealed exclusively through their response to resistance, not through self-description; systems reveal their true properties only when tested against adversarial conditions, not under nominal load.
+    maps_to: [stress_testing, character_under_pressure, adversarial_evaluation, behavioral_revelation]
+
+  - name: through_line_coherence
+    abstract: Local actions cohere into a meaningful whole only when they can be traced to a unifying objective that persists across all episodes; the absence of a through-line produces a sequence of events rather than a narrative.
+    maps_to: [strategic_coherence, goal_threading, narrative_unity, objective_alignment]
+
+  - name: exposition_smuggling
+    abstract: Essential context information must be embedded within scenes that serve other dramatic purposes; information delivered outside of a conflict context is inert — the mechanism of delivery determines whether information is absorbed or ignored.
+    maps_to: [context_embedding, natural_onboarding, information_integration, just_in_time_learning]
+
+  - name: escalating_stakes_momentum
+    abstract: Each successive obstacle must raise the consequences of failure beyond all previous levels; repeated engagement at the same stakes level produces stagnation; momentum requires that each iteration increases what can be lost.
+    maps_to: [escalation_design, progressive_difficulty, stakes_raising, engagement_momentum]
+
+injection_prompt: |
+  Apply dramaturgical reasoning: every unit of progress must contain a turn — a moment where new information or a decision forces a trajectory shift. Design for dramatic irony: create productive information asymmetry where observers know things that actors within the system do not. Reveal the nature of components through obstacles, not descriptions — stress test to reveal character. Ensure a through-line of action connects individual episodes into a coherent narrative. Smuggle exposition into conflict scenes rather than dedicating scenes to information delivery. Demand escalating stakes: each successive complication must raise the consequences beyond the previous level.

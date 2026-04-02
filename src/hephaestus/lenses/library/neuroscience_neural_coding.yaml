@@ -1,0 +1,39 @@
+name: Neural Population Coding
+domain: neuroscience
+subdomain: neural_coding
+
+axioms:
+  - "Information is carried by populations, not individual neurons: a single neuron's firing rate is noisy and ambiguous; the brain encodes stimuli in distributed patterns across thousands of neurons whose collective activity is far more informative than any individual's."
+  - "Sparse coding maximizes representational capacity: encoding each stimulus by activating a small fraction of available neurons allows the system to represent exponentially many distinct patterns with a fixed neuron count — sparsity is an efficiency strategy, not a limitation."
+  - "Neural tuning curves define sensitivity profiles: each neuron responds maximally to a preferred stimulus value and less to others, creating a bell-curve sensitivity profile — the population's overlapping tuning curves tile the stimulus space."
+  - "Population vector decoding reconstructs stimuli from activity: by weighting each neuron's preferred stimulus by its firing rate and summing, the downstream reader can extract the encoded stimulus without knowing the encoding scheme — a simple weighted average suffices."
+  - "Noise correlations between neurons determine information limits: if neurons have correlated noise, adding more neurons eventually stops improving information — the structure of noise correlations, not the number of neurons, sets the fundamental accuracy limit."
+  - "Adaptation and gain control rescale sensitivity to the current regime: neurons shift their tuning curves and adjust their gain to concentrate maximum sensitivity around the most probable stimulus values, allocating coding resources where they are most needed."
+
+structural_patterns:
+  - name: distributed_population_encoding
+    abstract: Information is encoded across the collective activity of many noisy units, each contributing partial and ambiguous evidence; the ensemble is far more informative than any individual, and the encoding is robust to loss of individual units.
+    maps_to: [ensemble_methods, distributed_representation, redundant_encoding, graceful_degradation]
+
+  - name: sparse_activation_efficiency
+    abstract: Activating only a small fraction of available units for each input allows exponentially many distinguishable patterns with a fixed unit count — sparsity trades per-unit utilization for representational capacity.
+    maps_to: [sparse_representation, efficient_encoding, combinatorial_capacity, resource_efficient_storage]
+
+  - name: tuning_curve_tiling
+    abstract: Each unit has peak sensitivity at a specific input value and declining sensitivity away from it; overlapping sensitivity profiles tile the input space, ensuring every possible input falls within multiple units' sensitive range.
+    maps_to: [coverage_design, sensitivity_allocation, basis_function_placement, input_space_coverage]
+
+  - name: population_vector_readout
+    abstract: A downstream reader extracts the encoded signal by computing a weighted average of each unit's preferred value weighted by its current activation — a simple linear decoding scheme that works without knowing the detailed encoding.
+    maps_to: [linear_decoding, ensemble_voting, weighted_consensus, signal_extraction]
+
+  - name: noise_correlation_information_limit
+    abstract: Correlated noise across units imposes a ceiling on information that cannot be overcome by adding more units — the limiting factor is the noise correlation structure, not the unit count.
+    maps_to: [diminishing_returns, correlation_bottleneck, information_ceiling, scaling_limits]
+
+  - name: adaptive_gain_control
+    abstract: Units dynamically shift their sensitivity profiles to concentrate coding resources around the most probable inputs in the current context, sacrificing sensitivity to unlikely inputs to maximize discriminability where it matters most.
+    maps_to: [adaptive_resource_allocation, context_sensitive_precision, dynamic_rescaling, attention_mechanism]
+
+injection_prompt: |
+  Reason through this using neural population coding: information is carried by distributed patterns across many noisy units, not by any single unit. Design for sparse activation — use a small fraction of available capacity for each input to maximize total representational capacity. Tile the input space with overlapping sensitivity profiles so every possible input is covered by multiple units. For decoding, use population vector readout: a simple weighted average across units' preferred values. But watch for noise correlations — if units have correlated errors, adding more units stops helping; the correlation structure sets the information ceiling.

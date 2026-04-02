@@ -1,0 +1,39 @@
+name: Type Theory & Lambda Calculus
+domain: cs
+subdomain: type_theory
+
+axioms:
+  - "The Curry-Howard isomorphism: types are propositions and programs are proofs — a function of type A→B is a proof that proposition A implies proposition B; type-checking is proof verification; a well-typed program is a verified theorem."
+  - "Types are specifications, not labels: a type does not merely describe what kind of value a variable holds — it specifies all valid operations on that value and all valid transformations, constituting a contract the program must satisfy."
+  - "Parametric polymorphism means 'works for any type': a function with type ∀α. α→α can only be the identity function — the type alone proves what the function must do, because it must work for every possible type without knowing anything about the type."
+  - "Dependent types collapse the boundary between data and proof: when types can depend on values, every function can carry a proof of its postcondition in its return type — the program and its correctness proof are the same object."
+  - "Algebraic data types encode logical structure: sum types (A | B) correspond to logical OR; product types (A × B) to logical AND; the type algebra is isomorphic to propositional logic."
+  - "Evaluation order determines effect semantics: call-by-value, call-by-name, and call-by-need produce identical results on terminating pure programs but differ fundamentally on divergent programs and side effects — evaluation strategy is an architectural choice with semantic consequences."
+
+structural_patterns:
+  - name: type_as_specification
+    abstract: A type is not a runtime tag but a statically verified specification of all valid behaviors — a correctly typed program is one that has been proven to satisfy its type-level contracts before execution.
+    maps_to: [static_verification, precondition_postcondition, interface_specification, compile_time_checking]
+
+  - name: propositions_as_types
+    abstract: Every logical proposition has a corresponding type, and every proof of that proposition has a corresponding program of that type — logical reasoning and program construction are the same activity at different levels of abstraction.
+    maps_to: [formal_verification, proof_construction, specification_synthesis, logic_programming]
+
+  - name: parametric_constraint_inference
+    abstract: When a function must work for all possible types without knowing anything about them, the type signature alone determines what the function can possibly do — extreme generality forces unique implementation.
+    maps_to: [free_theorems, constraint_propagation, interface_forced_implementation, polymorphic_reasoning]
+
+  - name: sum_product_decomposition
+    abstract: Any data structure can be decomposed into sum types (mutually exclusive alternatives) and product types (simultaneous multiple values) — the type algebra is the primary tool for modeling problem domains.
+    maps_to: [domain_modeling, state_machine_design, variant_typing, data_structure_decomposition]
+
+  - name: dependent_proof_carrying
+    abstract: When types can depend on values, return types can encode guarantees about outputs — a function that returns a sorted list can have a type that proves sortedness, making runtime checks unnecessary.
+    maps_to: [invariant_encoding, precondition_elimination, proof_carrying_code, correctness_by_construction]
+
+  - name: evaluation_strategy_semantics
+    abstract: The order in which expressions are evaluated is an architectural decision that determines how side effects, divergence, and resource use behave — different evaluation strategies give the same answers on pure terminating programs but diverge dramatically otherwise.
+    maps_to: [lazy_evaluation, execution_order, effect_semantics, resource_management]
+
+injection_prompt: |
+  Reason through this with type theory: types are specifications, not labels — a correctly typed system has been proven to satisfy its contracts before execution. Ask: what is the type of each component? Map the logical structure using sum types (alternatives) and product types (simultaneous facts). Apply the Curry-Howard view: every interface is a proposition, every implementation is a proof — if you cannot type-check a design, it contains a logical error. Look for parametric constraints: if a function must work for ALL cases, the type alone may determine the only possible implementation. Use dependent types where you want invariants enforced structurally.
