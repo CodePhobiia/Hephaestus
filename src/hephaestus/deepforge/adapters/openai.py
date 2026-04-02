@@ -175,6 +175,7 @@ class OpenAIAdapter(BaseAdapter):
         timeout: float = 120.0,
         max_retries: int = 3,
         base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
     ) -> None:
         if isinstance(model, str):
             if model not in OPENAI_MODELS:
@@ -188,6 +189,7 @@ class OpenAIAdapter(BaseAdapter):
 
         super().__init__(config, api_key=api_key, timeout=timeout, max_retries=max_retries)
         self._base_url = base_url
+        self._default_headers = default_headers
         self.__client: openai.AsyncOpenAI | None = None
 
     # ------------------------------------------------------------------
@@ -203,6 +205,8 @@ class OpenAIAdapter(BaseAdapter):
                 kwargs["api_key"] = self._api_key
             if self._base_url:
                 kwargs["base_url"] = self._base_url
+            if self._default_headers:
+                kwargs["default_headers"] = self._default_headers
             self.__client = openai.AsyncOpenAI(**kwargs)
         return self.__client
 

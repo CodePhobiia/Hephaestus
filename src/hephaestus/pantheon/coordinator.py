@@ -9,6 +9,7 @@ Wraps the standard Genesis pipeline with a four-agent council:
 
 from __future__ import annotations
 
+from hephaestus.core.json_utils import loads_lenient
 import hashlib
 import json
 import logging
@@ -89,10 +90,10 @@ def _json_block(raw: str) -> dict[str, Any]:
     match = re.search(r"\{.*\}", cleaned, re.DOTALL)
     if not match:
         raise PantheonError(f"No JSON object found: {raw[:240]}")
-    try:
-        return json.loads(match.group())
-    except json.JSONDecodeError as exc:
-        raise PantheonError(f"Pantheon JSON parse failed: {exc}") from exc
+    parsed = loads_lenient(match.group(), label="pantheon")
+    if parsed is None:
+        raise PantheonError(f"Pantheon JSON parse failed on invalid JSON: {match.group()[:200]}")
+    return parsed
 
 
 def _safe_list(value: Any) -> list[str]:

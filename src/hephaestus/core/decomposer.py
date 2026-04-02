@@ -33,6 +33,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
@@ -322,13 +323,12 @@ class ProblemDecomposer:
                 raw_output=raw,
             )
 
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as exc:
+        data = loads_lenient(json_match.group(), default=None, label="decomposer")
+        if data is None:
             raise DecompositionError(
-                f"JSON parse error: {exc}",
+                "JSON parse failure in decomposition",
                 raw_output=raw,
-            ) from exc
+            )
 
         # Validate required fields
         required = {"structure", "mathematical_shape"}

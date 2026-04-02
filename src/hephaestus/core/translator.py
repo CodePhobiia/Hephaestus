@@ -28,6 +28,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
@@ -1002,10 +1003,7 @@ class SolutionTranslator:
         if not json_match:
             raise TranslationError(f"No JSON in translation output: {raw[:300]}")
 
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as exc:
-            raise TranslationError(f"JSON parse error in translation: {exc}") from exc
+        data = loads_lenient(json_match.group(), default={}, label="translator")
 
         # Ensure required fields exist with defaults
         data.setdefault("invention_name", "Cross-Domain Invention")

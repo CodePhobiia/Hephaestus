@@ -18,6 +18,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 
@@ -121,7 +122,7 @@ class BurnOff:
             return []
 
         try:
-            data = json.loads(json_match.group())
+            data = loads_lenient(json_match.group(), default={}, label="burn_off")
             baselines = data.get("baselines", [])
             if isinstance(baselines, list):
                 return [str(b) for b in baselines[:5]]

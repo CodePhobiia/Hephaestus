@@ -39,6 +39,7 @@ from hephaestus.core.decomposer import ProblemStructure
 from hephaestus.core.translator import Translation
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.cells import build_reference_state
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.session.deliberation import DeliberationGraph
 
 logger = logging.getLogger(__name__)
@@ -1177,7 +1178,7 @@ class NoveltyVerifier:
 
     def _parse_attack(self, raw: str) -> dict[str, Any]:
         """Parse adversarial attack JSON."""
-        return self._parse_json(raw, default={"attack_valid": False, "verdict": "QUESTIONABLE"})
+        return self._parse_json(raw, default={"attack_valid": False, "verdict": "QUESTIONABLE"}, label="attack")
 
     def _parse_validity(self, raw: str) -> dict[str, Any]:
         """Parse validity assessment JSON."""
@@ -1188,10 +1189,11 @@ class NoveltyVerifier:
                 "implementation_feasibility": 0.5,
                 "feasibility_rating": "MEDIUM",
             },
+            label="validity",
         )
 
     @staticmethod
-    def _parse_json(raw: str, default: dict[str, Any]) -> dict[str, Any]:
+    def _parse_json(raw: str, default: dict[str, Any], *, label: str = "verifier") -> dict[str, Any]:
         """Generic JSON extraction with fallback to defaults."""
         cleaned = raw.strip()
         if cleaned.startswith("```"):
@@ -1203,10 +1205,7 @@ class NoveltyVerifier:
             logger.warning("No JSON found in verifier response, using defaults")
             return dict(default)
 
-        try:
-            return json.loads(json_match.group())
-        except json.JSONDecodeError:
-            return dict(default)
+        return loads_lenient(json_match.group(), default=dict(default), label=f"verifier.{label}")
 
     def _make_fallback_verified(self, translation: Translation) -> VerifiedInvention:
         """Create a low-confidence VerifiedInvention when verification errors out."""

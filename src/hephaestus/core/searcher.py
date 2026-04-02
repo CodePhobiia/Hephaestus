@@ -26,6 +26,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
@@ -666,10 +667,9 @@ class CrossDomainSearcher:
         if not json_match:
             raise ValueError(f"No JSON found in model output: {raw[:200]}")
 
-        try:
-            data = json.loads(json_match.group())
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"JSON parse error: {exc}") from exc
+        data = loads_lenient(json_match.group(), default=None, label="searcher")
+        if data is None:
+            raise ValueError(f"JSON parse failure in candidate: {raw[:200]}")
 
         required = {"source_solution", "mechanism"}
         missing = required - data.keys()

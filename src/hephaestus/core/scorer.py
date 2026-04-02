@@ -28,6 +28,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
@@ -563,7 +564,7 @@ class CandidateScorer:
             return {"structural_fidelity": 0.5}
 
         try:
-            data = json.loads(json_match.group())
+            data = loads_lenient(json_match.group(), default={"structural_fidelity": 0.5}, label="scorer.fidelity")
         except json.JSONDecodeError:
             return {"structural_fidelity": 0.5}
 
@@ -582,7 +583,7 @@ class CandidateScorer:
             return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
 
         try:
-            data = json.loads(json_match.group())
+            data = loads_lenient(json_match.group(), default={"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}, label="scorer.novelty")
         except json.JSONDecodeError:
             return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
 

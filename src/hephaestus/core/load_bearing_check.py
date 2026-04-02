@@ -16,6 +16,7 @@ structurally load-bearing.
 from __future__ import annotations
 
 import json
+from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 from dataclasses import dataclass, field, replace
@@ -564,7 +565,7 @@ def _parse_json(raw: str) -> dict[str, Any]:
         return {}
 
     try:
-        parsed = json.loads(match.group())
+        parsed = loads_lenient(match.group(), default={}, label="load_bearing")
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}

@@ -706,7 +706,8 @@ def _extract_json(text: str) -> dict[str, Any]:
         raise ResearchError(f"No JSON found in Perplexity output: {text[:200]}")
 
     try:
-        payload = json.loads(match.group())
+        from hephaestus.core.json_utils import loads_lenient
+        payload = loads_lenient(match.group(), default={}, label="perplexity")
     except json.JSONDecodeError as exc:
         raise ResearchError(f"Could not parse Perplexity JSON: {exc}") from exc
     if not isinstance(payload, dict):
