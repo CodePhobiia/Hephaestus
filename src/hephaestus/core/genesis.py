@@ -202,6 +202,7 @@ class GenesisConfig:
     pantheon_max_rounds: int = 4
     pantheon_require_unanimity: bool = True
     pantheon_allow_fail_closed: bool = True
+    pantheon_resolution_mode: str = "TASK_SENSITIVE"
     pantheon_max_survivors_to_council: int = 2
     pantheon_athena_model: str | None = None
     pantheon_hermes_model: str | None = None
@@ -773,12 +774,13 @@ class Genesis:
                     from hephaestus.pantheon import PantheonCoordinator
 
                     pantheon = PantheonCoordinator(
-                        athena_harness=self._harnesses["decompose"],
-                        hermes_harness=self._harnesses["search"],
-                        apollo_harness=self._harnesses["defend"],
+                        athena_harness=self._harnesses.get("pantheon_athena", self._harnesses["decompose"]),
+                        hermes_harness=self._harnesses.get("pantheon_hermes", self._harnesses["search"]),
+                        apollo_harness=self._harnesses.get("pantheon_apollo", self._harnesses["defend"]),
                         max_rounds=self._config.pantheon_max_rounds,
                         require_unanimity=self._config.pantheon_require_unanimity,
                         allow_fail_closed=self._config.pantheon_allow_fail_closed,
+                        resolution_mode=self._config.pantheon_resolution_mode,
                         max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
                     )
                     structure, pantheon_state = await pantheon.prepare_pipeline(

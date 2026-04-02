@@ -1898,6 +1898,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_max_rounds=getattr(cfg, "pantheon_max_rounds", 4),
             pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
             pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
+            pantheon_resolution_mode=getattr(cfg, "pantheon_resolution_mode", "TASK_SENSITIVE"),
             pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
             pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
             pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
@@ -1931,6 +1932,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_max_rounds=getattr(cfg, "pantheon_max_rounds", 4),
             pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
             pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
+            pantheon_resolution_mode=getattr(cfg, "pantheon_resolution_mode", "TASK_SENSITIVE"),
             pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
             pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
             pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
@@ -1959,6 +1961,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         pantheon_max_rounds=getattr(cfg, "pantheon_max_rounds", 4),
         pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
         pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
+        pantheon_resolution_mode=getattr(cfg, "pantheon_resolution_mode", "TASK_SENSITIVE"),
         pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
         pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
         pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
@@ -2099,6 +2102,8 @@ async def _run_pipeline(
             pantheon_state=pantheon_payload if isinstance(pantheon_payload, dict) else None,
             pantheon_consensus_achieved=bool(getattr(pantheon_state, "consensus_achieved", False)),
             pantheon_final_verdict=str(getattr(pantheon_state, "final_verdict", "") or ""),
+            pantheon_outcome_tier=str(getattr(pantheon_state, "outcome_tier", "") or ""),
+            pantheon_resolution_mode=str(getattr(pantheon_state, "resolution_mode", "") or ""),
             pantheon_rounds=len(getattr(pantheon_state, "rounds", []) or []),
             pantheon_winning_candidate_id=str(getattr(pantheon_state, "winning_candidate_id", "") or ""),
         )
@@ -2110,6 +2115,8 @@ async def _run_pipeline(
                 {
                     "pantheon_consensus_achieved": bool(getattr(pantheon_state, "consensus_achieved", False)),
                     "pantheon_final_verdict": str(getattr(pantheon_state, "final_verdict", "") or ""),
+                    "pantheon_outcome_tier": str(getattr(pantheon_state, "outcome_tier", "") or ""),
+                    "pantheon_resolution_mode": str(getattr(pantheon_state, "resolution_mode", "") or ""),
                     "pantheon_rounds": len(getattr(pantheon_state, "rounds", []) or []),
                 }
                 if pantheon_state is not None
@@ -2241,6 +2248,8 @@ def _invention_to_markdown(entry: InventionEntry, report: Any) -> str:
             [
                 "## Pantheon Mode",
                 "",
+                f"- Resolution mode: {_maybe_attr(pantheon_state, 'resolution_mode', 'TASK_SENSITIVE')}",
+                f"- Outcome tier: {_maybe_attr(pantheon_state, 'outcome_tier', 'PENDING')}",
                 f"- Consensus achieved: {bool(_maybe_attr(pantheon_state, 'consensus_achieved', False))}",
                 f"- Final verdict: {_maybe_attr(pantheon_state, 'final_verdict', 'UNKNOWN')}",
             ]
@@ -2259,6 +2268,9 @@ def _invention_to_markdown(entry: InventionEntry, report: Any) -> str:
         unresolved = _maybe_attr(pantheon_state, "unresolved_vetoes", []) or []
         for item in unresolved[:4]:
             lines.append(f"- Unresolved veto: {item}")
+        caveats = _maybe_attr(pantheon_state, "caveats", []) or []
+        for item in caveats[:4]:
+            lines.append(f"- Caveat: {item}")
         lines.append("")
     return "\n".join(lines)
 
@@ -2295,7 +2307,8 @@ def _display_invention_result(console: Console, state: SessionState) -> None:
     pantheon_state = _maybe_attr(report, "pantheon_state", None)
     if pantheon_state is not None:
         console.print(
-            f"  [dim]Pantheon:[/] [cyan]consensus={bool(_maybe_attr(pantheon_state, 'consensus_achieved', False))} "
+            f"  [dim]Pantheon:[/] [cyan]tier={_maybe_attr(pantheon_state, 'outcome_tier', 'PENDING')} "
+            f"consensus={bool(_maybe_attr(pantheon_state, 'consensus_achieved', False))} "
             f"verdict={_maybe_attr(pantheon_state, 'final_verdict', 'UNKNOWN')} "
             f"rounds={len(_maybe_attr(pantheon_state, 'rounds', []) or [])}[/]"
         )

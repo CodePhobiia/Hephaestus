@@ -25,6 +25,7 @@ from hephaestus.cli.config import (
     VALID_BACKENDS,
     VALID_INTENSITIES,
     VALID_OUTPUT_MODES,
+    VALID_PANTHEON_RESOLUTION_MODES,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_PANTHEON_MAX_ROUNDS": "pantheon_max_rounds",
     "HEPHAESTUS_PANTHEON_REQUIRE_UNANIMITY": "pantheon_require_unanimity",
     "HEPHAESTUS_PANTHEON_ALLOW_FAIL_CLOSED": "pantheon_allow_fail_closed",
+    "HEPHAESTUS_PANTHEON_RESOLUTION_MODE": "pantheon_resolution_mode",
     "HEPHAESTUS_PANTHEON_MAX_SURVIVORS_TO_COUNCIL": "pantheon_max_survivors_to_council",
     "HEPHAESTUS_PANTHEON_ATHENA_MODEL": "pantheon_athena_model",
     "HEPHAESTUS_PANTHEON_HERMES_MODEL": "pantheon_hermes_model",
@@ -71,6 +73,7 @@ _VALIDATORS: dict[str, tuple[str, tuple[str, ...]]] = {
     "backend": ("backend", VALID_BACKENDS),
     "divergence_intensity": ("divergence_intensity", VALID_INTENSITIES),
     "output_mode": ("output_mode", VALID_OUTPUT_MODES),
+    "pantheon_resolution_mode": ("pantheon_resolution_mode", VALID_PANTHEON_RESOLUTION_MODES),
 }
 
 

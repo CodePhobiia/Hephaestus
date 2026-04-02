@@ -96,6 +96,7 @@ class TestDefaults:
         assert cfg.pantheon_max_rounds == 4
         assert cfg.pantheon_require_unanimity is True
         assert cfg.pantheon_allow_fail_closed is True
+        assert cfg.pantheon_resolution_mode == "TASK_SENSITIVE"
         assert cfg.pantheon_max_survivors_to_council == 2
         assert cfg.pantheon_athena_model is None
         assert cfg.pantheon_hermes_model is None
@@ -245,6 +246,7 @@ class TestEnvVars:
         monkeypatch.setenv("HEPHAESTUS_PANTHEON_MAX_ROUNDS", "6")
         monkeypatch.setenv("HEPHAESTUS_PANTHEON_REQUIRE_UNANIMITY", "false")
         monkeypatch.setenv("HEPHAESTUS_PANTHEON_ALLOW_FAIL_CLOSED", "false")
+        monkeypatch.setenv("HEPHAESTUS_PANTHEON_RESOLUTION_MODE", "STRICT")
         monkeypatch.setenv("HEPHAESTUS_PANTHEON_MAX_SURVIVORS_TO_COUNCIL", "3")
         monkeypatch.setenv("HEPHAESTUS_PANTHEON_ATHENA_MODEL", "gpt-4o")
         monkeypatch.setenv("HEPHAESTUS_PANTHEON_HERMES_MODEL", "claude-opus-4-5")
@@ -255,6 +257,7 @@ class TestEnvVars:
         assert cfg.pantheon_max_rounds == 6
         assert cfg.pantheon_require_unanimity is False
         assert cfg.pantheon_allow_fail_closed is False
+        assert cfg.pantheon_resolution_mode == "STRICT"
         assert cfg.pantheon_max_survivors_to_council == 3
         assert cfg.pantheon_athena_model == "gpt-4o"
         assert cfg.pantheon_hermes_model == "claude-opus-4-5"

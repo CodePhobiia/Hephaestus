@@ -226,6 +226,7 @@ class TestBuildContinuationSummary:
         s = _large_session()
         s.inventions[0].pantheon_state = {"mode": "pantheon"}
         s.inventions[0].pantheon_final_verdict = "NOVEL"
+        s.inventions[0].pantheon_outcome_tier = "SALVAGED_CONSENSUS"
         s.inventions[0].pantheon_consensus_achieved = True
         s.inventions[0].pantheon_rounds = 2
         entries = s.transcript[:50]
@@ -234,6 +235,7 @@ class TestBuildContinuationSummary:
         assert "biology" in summary
         assert "8.0" in summary
         assert "pantheon" in summary.lower()
+        assert "SALVAGED_CONSENSUS" in summary
 
     def test_includes_user_requests(self):
         s = _make_session()

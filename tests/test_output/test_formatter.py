@@ -191,15 +191,26 @@ def _pantheon_state() -> SimpleNamespace:
     }
     return SimpleNamespace(
         mode="pantheon",
-        resolution="consensus",
+        resolution="qualified_consensus",
+        resolution_mode="TASK_SENSITIVE",
+        outcome_tier="QUALIFIED_CONSENSUS",
         consensus_achieved=True,
         final_verdict="NOVEL",
         winning_candidate_id="candidate-1:Pheromone",
         unresolved_vetoes=[],
+        caveats=["Track rollout oscillation in the first cohort."],
         failure_reason=None,
         canon=SimpleNamespace(structural_form="feedback loop"),
         dossier=SimpleNamespace(repo_reality_summary="fits production constraints"),
         rounds=[SimpleNamespace(round_index=1, candidate_id="candidate-1:Pheromone", consensus=True)],
+        objection_ledger=[
+            SimpleNamespace(
+                objection_id="obj-athena-1",
+                severity="ADVISORY",
+                status="WAIVED",
+                statement="Track rollout oscillation in the first cohort.",
+            )
+        ],
         accounting=runtime,
     )
 
@@ -427,7 +438,9 @@ class TestMarkdownOutput:
             )
         )
         assert "PANTHEON MODE" in md
-        assert "Resolution: `consensus`" in md
+        assert "Resolution: `qualified_consensus`" in md
+        assert "Outcome tier: `QUALIFIED_CONSENSUS`" in md
+        assert "Objection ledger: open=`0` resolved=`0` waived=`1`" in md
         assert "Agent calls" in md
         assert "`pantheon`=$0.1234" in md
 
@@ -550,7 +563,8 @@ class TestJsonOutput:
             )
         )
         report = data["hephaestus_invention_report"]
-        assert report["pantheon"]["resolution"] == "consensus"
+        assert report["pantheon"]["resolution"] == "qualified_consensus"
+        assert report["pantheon"]["outcome_tier"] == "QUALIFIED_CONSENSUS"
         assert report["pantheon_runtime"]["agent_call_counts"]["hephaestus"] == 1
         assert report["meta"]["cost_breakdown"]["pantheon_cost"] == pytest.approx(0.1234)
 
@@ -630,7 +644,8 @@ class TestPlainOutput:
             )
         )
         assert "PANTHEON MODE" in plain
-        assert "Resolution: consensus" in plain
+        assert "Resolution: qualified_consensus" in plain
+        assert "Outcome tier: QUALIFIED_CONSENSUS" in plain
         assert "Agent calls: athena=2, hermes=2, apollo=1, hephaestus=1" in plain
         assert "pantheon=$0.1234" in plain
 

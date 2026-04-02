@@ -104,8 +104,9 @@ def build_continuation_summary(
                 line += f" [score: {inv.score}]"
             if inv.pantheon_state is not None:
                 verdict = inv.pantheon_final_verdict or "UNKNOWN"
+                tier = inv.pantheon_outcome_tier or "UNKNOWN"
                 line += (
-                    f" [pantheon: verdict={verdict}"
+                    f" [pantheon: tier={tier}, verdict={verdict}"
                     f", consensus={inv.pantheon_consensus_achieved}"
                     f", rounds={inv.pantheon_rounds}]"
                 )

@@ -143,6 +143,8 @@ class InventionSnapshot:
     pantheon_state: dict[str, Any] | None = None
     pantheon_consensus_achieved: bool = False
     pantheon_final_verdict: str = ""
+    pantheon_outcome_tier: str = ""
+    pantheon_resolution_mode: str = ""
     pantheon_rounds: int = 0
     pantheon_winning_candidate_id: str = ""
     timestamp: str = field(default_factory=_now)
@@ -161,6 +163,8 @@ class InventionSnapshot:
             "pantheon_state": dict(self.pantheon_state) if isinstance(self.pantheon_state, dict) else None,
             "pantheon_consensus_achieved": self.pantheon_consensus_achieved,
             "pantheon_final_verdict": self.pantheon_final_verdict,
+            "pantheon_outcome_tier": self.pantheon_outcome_tier,
+            "pantheon_resolution_mode": self.pantheon_resolution_mode,
             "pantheon_rounds": self.pantheon_rounds,
             "pantheon_winning_candidate_id": self.pantheon_winning_candidate_id,
             "timestamp": self.timestamp,
@@ -185,6 +189,8 @@ class InventionSnapshot:
             ),
             pantheon_consensus_achieved=bool(data.get("pantheon_consensus_achieved", False)),
             pantheon_final_verdict=data.get("pantheon_final_verdict", ""),
+            pantheon_outcome_tier=data.get("pantheon_outcome_tier", ""),
+            pantheon_resolution_mode=data.get("pantheon_resolution_mode", ""),
             pantheon_rounds=int(data.get("pantheon_rounds", 0) or 0),
             pantheon_winning_candidate_id=data.get("pantheon_winning_candidate_id", ""),
             timestamp=data.get("timestamp", _now()),

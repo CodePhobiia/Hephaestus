@@ -41,6 +41,7 @@ VALID_OUTPUT_MODES = (
     "TAXONOMY",
     "INTERFACE",
 )
+VALID_PANTHEON_RESOLUTION_MODES = ("STRICT", "TASK_SENSITIVE")
 
 # Import the single source-of-truth default model name
 from hephaestus.core.cross_model import DEFAULT_MODEL as _DEFAULT_MODEL
@@ -68,6 +69,7 @@ class HephaestusConfig:
     pantheon_max_rounds: int = 4
     pantheon_require_unanimity: bool = True
     pantheon_allow_fail_closed: bool = True
+    pantheon_resolution_mode: str = "TASK_SENSITIVE"
     pantheon_max_survivors_to_council: int = 2
     pantheon_athena_model: str | None = None
     pantheon_hermes_model: str | None = None
@@ -99,6 +101,7 @@ class HephaestusConfig:
             "pantheon_max_rounds": self.pantheon_max_rounds,
             "pantheon_require_unanimity": self.pantheon_require_unanimity,
             "pantheon_allow_fail_closed": self.pantheon_allow_fail_closed,
+            "pantheon_resolution_mode": self.pantheon_resolution_mode,
             "pantheon_max_survivors_to_council": self.pantheon_max_survivors_to_council,
             "pantheon_athena_model": self.pantheon_athena_model,
             "pantheon_hermes_model": self.pantheon_hermes_model,
@@ -160,6 +163,9 @@ def load_config() -> HephaestusConfig | None:
         pantheon_allow_fail_closed = data.get("pantheon_allow_fail_closed", True)
         if not isinstance(pantheon_allow_fail_closed, bool):
             pantheon_allow_fail_closed = str(pantheon_allow_fail_closed).strip().lower() in ("1", "true", "yes", "on")
+        pantheon_resolution_mode = str(data.get("pantheon_resolution_mode", "TASK_SENSITIVE") or "TASK_SENSITIVE").upper()
+        if pantheon_resolution_mode not in VALID_PANTHEON_RESOLUTION_MODES:
+            pantheon_resolution_mode = "TASK_SENSITIVE"
         pantheon_max_survivors_to_council = data.get("pantheon_max_survivors_to_council", 2)
         if not isinstance(pantheon_max_survivors_to_council, int) or pantheon_max_survivors_to_council < 1 or pantheon_max_survivors_to_council > 5:
             pantheon_max_survivors_to_council = 2
@@ -185,6 +191,7 @@ def load_config() -> HephaestusConfig | None:
             pantheon_max_rounds=pantheon_max_rounds,
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_resolution_mode=pantheon_resolution_mode,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,

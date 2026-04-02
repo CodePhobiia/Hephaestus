@@ -233,9 +233,11 @@ async def test_pantheon_deliberation_reaches_consensus() -> None:
     )
     assert len(translations) == 1
     assert state.consensus_achieved is True
-    assert state.resolution == "consensus"
+    assert state.resolution == "unanimous_consensus"
+    assert state.outcome_tier == "UNANIMOUS_CONSENSUS"
     assert state.winning_candidate_id is not None
     assert state.rounds[-1].consensus is True
+    assert state.rounds[-1].outcome_tier == "UNANIMOUS_CONSENSUS"
     assert state.accounting.agent_call_counts == {
         "athena": 2,
         "hermes": 2,
@@ -350,10 +352,12 @@ async def test_pantheon_deliberation_reforges_after_veto() -> None:
     assert len(translations) == 1
     assert translations[0].invention_name == "Reforged Invention"
     assert state.consensus_achieved is True
-    assert state.resolution == "consensus"
+    assert state.resolution == "unanimous_consensus"
+    assert state.outcome_tier == "UNANIMOUS_CONSENSUS"
     assert len(state.rounds) == 2
     assert state.rounds[0].consensus is False
     assert state.rounds[1].consensus is True
+    assert any(objection.status == "RESOLVED" for objection in state.objection_ledger)
     assert state.accounting.agent_call_counts == {
         "athena": 3,
         "hermes": 3,
@@ -416,11 +420,12 @@ async def test_pantheon_fail_closed_rejects_when_enabled() -> None:
     assert state.consensus_achieved is False
     assert state.winning_candidate_id is None
     assert state.resolution == "fail_closed_rejection"
+    assert state.outcome_tier == "FAIL_CLOSED_REJECTION"
     assert "fail-closed" in (state.failure_reason or "")
 
 
 @pytest.mark.asyncio
-async def test_pantheon_fail_open_returns_survivor_when_disabled() -> None:
+async def test_pantheon_still_fail_closes_fatal_truth_when_fail_closed_disabled() -> None:
     athena = _Harness([
         {"structural_form": "shape", "confidence": 0.9},
         {
@@ -469,8 +474,134 @@ async def test_pantheon_fail_open_returns_survivor_when_disabled() -> None:
         baseline_dossier=None,
     )
 
-    assert len(translations) == 1
-    assert translations[0].invention_name == "Base Invention"
+    assert translations == []
     assert state.consensus_achieved is False
-    assert state.winning_candidate_id == "candidate-1:Base Invention"
-    assert state.resolution == "fallback_open"
+    assert state.outcome_tier == "FAIL_CLOSED_REJECTION"
+    assert state.resolution == "fail_closed_rejection"
+
+
+@pytest.mark.asyncio
+async def test_pantheon_qualified_consensus_preserves_advisory_caveat() -> None:
+    athena = _Harness([
+        {"structural_form": "shape", "confidence": 0.9},
+        {
+            "agent": "athena",
+            "decision": "ASSENT",
+            "reasons": ["structurally sound"],
+            "must_change": [],
+            "must_preserve": ["novel key insight"],
+            "objections": [
+                {
+                    "severity": "ADVISORY",
+                    "statement": "Observe the first deployment cohort for control-loop oscillation.",
+                    "required_change": "Track control-loop oscillation during the first rollout cohort.",
+                    "closure_test": "Operational telemetry shows no runaway oscillation in the first rollout cohort.",
+                }
+            ],
+            "confidence": 0.9,
+        },
+    ])
+    hermes = _Harness([
+        {"repo_reality_summary": "grounded", "confidence": 0.8},
+        {
+            "agent": "hermes",
+            "decision": "ASSENT",
+            "reasons": ["deployable"],
+            "must_change": [],
+            "must_preserve": ["operator value"],
+            "confidence": 0.8,
+        },
+    ])
+    apollo = _Harness([
+        {
+            "candidate_id": "cand-1",
+            "verdict": "VALID",
+            "fatal_flaws": [],
+            "structural_weaknesses": [],
+            "decorative_signals": [],
+            "proof_obligations": [],
+            "reasons": ["truth-preserving"],
+            "confidence": 0.9,
+        }
+    ])
+
+    coordinator = PantheonCoordinator(
+        athena_harness=athena,
+        hermes_harness=hermes,
+        apollo_harness=apollo,
+        max_rounds=1,
+    )
+    translations, state = await coordinator.deliberate(
+        problem="test problem",
+        structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
+        translations=[_translation()],
+        translator=_TranslatorStub([{}]),
+        baseline_dossier=None,
+    )
+
+    assert len(translations) == 1
+    assert state.consensus_achieved is True
+    assert state.outcome_tier == "QUALIFIED_CONSENSUS"
+    assert state.resolution == "qualified_consensus"
+    assert state.caveats
+    assert any(objection.status == "WAIVED" for objection in state.objection_ledger)
+
+
+@pytest.mark.asyncio
+async def test_pantheon_salvages_repairable_truth_candidate_with_caveats() -> None:
+    athena = _Harness([
+        {"structural_form": "shape", "confidence": 0.9},
+        {
+            "agent": "athena",
+            "decision": "ASSENT",
+            "reasons": ["structurally right"],
+            "must_change": [],
+            "must_preserve": ["novel key insight"],
+            "confidence": 0.9,
+        },
+    ])
+    hermes = _Harness([
+        {"repo_reality_summary": "grounded", "confidence": 0.8},
+        {
+            "agent": "hermes",
+            "decision": "ASSENT",
+            "reasons": ["practical enough"],
+            "must_change": [],
+            "must_preserve": ["operator value"],
+            "confidence": 0.8,
+        },
+    ])
+    apollo = _Harness([
+        {
+            "candidate_id": "cand-1",
+            "verdict": "PROVISIONAL",
+            "fatal_flaws": [],
+            "structural_weaknesses": ["causal proof is underspecified"],
+            "decorative_signals": [],
+            "proof_obligations": ["Make the state transition proof explicit."],
+            "reasons": ["under-proven but coherent"],
+            "confidence": 0.8,
+        }
+    ])
+
+    coordinator = PantheonCoordinator(
+        athena_harness=athena,
+        hermes_harness=hermes,
+        apollo_harness=apollo,
+        max_rounds=1,
+        allow_fail_closed=False,
+    )
+    translations, state = await coordinator.deliberate(
+        problem="test problem",
+        structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
+        translations=[_translation()],
+        translator=_TranslatorStub([{}]),
+        baseline_dossier=None,
+    )
+
+    assert len(translations) == 1
+    assert state.consensus_achieved is True
+    assert state.outcome_tier == "SALVAGED_CONSENSUS"
+    assert state.resolution == "salvaged_consensus"
+    assert state.caveats
+    assert any("Make the state transition proof explicit." in caveat for caveat in state.caveats)

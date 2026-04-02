@@ -12,6 +12,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+PANTHEON_OBJECTION_SEVERITIES = ("FATAL", "REPAIRABLE", "ADVISORY")
+PANTHEON_OBJECTION_STATUSES = ("OPEN", "RESOLVED", "WAIVED")
+PANTHEON_OUTCOME_TIERS = (
+    "PENDING",
+    "UNANIMOUS_CONSENSUS",
+    "QUALIFIED_CONSENSUS",
+    "SALVAGED_CONSENSUS",
+    "FAIL_CLOSED_REJECTION",
+)
+PANTHEON_RESOLUTION_MODES = ("STRICT", "TASK_SENSITIVE")
+
 
 @dataclass
 class AthenaCanon:
@@ -137,6 +148,74 @@ class ApolloAudit:
 
 
 @dataclass
+class PantheonObjection:
+    objection_id: str
+    candidate_id: str = ""
+    agent: str = ""
+    severity: str = "REPAIRABLE"
+    statement: str = ""
+    required_change: str = ""
+    closure_test: str = ""
+    status: str = "OPEN"
+    opened_round: int = 0
+    last_seen_round: int = 0
+    last_updated_round: int = 0
+    resolved_round: int | None = None
+    waived_round: int | None = None
+    opened_stage: str = "council"
+    last_stage: str = "council"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "objection_id": self.objection_id,
+            "candidate_id": self.candidate_id,
+            "agent": self.agent,
+            "severity": self.severity,
+            "statement": self.statement,
+            "required_change": self.required_change,
+            "closure_test": self.closure_test,
+            "status": self.status,
+            "opened_round": self.opened_round,
+            "last_seen_round": self.last_seen_round,
+            "last_updated_round": self.last_updated_round,
+            "resolved_round": self.resolved_round,
+            "waived_round": self.waived_round,
+            "opened_stage": self.opened_stage,
+            "last_stage": self.last_stage,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonObjection | None":
+        if not isinstance(data, dict):
+            return None
+        return cls(
+            objection_id=str(data.get("objection_id", data.get("id", "")) or ""),
+            candidate_id=str(data.get("candidate_id", "") or ""),
+            agent=str(data.get("agent", "") or ""),
+            severity=str(data.get("severity", "REPAIRABLE") or "REPAIRABLE").upper(),
+            statement=str(data.get("statement", "") or ""),
+            required_change=str(data.get("required_change", "") or ""),
+            closure_test=str(data.get("closure_test", "") or ""),
+            status=str(data.get("status", "OPEN") or "OPEN").upper(),
+            opened_round=int(data.get("opened_round", 0) or 0),
+            last_seen_round=int(data.get("last_seen_round", 0) or 0),
+            last_updated_round=int(data.get("last_updated_round", data.get("last_seen_round", 0)) or 0),
+            resolved_round=(
+                int(data.get("resolved_round"))
+                if data.get("resolved_round") is not None
+                else None
+            ),
+            waived_round=(
+                int(data.get("waived_round"))
+                if data.get("waived_round") is not None
+                else None
+            ),
+            opened_stage=str(data.get("opened_stage", "council") or "council"),
+            last_stage=str(data.get("last_stage", data.get("opened_stage", "council")) or "council"),
+        )
+
+
+@dataclass
 class PantheonVote:
     agent: str
     decision: str
@@ -144,6 +223,7 @@ class PantheonVote:
     reasons: list[str] = field(default_factory=list)
     must_change: list[str] = field(default_factory=list)
     must_preserve: list[str] = field(default_factory=list)
+    objection_ids: list[str] = field(default_factory=list)
     confidence: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
@@ -154,6 +234,7 @@ class PantheonVote:
             "reasons": list(self.reasons),
             "must_change": list(self.must_change),
             "must_preserve": list(self.must_preserve),
+            "objection_ids": list(self.objection_ids),
             "confidence": self.confidence,
         }
 
@@ -168,6 +249,7 @@ class PantheonVote:
             reasons=list(data.get("reasons", []) or []),
             must_change=list(data.get("must_change", []) or []),
             must_preserve=list(data.get("must_preserve", []) or []),
+            objection_ids=list(data.get("objection_ids", []) or []),
             confidence=float(data.get("confidence", 0.0) or 0.0),
         )
 
@@ -179,6 +261,7 @@ class PantheonScreening:
     source_domain: str = ""
     reality_vote: PantheonVote | None = None
     audit: ApolloAudit | None = None
+    objection_ids: list[str] = field(default_factory=list)
     survived: bool = False
     priority_score: float = 0.0
     prune_reasons: list[str] = field(default_factory=list)
@@ -191,6 +274,7 @@ class PantheonScreening:
             "source_domain": self.source_domain,
             "reality_vote": self.reality_vote.to_dict() if self.reality_vote is not None else None,
             "audit": self.audit.to_dict() if self.audit is not None else None,
+            "objection_ids": list(self.objection_ids),
             "survived": self.survived,
             "priority_score": self.priority_score,
             "prune_reasons": list(self.prune_reasons),
@@ -207,10 +291,38 @@ class PantheonScreening:
             source_domain=str(data.get("source_domain", "") or ""),
             reality_vote=PantheonVote.from_dict(data.get("reality_vote")),
             audit=ApolloAudit.from_dict(data.get("audit")),
+            objection_ids=list(data.get("objection_ids", []) or []),
             survived=bool(data.get("survived", False)),
             priority_score=float(data.get("priority_score", 0.0) or 0.0),
             prune_reasons=list(data.get("prune_reasons", []) or []),
             summary=str(data.get("summary", "") or ""),
+        )
+
+
+@dataclass
+class PantheonReforgeRecord:
+    addressed_objection_ids: list[str] = field(default_factory=list)
+    remaining_open_objection_ids: list[str] = field(default_factory=list)
+    changes_made: list[str] = field(default_factory=list)
+    novelty_core_preserved: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "addressed_objection_ids": list(self.addressed_objection_ids),
+            "remaining_open_objection_ids": list(self.remaining_open_objection_ids),
+            "changes_made": list(self.changes_made),
+            "novelty_core_preserved": self.novelty_core_preserved,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonReforgeRecord | None":
+        if not isinstance(data, dict):
+            return None
+        return cls(
+            addressed_objection_ids=list(data.get("addressed_objection_ids", []) or []),
+            remaining_open_objection_ids=list(data.get("remaining_open_objection_ids", []) or []),
+            changes_made=list(data.get("changes_made", []) or []),
+            novelty_core_preserved=str(data.get("novelty_core_preserved", "") or ""),
         )
 
 
@@ -220,8 +332,14 @@ class PantheonRound:
     candidate_id: str
     votes: list[PantheonVote] = field(default_factory=list)
     consensus: bool = False
+    outcome_tier: str = "PENDING"
     unresolved_vetoes: list[str] = field(default_factory=list)
+    open_objection_ids: list[str] = field(default_factory=list)
+    resolved_objection_ids: list[str] = field(default_factory=list)
+    waived_objection_ids: list[str] = field(default_factory=list)
+    caveats: list[str] = field(default_factory=list)
     revision_summary: str = ""
+    reforge: PantheonReforgeRecord | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -229,8 +347,14 @@ class PantheonRound:
             "candidate_id": self.candidate_id,
             "votes": [vote.to_dict() for vote in self.votes],
             "consensus": self.consensus,
+            "outcome_tier": self.outcome_tier,
             "unresolved_vetoes": list(self.unresolved_vetoes),
+            "open_objection_ids": list(self.open_objection_ids),
+            "resolved_objection_ids": list(self.resolved_objection_ids),
+            "waived_objection_ids": list(self.waived_objection_ids),
+            "caveats": list(self.caveats),
             "revision_summary": self.revision_summary,
+            "reforge": self.reforge.to_dict() if self.reforge is not None else None,
         }
 
     @classmethod
@@ -250,8 +374,14 @@ class PantheonRound:
             candidate_id=str(data.get("candidate_id", "") or ""),
             votes=votes,
             consensus=bool(data.get("consensus", False)),
+            outcome_tier=str(data.get("outcome_tier", "PENDING") or "PENDING"),
             unresolved_vetoes=list(data.get("unresolved_vetoes", []) or []),
+            open_objection_ids=list(data.get("open_objection_ids", []) or []),
+            resolved_objection_ids=list(data.get("resolved_objection_ids", []) or []),
+            waived_objection_ids=list(data.get("waived_objection_ids", []) or []),
+            caveats=list(data.get("caveats", []) or []),
             revision_summary=str(data.get("revision_summary", "") or ""),
+            reforge=PantheonReforgeRecord.from_dict(data.get("reforge")),
         )
 
 
@@ -321,6 +451,7 @@ class PantheonAccounting:
 @dataclass
 class PantheonState:
     mode: str = "inactive"
+    resolution_mode: str = "TASK_SENSITIVE"
     canon: AthenaCanon | None = None
     dossier: HermesDossier | None = None
     initial_structure: dict[str, Any] | None = None
@@ -329,10 +460,13 @@ class PantheonState:
     survivor_candidate_ids: list[str] = field(default_factory=list)
     audits: list[ApolloAudit] = field(default_factory=list)
     rounds: list[PantheonRound] = field(default_factory=list)
+    objection_ledger: list[PantheonObjection] = field(default_factory=list)
     winning_candidate_id: str | None = None
     consensus_achieved: bool = False
     final_verdict: str = "UNKNOWN"
     resolution: str = "inactive"
+    outcome_tier: str = "PENDING"
+    caveats: list[str] = field(default_factory=list)
     failure_reason: str | None = None
     unresolved_vetoes: list[str] = field(default_factory=list)
     accounting: PantheonAccounting = field(default_factory=PantheonAccounting)
@@ -340,6 +474,7 @@ class PantheonState:
     def to_dict(self) -> dict[str, Any]:
         return {
             "mode": self.mode,
+            "resolution_mode": self.resolution_mode,
             "canon": self.canon.to_dict() if self.canon is not None else None,
             "dossier": self.dossier.to_dict() if self.dossier is not None else None,
             "initial_structure": dict(self.initial_structure) if isinstance(self.initial_structure, dict) else None,
@@ -348,10 +483,13 @@ class PantheonState:
             "survivor_candidate_ids": list(self.survivor_candidate_ids),
             "audits": [audit.to_dict() for audit in self.audits],
             "rounds": [round_.to_dict() for round_ in self.rounds],
+            "objection_ledger": [objection.to_dict() for objection in self.objection_ledger],
             "winning_candidate_id": self.winning_candidate_id,
             "consensus_achieved": self.consensus_achieved,
             "final_verdict": self.final_verdict,
             "resolution": self.resolution,
+            "outcome_tier": self.outcome_tier,
+            "caveats": list(self.caveats),
             "failure_reason": self.failure_reason,
             "unresolved_vetoes": list(self.unresolved_vetoes),
             "accounting": self.accounting.to_dict(),
@@ -385,8 +523,17 @@ class PantheonState:
             )
             if round_ is not None
         ]
+        objection_ledger = [
+            objection
+            for objection in (
+                PantheonObjection.from_dict(item)
+                for item in data.get("objection_ledger", []) or []
+            )
+            if objection is not None
+        ]
         return cls(
             mode=str(data.get("mode", "inactive") or "inactive"),
+            resolution_mode=str(data.get("resolution_mode", "TASK_SENSITIVE") or "TASK_SENSITIVE").upper(),
             canon=AthenaCanon.from_dict(data.get("canon")),
             dossier=HermesDossier.from_dict(data.get("dossier")),
             initial_structure=(
@@ -403,6 +550,7 @@ class PantheonState:
             survivor_candidate_ids=list(data.get("survivor_candidate_ids", []) or []),
             audits=audits,
             rounds=rounds,
+            objection_ledger=objection_ledger,
             winning_candidate_id=(
                 str(data.get("winning_candidate_id"))
                 if data.get("winning_candidate_id") is not None
@@ -411,6 +559,8 @@ class PantheonState:
             consensus_achieved=bool(data.get("consensus_achieved", False)),
             final_verdict=str(data.get("final_verdict", "UNKNOWN") or "UNKNOWN"),
             resolution=str(data.get("resolution", "inactive") or "inactive"),
+            outcome_tier=str(data.get("outcome_tier", "PENDING") or "PENDING"),
+            caveats=list(data.get("caveats", []) or []),
             failure_reason=(
                 str(data.get("failure_reason"))
                 if data.get("failure_reason") is not None
@@ -425,7 +575,13 @@ __all__ = [
     "ApolloAudit",
     "AthenaCanon",
     "HermesDossier",
+    "PANTHEON_OBJECTION_SEVERITIES",
+    "PANTHEON_OBJECTION_STATUSES",
+    "PANTHEON_OUTCOME_TIERS",
+    "PANTHEON_RESOLUTION_MODES",
     "PantheonAccounting",
+    "PantheonObjection",
+    "PantheonReforgeRecord",
     "PantheonRound",
     "PantheonScreening",
     "PantheonState",

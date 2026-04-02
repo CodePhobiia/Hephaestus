@@ -996,9 +996,13 @@ def _lens_engine_plain_lines(state: Any) -> list[str]:
 def _pantheon_markdown_lines(state: Any) -> list[str]:
     resolution = _lookup(state, "resolution", "")
     failure_reason = _lookup(state, "failure_reason", "")
+    objection_ledger = list(_lookup(state, "objection_ledger", []) or [])
+    caveats = list(_lookup(state, "caveats", []) or [])
     lines: list[str] = [
         f"  Mode: `{_as_text(_lookup(state, 'mode', ''), 'inactive')}`",
         f"  Resolution: `{_as_text(resolution, 'inactive')}`",
+        f"  Resolution mode: `{_as_text(_lookup(state, 'resolution_mode', ''), 'TASK_SENSITIVE')}`",
+        f"  Outcome tier: `{_as_text(_lookup(state, 'outcome_tier', ''), 'PENDING')}`",
         f"  Consensus achieved: `{bool(_lookup(state, 'consensus_achieved', False))}`",
         f"  Final verdict: `{_as_text(_lookup(state, 'final_verdict', ''), 'UNKNOWN')}`",
     ]
@@ -1021,6 +1025,10 @@ def _pantheon_markdown_lines(state: Any) -> list[str]:
     unresolved = list(_lookup(state, "unresolved_vetoes", []) or [])
     if unresolved:
         lines.append(f"  - Unresolved vetoes: {', '.join(f'`{item}`' for item in unresolved)}")
+    if caveats:
+        lines.append("  - Caveats:")
+        for item in caveats[:3]:
+            lines.append(f"    - {_as_text(item)}")
     if failure_reason:
         lines.append(f"  - Failure reason: {_as_text(failure_reason)}")
     for screening in getattr(state, "screenings", [])[:4]:
@@ -1033,17 +1041,37 @@ def _pantheon_markdown_lines(state: Any) -> list[str]:
         lines.append(
             f"  - Round {_lookup(round_, 'round_index', '?')}: "
             f"candidate `{_lookup(round_, 'candidate_id', '')}` "
-            f"consensus=`{bool(_lookup(round_, 'consensus', False))}`"
+            f"consensus=`{bool(_lookup(round_, 'consensus', False))}` "
+            f"tier=`{_as_text(_lookup(round_, 'outcome_tier', ''), 'PENDING')}`"
         )
+    if objection_ledger:
+        open_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "OPEN")
+        resolved_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "RESOLVED")
+        waived_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "WAIVED")
+        lines.append(
+            f"  - Objection ledger: open=`{open_count}` resolved=`{resolved_count}` waived=`{waived_count}`"
+        )
+        for objection in objection_ledger[:4]:
+            lines.append(
+                "  - "
+                f"`{_lookup(objection, 'objection_id', '')}` "
+                f"[{_as_text(_lookup(objection, 'severity', ''), 'REPAIRABLE')}/"
+                f"{_as_text(_lookup(objection, 'status', ''), 'OPEN')}] "
+                f"{_as_text(_lookup(objection, 'statement', ''), 'n/a')}"
+            )
     return lines
 
 
 def _pantheon_plain_lines(state: Any) -> list[str]:
     resolution = _lookup(state, "resolution", "")
     failure_reason = _lookup(state, "failure_reason", "")
+    objection_ledger = list(_lookup(state, "objection_ledger", []) or [])
+    caveats = list(_lookup(state, "caveats", []) or [])
     lines: list[str] = [
         f"  Mode: {_as_text(_lookup(state, 'mode', ''), 'inactive')}",
         f"  Resolution: {_as_text(resolution, 'inactive')}",
+        f"  Resolution mode: {_as_text(_lookup(state, 'resolution_mode', ''), 'TASK_SENSITIVE')}",
+        f"  Outcome tier: {_as_text(_lookup(state, 'outcome_tier', ''), 'PENDING')}",
         f"  Consensus achieved: {bool(_lookup(state, 'consensus_achieved', False))}",
         f"  Final verdict: {_as_text(_lookup(state, 'final_verdict', ''), 'UNKNOWN')}",
     ]
@@ -1066,6 +1094,8 @@ def _pantheon_plain_lines(state: Any) -> list[str]:
     unresolved = list(_lookup(state, "unresolved_vetoes", []) or [])
     if unresolved:
         lines.append(f"  Unresolved vetoes: {', '.join(unresolved)}")
+    if caveats:
+        lines.append(f"  Caveats: {'; '.join(str(item) for item in caveats[:3])}")
     if failure_reason:
         lines.append(f"  Failure reason: {_as_text(failure_reason)}")
     for screening in getattr(state, "screenings", [])[:4]:
@@ -1078,8 +1108,21 @@ def _pantheon_plain_lines(state: Any) -> list[str]:
         lines.append(
             f"  Round {_lookup(round_, 'round_index', '?')}: "
             f"candidate {_lookup(round_, 'candidate_id', '')} "
-            f"consensus={bool(_lookup(round_, 'consensus', False))}"
+            f"consensus={bool(_lookup(round_, 'consensus', False))} "
+            f"tier={_as_text(_lookup(round_, 'outcome_tier', ''), 'PENDING')}"
         )
+    if objection_ledger:
+        open_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "OPEN")
+        resolved_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "RESOLVED")
+        waived_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "WAIVED")
+        lines.append(f"  Objection ledger: open={open_count} resolved={resolved_count} waived={waived_count}")
+        for objection in objection_ledger[:4]:
+            lines.append(
+                f"  {_lookup(objection, 'objection_id', '')} "
+                f"[{_as_text(_lookup(objection, 'severity', ''), 'REPAIRABLE')}/"
+                f"{_as_text(_lookup(objection, 'status', ''), 'OPEN')}] "
+                f"{_as_text(_lookup(objection, 'statement', ''), 'n/a')}"
+            )
     return lines
 
 

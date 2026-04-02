@@ -141,6 +141,8 @@ class TestExportConfig:
         report = _make_report(
             pantheon_state=SimpleNamespace(
                 mode="pantheon",
+                resolution_mode="TASK_SENSITIVE",
+                outcome_tier="SALVAGED_CONSENSUS",
                 consensus_achieved=True,
                 final_verdict="NOVEL",
                 winning_candidate_id="candidate-1:biology_immune",
@@ -155,6 +157,15 @@ class TestExportConfig:
                     )
                 ],
                 rounds=[SimpleNamespace(round_index=1, candidate_id="candidate-1:biology_immune", consensus=True, revision_summary="Council assented.")],
+                caveats=["Track rollout oscillation in the first cohort."],
+                objection_ledger=[
+                    SimpleNamespace(
+                        objection_id="obj-athena-1",
+                        severity="ADVISORY",
+                        status="WAIVED",
+                        statement="Track rollout oscillation in the first cohort.",
+                    )
+                ],
                 unresolved_vetoes=[],
             )
         )
@@ -162,6 +173,8 @@ class TestExportConfig:
         assert "Pantheon Council" in md
         assert "Pre-Council Screening" in md
         assert "Council Rounds" in md
+        assert "Pantheon Caveats" in md
+        assert "Objection Ledger" in md
 
 
 class TestExportToFile:

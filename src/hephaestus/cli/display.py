@@ -698,6 +698,8 @@ def _print_pantheon(console: Console, pantheon_state: Any, pantheon_runtime: Any
     table.add_column("Value", style="white")
 
     table.add_row("Resolution", _safe_text(_maybe_attr(pantheon_state, "resolution", "inactive"), "inactive"))
+    table.add_row("Resolution mode", _safe_text(_maybe_attr(pantheon_state, "resolution_mode", "TASK_SENSITIVE"), "TASK_SENSITIVE"))
+    table.add_row("Outcome tier", _safe_text(_maybe_attr(pantheon_state, "outcome_tier", "PENDING"), "PENDING"))
     table.add_row("Consensus", str(bool(_maybe_attr(pantheon_state, "consensus_achieved", False))))
     table.add_row("Final verdict", _safe_text(_maybe_attr(pantheon_state, "final_verdict", "UNKNOWN"), "UNKNOWN"))
 
@@ -708,6 +710,9 @@ def _print_pantheon(console: Console, pantheon_state: Any, pantheon_runtime: Any
     unresolved = list(_maybe_attr(pantheon_state, "unresolved_vetoes", []) or [])
     if unresolved:
         table.add_row("Unresolved vetoes", ", ".join(str(item) for item in unresolved))
+    caveats = list(_maybe_attr(pantheon_state, "caveats", []) or [])
+    if caveats:
+        table.add_row("Caveats", "\n".join(str(item) for item in caveats[:3]))
 
     failure_reason = _maybe_attr(pantheon_state, "failure_reason", None)
     if failure_reason:

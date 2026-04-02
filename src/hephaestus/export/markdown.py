@@ -211,6 +211,8 @@ def export_markdown(report: Any, config: ExportConfig | None = None) -> str:
         lines.append("## Pantheon Council")
         lines.append("")
         lines.append(f"- Mode: `{getattr(pantheon, 'mode', 'inactive')}`")
+        lines.append(f"- Resolution mode: `{getattr(pantheon, 'resolution_mode', 'TASK_SENSITIVE')}`")
+        lines.append(f"- Outcome tier: `{getattr(pantheon, 'outcome_tier', 'PENDING')}`")
         lines.append(f"- Consensus achieved: `{bool(getattr(pantheon, 'consensus_achieved', False))}`")
         lines.append(f"- Final verdict: `{getattr(pantheon, 'final_verdict', 'UNKNOWN')}`")
         winning_candidate_id = getattr(pantheon, "winning_candidate_id", "")
@@ -242,11 +244,29 @@ def export_markdown(report: Any, config: ExportConfig | None = None) -> str:
                 lines.append(
                     f"- Round {getattr(round_, 'round_index', '?')}: "
                     f"`{getattr(round_, 'candidate_id', '')}` "
-                    f"consensus=`{bool(getattr(round_, 'consensus', False))}`"
+                    f"consensus=`{bool(getattr(round_, 'consensus', False))}` "
+                    f"tier=`{getattr(round_, 'outcome_tier', 'PENDING')}`"
                 )
                 summary = getattr(round_, "revision_summary", "")
                 if summary:
                     lines.append(f"  {summary}")
+        caveats = getattr(pantheon, "caveats", []) or []
+        if caveats:
+            lines.append("")
+            lines.append("### Pantheon Caveats")
+            for item in caveats[:8]:
+                lines.append(f"- {item}")
+        objection_ledger = getattr(pantheon, "objection_ledger", []) or []
+        if objection_ledger:
+            lines.append("")
+            lines.append("### Objection Ledger")
+            for objection in objection_ledger[:8]:
+                lines.append(
+                    f"- `{getattr(objection, 'objection_id', '')}` "
+                    f"[{getattr(objection, 'severity', 'REPAIRABLE')}/"
+                    f"{getattr(objection, 'status', 'OPEN')}] "
+                    f"{getattr(objection, 'statement', '')}"
+                )
         unresolved = getattr(pantheon, "unresolved_vetoes", []) or []
         if unresolved:
             lines.append("")

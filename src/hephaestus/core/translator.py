@@ -823,6 +823,7 @@ class SolutionTranslator:
         translation.guard_results = list(source_translation.guard_results)
         translation.guard_failed = source_translation.guard_failed
         translation.recomposition_events = list(source_translation.recomposition_events)
+        setattr(translation, "pantheon_reforge_metadata", parsed.get("pantheon_reforge", {}))
         return translation
 
     @staticmethod

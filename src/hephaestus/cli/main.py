@@ -256,6 +256,7 @@ def cli(
     pantheon_max_rounds = 4
     pantheon_require_unanimity = True
     pantheon_allow_fail_closed = True
+    pantheon_resolution_mode = "TASK_SENSITIVE"
     pantheon_max_survivors_to_council = 2
     pantheon_athena_model = None
     pantheon_hermes_model = None
@@ -296,6 +297,7 @@ def cli(
         pantheon_max_rounds = getattr(resolved, "pantheon_max_rounds", 4)
         pantheon_require_unanimity = getattr(resolved, "pantheon_require_unanimity", True)
         pantheon_allow_fail_closed = getattr(resolved, "pantheon_allow_fail_closed", True)
+        pantheon_resolution_mode = getattr(resolved, "pantheon_resolution_mode", "TASK_SENSITIVE")
         pantheon_max_survivors_to_council = getattr(resolved, "pantheon_max_survivors_to_council", 2)
         pantheon_athena_model = getattr(resolved, "pantheon_athena_model", None)
         pantheon_hermes_model = getattr(resolved, "pantheon_hermes_model", None)
@@ -448,6 +450,7 @@ def cli(
                     pantheon_max_rounds=pantheon_max_rounds,
                     pantheon_require_unanimity=pantheon_require_unanimity,
                     pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+                    pantheon_resolution_mode=pantheon_resolution_mode,
                     pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
                     pantheon_athena_model=pantheon_athena_model,
                     pantheon_hermes_model=pantheon_hermes_model,
@@ -498,6 +501,7 @@ async def _run_genesis(
     pantheon_max_rounds: int = 4,
     pantheon_require_unanimity: bool = True,
     pantheon_allow_fail_closed: bool = True,
+    pantheon_resolution_mode: str = "TASK_SENSITIVE",
     pantheon_max_survivors_to_council: int = 2,
     pantheon_athena_model: str | None = None,
     pantheon_hermes_model: str | None = None,
@@ -530,6 +534,7 @@ async def _run_genesis(
         pantheon_max_rounds=pantheon_max_rounds,
         pantheon_require_unanimity=pantheon_require_unanimity,
         pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+        pantheon_resolution_mode=pantheon_resolution_mode,
         pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
         pantheon_athena_model=pantheon_athena_model,
         pantheon_hermes_model=pantheon_hermes_model,
@@ -951,6 +956,7 @@ def _build_genesis_config(
     pantheon_max_rounds: int = 4,
     pantheon_require_unanimity: bool = True,
     pantheon_allow_fail_closed: bool = True,
+    pantheon_resolution_mode: str = "TASK_SENSITIVE",
     pantheon_max_survivors_to_council: int = 2,
     pantheon_athena_model: str | None = None,
     pantheon_hermes_model: str | None = None,
@@ -987,6 +993,7 @@ def _build_genesis_config(
             pantheon_max_rounds=pantheon_max_rounds,
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_resolution_mode=pantheon_resolution_mode,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
@@ -1020,6 +1027,7 @@ def _build_genesis_config(
             pantheon_max_rounds=pantheon_max_rounds,
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_resolution_mode=pantheon_resolution_mode,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
@@ -1053,6 +1061,7 @@ def _build_genesis_config(
             pantheon_max_rounds=pantheon_max_rounds,
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_resolution_mode=pantheon_resolution_mode,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
@@ -1086,6 +1095,7 @@ def _build_genesis_config(
         pantheon_max_rounds=pantheon_max_rounds,
         pantheon_require_unanimity=pantheon_require_unanimity,
         pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+        pantheon_resolution_mode=pantheon_resolution_mode,
         pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
         pantheon_athena_model=pantheon_athena_model,
         pantheon_hermes_model=pantheon_hermes_model,
@@ -1266,6 +1276,7 @@ def init_cmd() -> None:
         "# pantheon_max_rounds: 4\n"
         "# pantheon_require_unanimity: true\n"
         "# pantheon_allow_fail_closed: true\n"
+        "# pantheon_resolution_mode: TASK_SENSITIVE\n"
         "# pantheon_max_survivors_to_council: 2\n"
         "# pantheon_athena_model: claude-opus-4-5\n"
         "# pantheon_hermes_model: gpt-4o\n"
