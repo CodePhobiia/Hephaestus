@@ -75,6 +75,20 @@ MODEL_PRESETS: dict[str, dict[str, str]] = {
         "attack": "gpt-4o",
         "defend": "claude-opus-4-5",
     },
+    "qwen": {
+        "decompose": "qwen/qwen3.6-plus:free",
+        "search": "qwen/qwen3.6-plus:free",
+        "score": "qwen/qwen3.6-plus:free",
+        "translate": "qwen/qwen3.6-plus:free",
+        "attack": "qwen/qwen3.6-plus:free",
+        "defend": "qwen/qwen3.6-plus:free",
+    },
+    "pantheon_qwen": {
+        "athena": "qwen/qwen3.6-plus:free",
+        "hermes": "qwen/qwen3.6-plus:free",
+        "apollo": "qwen/qwen3.6-plus:free",
+        "hephaestus": "qwen/qwen3.6-plus:free",
+    },
 }
 
 # The default model for interactive / REPL mode
