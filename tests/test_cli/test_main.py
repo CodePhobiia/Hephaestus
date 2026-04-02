@@ -22,6 +22,7 @@ from click.testing import CliRunner
 from hephaestus.cli.main import cli, scan_cmd, workspace_cmd
 from hephaestus.lenses.state import LensBundleMember, LensBundleProof, LensEngineState
 from hephaestus.research.perplexity import BenchmarkCase, BenchmarkCorpus
+from hephaestus.session.deliberation import DeliberationGraph
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +126,14 @@ def _make_verified_invention(
     v.verdict = verdict
     v.is_viable = True
     return v
+
+
+def _deliberation_graph() -> DeliberationGraph:
+    graph = DeliberationGraph(workflow_kind="genesis", goal="test goal")
+    graph.record_stage("search", "Found candidates.")
+    graph.ensure_candidate("candidate-1:immune", source_domain="Immune System", status="finalist")
+    graph.mark_final("candidate-1:immune", reason="verification_complete")
+    return graph
 
 
 def _make_cost_breakdown(
@@ -933,6 +942,20 @@ class TestDisplay:
         runtime = payload["hephaestus_invention_report"]["pantheon_runtime"]
         assert pantheon["resolution"] == "consensus"
         assert runtime["total_cost_usd"] == pytest.approx(0.1234)
+
+    def test_bridge_report_preserves_deliberation_graph(self) -> None:
+        from hephaestus.cli.main import _bridge_report
+        from hephaestus.output.formatter import OutputFormatter
+
+        report = _make_invention_report()
+        report.deliberation_graph = _deliberation_graph()
+
+        bridged = _bridge_report(report)
+        payload = json.loads(OutputFormatter().to_json(bridged))
+        graph = payload["hephaestus_invention_report"]["deliberation_graph"]
+
+        assert graph["workflow_kind"] == "genesis"
+        assert graph["final_candidate_id"] == "candidate-1:immune"
 
 
 # ---------------------------------------------------------------------------

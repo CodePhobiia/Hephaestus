@@ -921,6 +921,7 @@ def _bridge_report(genesis_report: Any) -> Any:
         lens_engine_state=_explicit_attr(genesis_report, "lens_engine_state", None),
         pantheon_state=_explicit_attr(genesis_report, "pantheon_state", None),
         pantheon_runtime=_explicit_attr(genesis_report, "pantheon_runtime", None),
+        deliberation_graph=_explicit_attr(genesis_report, "deliberation_graph", None),
         cost_breakdown=_explicit_attr(genesis_report, "cost_breakdown", None),
         alternatives=alternatives,
         cost_usd=genesis_report.total_cost_usd,

@@ -34,6 +34,7 @@ from hephaestus.output.formatter import (
 )
 from hephaestus.output.prior_art import PriorArtReport, PatentResult, PaperResult
 from hephaestus.output.proof import NoveltyProof, NoveltyProofGenerator
+from hephaestus.session.deliberation import DeliberationGraph
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +214,33 @@ def _pantheon_state() -> SimpleNamespace:
         ],
         accounting=runtime,
     )
+
+
+def _deliberation_graph() -> DeliberationGraph:
+    graph = DeliberationGraph(workflow_kind="genesis", goal="test problem")
+    graph.record_stage("search", "Found candidates.")
+    graph.ensure_candidate(
+        "candidate-1:Pheromone",
+        source_domain="Biology",
+        status="finalist",
+        route="translate",
+    )
+    graph.record_route_decision(
+        "score",
+        "translate:2",
+        "Top scores are clustered; keep a broader translation frontier.",
+    )
+    graph.record_accounting(
+        stage="translate",
+        route="frontier:2",
+        cost_usd=0.45,
+        input_tokens=120,
+        output_tokens=60,
+        duration_seconds=2.4,
+        calls=1,
+    )
+    graph.mark_final("candidate-1:Pheromone", reason="verification_complete")
+    return graph
 
 
 # ---------------------------------------------------------------------------
@@ -444,6 +472,14 @@ class TestMarkdownOutput:
         assert "Agent calls" in md
         assert "`pantheon`=$0.1234" in md
 
+    def test_includes_runtime_orchestration_section(self) -> None:
+        md = OutputFormatter().to_markdown(
+            _make_report(deliberation_graph=_deliberation_graph())
+        )
+        assert "RUNTIME ORCHESTRATION" in md
+        assert "Budget policy" in md or "Workflow" in md
+        assert "candidate-1:Pheromone" in md
+
 
 # ---------------------------------------------------------------------------
 # JSON output
@@ -568,6 +604,17 @@ class TestJsonOutput:
         assert report["pantheon_runtime"]["agent_call_counts"]["hephaestus"] == 1
         assert report["meta"]["cost_breakdown"]["pantheon_cost"] == pytest.approx(0.1234)
 
+    def test_deliberation_graph_in_json(self) -> None:
+        data = json.loads(
+            OutputFormatter().to_json(
+                _make_report(deliberation_graph=_deliberation_graph())
+            )
+        )
+        graph = data["hephaestus_invention_report"]["deliberation_graph"]
+        assert graph["workflow_kind"] == "genesis"
+        assert graph["final_candidate_id"] == "candidate-1:Pheromone"
+        assert graph["accounting"]["total_cost_usd"] == pytest.approx(0.45)
+
 
 # ---------------------------------------------------------------------------
 # Plain text output
@@ -648,6 +695,13 @@ class TestPlainOutput:
         assert "Outcome tier: QUALIFIED_CONSENSUS" in plain
         assert "Agent calls: athena=2, hermes=2, apollo=1, hephaestus=1" in plain
         assert "pantheon=$0.1234" in plain
+
+    def test_includes_runtime_orchestration_in_plain_output(self) -> None:
+        plain = OutputFormatter().to_plain(
+            _make_report(deliberation_graph=_deliberation_graph())
+        )
+        assert "RUNTIME ORCHESTRATION" in plain
+        assert "candidate-1:Pheromone" in plain
 
 
 # ---------------------------------------------------------------------------

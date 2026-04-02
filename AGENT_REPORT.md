@@ -1,40 +1,77 @@
-# doc04 creativity implementation report
+# AGENT REPORT
+
+## Summary
+
+Implemented the doc02 runtime/harness/orchestration lane on `impl/doc02-runtime`.
+
+The branch now adds a reusable typed deliberation graph that carries candidate state, claims, evidence, objections, verifier checks, routing decisions, and runtime accounting across:
+- `Genesis`
+- `NoveltyVerifier`
+- conversation runtime tool loops
+- session persistence
+- formatter/CLI report surfaces
 
 ## What changed
 
-- Upgraded `BranchGenome` from a scalar-heuristic flow to a quality-diversity surface.
-  - Added shared novelty-vector support via [`src/hephaestus/novelty/vector.py`](/tmp/heph-doc-impl-20260402-070453/doc04/src/hephaestus/novelty/vector.py).
-  - Extended branch metrics with positive-archive overlap, load-bearing creativity, diversity credit, quality-diversity score, archive cell, island key, and retrieval-expansion readiness.
-  - Added branch runtime metadata for archive placement, crossover parents, and branch-conditioned retrieval hints.
-- Upgraded branch arena evolution and preservation.
-  - Added positive archive / island elite tracking.
-  - Promotion now preserves distinct archive cells and islands before filling globally.
-  - Pruning now keeps uniquely valuable cells alive when they clear the quality-diversity floor.
-  - Added bounded crossover branch creation between viable but structurally distinct islands.
-- Improved novelty/evaluator surfaces.
-  - `CandidateScorer` now executes both structural fidelity and mechanism-novelty scoring, emits a novelty vector, tracks creativity score, and folds mechanism novelty into ranking.
-  - `ConvergenceDetector` now exposes novelty-vector components instead of only a scalar similarity.
-  - `RejectionLedger` now supports positive-archive overlap queries and optional metadata persistence.
-- Added retrieval expansion groundwork.
-  - `CrossDomainSearcher` now accepts an optional `RetrievalExpansionRequest` and records/search-prompts branch-conditioned frontier hints.
-  - Branch assay emits `retrieval_expansion_hints` so future runtime stages can request targeted frontier expansion without changing the branch API again.
-- Wired the new branchgenome behavior into `core/genesis.py`.
-  - Genesis now assays crossover branches, persists archive metadata to the ledger, and includes novelty/archive/crossover details in promoted branch outcomes.
+- Added `src/hephaestus/session/deliberation.py`.
+  - New typed runtime substrate: `DeliberationGraph`, `CandidateStateCard`, `DeliberationEvidence`, `DeliberationClaim`, `DeliberationObjection`, `VerifierCheck`, `RuntimeAccounting`, `RuntimeBudgetPolicy`, `RuntimeRouteDecision`, `RuntimeRouter`.
+  - Includes heuristic routing for translation-frontier sizing and shared runtime accounting.
+
+- Extended `src/hephaestus/core/genesis.py`.
+  - Instantiates a deliberation graph per invention run.
+  - Records stage events, per-stage accounting, baseline evidence, Pantheon objections, and translation/verification state.
+  - Adds dynamic translation-frontier routing via `RuntimeRouter`.
+  - Attaches the deliberation graph to `InventionReport`.
+  - Preserves compatibility with mocked verifiers that do not accept the new optional `deliberation_graph` kwarg.
+
+- Extended `src/hephaestus/core/verifier.py`.
+  - Accepts an optional deliberation graph.
+  - Emits verifier-stack checks for:
+    - adversarial/model validity
+    - prior-art retrieval
+    - load-bearing validation
+    - quality gate
+    - structural novelty
+    - implementation risk review
+    - claim/evidence coverage
+  - Writes evidence nodes and durable objections, including explicit evidence-gap objections for unsupported high-novelty claims.
+  - Records verification accounting from the underlying forge traces.
+
+- Extended `src/hephaestus/agent/runtime.py`.
+  - Creates a deliberation graph per conversation turn.
+  - Records model rounds, tool-loop stages, permission denials, and tool results as evidence in session state.
+
+- Extended session/reporting surfaces.
+  - `src/hephaestus/session/schema.py`
+    - session now persists `deliberation_graphs`
+    - invention snapshots now link back to `deliberation_graph_id` and store runtime accounting snapshots
+  - `src/hephaestus/output/formatter.py`
+    - JSON now exports `deliberation_graph`
+    - markdown/plain output now include a `Runtime Orchestration` section
+  - `src/hephaestus/cli/main.py`
+    - bridges `deliberation_graph` into formatter reports
+  - `src/hephaestus/cli/repl.py`
+    - persists report deliberation graphs into the active session
 
 ## Tests run
 
 ```bash
-pytest -q tests/test_branchgenome/test_assay.py tests/test_branchgenome/test_arena.py tests/test_branchgenome/test_ledger.py tests/test_branchgenome/test_genesis_integration.py tests/test_core/test_scorer.py tests/test_core/test_searcher.py tests/test_convergence/test_detector.py tests/test_core/test_structural_novelty.py tests/test_core/test_diversity.py tests/test_novelty/test_vector.py
+pytest tests/test_session/test_deliberation.py \
+  tests/test_session/test_schema.py \
+  tests/test_agent/test_runtime.py \
+  tests/test_core/test_genesis.py \
+  tests/test_core/test_verifier.py \
+  tests/test_output/test_formatter.py \
+  tests/test_cli/test_main.py \
+  tests/test_cli/test_repl.py
 ```
 
-- Result: `78 passed`
+Result:
+- `289 passed in 130.77s (0:02:10)`
 
 ## Integration notes
 
-- Retrieval expansion is groundwork, not a full second-pass search loop yet.
-  - Branch assay now produces stable `retrieval_expansion_hints`.
-  - Search supports `RetrievalExpansionRequest`.
-  - Genesis does not yet re-enter search using those hints, which keeps this lane inside doc04 scope without forcing a broader runtime refactor.
-- Crossover branches currently translate through the left parent candidate while carrying fused commitments from both parents.
-  - This keeps translation compatibility with the existing scorer/translator contract.
-  - If a later lane wants full dual-parent translation prompts, the branch runtime hooks now expose enough metadata to do it cleanly.
+- The new runtime substrate is intentionally generic and lives under `session/` so Pantheon, BranchGenome, future research flows, and conversation/tool orchestration can all reuse the same types.
+- `Genesis` uses the router today for translation-frontier sizing only; the rest of the budget policy is exposed in the graph/report surfaces for future learned routing work.
+- Pantheon objection ingestion is additive and non-invasive: existing Pantheon state remains the source of truth, while the deliberation graph mirrors durable objection state for downstream reporting/audit.
+- CLI changes were kept minimal and only bridge/persist the new runtime graph; no CLI command behavior was otherwise refactored.

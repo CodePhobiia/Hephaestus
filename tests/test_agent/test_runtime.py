@@ -279,3 +279,27 @@ class TestRuntimeToolLoop:
             e for e in rt.session.transcript if e.entry_type == EntryType.TOOL_RESULT.value
         ]
         assert len(tool_results) == 2
+
+    async def test_records_deliberation_graph_for_tool_loop(self):
+        adapter = AsyncMock()
+        adapter.generate_with_tools = AsyncMock(side_effect=[
+            _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
+            _text_result("Done"),
+        ])
+        reg = ToolRegistry()
+        reg.register(ToolDefinition(
+            name="calculator",
+            description="calc",
+            input_schema={"type": "object", "properties": {}},
+            category="safe",
+            handler=lambda **kw: "42",
+        ))
+        rt = _make_runtime(adapter=adapter, registry=reg)
+
+        await rt.run_turn("calc")
+
+        graph = rt.session.latest_deliberation_graph
+        assert graph is not None
+        assert graph.workflow_kind == "conversation"
+        assert any(event.stage == "tool_call" for event in graph.stage_events)
+        assert any(item.kind == "tool_result" for item in graph.evidence)

@@ -40,6 +40,7 @@ from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
 from hephaestus.deepforge.adapters.openai import OpenAIAdapter
 from hephaestus.lenses.loader import LensLoader
 from hephaestus.lenses.selector import LensSelector
+from hephaestus.session.deliberation import DeliberationGraph, RuntimeRouter
 
 logger = logging.getLogger(__name__)
 
@@ -363,6 +364,7 @@ class InventionReport:
     lens_engine_state: Any | None = None
     pantheon_state: Any | None = None
     pantheon_runtime: Any | None = None
+    deliberation_graph: Any | None = None
     branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
     total_duration_seconds: float = 0.0
@@ -463,6 +465,7 @@ class InventionReport:
             "lens_engine": self._research_to_dict(self.lens_engine_state),
             "pantheon": self._research_to_dict(self.pantheon_state),
             "pantheon_runtime": self._research_to_dict(self.pantheon_runtime),
+            "deliberation_graph": self._research_to_dict(self.deliberation_graph),
             "alternatives": [
                 {
                     "name": inv.invention_name,
@@ -617,6 +620,50 @@ class Genesis:
         branchgenome_metrics: dict[str, Any] = {}
         branchgenome_ledger: Any = None
         lens_runtime: dict[str, Any] = {}
+        deliberation = DeliberationGraph(
+            workflow_kind="genesis",
+            goal=problem,
+            plan=[
+                "decompose",
+                "baseline_research",
+                "search",
+                "score",
+                "translate",
+                "pantheon",
+                "verify",
+                "report",
+            ],
+            metadata={
+                "configured_search_lenses": self._config.num_search_lenses,
+                "configured_candidates": self._config.num_candidates,
+                "configured_translations": self._config.num_translations,
+            },
+        )
+        policy = deliberation.set_budget_policy(
+            RuntimeRouter.initial_policy(
+                goal=problem,
+                use_pantheon_mode=self._config.use_pantheon_mode,
+                use_prior_art=self._config.run_prior_art,
+                configured_translations=self._config.num_translations,
+            )
+        )
+        deliberation.record_stage(
+            "starting",
+            f"Starting Genesis pipeline for: {problem[:80]}…",
+            status="started",
+            payload={"workflow_kind": "genesis"},
+        )
+        deliberation.record_route_decision(
+            "starting",
+            policy.profile,
+            policy.reason,
+            metadata={
+                "verification_depth": policy.verification_depth,
+                "pantheon_enabled": policy.pantheon_enabled,
+                "prior_art_enabled": policy.prior_art_enabled,
+            },
+        )
+        translation_top_n = max(1, int(self._config.num_translations or 1))
 
         def elapsed() -> float:
             return time.monotonic() - t_start
@@ -727,6 +774,22 @@ class Genesis:
                 return
 
             cost.decomposition_cost = structure.cost_usd
+            deliberation.target_domain = str(structure.native_domain)
+            self._record_graph_accounting_from_traces(
+                deliberation,
+                stage="decompose",
+                traces=[getattr(structure, "trace", None)],
+                route=policy.profile,
+                model=self._config.decompose_model,
+            )
+            deliberation.record_stage(
+                "decompose",
+                structure.summary(),
+                payload={
+                    "native_domain": structure.native_domain,
+                    "constraint_count": len(structure.constraints),
+                },
+            )
 
             yield PipelineUpdate(
                 stage=PipelineStage.DECOMPOSED,
@@ -765,6 +828,15 @@ class Genesis:
                             len(getattr(baseline_dossier, "common_failure_modes", [])),
                             len(getattr(baseline_dossier, "keywords_to_avoid", [])),
                         )
+                        self._record_baseline_evidence(deliberation, baseline_dossier)
+                        deliberation.record_stage(
+                            "baseline_research",
+                            "Baseline dossier attached.",
+                            payload={
+                                "standard_approach_count": len(getattr(baseline_dossier, "standard_approaches", []) or []),
+                                "avoid_count": len(getattr(baseline_dossier, "keywords_to_avoid", []) or []),
+                            },
+                        )
                     await perplexity.close()
                 except Exception as exc:
                     logger.warning("Perplexity baseline dossier skipped: %s", exc)
@@ -791,6 +863,12 @@ class Genesis:
                     pantheon_guidance = pantheon.translation_guidance(pantheon_state)
                     if pantheon_state is not None:
                         lens_runtime["pantheon"] = pantheon_state.to_dict()
+                        self._attach_pantheon_state(deliberation, pantheon_state)
+                        deliberation.record_route_decision(
+                            "pantheon_prepare",
+                            "pantheon",
+                            "Council preparation enabled for this run.",
+                        )
                 except Exception as exc:
                     pantheon = None
                     pantheon_state = None
@@ -846,6 +924,19 @@ class Genesis:
             cost.search_cost = sum(c.cost_usd for c in candidates)
             if getattr(searcher, "last_runtime", None) is not None:
                 lens_runtime["search"] = searcher.last_runtime.to_dict()
+            self._register_search_candidates(deliberation, candidates)
+            self._record_graph_accounting_from_traces(
+                deliberation,
+                stage="search",
+                traces=[getattr(candidate, "trace", None) for candidate in candidates],
+                route=policy.profile,
+                model=self._config.search_model,
+            )
+            deliberation.record_stage(
+                "search",
+                f"Found {len(candidates)} cross-domain candidates.",
+                payload={"candidate_count": len(candidates)},
+            )
 
             yield PipelineUpdate(
                 stage=PipelineStage.SEARCHED,
@@ -877,6 +968,39 @@ class Genesis:
                 return
 
             cost.scoring_cost = sum(s.scoring_cost_usd for s in scored)
+            self._sync_scored_candidates(deliberation, scored)
+            self._record_graph_accounting_from_traces(
+                deliberation,
+                stage="score",
+                traces=[getattr(candidate, "scoring_trace", None) for candidate in scored],
+                route=policy.profile,
+                model=self._config.score_model,
+            )
+            translation_top_n, translation_reason = RuntimeRouter.recommend_translation_frontier(
+                scored,
+                configured_top_n=self._config.num_translations,
+                pantheon_enabled=self._config.use_pantheon_mode,
+            )
+            if deliberation.budget_policy is not None:
+                deliberation.budget_policy.translation_frontier = translation_top_n
+            deliberation.record_route_decision(
+                "score",
+                f"translate:{translation_top_n}",
+                translation_reason,
+                candidate_refs=[
+                    self._candidate_id_for_scored_candidate(candidate, index)
+                    for index, candidate in enumerate(scored)
+                ][:translation_top_n],
+                metadata={"configured_top_n": self._config.num_translations},
+            )
+            deliberation.record_stage(
+                "score",
+                "Scored and ranked candidate frontier.",
+                payload={
+                    "top_score": float(getattr(scored[0], "combined_score", 0.0) or 0.0),
+                    "translation_frontier": translation_top_n,
+                },
+            )
 
             yield PipelineUpdate(
                 stage=PipelineStage.SCORED,
@@ -983,7 +1107,7 @@ class Genesis:
 
                 promote_limit = max(
                     1,
-                    min(self._config.num_translations, branch_strategy.max_promoted_branches),
+                    min(translation_top_n, branch_strategy.max_promoted_branches),
                 )
                 promoted_branches = branch_arena.promote_top_k(promote_limit)
                 if not promoted_branches:
@@ -1034,12 +1158,12 @@ class Genesis:
             # Banned baselines ARE injected into the translator prompt directly.
             translator = _SolutionTranslator(
                 harness=self._harnesses["translate"],
-                top_n=self._config.num_translations,
+                top_n=translation_top_n,
                 max_bundle_recompositions=self._config.max_bundle_recompositions,
                 allow_bundle_fallback=self._config.allow_lens_bundle_fallback,
             )
             translator._banned_baselines = baselines if baselines else []
-            attempted_translation_inputs = translation_inputs[: self._config.num_translations]
+            attempted_translation_inputs = translation_inputs[:translation_top_n]
             translate_kwargs: dict[str, Any] = {}
             if pantheon_guidance is not None:
                 translate_kwargs["guidance"] = pantheon_guidance
@@ -1086,7 +1210,7 @@ class Genesis:
                         len(fallback_inputs),
                     )
                     retry_kwargs: dict[str, Any] = {
-                        "top_n": min(self._config.num_translations, len(fallback_inputs)),
+                        "top_n": min(translation_top_n, len(fallback_inputs)),
                     }
                     if pantheon_guidance is not None:
                         retry_kwargs["guidance"] = pantheon_guidance
@@ -1112,6 +1236,14 @@ class Genesis:
             # Pantheon screening/reforge. Pantheon revisions are tracked in the
             # dedicated pantheon cost bucket/runtime surface instead.
             cost.translation_cost = sum(t.cost_usd for t in translations)
+            self._record_translations(deliberation, translations)
+            self._record_graph_accounting_from_traces(
+                deliberation,
+                stage="translate",
+                traces=[getattr(translation, "trace", None) for translation in translations],
+                route=f"frontier:{translation_top_n}",
+                model=self._config.translate_model,
+            )
 
             if pantheon is not None and pantheon_state is not None and translations:
                 try:
@@ -1123,6 +1255,7 @@ class Genesis:
                         pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
                         cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
                         lens_runtime["pantheon"] = pantheon_state.to_dict()
+                        self._attach_pantheon_state(deliberation, pantheon_state)
                     translations, pantheon_state = await pantheon.deliberate(
                         problem=problem,
                         structure=structure,
@@ -1135,6 +1268,7 @@ class Genesis:
                         pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
                         cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
                         lens_runtime["pantheon"] = pantheon_state.to_dict()
+                        self._attach_pantheon_state(deliberation, pantheon_state)
                     if not translations:
                         failure_reason = self._metric_text(
                             pantheon_state,
@@ -1152,6 +1286,27 @@ class Genesis:
                         return
                 except Exception as exc:
                     logger.warning("Pantheon Mode skipped after translation failure: %s", exc)
+
+            if pantheon_runtime is not None:
+                pantheon_rounds = (
+                    len(pantheon_state.get("rounds", []) or [])
+                    if isinstance(pantheon_state, dict)
+                    else len(getattr(pantheon_state, "rounds", []) or [])
+                )
+                deliberation.record_accounting(
+                    stage="pantheon",
+                    route="pantheon",
+                    cost_usd=self._metric_number(pantheon_runtime, "total_cost_usd"),
+                    input_tokens=int(self._metric_number(pantheon_runtime, "total_input_tokens")),
+                    output_tokens=int(self._metric_number(pantheon_runtime, "total_output_tokens")),
+                    duration_seconds=self._metric_number(pantheon_runtime, "total_duration_seconds"),
+                    calls=max(1, pantheon_rounds),
+                )
+            deliberation.record_stage(
+                "translate",
+                f"Translated {len(translations)} inventions.",
+                payload={"translation_count": len(translations)},
+            )
 
             yield PipelineUpdate(
                 stage=PipelineStage.TRANSLATED,
@@ -1177,13 +1332,23 @@ class Genesis:
                 use_perplexity_research=self._config.use_perplexity_research,
                 perplexity_model=self._config.perplexity_model,
             )
-            verified = await verifier.verify(translations, structure)
+            try:
+                verified = await verifier.verify(
+                    translations,
+                    structure,
+                    deliberation_graph=deliberation,
+                )
+            except TypeError as exc:
+                if "deliberation_graph" not in str(exc):
+                    raise
+                verified = await verifier.verify(translations, structure)
             if pantheon is not None and pantheon_state is not None:
                 try:
                     pantheon_state = pantheon.finalize_with_verified(pantheon_state, verified)
                     pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
                     cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
                     lens_runtime["pantheon"] = pantheon_state.to_dict()
+                    self._attach_pantheon_state(deliberation, pantheon_state)
                 except Exception as exc:
                     logger.warning("Pantheon finalization skipped: %s", exc)
             lens_runtime["verification"] = {
@@ -1256,6 +1421,16 @@ class Genesis:
                 branchgenome_metrics["promoted_branch_outcomes"] = promoted_outcomes
 
             cost.verification_cost = sum(v.verification_cost_usd for v in verified)
+            deliberation.record_stage(
+                "verify",
+                f"Verified {len(verified)} inventions.",
+                payload={"verified_count": len(verified)},
+            )
+            if verified:
+                deliberation.mark_final(
+                    self._candidate_id_for_translation(verified[0].translation, 0),
+                    reason="verification_complete",
+                )
 
             yield PipelineUpdate(
                 stage=PipelineStage.VERIFIED,
@@ -1317,6 +1492,7 @@ class Genesis:
                 branchgenome_metrics=branchgenome_metrics,
                 pantheon_state=pantheon_state,
                 pantheon_runtime=pantheon_runtime,
+                deliberation_graph=deliberation,
                 cost_breakdown=cost,
                 total_duration_seconds=elapsed(),
                 model_config={
@@ -1424,6 +1600,194 @@ class Genesis:
         if hasattr(accounting, "to_dict"):
             return accounting.to_dict()
         return accounting
+
+    @staticmethod
+    def _trace_totals(traces: list[Any]) -> dict[str, float | int]:
+        totals = {
+            "cost_usd": 0.0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "duration_seconds": 0.0,
+            "calls": 0,
+        }
+        for trace in traces:
+            if trace is None:
+                continue
+            totals["cost_usd"] += float(getattr(trace, "total_cost_usd", 0.0) or 0.0)
+            totals["input_tokens"] += int(getattr(trace, "total_input_tokens", 0) or 0)
+            totals["output_tokens"] += int(getattr(trace, "total_output_tokens", 0) or 0)
+            totals["duration_seconds"] += float(getattr(trace, "wall_time_seconds", 0.0) or 0.0)
+            totals["calls"] += 1
+        return totals
+
+    @classmethod
+    def _record_graph_accounting_from_traces(
+        cls,
+        graph: DeliberationGraph,
+        *,
+        stage: str,
+        traces: list[Any],
+        route: str | None,
+        model: str | None,
+    ) -> None:
+        totals = cls._trace_totals(traces)
+        if int(totals["calls"] or 0) <= 0:
+            return
+        graph.record_accounting(
+            stage=stage,
+            route=route,
+            model=model,
+            cost_usd=float(totals["cost_usd"] or 0.0),
+            input_tokens=int(totals["input_tokens"] or 0),
+            output_tokens=int(totals["output_tokens"] or 0),
+            duration_seconds=float(totals["duration_seconds"] or 0.0),
+            calls=int(totals["calls"] or 0),
+        )
+
+    @staticmethod
+    def _candidate_id_for_search_candidate(candidate: Any, index: int) -> str:
+        runtime_context = getattr(candidate, "runtime_context", None)
+        if isinstance(runtime_context, dict) and runtime_context.get("candidate_id"):
+            return str(runtime_context["candidate_id"])
+        source_domain = str(getattr(candidate, "source_domain", "") or f"candidate-{index}")
+        lens_id = str(getattr(candidate, "lens_id", "") or f"lens-{index}")
+        return f"candidate-{index + 1}:{lens_id}:{source_domain[:48]}"
+
+    @classmethod
+    def _candidate_id_for_scored_candidate(cls, candidate: Any, index: int) -> str:
+        underlying = getattr(candidate, "candidate", candidate)
+        return cls._candidate_id_for_search_candidate(underlying, index)
+
+    @classmethod
+    def _candidate_id_for_translation(cls, translation: Any, index: int) -> str:
+        source_candidate = getattr(translation, "source_candidate", None)
+        if source_candidate is not None:
+            return cls._candidate_id_for_scored_candidate(source_candidate, index)
+        invention_name = str(getattr(translation, "invention_name", "") or f"translation-{index}")
+        return f"candidate-{index + 1}:translation:{invention_name[:48]}"
+
+    @classmethod
+    def _register_search_candidates(cls, graph: DeliberationGraph, candidates: list[Any]) -> None:
+        for index, candidate in enumerate(candidates):
+            candidate_id = cls._candidate_id_for_search_candidate(candidate, index)
+            runtime_context = getattr(candidate, "runtime_context", None)
+            if isinstance(runtime_context, dict):
+                runtime_context["candidate_id"] = candidate_id
+            graph.ensure_candidate(
+                candidate_id,
+                fingerprint=f"{getattr(candidate, 'lens_id', '')}:{getattr(candidate, 'source_domain', '')}",
+                source_domain=str(getattr(candidate, "source_domain", "") or ""),
+                novelty_axes=list(getattr(getattr(candidate, "lens_score", None), "matched_patterns", []) or []),
+                score=float(getattr(candidate, "confidence", 0.0) or 0.0),
+                status="alive",
+                route="search",
+                metadata={
+                    "selection_mode": str(getattr(candidate, "selection_mode", "singleton") or "singleton"),
+                },
+            )
+
+    @classmethod
+    def _sync_scored_candidates(cls, graph: DeliberationGraph, scored: list[Any]) -> None:
+        for index, candidate in enumerate(scored):
+            candidate_id = cls._candidate_id_for_scored_candidate(candidate, index)
+            card = graph.ensure_candidate(
+                candidate_id,
+                source_domain=str(getattr(candidate, "source_domain", "") or ""),
+                score=float(getattr(candidate, "combined_score", 0.0) or 0.0),
+                route="score",
+                metadata={
+                    "structural_fidelity": float(getattr(candidate, "structural_fidelity", 0.0) or 0.0),
+                    "domain_distance": float(getattr(candidate, "domain_distance", 0.0) or 0.0),
+                    "mechanism_novelty": float(getattr(candidate, "mechanism_novelty", 0.0) or 0.0),
+                },
+            )
+            card.compute_spent_usd += float(getattr(candidate, "scoring_cost_usd", 0.0) or 0.0)
+
+    @classmethod
+    def _record_translations(cls, graph: DeliberationGraph, translations: list[Any]) -> None:
+        for index, translation in enumerate(translations):
+            candidate_id = cls._candidate_id_for_translation(translation, index)
+            card = graph.ensure_candidate(
+                candidate_id,
+                source_domain=str(getattr(translation, "source_domain", "") or ""),
+                novelty_axes=list(getattr(getattr(translation, "source_candidate", None), "strong_mappings", []) or []),
+                status="translated",
+                route="translate",
+                metadata={
+                    "invention_name": str(getattr(translation, "invention_name", "") or ""),
+                    "selection_mode": str(getattr(translation, "selection_mode", "") or ""),
+                    "bundle_role": str(getattr(translation, "bundle_role", "") or ""),
+                },
+            )
+            card.compute_spent_usd += float(getattr(translation, "cost_usd", 0.0) or 0.0)
+            summary = str(
+                getattr(translation, "key_insight", "") or getattr(translation, "architecture", "")[:200]
+            )
+            if summary:
+                graph.add_claim(
+                    candidate_id,
+                    summary,
+                    kind="mechanism",
+                    stage="translate",
+                    confidence=float(getattr(getattr(translation, "source_candidate", None), "combined_score", 0.0) or 0.0),
+                    metadata={"invention_name": str(getattr(translation, "invention_name", "") or "")},
+                )
+
+    @staticmethod
+    def _record_baseline_evidence(graph: DeliberationGraph, baseline_dossier: Any) -> None:
+        summary = str(getattr(baseline_dossier, "summary", "") or "").strip()
+        citations = list(getattr(baseline_dossier, "citations", []) or [])
+        if summary:
+            evidence = graph.add_evidence(
+                kind="research",
+                summary=summary,
+                source_url=str(citations[0]) if citations else "",
+                claim_summary="Baseline reconnaissance used to suppress conventional mechanisms.",
+                trust_tier="secondary",
+                freshness="volatile",
+                metadata={"citation_count": len(citations)},
+            )
+            graph.record_route_decision(
+                "baseline_research",
+                "grounded_research",
+                "Attached external baseline reconnaissance before search.",
+                evidence_refs=[evidence.evidence_id],
+            )
+
+    @staticmethod
+    def _attach_pantheon_state(graph: DeliberationGraph, pantheon_state: Any) -> None:
+        objections = getattr(pantheon_state, "objection_ledger", None)
+        if objections is None and isinstance(pantheon_state, dict):
+            objections = pantheon_state.get("objection_ledger", [])
+        for objection in list(objections or []):
+            objection_id = str(getattr(objection, "objection_id", "") or "")
+            existing = next(
+                (item for item in graph.objections if item.objection_id == objection_id),
+                None,
+            )
+            candidate_id = str(getattr(objection, "candidate_id", "") or "")
+            if existing is not None:
+                existing.status = str(getattr(objection, "status", existing.status) or existing.status).lower()
+                existing.severity = str(getattr(objection, "severity", existing.severity) or existing.severity).lower()
+                existing.statement = str(getattr(objection, "statement", existing.statement) or existing.statement)
+                existing.must_change = [str(getattr(objection, "required_change", "") or "")] if getattr(objection, "required_change", "") else existing.must_change
+                existing.disproof_test = str(getattr(objection, "closure_test", existing.disproof_test) or existing.disproof_test)
+                graph.refresh_candidate(existing.candidate_id)
+                continue
+            if not candidate_id:
+                continue
+            graph.add_objection(
+                candidate_id,
+                source_agent=str(getattr(objection, "agent", "pantheon") or "pantheon"),
+                objection_type=str(getattr(objection, "opened_stage", "pantheon") or "pantheon"),
+                severity=str(getattr(objection, "severity", "major") or "major").lower(),
+                statement=str(getattr(objection, "statement", "") or ""),
+                must_change=[str(getattr(objection, "required_change", "") or "")] if getattr(objection, "required_change", "") else [],
+                disproof_test=str(getattr(objection, "closure_test", "") or ""),
+                status=str(getattr(objection, "status", "open") or "open").lower(),
+                introduced_round=int(getattr(objection, "opened_round", 0) or 0),
+                metadata={"pantheon_objection_id": objection_id},
+            )
 
     def _ensure_built(self) -> None:
         """Lazily build all adapters and harnesses."""

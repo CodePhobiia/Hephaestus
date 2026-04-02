@@ -12,6 +12,7 @@ from typing import Any
 from uuid import uuid4
 
 from hephaestus.lenses.state import LensEngineState, lens_engine_lot_kinds
+from hephaestus.session.deliberation import DeliberationGraph
 from hephaestus.session.reference_lots import ReferenceLot, bind_reference_lot
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,8 @@ class InventionSnapshot:
     pantheon_resolution_mode: str = ""
     pantheon_rounds: int = 0
     pantheon_winning_candidate_id: str = ""
+    deliberation_graph_id: str = ""
+    runtime_accounting: dict[str, Any] | None = None
     timestamp: str = field(default_factory=_now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -167,6 +170,12 @@ class InventionSnapshot:
             "pantheon_resolution_mode": self.pantheon_resolution_mode,
             "pantheon_rounds": self.pantheon_rounds,
             "pantheon_winning_candidate_id": self.pantheon_winning_candidate_id,
+            "deliberation_graph_id": self.deliberation_graph_id,
+            "runtime_accounting": (
+                dict(self.runtime_accounting)
+                if isinstance(self.runtime_accounting, dict)
+                else None
+            ),
             "timestamp": self.timestamp,
         }
 
@@ -193,6 +202,12 @@ class InventionSnapshot:
             pantheon_resolution_mode=data.get("pantheon_resolution_mode", ""),
             pantheon_rounds=int(data.get("pantheon_rounds", 0) or 0),
             pantheon_winning_candidate_id=data.get("pantheon_winning_candidate_id", ""),
+            deliberation_graph_id=data.get("deliberation_graph_id", ""),
+            runtime_accounting=(
+                dict(data.get("runtime_accounting", {}) or {})
+                if isinstance(data.get("runtime_accounting"), dict)
+                else None
+            ),
             timestamp=data.get("timestamp", _now()),
         )
 
@@ -213,6 +228,7 @@ class Session:
     active_tools: list[str] = field(default_factory=list)
     reference_lots: list[ReferenceLot] = field(default_factory=list)
     lens_engine_state: LensEngineState | None = None
+    deliberation_graphs: list[DeliberationGraph] = field(default_factory=list)
 
     # -- serialization -------------------------------------------------------
 
@@ -230,6 +246,7 @@ class Session:
                 if self.lens_engine_state is not None
                 else None
             ),
+            "deliberation_graphs": [graph.to_dict() for graph in self.deliberation_graphs],
         }
 
     @classmethod
@@ -253,6 +270,14 @@ class Session:
                 if isinstance(data.get("lens_engine_state"), dict)
                 else None
             ),
+            deliberation_graphs=[
+                graph
+                for graph in (
+                    DeliberationGraph.from_dict(item)
+                    for item in data.get("deliberation_graphs", []) or []
+                )
+                if graph is not None
+            ],
         )
 
     def to_json(self, indent: int = 2) -> str:
@@ -337,10 +362,31 @@ class Session:
                 "lens_composites",
                 [item.composite_id for item in self.lens_engine_state.active_composites],
             )
+        if self.deliberation_graphs:
+            latest_graph = self.deliberation_graphs[-1]
+            kwargs.setdefault("deliberation_graph_id", latest_graph.graph_id)
+            kwargs.setdefault("runtime_accounting", latest_graph.accounting.to_dict())
         snap = InventionSnapshot(**kwargs)
         self.inventions.append(snap)
         self.meta.updated_at = _now()
         return snap
+
+    @property
+    def latest_deliberation_graph(self) -> DeliberationGraph | None:
+        if not self.deliberation_graphs:
+            return None
+        return self.deliberation_graphs[-1]
+
+    def add_deliberation_graph(self, graph: DeliberationGraph) -> DeliberationGraph:
+        """Upsert a deliberation graph into the session."""
+        for index, existing in enumerate(self.deliberation_graphs):
+            if existing.graph_id == graph.graph_id:
+                self.deliberation_graphs[index] = graph
+                self.meta.updated_at = _now()
+                return graph
+        self.deliberation_graphs.append(graph)
+        self.meta.updated_at = _now()
+        return graph
 
     def bind_reference_lot(
         self,

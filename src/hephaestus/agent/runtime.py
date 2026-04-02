@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from hephaestus.session.deliberation import DeliberationGraph
 from hephaestus.session.schema import EntryType, Role, Session
 from hephaestus.tools.permissions import PermissionPolicy
 from hephaestus.tools.registry import ToolRegistry
@@ -77,18 +78,43 @@ class ConversationRuntime:
 
         Returns the final assistant text response.
         """
+        graph = DeliberationGraph(
+            workflow_kind="conversation",
+            goal=user_message,
+            plan=["llm_generate", "tool_loop", "assistant_reply"],
+            metadata={"max_rounds": self.max_rounds},
+        )
+        graph.record_stage(
+            "user_turn",
+            "Conversation turn started.",
+            status="started",
+            payload={"message_length": len(user_message)},
+        )
+        self.session.add_deliberation_graph(graph)
+
         # Record user message in session and message list.
         self.session.append_entry(Role.USER.value, user_message)
         self._messages.append({"role": "user", "content": user_message})
 
         tool_specs = self.registry.to_api_schema()
-        result = await self._tool_loop(tool_specs)
+        result = await self._tool_loop(tool_specs, graph)
 
         # Record final assistant text in session.
         self.session.append_entry(Role.ASSISTANT.value, result.text)
+        graph.record_stage(
+            "assistant_reply",
+            "Assistant produced a final reply.",
+            payload={"tool_call_count": len(result.tool_calls), "rounds": result.rounds},
+        )
+        graph.stop_reason = "assistant_reply"
+        self.session.add_deliberation_graph(graph)
         return result.text
 
-    async def _tool_loop(self, tool_specs: list[dict[str, Any]]) -> TurnResult:
+    async def _tool_loop(
+        self,
+        tool_specs: list[dict[str, Any]],
+        graph: DeliberationGraph,
+    ) -> TurnResult:
         """Run the generate → tool_use → result loop."""
         turn = TurnResult(text="", rounds=0)
 
@@ -99,6 +125,20 @@ class ConversationRuntime:
                 self._messages,
                 system=self.system_prompt,
                 tools=tool_specs or None,
+            )
+            graph.record_accounting(
+                stage="llm_generate",
+                route="tool_loop" if gen.tool_calls else "direct_response",
+                model=getattr(gen, "model", None),
+                cost_usd=float(getattr(gen, "cost_usd", 0.0) or 0.0),
+                input_tokens=int(getattr(gen, "input_tokens", 0) or 0),
+                output_tokens=int(getattr(gen, "output_tokens", 0) or 0),
+                calls=1,
+            )
+            graph.record_stage(
+                "llm_generate",
+                f"Completed generation round {turn.rounds}.",
+                payload={"tool_calls": len(gen.tool_calls), "stop_reason": getattr(gen, "stop_reason", "")},
             )
 
             # No tool calls → final text response.
@@ -117,7 +157,7 @@ class ConversationRuntime:
             # Execute each tool call.
             tool_results: list[dict[str, Any]] = []
             for tc in gen.tool_calls:
-                record = await self._execute_tool(tc.id, tc.name, tc.input)
+                record = await self._execute_tool(tc.id, tc.name, tc.input, graph)
                 turn.tool_calls.append(record)
                 tool_results.append(
                     {
@@ -133,10 +173,21 @@ class ConversationRuntime:
 
         # Exhausted rounds — return whatever text we have.
         turn.text = turn.text or "[max tool rounds reached]"
+        graph.record_stage(
+            "tool_loop",
+            "Tool loop stopped after hitting the configured round cap.",
+            status="failed",
+            payload={"rounds": turn.rounds},
+        )
+        graph.stop_reason = "max_rounds"
         return turn
 
     async def _execute_tool(
-        self, tool_use_id: str, name: str, tool_input: dict[str, Any]
+        self,
+        tool_use_id: str,
+        name: str,
+        tool_input: dict[str, Any],
+        graph: DeliberationGraph,
     ) -> ToolCallRecord:
         """Execute a single tool, checking permissions first."""
         # Record tool_use in session.
@@ -167,6 +218,18 @@ class ConversationRuntime:
                 entry_type=EntryType.TOOL_RESULT.value,
                 metadata={"tool_use_id": tool_use_id, "is_error": True},
             )
+            graph.record_stage(
+                "tool_call",
+                f"Tool `{name}` denied by permission policy.",
+                status="failed",
+                payload={"tool_use_id": tool_use_id},
+            )
+            graph.add_evidence(
+                kind="tool_result",
+                summary=denial,
+                claim_summary=f"Denied tool result from {name}",
+                metadata={"tool_name": name, "tool_use_id": tool_use_id, "is_error": True},
+            )
             return ToolCallRecord(
                 tool_use_id=tool_use_id,
                 name=name,
@@ -192,6 +255,18 @@ class ConversationRuntime:
                 msg,
                 entry_type=EntryType.TOOL_RESULT.value,
                 metadata={"tool_use_id": tool_use_id, "is_error": True},
+            )
+            graph.record_stage(
+                "tool_call",
+                f"Tool `{name}` has no registered handler.",
+                status="failed",
+                payload={"tool_use_id": tool_use_id},
+            )
+            graph.add_evidence(
+                kind="tool_result",
+                summary=msg,
+                claim_summary=f"Missing handler for {name}",
+                metadata={"tool_name": name, "tool_use_id": tool_use_id, "is_error": True},
             )
             return ToolCallRecord(
                 tool_use_id=tool_use_id,
@@ -220,6 +295,22 @@ class ConversationRuntime:
             output_str,
             entry_type=EntryType.TOOL_RESULT.value,
             metadata={"tool_use_id": tool_use_id, "is_error": is_error},
+        )
+        graph.record_stage(
+            "tool_call",
+            f"Executed tool `{name}`.",
+            payload={"tool_use_id": tool_use_id, "is_error": is_error},
+        )
+        graph.add_evidence(
+            kind="tool_result",
+            summary=output_str[:400],
+            claim_summary=f"Tool result from {name}",
+            metadata={"tool_name": name, "tool_use_id": tool_use_id, "is_error": is_error},
+        )
+        graph.record_accounting(
+            stage="tool_call",
+            route=name,
+            calls=1,
         )
 
         return ToolCallRecord(

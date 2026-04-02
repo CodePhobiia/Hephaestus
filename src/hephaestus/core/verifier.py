@@ -39,6 +39,7 @@ from hephaestus.core.decomposer import ProblemStructure
 from hephaestus.core.translator import Translation
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.cells import build_reference_state
+from hephaestus.session.deliberation import DeliberationGraph
 
 logger = logging.getLogger(__name__)
 
@@ -365,6 +366,8 @@ class NoveltyVerifier:
         self,
         translations: list[Translation],
         structure: ProblemStructure,
+        *,
+        deliberation_graph: DeliberationGraph | None = None,
     ) -> list[VerifiedInvention]:
         """
         Verify all translations adversarially.
@@ -390,7 +393,7 @@ class NoveltyVerifier:
         import asyncio
 
         tasks = [
-            self._verify_translation(t, structure)
+            self._verify_translation(t, structure, deliberation_graph=deliberation_graph)
             for t in translations
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -429,14 +432,52 @@ class NoveltyVerifier:
         self,
         translation: Translation,
         structure: ProblemStructure,
+        *,
+        deliberation_graph: DeliberationGraph | None = None,
     ) -> VerifiedInvention:
         """Full verification pipeline for a single translation."""
         t_start = time.monotonic()
         total_cost = 0.0
+        candidate_id = self._candidate_id_for_translation(translation)
+        claim_id = None
+        if deliberation_graph is not None:
+            deliberation_graph.ensure_candidate(
+                candidate_id,
+                source_domain=str(getattr(translation, "source_domain", "") or ""),
+                status="verifying",
+                route="verify",
+                metadata={"invention_name": str(getattr(translation, "invention_name", "") or "")},
+            )
+            existing_claim = next(
+                (
+                    claim
+                    for claim in deliberation_graph.claims
+                    if claim.candidate_id == candidate_id and claim.kind == "mechanism"
+                ),
+                None,
+            )
+            if existing_claim is not None:
+                claim_id = existing_claim.claim_id
+            else:
+                claim = deliberation_graph.add_claim(
+                    candidate_id,
+                    str(getattr(translation, "key_insight", "") or getattr(translation, "architecture", "")[:200]),
+                    kind="mechanism",
+                    stage="verify",
+                )
+                claim_id = claim.claim_id
 
         # Step 1: Adversarial attack
-        attack_result, attack_cost = await self._adversarial_attack(translation, structure)
-        total_cost += attack_cost
+        attack_result, attack_trace = await self._adversarial_attack(translation, structure)
+        total_cost += float(getattr(attack_trace, "total_cost_usd", 0.0) or 0.0)
+        if deliberation_graph is not None:
+            self._record_trace_accounting(
+                deliberation_graph,
+                stage="verify_attack",
+                route="verifier_stack",
+                model=getattr(getattr(self._attack_harness, "_adapter", None), "model", None),
+                trace=attack_trace,
+            )
 
         # Step 2: Prior art check (concurrent with or after attack)
         prior_art_status = "SEARCH_UNAVAILABLE"
@@ -504,10 +545,18 @@ class NoveltyVerifier:
                 prior_art_status = "SEARCH_UNAVAILABLE"
 
         # Step 3: Structural validity + feasibility assessment
-        validity, validity_cost = await self._assess_validity(
+        validity, validity_trace = await self._assess_validity(
             translation, structure, attack_result
         )
-        total_cost += validity_cost
+        total_cost += float(getattr(validity_trace, "total_cost_usd", 0.0) or 0.0)
+        if deliberation_graph is not None:
+            self._record_trace_accounting(
+                deliberation_graph,
+                stage="verify_validity",
+                route="verifier_stack",
+                model=getattr(getattr(self._defend_harness, "_adapter", None), "model", None),
+                trace=validity_trace,
+            )
 
         # Step 3.5: Load-bearing domain check
         load_bearing_passed = True
@@ -629,6 +678,49 @@ class NoveltyVerifier:
         if attack_result.strongest_objection:
             notes_parts.append(f"Main challenge: {attack_result.strongest_objection}")
 
+        if deliberation_graph is not None:
+            evidence_refs = self._record_deliberation_evidence(
+                deliberation_graph,
+                candidate_id,
+                claim_id,
+                prior_art_report=prior_art_report,
+                prior_art_status=prior_art_status,
+                grounding_report=grounding_report,
+                implementation_risk_review=implementation_risk_review,
+            )
+            objection_refs = self._record_deliberation_objections(
+                deliberation_graph,
+                candidate_id,
+                claim_id,
+                attack_result=attack_result,
+                guard_failures=guard_failures,
+            )
+            self._record_deliberation_checks(
+                deliberation_graph,
+                candidate_id,
+                validity=validity,
+                prior_art_status=prior_art_status,
+                load_bearing_passed=load_bearing_passed,
+                quality=quality,
+                structural_novelty=structural_novelty,
+                evidence_refs=evidence_refs,
+                objection_refs=objection_refs,
+                implementation_risk_review=implementation_risk_review,
+            )
+            self._record_evidence_gap_objection(
+                deliberation_graph,
+                candidate_id,
+                claim_id=claim_id,
+                novelty_score=novelty_score,
+                evidence_refs=evidence_refs,
+            )
+            card = deliberation_graph.ensure_candidate(candidate_id)
+            card.compute_spent_usd += total_cost
+            card.structural_validity = float(validity.get("structural_validity", card.structural_validity) or 0.0)
+            card.feasibility = float(validity.get("implementation_feasibility", card.feasibility) or 0.0)
+            card.status = "verified" if not attack_result.fatal_flaws else "needs_revision"
+            deliberation_graph.refresh_candidate(candidate_id)
+
         return VerifiedInvention(
             invention_name=translation.invention_name,
             translation=translation,
@@ -664,7 +756,7 @@ class NoveltyVerifier:
         self,
         translation: Translation,
         structure: ProblemStructure,
-    ) -> tuple[AdversarialResult, float]:
+    ) -> tuple[AdversarialResult, ForgeTrace]:
         """Run the adversarial attack model on the translation."""
         mapping_text = "\n".join(
             f"  {m.source_element} → {m.target_element}: {m.mechanism}"
@@ -700,14 +792,14 @@ class NoveltyVerifier:
             verdict=str(parsed.get("verdict", "QUESTIONABLE")),
         )
 
-        return attack_result, result.trace.total_cost_usd
+        return attack_result, result.trace
 
     async def _assess_validity(
         self,
         translation: Translation,
         structure: ProblemStructure,
         attack: AdversarialResult,
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, Any], ForgeTrace]:
         """Assess structural validity and feasibility post-attack."""
         limitations_text = "\n".join(f"• {l}" for l in translation.limitations[:5])
         fatal_flaws_text = "\n".join(f"• {f}" for f in attack.fatal_flaws[:3])
@@ -735,7 +827,7 @@ class NoveltyVerifier:
         )
 
         parsed = self._parse_validity(result.output)
-        return parsed, result.trace.total_cost_usd
+        return parsed, result.trace
 
     def _compute_novelty_score(
         self,
@@ -834,6 +926,254 @@ class NoveltyVerifier:
 
         import numpy as np
         return float(np.clip(raw, 0.0, 1.0))
+
+    @staticmethod
+    def _candidate_id_for_translation(translation: Translation) -> str:
+        source_candidate = getattr(translation, "source_candidate", None)
+        search_candidate = getattr(source_candidate, "candidate", None)
+        runtime_context = getattr(search_candidate, "runtime_context", None)
+        if isinstance(runtime_context, dict) and runtime_context.get("candidate_id"):
+            return str(runtime_context["candidate_id"])
+        invention_name = str(getattr(translation, "invention_name", "") or "candidate")
+        return f"candidate:verify:{invention_name[:48]}"
+
+    @staticmethod
+    def _record_trace_accounting(
+        graph: DeliberationGraph,
+        *,
+        stage: str,
+        route: str,
+        model: str | None,
+        trace: ForgeTrace | None,
+    ) -> None:
+        if trace is None:
+            return
+        graph.record_accounting(
+            stage=stage,
+            route=route,
+            model=model,
+            cost_usd=float(getattr(trace, "total_cost_usd", 0.0) or 0.0),
+            input_tokens=int(getattr(trace, "total_input_tokens", 0) or 0),
+            output_tokens=int(getattr(trace, "total_output_tokens", 0) or 0),
+            duration_seconds=float(getattr(trace, "wall_time_seconds", 0.0) or 0.0),
+            calls=1,
+        )
+
+    @staticmethod
+    def _record_deliberation_evidence(
+        graph: DeliberationGraph,
+        candidate_id: str,
+        claim_id: str | None,
+        *,
+        prior_art_report: Any,
+        prior_art_status: str,
+        grounding_report: Any,
+        implementation_risk_review: Any,
+    ) -> list[str]:
+        evidence_refs: list[str] = []
+        if prior_art_report is not None:
+            citations = list(getattr(prior_art_report, "citations", []) or [])
+            evidence = graph.add_evidence(
+                kind="prior_art",
+                summary=str(getattr(prior_art_report, "summary", "") or prior_art_status),
+                source_url=str(citations[0]) if citations else "",
+                claim_summary=f"Prior art status: {prior_art_status}",
+                trust_tier="secondary",
+                freshness="volatile",
+                metadata={"novelty_status": prior_art_status},
+            )
+            evidence_refs.append(evidence.evidence_id)
+            if claim_id:
+                graph.link_evidence(evidence.evidence_id, [claim_id])
+        if grounding_report is not None:
+            citations = list(getattr(grounding_report, "citations", []) or [])
+            evidence = graph.add_evidence(
+                kind="grounding",
+                summary=str(getattr(grounding_report, "summary", "") or "Grounding report attached."),
+                source_url=str(citations[0]) if citations else "",
+                claim_summary="External grounding for adjacent work and related systems.",
+                trust_tier="secondary",
+                freshness="volatile",
+            )
+            evidence_refs.append(evidence.evidence_id)
+            if claim_id:
+                graph.link_evidence(evidence.evidence_id, [claim_id])
+        if implementation_risk_review is not None:
+            citations = list(getattr(implementation_risk_review, "citations", []) or [])
+            evidence = graph.add_evidence(
+                kind="risk_review",
+                summary=str(getattr(implementation_risk_review, "summary", "") or "Implementation risk review attached."),
+                source_url=str(citations[0]) if citations else "",
+                claim_summary="Operational and implementation risks attached to the candidate.",
+                trust_tier="secondary",
+                freshness="volatile",
+            )
+            evidence_refs.append(evidence.evidence_id)
+            if claim_id:
+                graph.link_evidence(evidence.evidence_id, [claim_id])
+        graph.ensure_candidate(candidate_id)
+        return evidence_refs
+
+    @staticmethod
+    def _record_deliberation_objections(
+        graph: DeliberationGraph,
+        candidate_id: str,
+        claim_id: str | None,
+        *,
+        attack_result: AdversarialResult,
+        guard_failures: list[str],
+    ) -> list[str]:
+        objection_refs: list[str] = []
+        claim_refs = [claim_id] if claim_id else []
+        if attack_result.strongest_objection:
+            objection = graph.add_objection(
+                candidate_id,
+                source_agent="apollo",
+                objection_type="structural",
+                severity="critical" if attack_result.fatal_flaws else "major",
+                statement=attack_result.strongest_objection,
+                claim_refs=claim_refs,
+            )
+            objection_refs.append(objection.objection_id)
+        for flaw in attack_result.fatal_flaws[:3]:
+            objection = graph.add_objection(
+                candidate_id,
+                source_agent="apollo",
+                objection_type="fatal_flaw",
+                severity="critical",
+                statement=str(flaw),
+                claim_refs=claim_refs,
+            )
+            objection_refs.append(objection.objection_id)
+        for failure in guard_failures[:3]:
+            objection = graph.add_objection(
+                candidate_id,
+                source_agent="verifier",
+                objection_type="guard_failure",
+                severity="major",
+                statement=str(failure),
+                claim_refs=claim_refs,
+            )
+            objection_refs.append(objection.objection_id)
+        return objection_refs
+
+    @staticmethod
+    def _record_deliberation_checks(
+        graph: DeliberationGraph,
+        candidate_id: str,
+        *,
+        validity: dict[str, Any],
+        prior_art_status: str,
+        load_bearing_passed: bool,
+        quality: Any,
+        structural_novelty: Any,
+        evidence_refs: list[str],
+        objection_refs: list[str],
+        implementation_risk_review: Any,
+    ) -> None:
+        structural_validity = float(validity.get("structural_validity", 0.0) or 0.0)
+        feasibility = float(validity.get("implementation_feasibility", 0.0) or 0.0)
+        graph.add_verifier_check(
+            candidate_id,
+            layer="model",
+            name="validity_assessment",
+            status="passed" if structural_validity >= 0.65 and feasibility >= 0.5 else "failed",
+            score=structural_validity,
+            detail=str(validity.get("validity_notes", "") or validity.get("feasibility_notes", "")),
+            evidence_refs=evidence_refs,
+            objection_refs=objection_refs,
+        )
+        prior_art_score = 1.0 if prior_art_status == "NO_PRIOR_ART_FOUND" else 0.0 if prior_art_status == "PRIOR_ART_FOUND" else 0.5
+        graph.add_verifier_check(
+            candidate_id,
+            layer="retrieval",
+            name="prior_art_check",
+            status="passed" if prior_art_status != "PRIOR_ART_FOUND" else "failed",
+            score=prior_art_score,
+            detail=f"Prior art status: {prior_art_status}",
+            evidence_refs=evidence_refs,
+        )
+        graph.add_verifier_check(
+            candidate_id,
+            layer="deterministic",
+            name="load_bearing",
+            status="passed" if load_bearing_passed else "failed",
+            score=1.0 if load_bearing_passed else 0.0,
+            detail="Load-bearing domain transfer check.",
+            objection_refs=objection_refs,
+        )
+        baseline_overlap = 1.0 if any("BASELINE_MATCH" in flag for flag in getattr(quality, "flags", [])) else 0.0
+        if getattr(quality, "known_pattern_matches", []):
+            baseline_overlap = max(baseline_overlap, 0.75)
+        graph.add_verifier_check(
+            candidate_id,
+            layer="deterministic",
+            name="quality_gate",
+            status="passed" if bool(getattr(quality, "passed", False)) else "failed",
+            score=max(0.0, 1.0 + float(getattr(quality, "score_adjustment", 0.0) or 0.0)),
+            detail=str(getattr(quality, "recommendation", "") or "; ".join(getattr(quality, "flags", []) or [])),
+            metadata={"baseline_overlap": baseline_overlap},
+            objection_refs=objection_refs,
+        )
+        graph.add_verifier_check(
+            candidate_id,
+            layer="deterministic",
+            name="structural_novelty",
+            status="passed" if float(getattr(structural_novelty, "composite", 0.0) or 0.0) >= 0.55 else "failed",
+            score=float(getattr(structural_novelty, "composite", 0.0) or 0.0),
+            detail=str(getattr(structural_novelty, "label", "") or "structural novelty"),
+        )
+        if implementation_risk_review is not None:
+            graph.add_verifier_check(
+                candidate_id,
+                layer="retrieval",
+                name="implementation_risk_review",
+                status="passed",
+                score=feasibility,
+                detail=str(getattr(implementation_risk_review, "summary", "") or "Implementation risk review attached."),
+                evidence_refs=evidence_refs,
+            )
+
+    @staticmethod
+    def _record_evidence_gap_objection(
+        graph: DeliberationGraph,
+        candidate_id: str,
+        *,
+        claim_id: str | None,
+        novelty_score: float,
+        evidence_refs: list[str],
+    ) -> None:
+        if claim_id is None:
+            return
+        if evidence_refs:
+            graph.add_verifier_check(
+                candidate_id,
+                layer="deterministic",
+                name="claim_evidence_coverage",
+                status="passed",
+                score=1.0,
+                detail=f"Claim linked to {len(evidence_refs)} evidence record(s).",
+                evidence_refs=evidence_refs,
+            )
+            return
+        severity = "major" if novelty_score >= 0.75 else "advisory"
+        objection = graph.add_objection(
+            candidate_id,
+            source_agent="verifier",
+            objection_type="evidence_gap",
+            severity=severity,
+            statement="Final mechanism claim has no attached evidence records.",
+            claim_refs=[claim_id],
+        )
+        graph.add_verifier_check(
+            candidate_id,
+            layer="deterministic",
+            name="claim_evidence_coverage",
+            status="failed",
+            score=0.0,
+            detail="Claim-to-evidence coverage failed.",
+            objection_refs=[objection.objection_id],
+        )
 
     def _parse_attack(self, raw: str) -> dict[str, Any]:
         """Parse adversarial attack JSON."""

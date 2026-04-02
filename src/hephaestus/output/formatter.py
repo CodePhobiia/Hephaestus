@@ -188,6 +188,7 @@ class InventionReport:
     lens_engine_state: Any | None = None
     pantheon_state: Any | None = None
     pantheon_runtime: Any | None = None
+    deliberation_graph: Any | None = None
     novelty_proof: Any | None = None       # NoveltyProof
     alternatives: list[AlternativeInvention] = field(default_factory=list)
     cost_usd: float = 0.0
@@ -421,6 +422,14 @@ class OutputFormatter:
                 lines.extend(_pantheon_runtime_markdown_lines(report.pantheon_runtime))
             lines.append("")
 
+        if report.deliberation_graph is not None:
+            lines += [
+                "**RUNTIME ORCHESTRATION:**",
+                "",
+            ]
+            lines.extend(_deliberation_graph_markdown_lines(report.deliberation_graph))
+            lines.append("")
+
         # ── Novelty proof ────────────────────────────────────────────────────
         lines += [
             "**NOVELTY PROOF:**",
@@ -548,6 +557,7 @@ class OutputFormatter:
                 "lens_engine": _lens_engine_to_dict(report.lens_engine_state),
                 "pantheon": _research_obj_to_dict(report.pantheon_state),
                 "pantheon_runtime": _research_obj_to_dict(report.pantheon_runtime),
+                "deliberation_graph": _research_obj_to_dict(report.deliberation_graph),
                 "novelty_proof": _proof_to_dict(report.novelty_proof),
                 "alternatives": [
                     {
@@ -681,6 +691,11 @@ class OutputFormatter:
             lines.extend(_pantheon_plain_lines(report.pantheon_state))
             if report.pantheon_runtime is not None:
                 lines.extend(_pantheon_runtime_plain_lines(report.pantheon_runtime))
+            lines.append("")
+
+        if report.deliberation_graph is not None:
+            lines.append("RUNTIME ORCHESTRATION:")
+            lines.extend(_deliberation_graph_plain_lines(report.deliberation_graph))
             lines.append("")
 
         # Novelty proof
@@ -1192,3 +1207,109 @@ def _lookup(obj: Any, name: str, default: Any = None) -> Any:
     if isinstance(obj, dict):
         return obj.get(name, default)
     return getattr(obj, name, default)
+
+
+def _deliberation_graph_markdown_lines(graph: Any) -> list[str]:
+    candidate_count = len(_lookup(graph, "candidates", []) or [])
+    evidence_count = len(_lookup(graph, "evidence", []) or [])
+    objection_count = len(_lookup(graph, "objections", []) or [])
+    open_objections = sum(
+        1
+        for item in list(_lookup(graph, "objections", []) or [])
+        if str(_lookup(item, "status", "")).lower() == "open"
+    )
+    routing = list(_lookup(graph, "routing_history", []) or [])
+    events = list(_lookup(graph, "stage_events", []) or [])
+    accounting = _lookup(graph, "accounting", None)
+    budget_policy = _lookup(graph, "budget_policy", None)
+    lines = [
+        f"  Workflow: `{_as_text(_lookup(graph, 'workflow_kind', ''), 'genesis')}`",
+        f"  Candidates: `{candidate_count}` | evidence: `{evidence_count}` | objections: `{objection_count}` (`{open_objections}` open)",
+    ]
+    if budget_policy is not None:
+        lines.append(
+            f"  - Budget policy: `{_lookup(budget_policy, 'profile', 'balanced')}` "
+            f"| translation frontier=`{_lookup(budget_policy, 'translation_frontier', 0)}` "
+            f"| verification depth=`{_lookup(budget_policy, 'verification_depth', 'standard')}`"
+        )
+    if accounting is not None:
+        lines.append(
+            "  - Runtime totals: "
+            f"`{_lookup(accounting, 'total_duration_seconds', 0.0):.2f}s` "
+            f"| cost=`${_lookup(accounting, 'total_cost_usd', 0.0):.4f}` "
+            f"| tokens=`{int(_lookup(accounting, 'total_input_tokens', 0) or 0):,} in / "
+            f"{int(_lookup(accounting, 'total_output_tokens', 0) or 0):,} out`"
+        )
+    for decision in routing[:4]:
+        lines.append(
+            f"  - Route `{_lookup(decision, 'stage', '')}` -> `{_lookup(decision, 'selected_route', '')}`: "
+            f"{_as_text(_lookup(decision, 'reason', ''), 'n/a')}"
+        )
+    for candidate in list(_lookup(graph, "candidates", []) or [])[:4]:
+        lines.append(
+            f"  - Candidate `{_lookup(candidate, 'candidate_id', '')}` "
+            f"status=`{_lookup(candidate, 'status', 'alive')}` "
+            f"evidence=`{float(_lookup(candidate, 'evidence_coverage', 0.0) or 0.0):.2f}` "
+            f"unresolved=`{int(_lookup(candidate, 'unresolved_objections', 0) or 0)}` "
+            f"spent=`${float(_lookup(candidate, 'compute_spent_usd', 0.0) or 0.0):.4f}`"
+        )
+    if events:
+        last_event = events[-1]
+        lines.append(
+            f"  - Last stage: `{_lookup(last_event, 'stage', '')}` / "
+            f"`{_lookup(last_event, 'status', '')}` — {_as_text(_lookup(last_event, 'message', ''), 'n/a')}"
+        )
+    return lines
+
+
+def _deliberation_graph_plain_lines(graph: Any) -> list[str]:
+    candidate_count = len(_lookup(graph, "candidates", []) or [])
+    evidence_count = len(_lookup(graph, "evidence", []) or [])
+    objection_count = len(_lookup(graph, "objections", []) or [])
+    open_objections = sum(
+        1
+        for item in list(_lookup(graph, "objections", []) or [])
+        if str(_lookup(item, "status", "")).lower() == "open"
+    )
+    routing = list(_lookup(graph, "routing_history", []) or [])
+    events = list(_lookup(graph, "stage_events", []) or [])
+    accounting = _lookup(graph, "accounting", None)
+    budget_policy = _lookup(graph, "budget_policy", None)
+    lines = [
+        f"  Workflow: {_as_text(_lookup(graph, 'workflow_kind', ''), 'genesis')}",
+        f"  Candidates: {candidate_count}  Evidence: {evidence_count}  Objections: {objection_count} ({open_objections} open)",
+    ]
+    if budget_policy is not None:
+        lines.append(
+            f"  Budget policy: {_lookup(budget_policy, 'profile', 'balanced')}  "
+            f"translation frontier={_lookup(budget_policy, 'translation_frontier', 0)}  "
+            f"verification depth={_lookup(budget_policy, 'verification_depth', 'standard')}"
+        )
+    if accounting is not None:
+        lines.append(
+            "  Runtime totals: "
+            f"{_lookup(accounting, 'total_duration_seconds', 0.0):.2f}s "
+            f"| cost=${_lookup(accounting, 'total_cost_usd', 0.0):.4f} "
+            f"| tokens={int(_lookup(accounting, 'total_input_tokens', 0) or 0):,} in / "
+            f"{int(_lookup(accounting, 'total_output_tokens', 0) or 0):,} out"
+        )
+    for decision in routing[:4]:
+        lines.append(
+            f"  Route {_lookup(decision, 'stage', '')} -> {_lookup(decision, 'selected_route', '')}: "
+            f"{_as_text(_lookup(decision, 'reason', ''), 'n/a')}"
+        )
+    for candidate in list(_lookup(graph, "candidates", []) or [])[:4]:
+        lines.append(
+            f"  Candidate {_lookup(candidate, 'candidate_id', '')} "
+            f"status={_lookup(candidate, 'status', 'alive')} "
+            f"evidence={float(_lookup(candidate, 'evidence_coverage', 0.0) or 0.0):.2f} "
+            f"unresolved={int(_lookup(candidate, 'unresolved_objections', 0) or 0)} "
+            f"spent=${float(_lookup(candidate, 'compute_spent_usd', 0.0) or 0.0):.4f}"
+        )
+    if events:
+        last_event = events[-1]
+        lines.append(
+            f"  Last stage: {_lookup(last_event, 'stage', '')} / "
+            f"{_lookup(last_event, 'status', '')} - {_as_text(_lookup(last_event, 'message', ''), 'n/a')}"
+        )
+    return lines

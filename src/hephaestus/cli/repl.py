@@ -2112,6 +2112,13 @@ async def _run_pipeline(
         except Exception as exc:
             logger.warning("Could not attach lens-engine session state: %s", exc)
 
+        deliberation_graph = getattr(report, "deliberation_graph", None)
+        if deliberation_graph is not None:
+            try:
+                state.session.add_deliberation_graph(deliberation_graph)
+            except Exception as exc:
+                logger.warning("Could not attach deliberation graph to session: %s", exc)
+
         inv_name = (
             report.top_invention.invention_name
             if report.top_invention
@@ -2158,6 +2165,13 @@ async def _run_pipeline(
             pantheon_resolution_mode=str(getattr(pantheon_state, "resolution_mode", "") or ""),
             pantheon_rounds=len(getattr(pantheon_state, "rounds", []) or []),
             pantheon_winning_candidate_id=str(getattr(pantheon_state, "winning_candidate_id", "") or ""),
+            deliberation_graph_id=str(getattr(deliberation_graph, "graph_id", "") or ""),
+            runtime_accounting=(
+                deliberation_graph.accounting.to_dict()
+                if getattr(deliberation_graph, "accounting", None) is not None
+                and hasattr(deliberation_graph.accounting, "to_dict")
+                else None
+            ),
         )
         state.session.append_entry(
             Role.ASSISTANT.value,

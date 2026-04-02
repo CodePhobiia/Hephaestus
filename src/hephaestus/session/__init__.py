@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+from hephaestus.session.deliberation import (
+    CandidateStateCard,
+    DeliberationClaim,
+    DeliberationEvidence,
+    DeliberationGraph,
+    DeliberationObjection,
+    RuntimeAccounting,
+    RuntimeBudgetPolicy,
+    RuntimeRouteDecision,
+    RuntimeRouter,
+    VerifierCheck,
+)
 from hephaestus.session.schema import (
     InventionSnapshot,
     Session,
@@ -13,13 +25,23 @@ from hephaestus.session.todos import TodoItem, TodoList
 from hephaestus.lenses.state import LensEngineState
 
 __all__ = [
+    "CandidateStateCard",
+    "DeliberationClaim",
+    "DeliberationEvidence",
+    "DeliberationGraph",
+    "DeliberationObjection",
     "InventionSnapshot",
-    "Session",
-    "SessionMeta",
+    "LensEngineState",
     "ReferenceLot",
     "ResumeGateReport",
-    "LensEngineState",
+    "RuntimeAccounting",
+    "RuntimeBudgetPolicy",
+    "RuntimeRouteDecision",
+    "RuntimeRouter",
+    "Session",
+    "SessionMeta",
     "TodoItem",
     "TodoList",
     "TranscriptEntry",
+    "VerifierCheck",
 ]

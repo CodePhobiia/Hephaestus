@@ -18,6 +18,7 @@ from hephaestus.lenses.state import (
     ResearchReferenceArtifact,
     ResearchReferenceState,
 )
+from hephaestus.session.deliberation import DeliberationGraph
 from hephaestus.session.schema import (
     EntryType,
     InventionSnapshot,
@@ -306,6 +307,18 @@ class TestSessionSerialization:
         assert s2.lens_engine_state.research is not None
         assert s2.lens_engine_state.research.reference_generation == 2
 
+    def test_roundtrip_preserves_deliberation_graphs(self) -> None:
+        s = Session()
+        graph = DeliberationGraph(workflow_kind="genesis", goal="test goal")
+        graph.record_stage("search", "Found candidates.")
+        s.add_deliberation_graph(graph)
+
+        s2 = Session.from_json(s.to_json())
+
+        assert s2.latest_deliberation_graph is not None
+        assert s2.latest_deliberation_graph.goal == "test goal"
+        assert s2.latest_deliberation_graph.stage_events[0].stage == "search"
+
     def test_from_report_coerces_research_reference_dict(self) -> None:
         from unittest.mock import MagicMock
 
@@ -426,6 +439,17 @@ class TestSessionMutation:
         assert snap.pantheon_consensus_achieved is True
         assert snap.pantheon_outcome_tier == "UNANIMOUS_CONSENSUS"
         assert snap.pantheon_rounds == 3
+
+    def test_add_invention_links_latest_deliberation_graph(self) -> None:
+        s = Session()
+        graph = DeliberationGraph(workflow_kind="genesis", goal="runtime goal")
+        graph.record_accounting(stage="translate", cost_usd=0.42, calls=1)
+        s.add_deliberation_graph(graph)
+
+        snap = s.add_invention(invention_name="Runtime Widget", score=8.3)
+
+        assert snap.deliberation_graph_id == graph.graph_id
+        assert snap.runtime_accounting == graph.accounting.to_dict()
 
 
 # ---------------------------------------------------------------------------

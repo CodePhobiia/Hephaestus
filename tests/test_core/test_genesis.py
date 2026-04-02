@@ -318,6 +318,34 @@ class TestGenesis:
             report = await genesis.invent("I need a fault-tolerant task scheduler")
 
         assert isinstance(report, InventionReport)
+
+    @pytest.mark.asyncio
+    async def test_full_pipeline_attaches_deliberation_graph(self):
+        genesis = Genesis(self._make_config())
+        mocks = self._mock_all_stages()
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mocks["decomposer"]),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mocks["searcher"]),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mocks["scorer"]),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=mocks["translator"]),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mocks["verifier"]),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._adapters = {}
+
+            report = await genesis.invent("I need a fault-tolerant task scheduler")
+
+        graph = report.deliberation_graph
+        assert graph is not None
+        assert graph.workflow_kind == "genesis"
+        assert any(event.stage == "search" for event in graph.stage_events)
+        assert len(graph.candidates) >= 1
         assert report.top_invention is not None
         assert report.top_invention.invention_name == "Immune-Memory Task Scheduler"
 
