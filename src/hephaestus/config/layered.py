@@ -44,9 +44,14 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_USE_ADAPTIVE_LENS_ENGINE": "use_adaptive_lens_engine",
     "HEPHAESTUS_ALLOW_LENS_BUNDLE_FALLBACK": "allow_lens_bundle_fallback",
     "HEPHAESTUS_ENABLE_DERIVED_LENS_COMPOSITES": "enable_derived_lens_composites",
+    "HEPHAESTUS_USE_PANTHEON_MODE": "use_pantheon_mode",
+    "HEPHAESTUS_PANTHEON_MAX_ROUNDS": "pantheon_max_rounds",
+    "HEPHAESTUS_PANTHEON_REQUIRE_UNANIMITY": "pantheon_require_unanimity",
+    "HEPHAESTUS_PANTHEON_ALLOW_FAIL_CLOSED": "pantheon_allow_fail_closed",
+    "HEPHAESTUS_PANTHEON_MAX_SURVIVORS_TO_COUNCIL": "pantheon_max_survivors_to_council",
 }
 
-_INT_FIELDS = {"depth", "candidates"}
+_INT_FIELDS = {"depth", "candidates", "pantheon_max_rounds", "pantheon_max_survivors_to_council"}
 _BOOL_FIELDS = {
     "auto_save",
     "use_perplexity_research",
@@ -54,6 +59,9 @@ _BOOL_FIELDS = {
     "use_adaptive_lens_engine",
     "allow_lens_bundle_fallback",
     "enable_derived_lens_composites",
+    "use_pantheon_mode",
+    "pantheon_require_unanimity",
+    "pantheon_allow_fail_closed",
 }
 
 _VALIDATORS: dict[str, tuple[str, tuple[str, ...]]] = {

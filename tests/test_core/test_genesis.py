@@ -277,6 +277,51 @@ class TestGenesis:
         assert isinstance(report, InventionReport)
         assert report.top_invention is not None
         assert report.top_invention.invention_name == "Immune-Memory Task Scheduler"
+
+    @pytest.mark.asyncio
+    async def test_invent_attaches_pantheon_state_when_enabled(self):
+        config = self._make_config()
+        config.use_pantheon_mode = True
+        genesis = Genesis(config)
+
+        mocks = {
+            "decomposer": MagicMock(),
+            "searcher": MagicMock(),
+            "scorer": MagicMock(),
+            "translator": MagicMock(),
+            "verifier": MagicMock(),
+        }
+        mocks["decomposer"].decompose = AsyncMock(return_value=_make_problem_structure())
+        mocks["searcher"].search = AsyncMock(return_value=[_make_search_candidate()])
+        mocks["searcher"].last_runtime = None
+        mocks["scorer"].score = AsyncMock(return_value=[_make_scored_candidate()])
+        mocks["translator"].translate = AsyncMock(return_value=[_make_translation()])
+        mocks["translator"].last_runtime = None
+        mocks["verifier"].verify = AsyncMock(return_value=[_make_verified_invention()])
+
+        pantheon_state = SimpleNamespace(to_dict=lambda: {"mode": "pantheon"}, final_verdict="NOVEL")
+        pantheon_stub = MagicMock()
+        pantheon_stub.deliberate = AsyncMock(return_value=([_make_translation()], pantheon_state))
+        pantheon_stub.finalize_with_verified.return_value = pantheon_state
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mocks["decomposer"]),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mocks["searcher"]),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mocks["scorer"]),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=mocks["translator"]),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mocks["verifier"]),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+            patch("hephaestus.pantheon.PantheonCoordinator", return_value=pantheon_stub),
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._adapters = {}
+            report = await genesis.invent("test problem")
+
+        assert report.pantheon_state is pantheon_state
         assert len(report.all_candidates) == 1
         assert len(report.scored_candidates) == 1
         assert len(report.translations) == 1

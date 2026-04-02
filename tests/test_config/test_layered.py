@@ -92,6 +92,11 @@ class TestDefaults:
         assert cfg.use_adaptive_lens_engine is True
         assert cfg.allow_lens_bundle_fallback is True
         assert cfg.enable_derived_lens_composites is True
+        assert cfg.use_pantheon_mode is False
+        assert cfg.pantheon_max_rounds == 4
+        assert cfg.pantheon_require_unanimity is True
+        assert cfg.pantheon_allow_fail_closed is True
+        assert cfg.pantheon_max_survivors_to_council == 2
 
     def test_sources_all_builtin(self, tmp_path: Path) -> None:
         lc = _make_lc(tmp_path)
@@ -229,6 +234,22 @@ class TestEnvVars:
         assert cfg.use_adaptive_lens_engine is False
         assert cfg.allow_lens_bundle_fallback is False
         assert cfg.enable_derived_lens_composites is False
+
+    def test_env_pantheon_flags_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HEPHAESTUS_USE_PANTHEON_MODE", "true")
+        monkeypatch.setenv("HEPHAESTUS_PANTHEON_MAX_ROUNDS", "6")
+        monkeypatch.setenv("HEPHAESTUS_PANTHEON_REQUIRE_UNANIMITY", "false")
+        monkeypatch.setenv("HEPHAESTUS_PANTHEON_ALLOW_FAIL_CLOSED", "false")
+        monkeypatch.setenv("HEPHAESTUS_PANTHEON_MAX_SURVIVORS_TO_COUNCIL", "3")
+        lc = _make_lc(tmp_path)
+        cfg = lc.resolve()
+        assert cfg.use_pantheon_mode is True
+        assert cfg.pantheon_max_rounds == 6
+        assert cfg.pantheon_require_unanimity is False
+        assert cfg.pantheon_allow_fail_closed is False
+        assert cfg.pantheon_max_survivors_to_council == 3
 
 
 # ── Full precedence ──────────────────────────────────────────────────────

@@ -153,6 +153,8 @@ class InventionReport:
         Optional grounded implementation / operational risk review.
     lens_engine_state:
         Optional Adaptive Bundle-Proof lens-engine state attached to the run.
+    pantheon_state:
+        Optional Pantheon council state attached to the run.
     novelty_proof:
         Optional :class:`~hephaestus.output.proof.NoveltyProof` object.
     alternatives:
@@ -183,6 +185,7 @@ class InventionReport:
     external_grounding_report: Any | None = None
     implementation_risk_review: Any | None = None
     lens_engine_state: Any | None = None
+    pantheon_state: Any | None = None
     novelty_proof: Any | None = None       # NoveltyProof
     alternatives: list[AlternativeInvention] = field(default_factory=list)
     cost_usd: float = 0.0
@@ -405,6 +408,14 @@ class OutputFormatter:
             lines.extend(_lens_engine_markdown_lines(report.lens_engine_state))
             lines.append("")
 
+        if report.pantheon_state is not None:
+            lines += [
+                "**PANTHEON MODE:**",
+                "",
+            ]
+            lines.extend(_pantheon_markdown_lines(report.pantheon_state))
+            lines.append("")
+
         # ── Novelty proof ────────────────────────────────────────────────────
         lines += [
             "**NOVELTY PROOF:**",
@@ -523,6 +534,7 @@ class OutputFormatter:
                 "external_grounding": _research_obj_to_dict(report.external_grounding_report),
                 "implementation_risk_review": _research_obj_to_dict(report.implementation_risk_review),
                 "lens_engine": _lens_engine_to_dict(report.lens_engine_state),
+                "pantheon": _research_obj_to_dict(report.pantheon_state),
                 "novelty_proof": _proof_to_dict(report.novelty_proof),
                 "alternatives": [
                     {
@@ -648,6 +660,11 @@ class OutputFormatter:
         if report.lens_engine_state is not None:
             lines.append("LENS ENGINE:")
             lines.extend(_lens_engine_plain_lines(report.lens_engine_state))
+            lines.append("")
+
+        if report.pantheon_state is not None:
+            lines.append("PANTHEON MODE:")
+            lines.extend(_pantheon_plain_lines(report.pantheon_state))
             lines.append("")
 
         # Novelty proof
@@ -947,6 +964,58 @@ def _lens_engine_plain_lines(state: Any) -> list[str]:
         lines.append(f"  Invalidation [{item.target_kind}] {item.target_id}: {item.summary}")
     for item in getattr(state, "recompositions", [])[-3:]:
         lines.append(f"  Recomposition {item.status}: {item.summary}")
+    return lines
+
+
+def _pantheon_markdown_lines(state: Any) -> list[str]:
+    lines: list[str] = [
+        f"  Mode: `{_as_text(getattr(state, 'mode', ''), 'inactive')}`",
+        f"  Consensus achieved: `{bool(getattr(state, 'consensus_achieved', False))}`",
+        f"  Final verdict: `{_as_text(getattr(state, 'final_verdict', ''), 'UNKNOWN')}`",
+    ]
+    canon = getattr(state, "canon", None)
+    if canon is not None:
+        lines.append(f"  - Athena canon: {_as_text(getattr(canon, 'structural_form', ''), 'n/a')}")
+    dossier = getattr(state, "dossier", None)
+    if dossier is not None:
+        lines.append(f"  - Hermes dossier: {_as_text(getattr(dossier, 'repo_reality_summary', ''), 'n/a')}")
+    if getattr(state, "winning_candidate_id", None):
+        lines.append(f"  - Winning candidate: `{state.winning_candidate_id}`")
+    unresolved = list(getattr(state, "unresolved_vetoes", []) or [])
+    if unresolved:
+        lines.append(f"  - Unresolved vetoes: {', '.join(f'`{item}`' for item in unresolved)}")
+    for round_ in getattr(state, "rounds", [])[-3:]:
+        lines.append(
+            f"  - Round {getattr(round_, 'round_index', '?')}: "
+            f"candidate `{getattr(round_, 'candidate_id', '')}` "
+            f"consensus=`{bool(getattr(round_, 'consensus', False))}`"
+        )
+    return lines
+
+
+def _pantheon_plain_lines(state: Any) -> list[str]:
+    lines: list[str] = [
+        f"  Mode: {_as_text(getattr(state, 'mode', ''), 'inactive')}",
+        f"  Consensus achieved: {bool(getattr(state, 'consensus_achieved', False))}",
+        f"  Final verdict: {_as_text(getattr(state, 'final_verdict', ''), 'UNKNOWN')}",
+    ]
+    canon = getattr(state, "canon", None)
+    if canon is not None:
+        lines.append(f"  Athena canon: {_as_text(getattr(canon, 'structural_form', ''), 'n/a')}")
+    dossier = getattr(state, "dossier", None)
+    if dossier is not None:
+        lines.append(f"  Hermes dossier: {_as_text(getattr(dossier, 'repo_reality_summary', ''), 'n/a')}")
+    if getattr(state, "winning_candidate_id", None):
+        lines.append(f"  Winning candidate: {state.winning_candidate_id}")
+    unresolved = list(getattr(state, "unresolved_vetoes", []) or [])
+    if unresolved:
+        lines.append(f"  Unresolved vetoes: {', '.join(unresolved)}")
+    for round_ in getattr(state, "rounds", [])[-3:]:
+        lines.append(
+            f"  Round {getattr(round_, 'round_index', '?')}: "
+            f"candidate {getattr(round_, 'candidate_id', '')} "
+            f"consensus={bool(getattr(round_, 'consensus', False))}"
+        )
     return lines
 
 

@@ -1884,6 +1884,14 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
             output_mode=getattr(cfg, "output_mode", "MECHANISM"),
             use_branchgenome_v1=getattr(cfg, "use_branchgenome_v1", False),
+            use_adaptive_lens_engine=getattr(cfg, "use_adaptive_lens_engine", True),
+            allow_lens_bundle_fallback=getattr(cfg, "allow_lens_bundle_fallback", True),
+            enable_derived_lens_composites=getattr(cfg, "enable_derived_lens_composites", True),
+            use_pantheon_mode=getattr(cfg, "use_pantheon_mode", False),
+            pantheon_max_rounds=getattr(cfg, "pantheon_max_rounds", 4),
+            pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
+            pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
+            pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
         )
 
     if selected_model in {"opus", "gpt5", "codex", "both"}:
@@ -1906,6 +1914,14 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
             output_mode=getattr(cfg, "output_mode", "MECHANISM"),
             use_branchgenome_v1=getattr(cfg, "use_branchgenome_v1", False),
+            use_adaptive_lens_engine=getattr(cfg, "use_adaptive_lens_engine", True),
+            allow_lens_bundle_fallback=getattr(cfg, "allow_lens_bundle_fallback", True),
+            enable_derived_lens_composites=getattr(cfg, "enable_derived_lens_composites", True),
+            use_pantheon_mode=getattr(cfg, "use_pantheon_mode", False),
+            pantheon_max_rounds=getattr(cfg, "pantheon_max_rounds", 4),
+            pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
+            pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
+            pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
         )
 
     return GenesisConfig(
@@ -1923,6 +1939,14 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
         output_mode=getattr(cfg, "output_mode", "MECHANISM"),
         use_branchgenome_v1=getattr(cfg, "use_branchgenome_v1", False),
+        use_adaptive_lens_engine=getattr(cfg, "use_adaptive_lens_engine", True),
+        allow_lens_bundle_fallback=getattr(cfg, "allow_lens_bundle_fallback", True),
+        enable_derived_lens_composites=getattr(cfg, "enable_derived_lens_composites", True),
+        use_pantheon_mode=getattr(cfg, "use_pantheon_mode", False),
+        pantheon_max_rounds=getattr(cfg, "pantheon_max_rounds", 4),
+        pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
+        pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
+        pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
     )
 
 

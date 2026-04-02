@@ -198,6 +198,11 @@ class GenesisConfig:
     use_adaptive_lens_engine: bool = True
     allow_lens_bundle_fallback: bool = True
     enable_derived_lens_composites: bool = True
+    use_pantheon_mode: bool = False
+    pantheon_max_rounds: int = 4
+    pantheon_require_unanimity: bool = True
+    pantheon_allow_fail_closed: bool = True
+    pantheon_max_survivors_to_council: int = 2
     perplexity_model: str | None = None
     branchgenome_rejection_ledger_path: str | None = None
 
@@ -342,6 +347,7 @@ class InventionReport:
     baseline_dossier: Any | None = None
     lens_runtime: dict[str, Any] = field(default_factory=dict)
     lens_engine_state: Any | None = None
+    pantheon_state: Any | None = None
     branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
     total_duration_seconds: float = 0.0
@@ -434,6 +440,7 @@ class InventionReport:
             "baseline_dossier": self._research_to_dict(self.baseline_dossier),
             "lens_runtime": self._research_to_dict(self.lens_runtime),
             "lens_engine": self._research_to_dict(self.lens_engine_state),
+            "pantheon": self._research_to_dict(self.pantheon_state),
             "alternatives": [
                 {
                     "name": inv.invention_name,
@@ -697,6 +704,7 @@ class Genesis:
 
             # ── Stage 1.5: External reconnaissance (Perplexity) ──────────
             baseline_dossier = None
+            pantheon_state = None
             if self._config.use_perplexity_research:
                 try:
                     from hephaestus.research.perplexity import PerplexityClient
@@ -945,6 +953,39 @@ class Genesis:
             if translation_runtime is not None:
                 lens_runtime["translation"] = translation_runtime.to_dict()
 
+            if self._config.use_pantheon_mode and translations:
+                try:
+                    from hephaestus.pantheon import PantheonCoordinator
+
+                    pantheon = PantheonCoordinator(
+                        athena_harness=self._harnesses["decompose"],
+                        hermes_harness=self._harnesses["search"],
+                        apollo_harness=self._harnesses["defend"],
+                        max_rounds=self._config.pantheon_max_rounds,
+                        require_unanimity=self._config.pantheon_require_unanimity,
+                        allow_fail_closed=self._config.pantheon_allow_fail_closed,
+                        max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
+                    )
+                    translations, pantheon_state = await pantheon.deliberate(
+                        problem=problem,
+                        structure=structure,
+                        translations=translations,
+                        translator=translator,
+                        baseline_dossier=baseline_dossier,
+                    )
+                    if pantheon_state is not None:
+                        lens_runtime["pantheon"] = pantheon_state.to_dict()
+                    if not translations:
+                        yield PipelineUpdate(
+                            stage=PipelineStage.FAILED,
+                            message="Pantheon Mode failed to produce a council-surviving invention",
+                            data=pantheon_state,
+                            elapsed_seconds=elapsed(),
+                        )
+                        return
+                except Exception as exc:
+                    logger.warning("Pantheon Mode skipped after translation failure: %s", exc)
+
             if self._config.use_branchgenome_v1:
                 from hephaestus.branchgenome.models import BranchStatus
 
@@ -1023,6 +1064,18 @@ class Genesis:
                 perplexity_model=self._config.perplexity_model,
             )
             verified = await verifier.verify(translations, structure)
+            if self._config.use_pantheon_mode and pantheon_state is not None:
+                try:
+                    from hephaestus.pantheon import PantheonCoordinator
+
+                    pantheon_state = PantheonCoordinator(
+                        athena_harness=self._harnesses["decompose"],
+                        hermes_harness=self._harnesses["search"],
+                        apollo_harness=self._harnesses["defend"],
+                    ).finalize_with_verified(pantheon_state, verified)
+                    lens_runtime["pantheon"] = pantheon_state.to_dict()
+                except Exception as exc:
+                    logger.warning("Pantheon finalization skipped: %s", exc)
             lens_runtime["verification"] = {
                 "count": len(verified),
                 "bundle_acceptance_statuses": [
@@ -1139,6 +1192,7 @@ class Genesis:
                 baseline_dossier=baseline_dossier,
                 lens_runtime=lens_runtime,
                 branchgenome_metrics=branchgenome_metrics,
+                pantheon_state=pantheon_state,
                 cost_breakdown=cost,
                 total_duration_seconds=elapsed(),
                 model_config={

@@ -64,6 +64,11 @@ class HephaestusConfig:
     use_adaptive_lens_engine: bool = True
     allow_lens_bundle_fallback: bool = True
     enable_derived_lens_composites: bool = True
+    use_pantheon_mode: bool = False
+    pantheon_max_rounds: int = 4
+    pantheon_require_unanimity: bool = True
+    pantheon_allow_fail_closed: bool = True
+    pantheon_max_survivors_to_council: int = 2
 
     # API keys (resolved from env at load time, never persisted)
     anthropic_api_key: str | None = field(default=None, repr=False)
@@ -87,6 +92,11 @@ class HephaestusConfig:
             "use_adaptive_lens_engine": self.use_adaptive_lens_engine,
             "allow_lens_bundle_fallback": self.allow_lens_bundle_fallback,
             "enable_derived_lens_composites": self.enable_derived_lens_composites,
+            "use_pantheon_mode": self.use_pantheon_mode,
+            "pantheon_max_rounds": self.pantheon_max_rounds,
+            "pantheon_require_unanimity": self.pantheon_require_unanimity,
+            "pantheon_allow_fail_closed": self.pantheon_allow_fail_closed,
+            "pantheon_max_survivors_to_council": self.pantheon_max_survivors_to_council,
         }
 
 
@@ -132,6 +142,21 @@ def load_config() -> HephaestusConfig | None:
         enable_derived_lens_composites = data.get("enable_derived_lens_composites", True)
         if not isinstance(enable_derived_lens_composites, bool):
             enable_derived_lens_composites = str(enable_derived_lens_composites).strip().lower() in ("1", "true", "yes", "on")
+        use_pantheon_mode = data.get("use_pantheon_mode", False)
+        if not isinstance(use_pantheon_mode, bool):
+            use_pantheon_mode = str(use_pantheon_mode).strip().lower() in ("1", "true", "yes", "on")
+        pantheon_max_rounds = data.get("pantheon_max_rounds", 4)
+        if not isinstance(pantheon_max_rounds, int) or pantheon_max_rounds < 1 or pantheon_max_rounds > 8:
+            pantheon_max_rounds = 4
+        pantheon_require_unanimity = data.get("pantheon_require_unanimity", True)
+        if not isinstance(pantheon_require_unanimity, bool):
+            pantheon_require_unanimity = str(pantheon_require_unanimity).strip().lower() in ("1", "true", "yes", "on")
+        pantheon_allow_fail_closed = data.get("pantheon_allow_fail_closed", True)
+        if not isinstance(pantheon_allow_fail_closed, bool):
+            pantheon_allow_fail_closed = str(pantheon_allow_fail_closed).strip().lower() in ("1", "true", "yes", "on")
+        pantheon_max_survivors_to_council = data.get("pantheon_max_survivors_to_council", 2)
+        if not isinstance(pantheon_max_survivors_to_council, int) or pantheon_max_survivors_to_council < 1 or pantheon_max_survivors_to_council > 5:
+            pantheon_max_survivors_to_council = 2
         cfg = HephaestusConfig(
             backend=backend,
             default_model=data.get("default_model", _DEFAULT_MODEL),
@@ -147,6 +172,11 @@ def load_config() -> HephaestusConfig | None:
             use_adaptive_lens_engine=use_adaptive_lens_engine,
             allow_lens_bundle_fallback=allow_lens_bundle_fallback,
             enable_derived_lens_composites=enable_derived_lens_composites,
+            use_pantheon_mode=use_pantheon_mode,
+            pantheon_max_rounds=pantheon_max_rounds,
+            pantheon_require_unanimity=pantheon_require_unanimity,
+            pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
         )
     except Exception:
         cfg = HephaestusConfig()

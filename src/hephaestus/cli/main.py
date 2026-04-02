@@ -252,6 +252,11 @@ def cli(
     use_adaptive_lens_engine = True
     allow_lens_bundle_fallback = True
     enable_derived_lens_composites = True
+    use_pantheon_mode = False
+    pantheon_max_rounds = 4
+    pantheon_require_unanimity = True
+    pantheon_allow_fail_closed = True
+    pantheon_max_survivors_to_council = 2
 
     # ── Layered config ────────────────────────────────────────────────────────
     layered = None
@@ -284,6 +289,11 @@ def cli(
         use_adaptive_lens_engine = getattr(resolved, "use_adaptive_lens_engine", True)
         allow_lens_bundle_fallback = getattr(resolved, "allow_lens_bundle_fallback", True)
         enable_derived_lens_composites = getattr(resolved, "enable_derived_lens_composites", True)
+        use_pantheon_mode = getattr(resolved, "use_pantheon_mode", False)
+        pantheon_max_rounds = getattr(resolved, "pantheon_max_rounds", 4)
+        pantheon_require_unanimity = getattr(resolved, "pantheon_require_unanimity", True)
+        pantheon_allow_fail_closed = getattr(resolved, "pantheon_allow_fail_closed", True)
+        pantheon_max_survivors_to_council = getattr(resolved, "pantheon_max_survivors_to_council", 2)
     except Exception:
         pass  # Fall back to CLI defaults
 
@@ -428,6 +438,11 @@ def cli(
                     use_adaptive_lens_engine=use_adaptive_lens_engine,
                     allow_lens_bundle_fallback=allow_lens_bundle_fallback,
                     enable_derived_lens_composites=enable_derived_lens_composites,
+                    use_pantheon_mode=use_pantheon_mode,
+                    pantheon_max_rounds=pantheon_max_rounds,
+                    pantheon_require_unanimity=pantheon_require_unanimity,
+                    pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+                    pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
                 )
             )
     except KeyboardInterrupt:
@@ -470,6 +485,11 @@ async def _run_genesis(
     use_adaptive_lens_engine: bool = True,
     allow_lens_bundle_fallback: bool = True,
     enable_derived_lens_composites: bool = True,
+    use_pantheon_mode: bool = False,
+    pantheon_max_rounds: int = 4,
+    pantheon_require_unanimity: bool = True,
+    pantheon_allow_fail_closed: bool = True,
+    pantheon_max_survivors_to_council: int = 2,
 ) -> None:
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
@@ -494,6 +514,11 @@ async def _run_genesis(
         use_adaptive_lens_engine=use_adaptive_lens_engine,
         allow_lens_bundle_fallback=allow_lens_bundle_fallback,
         enable_derived_lens_composites=enable_derived_lens_composites,
+        use_pantheon_mode=use_pantheon_mode,
+        pantheon_max_rounds=pantheon_max_rounds,
+        pantheon_require_unanimity=pantheon_require_unanimity,
+        pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+        pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
     )
 
     genesis = Genesis(config)
@@ -874,6 +899,7 @@ def _bridge_report(genesis_report: Any) -> Any:
         external_grounding_report=_explicit_attr(top, "grounding_report", None),
         implementation_risk_review=_explicit_attr(top, "implementation_risk_review", None),
         lens_engine_state=_explicit_attr(genesis_report, "lens_engine_state", None),
+        pantheon_state=_explicit_attr(genesis_report, "pantheon_state", None),
         alternatives=alternatives,
         cost_usd=genesis_report.total_cost_usd,
         input_tokens=getattr(genesis_report, "total_input_tokens", 0),
@@ -904,6 +930,11 @@ def _build_genesis_config(
     use_adaptive_lens_engine: bool = True,
     allow_lens_bundle_fallback: bool = True,
     enable_derived_lens_composites: bool = True,
+    use_pantheon_mode: bool = False,
+    pantheon_max_rounds: int = 4,
+    pantheon_require_unanimity: bool = True,
+    pantheon_allow_fail_closed: bool = True,
+    pantheon_max_survivors_to_council: int = 2,
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
     from hephaestus.core.cross_model import get_model_preset
@@ -932,6 +963,11 @@ def _build_genesis_config(
             use_adaptive_lens_engine=use_adaptive_lens_engine,
             allow_lens_bundle_fallback=allow_lens_bundle_fallback,
             enable_derived_lens_composites=enable_derived_lens_composites,
+            use_pantheon_mode=use_pantheon_mode,
+            pantheon_max_rounds=pantheon_max_rounds,
+            pantheon_require_unanimity=pantheon_require_unanimity,
+            pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
         )
 
     if model == "claude-cli":
@@ -957,6 +993,11 @@ def _build_genesis_config(
             use_adaptive_lens_engine=use_adaptive_lens_engine,
             allow_lens_bundle_fallback=allow_lens_bundle_fallback,
             enable_derived_lens_composites=enable_derived_lens_composites,
+            use_pantheon_mode=use_pantheon_mode,
+            pantheon_max_rounds=pantheon_max_rounds,
+            pantheon_require_unanimity=pantheon_require_unanimity,
+            pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
         )
 
     if model == "codex":
@@ -982,6 +1023,11 @@ def _build_genesis_config(
             use_adaptive_lens_engine=use_adaptive_lens_engine,
             allow_lens_bundle_fallback=allow_lens_bundle_fallback,
             enable_derived_lens_composites=enable_derived_lens_composites,
+            use_pantheon_mode=use_pantheon_mode,
+            pantheon_max_rounds=pantheon_max_rounds,
+            pantheon_require_unanimity=pantheon_require_unanimity,
+            pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
         )
 
     # Map CLI flag names to preset names
@@ -1007,6 +1053,11 @@ def _build_genesis_config(
         use_adaptive_lens_engine=use_adaptive_lens_engine,
         allow_lens_bundle_fallback=allow_lens_bundle_fallback,
         enable_derived_lens_composites=enable_derived_lens_composites,
+        use_pantheon_mode=use_pantheon_mode,
+        pantheon_max_rounds=pantheon_max_rounds,
+        pantheon_require_unanimity=pantheon_require_unanimity,
+        pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+        pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
     )
 
 
@@ -1179,6 +1230,11 @@ def init_cmd() -> None:
         "# use_adaptive_lens_engine: true\n"
         "# allow_lens_bundle_fallback: true\n"
         "# enable_derived_lens_composites: true\n"
+        "# use_pantheon_mode: false\n"
+        "# pantheon_max_rounds: 4\n"
+        "# pantheon_require_unanimity: true\n"
+        "# pantheon_allow_fail_closed: true\n"
+        "# pantheon_max_survivors_to_council: 2\n"
         "# auto_save: true\n",
         encoding="utf-8",
     )
