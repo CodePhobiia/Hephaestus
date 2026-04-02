@@ -16,6 +16,7 @@ import os
 import time
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1165,3 +1166,55 @@ class TestReplLoop:
         state = _make_session()
         handled = await _handle_menu_choice(console, state, "9")
         assert handled is False
+
+
+class TestWorkspaceAwarePipeline:
+    @pytest.mark.asyncio
+    async def test_run_pipeline_injects_workspace_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import hephaestus.cli.main as main_module
+        import hephaestus.cli.repl as repl_module
+        import hephaestus.core.genesis as genesis_module
+
+        captured: dict[str, str] = {}
+
+        class _FakeGenesis:
+            def __init__(self, config: Any) -> None:
+                self.config = config
+
+            async def invent_stream(self, problem: str):
+                captured["problem"] = problem
+                yield SimpleNamespace(
+                    stage=genesis_module.PipelineStage.COMPLETE,
+                    message="done",
+                    data=_make_report(problem=problem),
+                )
+
+        monkeypatch.setattr(repl_module, "_build_genesis_config_from_session", lambda state: object())
+        monkeypatch.setattr(genesis_module, "Genesis", _FakeGenesis)
+        monkeypatch.setattr(main_module, "_handle_pipeline_update", lambda update, stage_progress: None)
+        monkeypatch.setattr(repl_module, "_display_invention_result", lambda console, state: None)
+
+        console = _console()
+        state = _make_session(auto_save=False)
+        state.workspace_root = Path("/tmp/example-repo")
+        state.workspace_context = SimpleNamespace(
+            to_prompt_text=lambda: "=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+        )
+
+        await repl_module._run_pipeline(console, state, "reinvent this system")
+
+        assert "problem" in captured
+        assert captured["problem"].startswith("reinvent this system")
+        assert "=== WORKSPACE CONTEXT ===" in captured["problem"]
+        assert "repo summary here" in captured["problem"]
+
+    def test_inject_workspace_context_avoids_duplication(self) -> None:
+        from hephaestus.cli.repl import _inject_workspace_context
+
+        state = _make_session(auto_save=False)
+        state.workspace_context = SimpleNamespace(
+            to_prompt_text=lambda: "=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+        )
+        problem = "reinvent this system\n\n=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+
+        assert _inject_workspace_context(problem, state) == problem

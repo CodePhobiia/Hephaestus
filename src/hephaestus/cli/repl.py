@@ -215,6 +215,34 @@ def _maybe_attr(obj: Any, name: str, default: Any = None) -> Any:
     return getattr(obj, name, default)
 
 
+def _inject_workspace_context(problem: str, state: SessionState) -> str:
+    """Augment a pipeline problem with repo/workspace context when available.
+
+    Interactive mode detects when Hephaestus is running inside a codebase, but
+    the normal invention prompt path still needs explicit injection of the
+    scanned workspace context. This helper makes repo-aware invention the
+    default while avoiding duplicated workspace blocks across refinements.
+    """
+    workspace_context = getattr(state, "workspace_context", None)
+    if workspace_context is None:
+        return problem
+
+    marker = "=== WORKSPACE CONTEXT ==="
+    if marker in problem:
+        return problem
+
+    try:
+        prompt_text = workspace_context.to_prompt_text()
+    except Exception as exc:
+        logger.warning("Could not render workspace context for pipeline injection: %s", exc)
+        return problem
+
+    if not prompt_text.strip():
+        return problem
+
+    return f"{problem}\n\n{prompt_text}"
+
+
 def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
     """Return a short readiness label and hint for the configured backend."""
     backend = config.backend
@@ -1907,6 +1935,8 @@ async def _run_pipeline(
 ) -> None:
     """Run the Genesis pipeline and store the result in session state."""
     from hephaestus.core.genesis import Genesis, PipelineStage
+
+    problem = _inject_workspace_context(problem, state)
 
     try:
         genesis_config = _build_genesis_config_from_session(state)
