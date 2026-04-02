@@ -25,6 +25,7 @@ from hephaestus.pantheon.models import (
     ApolloAudit,
     AthenaCanon,
     HermesDossier,
+    PANTHEON_ISSUE_TYPES,
     PantheonAccounting,
     PantheonObjection,
     PantheonReforgeRecord,
@@ -66,6 +67,14 @@ _STOPWORDS = {
     "with",
 }
 _SEVERITY_ORDER = {"ADVISORY": 0, "REPAIRABLE": 1, "FATAL": 2}
+_ISSUE_TYPE_BY_AGENT = {
+    "athena": "STRUCTURAL",
+    "hermes": "REALITY",
+    "apollo": "TRUTH",
+    "hephaestus": "NOVELTY",
+    "verifier": "TRUTH",
+}
+_ISSUE_ORDER = {"REALITY": 0, "STRUCTURAL": 1, "TRUTH": 2, "NOVELTY": 3}
 
 
 class PantheonError(RuntimeError):
@@ -206,6 +215,12 @@ def _severity(severity: Any, default: str = "REPAIRABLE") -> str:
     return value if value in _SEVERITY_ORDER else default
 
 
+def _issue_type(issue_type: Any, *, agent: str = "", default: str | None = None) -> str:
+    fallback = default or _ISSUE_TYPE_BY_AGENT.get(str(agent or "").lower(), "STRUCTURAL")
+    value = str(issue_type or fallback).upper()
+    return value if value in PANTHEON_ISSUE_TYPES else fallback
+
+
 def _strongest_severity(severities: Sequence[str]) -> str | None:
     strongest: str | None = None
     strongest_rank = -1
@@ -215,6 +230,14 @@ def _strongest_severity(severities: Sequence[str]) -> str | None:
             strongest = _severity(severity)
             strongest_rank = rank
     return strongest
+
+
+def _severity_weight(severity: str) -> float:
+    return {
+        "ADVISORY": 0.2,
+        "REPAIRABLE": 1.0,
+        "FATAL": 2.5,
+    }.get(_severity(severity), 0.0)
 
 
 def _decision_from_objections(objections: Sequence[PantheonObjection]) -> str:
@@ -227,7 +250,10 @@ def _decision_from_objections(objections: Sequence[PantheonObjection]) -> str:
 
 
 def _objection_summary(objection: PantheonObjection) -> str:
-    return f"{objection.objection_id}:{objection.severity}:{objection.statement}"
+    return (
+        f"{objection.objection_id}:{objection.issue_type}:{objection.severity}:"
+        f"{objection.claim_text or objection.statement}"
+    )
 
 
 class PantheonCoordinator:
@@ -315,6 +341,7 @@ class PantheonCoordinator:
             key=lambda objection: (
                 objection.status != "OPEN",
                 -_SEVERITY_ORDER.get(objection.severity, 0),
+                -_ISSUE_ORDER.get(objection.issue_type, 0),
                 -objection.last_seen_round,
                 objection.objection_id,
             ),
@@ -324,12 +351,48 @@ class PantheonCoordinator:
     def _objections_to_text(objections: Sequence[PantheonObjection]) -> str:
         return json.dumps([objection.to_dict() for objection in objections], indent=2, ensure_ascii=False)
 
+    @staticmethod
+    def _masked_objections_to_text(objections: Sequence[PantheonObjection]) -> str:
+        payload = [
+            {
+                "issue_id": objection.objection_id,
+                "issue_type": objection.issue_type,
+                "severity": objection.severity,
+                "claim_text": objection.claim_text or objection.statement,
+                "evidence": list(objection.evidence[:2]),
+                "must_preserve": list(objection.must_preserve[:2]),
+                "discharge_test": objection.discharge_test or objection.closure_test,
+                "status": objection.status,
+                "opened_by": objection.opened_by or objection.agent,
+            }
+            for objection in objections
+        ]
+        return json.dumps(payload, indent=2, ensure_ascii=False)
+
+    @staticmethod
+    def _must_preserve_anchors(translation: Translation, objections: Sequence[PantheonObjection]) -> list[str]:
+        anchors = [
+            translation.key_insight,
+            translation.future_option_preservation,
+            *list(translation.recovery_commitments),
+        ]
+        for objection in objections:
+            anchors.extend(objection.must_preserve)
+        return _dedupe(anchors)
+
+    @staticmethod
+    def _changed_claims(reforge: PantheonReforgeRecord | None) -> list[str]:
+        if reforge is None:
+            return []
+        return _dedupe([*reforge.changes_made, *reforge.addressed_objection_ids])
+
     def _find_existing_objection(
         self,
         state: PantheonState,
         *,
         candidate_id: str,
         agent: str,
+        issue_type: str,
         statement: str,
         required_change: str,
         closure_test: str,
@@ -338,6 +401,8 @@ class PantheonCoordinator:
         best_score = 0.0
         for objection in state.objection_ledger:
             if objection.candidate_id != candidate_id or objection.agent != agent:
+                continue
+            if objection.issue_type != issue_type:
                 continue
             score = _similarity_score(objection, statement, required_change, closure_test)
             if score > best_score:
@@ -375,21 +440,31 @@ class PantheonCoordinator:
         candidate_id: str,
         round_index: int,
         stage: str,
-        objection_specs: Sequence[dict[str, str]],
+        objection_specs: Sequence[dict[str, Any]],
     ) -> list[PantheonObjection]:
         registered: list[PantheonObjection] = []
         for item in objection_specs:
             agent = str(item.get("agent", "") or "")
+            issue_type = _issue_type(item.get("issue_type"), agent=agent)
             severity = _severity(item.get("severity"), default="REPAIRABLE")
-            statement = str(item.get("statement", "") or "").strip()
+            statement = str(item.get("statement", item.get("claim_text", "")) or item.get("claim_text", "")).strip()
+            claim_text = str(item.get("claim_text", statement) or statement).strip()
             required_change = str(item.get("required_change", statement) or statement).strip()
-            closure_test = str(item.get("closure_test", required_change or statement) or (required_change or statement)).strip()
+            closure_test = str(
+                item.get("closure_test", item.get("discharge_test", required_change or statement))
+                or item.get("discharge_test", required_change or statement)
+                or (required_change or statement)
+            ).strip()
+            discharge_test = str(item.get("discharge_test", closure_test) or closure_test).strip()
+            evidence = _safe_list(item.get("evidence"))
+            must_preserve = _safe_list(item.get("must_preserve"))
             if not agent or not statement:
                 continue
             existing = self._find_existing_objection(
                 state,
                 candidate_id=candidate_id,
                 agent=agent,
+                issue_type=issue_type,
                 statement=statement,
                 required_change=required_change,
                 closure_test=closure_test,
@@ -406,10 +481,16 @@ class PantheonCoordinator:
                     ),
                     candidate_id=candidate_id,
                     agent=agent,
+                    issue_type=issue_type,
                     severity=severity,
+                    claim_text=claim_text,
                     statement=statement,
                     required_change=required_change,
                     closure_test=closure_test,
+                    discharge_test=discharge_test,
+                    evidence=evidence,
+                    must_preserve=must_preserve,
+                    opened_by=agent,
                     status="OPEN",
                     opened_round=round_index,
                     last_seen_round=round_index,
@@ -420,13 +501,20 @@ class PantheonCoordinator:
                 state.objection_ledger.append(objection)
             else:
                 objection = existing
+                objection.issue_type = issue_type
                 objection.severity = _strongest_severity([existing.severity, severity]) or severity
+                if len(claim_text) >= len(objection.claim_text):
+                    objection.claim_text = claim_text
                 if len(statement) >= len(objection.statement):
                     objection.statement = statement
                 if len(required_change) >= len(objection.required_change):
                     objection.required_change = required_change
                 if len(closure_test) >= len(objection.closure_test):
                     objection.closure_test = closure_test
+                if len(discharge_test) >= len(objection.discharge_test):
+                    objection.discharge_test = discharge_test
+                objection.evidence = _dedupe([*objection.evidence, *evidence])
+                objection.must_preserve = _dedupe([*objection.must_preserve, *must_preserve])
                 objection.status = "OPEN"
                 objection.last_seen_round = round_index
                 objection.last_updated_round = round_index
@@ -434,6 +522,7 @@ class PantheonCoordinator:
                 objection.waived_round = None
                 objection.last_stage = stage
             registered.append(objection)
+        state.issue_count_opened = sum(1 for objection in state.objection_ledger if objection.status == "OPEN")
         return registered
 
     def _resolve_missing_open_objections(
@@ -456,6 +545,9 @@ class PantheonCoordinator:
             objection.resolved_round = round_index
             objection.last_stage = stage
             resolved.append(objection.objection_id)
+        if resolved:
+            state.issue_count_discharged += len(resolved)
+            state.issue_count_opened = sum(1 for objection in state.objection_ledger if objection.status == "OPEN")
         return resolved
 
     def _waive_objections(
@@ -476,6 +568,8 @@ class PantheonCoordinator:
             objection.waived_round = round_index
             objection.last_stage = stage
             waived.append(objection)
+        if waived:
+            state.issue_count_opened = sum(1 for objection in state.objection_ledger if objection.status == "OPEN")
         return waived
 
     def _review_objection_specs(
@@ -484,27 +578,38 @@ class PantheonCoordinator:
         agent: str,
         data: dict[str, Any],
         default_veto_type: str | None,
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, Any]]:
         reasons = _safe_list(data.get("reasons"))
         must_change = _safe_list(data.get("must_change"))
+        must_preserve = _safe_list(data.get("must_preserve"))
         raw_objections = data.get("objections", [])
-        specs: list[dict[str, str]] = []
+        specs: list[dict[str, Any]] = []
         if isinstance(raw_objections, list):
             for item in raw_objections:
                 if not isinstance(item, dict):
                     continue
-                statement = str(item.get("statement", "") or "").strip()
+                statement = str(item.get("statement", item.get("claim_text", "")) or item.get("claim_text", "")).strip()
+                claim_text = str(item.get("claim_text", statement) or statement).strip()
                 required_change = str(item.get("required_change", statement) or statement).strip()
-                closure_test = str(item.get("closure_test", required_change or statement) or (required_change or statement)).strip()
+                closure_test = str(
+                    item.get("closure_test", item.get("discharge_test", required_change or statement))
+                    or item.get("discharge_test", required_change or statement)
+                    or (required_change or statement)
+                ).strip()
                 if not statement:
                     continue
                 specs.append(
                     {
                         "agent": agent,
+                        "issue_type": _issue_type(item.get("issue_type"), agent=agent, default=default_veto_type),
                         "severity": _severity(item.get("severity"), default="REPAIRABLE"),
+                        "claim_text": claim_text,
                         "statement": statement,
+                        "evidence": _safe_list(item.get("evidence")),
+                        "must_preserve": _safe_list(item.get("must_preserve")),
                         "required_change": required_change,
                         "closure_test": closure_test,
+                        "discharge_test": str(item.get("discharge_test", closure_test) or closure_test),
                     }
                 )
         if specs:
@@ -526,10 +631,15 @@ class PantheonCoordinator:
                 specs.append(
                     {
                         "agent": agent,
+                        "issue_type": _issue_type(None, agent=agent, default=default_veto_type),
                         "severity": default_severity,
+                        "claim_text": statement,
                         "statement": statement,
+                        "evidence": reasons[:1],
+                        "must_preserve": must_preserve,
                         "required_change": change,
                         "closure_test": change,
+                        "discharge_test": change,
                     }
                 )
             return specs
@@ -539,10 +649,15 @@ class PantheonCoordinator:
             specs.append(
                 {
                     "agent": agent,
+                    "issue_type": _issue_type(None, agent=agent, default=default_veto_type),
                     "severity": default_severity,
+                    "claim_text": reason,
                     "statement": reason,
+                    "evidence": reasons[:1],
+                    "must_preserve": must_preserve,
                     "required_change": reason,
                     "closure_test": reason,
+                    "discharge_test": reason,
                 }
             )
         elif decision != "ASSENT":
@@ -550,33 +665,48 @@ class PantheonCoordinator:
             specs.append(
                 {
                     "agent": agent,
+                    "issue_type": _issue_type(None, agent=agent, default=default_veto_type),
                     "severity": default_severity,
+                    "claim_text": fallback,
                     "statement": fallback,
+                    "evidence": [],
+                    "must_preserve": must_preserve,
                     "required_change": fallback,
                     "closure_test": fallback,
+                    "discharge_test": fallback,
                 }
             )
         return specs
 
-    def _apollo_objection_specs(self, audit: ApolloAudit, raw_data: dict[str, Any]) -> list[dict[str, str]]:
+    def _apollo_objection_specs(self, audit: ApolloAudit, raw_data: dict[str, Any]) -> list[dict[str, Any]]:
         raw_objections = raw_data.get("objections", [])
-        specs: list[dict[str, str]] = []
+        specs: list[dict[str, Any]] = []
         if isinstance(raw_objections, list):
             for item in raw_objections:
                 if not isinstance(item, dict):
                     continue
-                statement = str(item.get("statement", "") or "").strip()
+                statement = str(item.get("statement", item.get("claim_text", "")) or item.get("claim_text", "")).strip()
+                claim_text = str(item.get("claim_text", statement) or statement).strip()
                 required_change = str(item.get("required_change", statement) or statement).strip()
-                closure_test = str(item.get("closure_test", required_change or statement) or (required_change or statement)).strip()
+                closure_test = str(
+                    item.get("closure_test", item.get("discharge_test", required_change or statement))
+                    or item.get("discharge_test", required_change or statement)
+                    or (required_change or statement)
+                ).strip()
                 if not statement:
                     continue
                 specs.append(
                     {
                         "agent": "apollo",
+                        "issue_type": _issue_type(item.get("issue_type"), agent="apollo", default="TRUTH"),
                         "severity": _severity(item.get("severity"), default="REPAIRABLE"),
+                        "claim_text": claim_text,
                         "statement": statement,
+                        "evidence": _safe_list(item.get("evidence")),
+                        "must_preserve": _safe_list(item.get("must_preserve")),
                         "required_change": required_change,
                         "closure_test": closure_test,
+                        "discharge_test": str(item.get("discharge_test", closure_test) or closure_test),
                     }
                 )
         if specs:
@@ -586,30 +716,45 @@ class PantheonCoordinator:
             specs.append(
                 {
                     "agent": "apollo",
+                    "issue_type": "TRUTH",
                     "severity": "FATAL",
+                    "claim_text": flaw,
                     "statement": flaw,
+                    "evidence": audit.reasons[:2],
+                    "must_preserve": [],
                     "required_change": audit.proof_obligations[0] if audit.proof_obligations else flaw,
                     "closure_test": audit.proof_obligations[0] if audit.proof_obligations else f"Apollo no longer detects: {flaw}",
+                    "discharge_test": audit.proof_obligations[0] if audit.proof_obligations else f"Apollo no longer detects: {flaw}",
                 }
             )
         for signal in audit.decorative_signals:
             specs.append(
                 {
                     "agent": "apollo",
+                    "issue_type": "NOVELTY",
                     "severity": "FATAL",
+                    "claim_text": signal,
                     "statement": signal,
+                    "evidence": audit.reasons[:2],
+                    "must_preserve": [],
                     "required_change": "Replace decorative or incoherent mechanism with an explicit causal mechanism.",
                     "closure_test": "Apollo confirms the mechanism is causal, non-decorative, and structurally coherent.",
+                    "discharge_test": "Apollo confirms the mechanism is causal, non-decorative, and structurally coherent.",
                 }
             )
         for weakness in audit.structural_weaknesses:
             specs.append(
                 {
                     "agent": "apollo",
+                    "issue_type": "TRUTH",
                     "severity": "REPAIRABLE",
+                    "claim_text": weakness,
                     "statement": weakness,
+                    "evidence": audit.reasons[:2],
+                    "must_preserve": [],
                     "required_change": audit.proof_obligations[0] if audit.proof_obligations else weakness,
                     "closure_test": audit.proof_obligations[0] if audit.proof_obligations else weakness,
+                    "discharge_test": audit.proof_obligations[0] if audit.proof_obligations else weakness,
                 }
             )
         seen_repairs = {item["required_change"] for item in specs}
@@ -619,10 +764,15 @@ class PantheonCoordinator:
             specs.append(
                 {
                     "agent": "apollo",
+                    "issue_type": "TRUTH",
                     "severity": "REPAIRABLE",
+                    "claim_text": obligation,
                     "statement": f"Proof obligation remains open: {obligation}",
+                    "evidence": audit.reasons[:2],
+                    "must_preserve": [],
                     "required_change": obligation,
                     "closure_test": obligation,
+                    "discharge_test": obligation,
                 }
             )
         if not specs and audit.verdict == "INVALID":
@@ -630,10 +780,15 @@ class PantheonCoordinator:
             specs.append(
                 {
                     "agent": "apollo",
+                    "issue_type": "TRUTH",
                     "severity": "FATAL",
+                    "claim_text": basis,
                     "statement": basis,
+                    "evidence": audit.reasons[:2],
+                    "must_preserve": [],
                     "required_change": basis,
                     "closure_test": basis,
+                    "discharge_test": basis,
                 }
             )
         elif not specs and audit.verdict == "PROVISIONAL":
@@ -641,10 +796,15 @@ class PantheonCoordinator:
             specs.append(
                 {
                     "agent": "apollo",
+                    "issue_type": "TRUTH",
                     "severity": "REPAIRABLE",
+                    "claim_text": basis,
                     "statement": basis,
+                    "evidence": audit.reasons[:2],
+                    "must_preserve": [],
                     "required_change": basis,
                     "closure_test": basis,
+                    "discharge_test": basis,
                 }
             )
         return specs
@@ -656,10 +816,11 @@ class PantheonCoordinator:
         data: dict[str, Any],
         default_veto_type: str | None,
         registered_objections: Sequence[PantheonObjection],
+        ballot_kind: str,
     ) -> PantheonVote:
         must_change = _dedupe([objection.required_change for objection in registered_objections] + _safe_list(data.get("must_change")))
         reasons = _dedupe([*(_safe_list(data.get("reasons"))), *[objection.statement for objection in registered_objections]])
-        must_preserve = _safe_list(data.get("must_preserve"))
+        must_preserve = _dedupe([*(_safe_list(data.get("must_preserve"))), *[item for objection in registered_objections for item in objection.must_preserve]])
         strongest = _strongest_severity([objection.severity for objection in registered_objections])
         if strongest == "FATAL":
             decision = "VETO"
@@ -679,8 +840,142 @@ class PantheonCoordinator:
             must_change=must_change,
             must_preserve=must_preserve,
             objection_ids=[objection.objection_id for objection in registered_objections],
+            issue_types=_dedupe(objection.issue_type for objection in registered_objections),
+            ballot_kind=ballot_kind,
             confidence=_safe_float(data.get("confidence")),
         )
+
+    @staticmethod
+    def _disagreement_rate(votes: Sequence[PantheonVote], open_objections: Sequence[PantheonObjection]) -> float:
+        if not votes:
+            return 0.0
+        decisions = {vote.decision for vote in votes}
+        issue_types = {objection.issue_type for objection in open_objections}
+        score = 0.0
+        if len(decisions) > 1:
+            score += min(0.6, 0.3 * (len(decisions) - 1))
+        if issue_types:
+            score += min(0.3, 0.1 * len(issue_types))
+        if any(objection.severity == "FATAL" for objection in open_objections):
+            score += 0.2
+        return min(1.0, score)
+
+    @staticmethod
+    def _screening_margin(state: PantheonState, candidate_id: str) -> float:
+        ranked = sorted(
+            (
+                screening
+                for screening in state.screenings
+                if screening.survived
+            ),
+            key=lambda screening: screening.priority_score,
+            reverse=True,
+        )
+        if not ranked:
+            return 0.0
+        if len(ranked) == 1:
+            return ranked[0].priority_score
+        for index, screening in enumerate(ranked):
+            if screening.candidate_id != candidate_id:
+                continue
+            competitor = ranked[index + 1] if index + 1 < len(ranked) else ranked[0]
+            if competitor.candidate_id == candidate_id:
+                return screening.priority_score
+            return screening.priority_score - competitor.priority_score
+        return 0.0
+
+    @staticmethod
+    def _novelty_drift(original: Translation, revised: Translation) -> float:
+        left = set(_keyword_tokens(original.key_insight, original.future_option_preservation, original.subtraction_test))
+        right = set(_keyword_tokens(revised.key_insight, revised.future_option_preservation, revised.subtraction_test))
+        if not left and not right:
+            return 0.0
+        overlap = len(left & right) / max(1, len(left | right))
+        return max(0.0, 1.0 - overlap)
+
+    @staticmethod
+    def _repair_issue_clusters(open_objections: Sequence[PantheonObjection]) -> list[tuple[str, list[PantheonObjection]]]:
+        clusters: dict[str, list[PantheonObjection]] = {}
+        for objection in open_objections:
+            cluster_key = objection.issue_type
+            clusters.setdefault(cluster_key, []).append(objection)
+        ranked_clusters = sorted(
+            clusters.items(),
+            key=lambda item: (
+                max(_SEVERITY_ORDER.get(objection.severity, 0) for objection in item[1]),
+                len(item[1]),
+                _ISSUE_ORDER.get(item[0], 0),
+            ),
+            reverse=True,
+        )
+        return ranked_clusters[:3]
+
+    @staticmethod
+    def _repair_branch_score(
+        *,
+        original: Translation,
+        revised: Translation,
+        targeted: Sequence[PantheonObjection],
+        record: PantheonReforgeRecord,
+    ) -> float:
+        addressed = set(record.addressed_objection_ids)
+        remaining = set(record.remaining_open_objection_ids)
+        score = 0.0
+        for objection in targeted:
+            weight = _severity_weight(objection.severity)
+            if objection.objection_id in addressed:
+                score += weight * 1.3
+            if objection.objection_id not in remaining:
+                score += weight
+        score -= 2.0 * PantheonCoordinator._novelty_drift(original, revised)
+        if not record.novelty_core_preserved.strip():
+            score -= 1.0
+        if revised.mechanism_is_decorative:
+            score -= 2.0
+        return score
+
+    def _should_skip_council(
+        self,
+        *,
+        state: PantheonState,
+        candidate_id: str,
+        votes: Sequence[PantheonVote],
+        open_objections: Sequence[PantheonObjection],
+    ) -> str | None:
+        if open_objections:
+            return None
+        if not votes or any(vote.decision != "ASSENT" for vote in votes):
+            return None
+        if min(vote.confidence for vote in votes) < 0.65:
+            return None
+        margin = self._screening_margin(state, candidate_id)
+        if len(state.survivor_candidate_ids) > 1 and margin < 0.25:
+            return None
+        return "independent_ballots_clear"
+
+    @staticmethod
+    def _blocking_truth_issues(open_objections: Sequence[PantheonObjection]) -> list[PantheonObjection]:
+        return [
+            objection
+            for objection in open_objections
+            if objection.issue_type in {"TRUTH", "NOVELTY"} and objection.severity == "FATAL"
+        ]
+
+    @staticmethod
+    def _blocking_consensus_issues(open_objections: Sequence[PantheonObjection]) -> list[PantheonObjection]:
+        return [
+            objection
+            for objection in open_objections
+            if (
+                (objection.issue_type in {"TRUTH", "NOVELTY"} and objection.severity != "ADVISORY")
+                or (objection.issue_type == "STRUCTURAL" and objection.severity != "ADVISORY")
+            )
+        ]
+
+    @staticmethod
+    def _forward_candidate_score(candidate: Translation, open_objections: Sequence[PantheonObjection]) -> float:
+        penalty = sum(_severity_weight(objection.severity) for objection in open_objections)
+        return float(getattr(candidate, "combined_score", 0.0) or 0.0) - penalty
 
     async def athena_canon_pass(
         self,
@@ -844,14 +1139,24 @@ class PantheonCoordinator:
         round_index: int,
         state: PantheonState,
         stage: str,
+        peer_visible: bool,
+        changed_claims: Sequence[str],
         accounting: PantheonAccounting,
     ) -> PantheonVote:
+        visible_objections = (
+            self._candidate_objections(state, candidate_id=candidate_id)
+            if peer_visible
+            else []
+        )
+        own_open = self._candidate_objections(state, candidate_id=candidate_id, agent="athena", status="OPEN")
         data = await self._forge_json(
             self._athena,
             prompts.ATHENA_REVIEW_PROMPT.format(
                 canon=_canon_to_text(canon),
-                objection_ledger=self._objections_to_text(self._candidate_objections(state, candidate_id=candidate_id)),
-                open_objections=self._objections_to_text(self._candidate_objections(state, candidate_id=candidate_id, agent="athena", status="OPEN")),
+                objection_ledger=self._masked_objections_to_text(visible_objections),
+                open_objections=self._masked_objections_to_text(own_open),
+                must_preserve=json.dumps(self._must_preserve_anchors(translation, visible_objections or own_open), indent=2, ensure_ascii=False),
+                changed_claims=json.dumps(list(changed_claims), indent=2, ensure_ascii=False),
                 candidate=_translation_to_text(translation),
             ),
             system=prompts.ATHENA_REVIEW_SYSTEM,
@@ -866,7 +1171,13 @@ class PantheonCoordinator:
             stage=stage,
             objection_specs=objection_specs,
         )
-        return self._build_vote(agent="athena", data=data, default_veto_type="STRUCTURAL", registered_objections=objections)
+        return self._build_vote(
+            agent="athena",
+            data=data,
+            default_veto_type="STRUCTURAL",
+            registered_objections=objections,
+            ballot_kind=stage,
+        )
 
     async def _hermes_review(
         self,
@@ -877,14 +1188,24 @@ class PantheonCoordinator:
         round_index: int,
         state: PantheonState,
         stage: str,
+        peer_visible: bool,
+        changed_claims: Sequence[str],
         accounting: PantheonAccounting,
     ) -> PantheonVote:
+        visible_objections = (
+            self._candidate_objections(state, candidate_id=candidate_id)
+            if peer_visible
+            else []
+        )
+        own_open = self._candidate_objections(state, candidate_id=candidate_id, agent="hermes", status="OPEN")
         data = await self._forge_json(
             self._hermes,
             prompts.HERMES_REVIEW_PROMPT.format(
                 dossier=_dossier_to_text(dossier),
-                objection_ledger=self._objections_to_text(self._candidate_objections(state, candidate_id=candidate_id)),
-                open_objections=self._objections_to_text(self._candidate_objections(state, candidate_id=candidate_id, agent="hermes", status="OPEN")),
+                objection_ledger=self._masked_objections_to_text(visible_objections),
+                open_objections=self._masked_objections_to_text(own_open),
+                must_preserve=json.dumps(self._must_preserve_anchors(translation, visible_objections or own_open), indent=2, ensure_ascii=False),
+                changed_claims=json.dumps(list(changed_claims), indent=2, ensure_ascii=False),
                 candidate=_translation_to_text(translation),
             ),
             system=prompts.HERMES_REVIEW_SYSTEM,
@@ -899,7 +1220,13 @@ class PantheonCoordinator:
             stage=stage,
             objection_specs=objection_specs,
         )
-        return self._build_vote(agent="hermes", data=data, default_veto_type="REALITY", registered_objections=objections)
+        return self._build_vote(
+            agent="hermes",
+            data=data,
+            default_veto_type="REALITY",
+            registered_objections=objections,
+            ballot_kind=stage,
+        )
 
     async def _apollo_audit(
         self,
@@ -911,15 +1238,25 @@ class PantheonCoordinator:
         round_index: int,
         state: PantheonState,
         stage: str,
+        peer_visible: bool,
+        changed_claims: Sequence[str],
         accounting: PantheonAccounting,
     ) -> tuple[ApolloAudit, PantheonVote]:
+        visible_objections = (
+            self._candidate_objections(state, candidate_id=candidate_id)
+            if peer_visible
+            else []
+        )
+        own_open = self._candidate_objections(state, candidate_id=candidate_id, agent="apollo", status="OPEN")
         data = await self._forge_json(
             self._apollo,
             prompts.APOLLO_AUDIT_PROMPT.format(
                 canon=_canon_to_text(canon),
                 dossier=_dossier_to_text(dossier),
-                objection_ledger=self._objections_to_text(self._candidate_objections(state, candidate_id=candidate_id)),
-                open_objections=self._objections_to_text(self._candidate_objections(state, candidate_id=candidate_id, agent="apollo", status="OPEN")),
+                objection_ledger=self._masked_objections_to_text(visible_objections),
+                open_objections=self._masked_objections_to_text(own_open),
+                must_preserve=json.dumps(self._must_preserve_anchors(translation, visible_objections or own_open), indent=2, ensure_ascii=False),
+                changed_claims=json.dumps(list(changed_claims), indent=2, ensure_ascii=False),
                 candidate=_translation_to_text(translation),
             ),
             system=prompts.APOLLO_AUDIT_SYSTEM,
@@ -952,6 +1289,8 @@ class PantheonCoordinator:
             must_change=_dedupe([*audit.proof_obligations, *[objection.required_change for objection in objections]]),
             must_preserve=[],
             objection_ids=[objection.objection_id for objection in objections],
+            issue_types=_dedupe(objection.issue_type for objection in objections),
+            ballot_kind=stage,
             confidence=audit.confidence,
         )
         return audit, vote
@@ -978,6 +1317,8 @@ class PantheonCoordinator:
                 round_index=0,
                 state=state,
                 stage="screening",
+                peer_visible=False,
+                changed_claims=[],
                 accounting=state.accounting,
             )
             apollo_audit, apollo_vote = await self._apollo_audit(
@@ -988,6 +1329,8 @@ class PantheonCoordinator:
                 round_index=0,
                 state=state,
                 stage="screening",
+                peer_visible=False,
+                changed_claims=[],
                 accounting=state.accounting,
             )
             audits.append(apollo_audit)
@@ -1057,7 +1400,7 @@ class PantheonCoordinator:
             changes.append("Reworked limitations and caveat handling.")
         return changes or ["Applied a targeted structural patch without changing the novelty core."]
 
-    async def _hephaestus_reforge(
+    async def _reforge_branch(
         self,
         *,
         translator: Any,
@@ -1066,12 +1409,15 @@ class PantheonCoordinator:
         translation: Translation,
         canon: AthenaCanon,
         dossier: HermesDossier,
-        open_objections: Sequence[PantheonObjection],
+        targeted_objections: Sequence[PantheonObjection],
+        masked_objections: Sequence[PantheonObjection],
         accounting: PantheonAccounting,
-    ) -> tuple[Translation | None, PantheonVote, PantheonReforgeRecord | None]:
-        objection_payload = [objection.to_dict() for objection in open_objections]
-        objection_ids = [objection.objection_id for objection in open_objections]
-        must_preserve = [item for item in [translation.key_insight, *translation.recovery_commitments] if str(item).strip()]
+        branch_label: str,
+    ) -> tuple[Translation | None, PantheonReforgeRecord | None]:
+        targeted_payload = [objection.to_dict() for objection in targeted_objections]
+        targeted_ids = [objection.objection_id for objection in targeted_objections]
+        masked_ids = [objection.objection_id for objection in masked_objections]
+        must_preserve = self._must_preserve_anchors(translation, [*targeted_objections, *masked_objections])
         try:
             t_start = time.monotonic()
             revised = await translator.reforge(
@@ -1081,7 +1427,10 @@ class PantheonCoordinator:
                     canon=_canon_to_text(canon),
                     dossier=_dossier_to_text(dossier),
                     candidate=_translation_to_text(translation),
-                    objections=json.dumps(objection_payload, indent=2, ensure_ascii=False),
+                    branch_label=branch_label,
+                    targeted_objections=json.dumps(targeted_payload, indent=2, ensure_ascii=False),
+                    masked_objections=self._masked_objections_to_text(masked_objections),
+                    must_preserve=json.dumps(must_preserve, indent=2, ensure_ascii=False),
                 ),
                 structure=structure,
                 source_translation=translation,
@@ -1097,49 +1446,174 @@ class PantheonCoordinator:
             )
         except Exception as exc:
             logger.warning("Pantheon reforge failed: %s", exc)
-            vote = PantheonVote(
-                agent="hephaestus",
-                decision="VETO",
-                veto_type="NOVELTY",
-                reasons=["Reforge failed to produce a valid architecture JSON output."],
-                must_change=[objection.required_change for objection in open_objections],
-                must_preserve=must_preserve,
-                objection_ids=objection_ids,
-                confidence=0.0,
-            )
-            return None, vote, None
+            return None, None
 
         if not revised.architecture or revised.architecture == "Architecture generation failed":
-            vote = PantheonVote(
-                agent="hephaestus",
-                decision="VETO",
-                veto_type="NOVELTY",
-                reasons=["Reforge failed to produce a valid architecture JSON output."],
-                must_change=[objection.required_change for objection in open_objections],
-                must_preserve=must_preserve,
-                objection_ids=objection_ids,
-                confidence=0.0,
-            )
-            return None, vote, None
+            return None, None
 
         metadata = getattr(revised, "pantheon_reforge_metadata", {}) or {}
         reforge_record = PantheonReforgeRecord(
-            addressed_objection_ids=list(metadata.get("addressed_objection_ids", []) or objection_ids),
+            branch_label=branch_label,
+            targeted_objection_ids=targeted_ids,
+            targeted_issue_types=_dedupe(objection.issue_type for objection in targeted_objections),
+            addressed_objection_ids=list(metadata.get("addressed_objection_ids", []) or targeted_ids),
             remaining_open_objection_ids=list(metadata.get("remaining_open_objection_ids", []) or []),
+            masked_open_objection_ids=masked_ids,
             changes_made=list(metadata.get("changes_made", []) or self._reforge_changes(translation, revised)),
             novelty_core_preserved=str(metadata.get("novelty_core_preserved", revised.key_insight or translation.key_insight) or ""),
         )
+        reforge_record.branch_score = self._repair_branch_score(
+            original=translation,
+            revised=revised,
+            targeted=targeted_objections,
+            record=reforge_record,
+        )
+        return revised, reforge_record
+
+    async def _adjudicate_repair_pair(
+        self,
+        *,
+        branch_a: Translation,
+        record_a: PantheonReforgeRecord,
+        branch_b: Translation,
+        record_b: PantheonReforgeRecord,
+        accounting: PantheonAccounting,
+    ) -> tuple[str, float]:
+        issue_ids = _dedupe(
+            [
+                *record_a.targeted_objection_ids,
+                *record_b.targeted_objection_ids,
+                *record_a.remaining_open_objection_ids,
+                *record_b.remaining_open_objection_ids,
+            ]
+        )
+        must_preserve = _dedupe(
+            [
+                branch_a.key_insight,
+                branch_a.future_option_preservation,
+                branch_b.key_insight,
+                branch_b.future_option_preservation,
+            ]
+        )
+        data = await self._forge_json(
+            self._apollo,
+            prompts.APOLLO_BRANCH_AUDIT_PROMPT.format(
+                issue_ids=json.dumps(issue_ids, indent=2, ensure_ascii=False),
+                must_preserve=json.dumps(must_preserve, indent=2, ensure_ascii=False),
+                branch_a=_translation_to_text(branch_a),
+                branch_b=_translation_to_text(branch_b),
+            ),
+            system=prompts.APOLLO_BRANCH_AUDIT_SYSTEM,
+            accounting=accounting,
+            agent="apollo",
+        )
+        winner = str(data.get("winner", "TIE") or "TIE").upper()
+        if winner not in {"A", "B", "TIE"}:
+            winner = "TIE"
+        return winner, _safe_float(data.get("margin"))
+
+    async def _hephaestus_reforge(
+        self,
+        *,
+        state: PantheonState,
+        translator: Any,
+        problem: str,
+        structure: Any,
+        translation: Translation,
+        canon: AthenaCanon,
+        dossier: HermesDossier,
+        open_objections: Sequence[PantheonObjection],
+        accounting: PantheonAccounting,
+    ) -> tuple[Translation | None, PantheonVote, PantheonReforgeRecord | None, int]:
+        objection_ids = [objection.objection_id for objection in open_objections]
+        must_preserve = self._must_preserve_anchors(translation, open_objections)
+        clusters = self._repair_issue_clusters(open_objections)
+        if not clusters:
+            vote = PantheonVote(
+                agent="hephaestus",
+                decision="VETO",
+                veto_type="NOVELTY",
+                reasons=["Reforge was requested without any open issues to repair."],
+                must_change=[],
+                must_preserve=must_preserve,
+                objection_ids=[],
+                issue_types=[],
+                ballot_kind="repair",
+                confidence=0.0,
+            )
+            return None, vote, None, 0
+
+        attempts: list[tuple[Translation, PantheonReforgeRecord]] = []
+        for branch_index, (cluster_key, targeted) in enumerate(clusters, start=1):
+            masked = [objection for objection in open_objections if objection.objection_id not in {item.objection_id for item in targeted}]
+            revised, reforge_record = await self._reforge_branch(
+                translator=translator,
+                problem=problem,
+                structure=structure,
+                translation=translation,
+                canon=canon,
+                dossier=dossier,
+                targeted_objections=targeted,
+                masked_objections=masked,
+                accounting=accounting,
+                branch_label=f"{cluster_key.lower()}-repair-{branch_index}",
+            )
+            if revised is None or reforge_record is None:
+                continue
+            attempts.append((revised, reforge_record))
+
+        state.branches_spawned_for_repair += len(clusters)
+        if not attempts:
+            vote = PantheonVote(
+                agent="hephaestus",
+                decision="VETO",
+                veto_type="NOVELTY",
+                reasons=["Reforge failed to produce a valid architecture JSON output."],
+                must_change=[objection.required_change for objection in open_objections],
+                must_preserve=must_preserve,
+                objection_ids=objection_ids,
+                issue_types=_dedupe(objection.issue_type for objection in open_objections),
+                ballot_kind="repair",
+                confidence=0.0,
+            )
+            return None, vote, None, len(clusters)
+
+        attempts.sort(key=lambda item: item[1].branch_score, reverse=True)
+        selected_revised, selected_record = attempts[0]
+        if len(attempts) > 1:
+            runner_revised, runner_record = attempts[1]
+            margin = selected_record.branch_score - runner_record.branch_score
+            if margin < 0.35:
+                try:
+                    winner, adjudicator_margin = await self._adjudicate_repair_pair(
+                        branch_a=selected_revised,
+                        record_a=selected_record,
+                        branch_b=runner_revised,
+                        record_b=runner_record,
+                        accounting=accounting,
+                    )
+                    state.adjudicator_margin = adjudicator_margin
+                    if winner == "B":
+                        selected_revised, selected_record = runner_revised, runner_record
+                except Exception as exc:
+                    logger.warning("Pantheon branch adjudication failed: %s", exc)
+            else:
+                state.adjudicator_margin = margin
+
+        state.novelty_drift = max(state.novelty_drift, self._novelty_drift(translation, selected_revised))
         vote = PantheonVote(
             agent="hephaestus",
             decision="ASSENT",
             veto_type=None,
-            reasons=["Reforged candidate against explicit objection IDs while preserving the novelty core."],
+            reasons=["Reforged candidate against targeted issue clusters while preserving the novelty core."],
             must_change=[],
             must_preserve=must_preserve,
-            objection_ids=reforge_record.addressed_objection_ids,
+            objection_ids=selected_record.addressed_objection_ids,
+            issue_types=selected_record.targeted_issue_types,
+            ballot_kind="repair",
             confidence=0.78,
         )
-        return revised, vote, reforge_record
+        return selected_revised, vote, selected_record, len(clusters)
 
     def _caveat_text(self, objection: PantheonObjection) -> str:
         return (
@@ -1154,28 +1628,34 @@ class PantheonCoordinator:
         open_objections: Sequence[PantheonObjection],
         round_index: int,
     ) -> str | None:
-        fatal_open = [objection for objection in open_objections if objection.severity == "FATAL"]
-        repairable_open = [objection for objection in open_objections if objection.severity == "REPAIRABLE"]
-        advisory_open = [objection for objection in open_objections if objection.severity == "ADVISORY"]
-        if fatal_open:
+        blocking_truth = self._blocking_truth_issues(open_objections)
+        if blocking_truth:
             return None
+
+        blocking_consensus = self._blocking_consensus_issues(open_objections)
+        reality_repairable = [
+            objection
+            for objection in open_objections
+            if objection.issue_type == "REALITY" and objection.severity != "ADVISORY"
+        ]
+        advisory_open = [objection for objection in open_objections if objection.severity == "ADVISORY"]
 
         all_assent = all(vote.decision == "ASSENT" for vote in votes)
         no_veto = all(vote.decision != "VETO" for vote in votes)
         assent_count = sum(1 for vote in votes if vote.decision == "ASSENT")
 
-        if all_assent and not repairable_open and not advisory_open:
+        if all_assent and not open_objections:
             return "UNANIMOUS_CONSENSUS"
 
         allow_qualified = self._resolution_mode == "TASK_SENSITIVE" or not self._require_unanimity
-        if allow_qualified and no_veto and not repairable_open and assent_count >= 2:
+        if allow_qualified and no_veto and not blocking_consensus and not reality_repairable and assent_count >= 2:
             return "QUALIFIED_CONSENSUS"
 
         allow_salvage = (
             self._resolution_mode == "TASK_SENSITIVE"
             or not self._allow_fail_closed
         )
-        if allow_salvage and no_veto and round_index >= self._max_rounds and round_index >= 1:
+        if allow_salvage and no_veto and not blocking_consensus and round_index >= self._max_rounds and round_index >= 1:
             return "SALVAGED_CONSENSUS"
         return None
 
@@ -1190,10 +1670,14 @@ class PantheonCoordinator:
         candidate_id: str,
         candidate: Translation,
         round_index: int,
+        phase: str,
         votes: list[PantheonVote],
         resolved_ids: list[str],
         open_objections: list[PantheonObjection],
         outcome_tier: str,
+        disagreement_rate: float,
+        branch_candidates_considered: int = 0,
+        reforge_record: PantheonReforgeRecord | None = None,
     ) -> tuple[list[Translation], PantheonState]:
         waiver_ids: list[str] = []
         if outcome_tier == "QUALIFIED_CONSENSUS":
@@ -1215,6 +1699,8 @@ class PantheonCoordinator:
             must_change=[],
             must_preserve=[candidate.key_insight] if candidate.key_insight else [],
             objection_ids=[objection.objection_id for objection in waived],
+            issue_types=_dedupe(objection.issue_type for objection in waived),
+            ballot_kind=phase,
             confidence=0.85,
         )
         votes.append(hephaestus_vote)
@@ -1222,19 +1708,24 @@ class PantheonCoordinator:
             PantheonRound(
                 round_index=round_index,
                 candidate_id=candidate_id,
+                phase=phase,
                 votes=votes,
                 consensus=True,
                 outcome_tier=outcome_tier,
+                disagreement_rate=disagreement_rate,
+                branch_candidates_considered=branch_candidates_considered,
                 unresolved_vetoes=[],
                 open_objection_ids=[objection.objection_id for objection in open_objections],
                 resolved_objection_ids=resolved_ids,
                 waived_objection_ids=[objection.objection_id for objection in waived],
                 caveats=caveats,
                 revision_summary=f"Council converged via {outcome_tier.lower()} after objection discharge.",
+                reforge=reforge_record,
             )
         )
         state.consensus_achieved = True
         state.winning_candidate_id = candidate_id
+        state.forwarded_candidate_ids = []
         state.resolution = self._resolution_name(outcome_tier)
         state.outcome_tier = outcome_tier
         if state.final_verdict in {"", "UNKNOWN"}:
@@ -1242,8 +1733,42 @@ class PantheonCoordinator:
         state.caveats = caveats
         state.failure_reason = None
         state.unresolved_vetoes = []
+        state.consensus_without_verification = True
         candidate.pantheon_state = state.to_dict()
         return [candidate], state
+
+    def _forward_with_open_issues(
+        self,
+        *,
+        state: PantheonState,
+        candidates: Sequence[tuple[str, Translation, list[PantheonObjection]]],
+    ) -> tuple[list[Translation], PantheonState]:
+        ranked = sorted(
+            candidates,
+            key=lambda item: self._forward_candidate_score(item[1], item[2]),
+            reverse=True,
+        )[:2]
+        forwarded = [candidate for _, candidate, _ in ranked]
+        state.consensus_achieved = False
+        state.winning_candidate_id = ranked[0][0] if ranked else None
+        state.forwarded_candidate_ids = [candidate_id for candidate_id, _, _ in ranked]
+        state.resolution = "forward_with_open_issues"
+        state.outcome_tier = "FORWARDED_WITH_OPEN_ISSUES"
+        state.failure_reason = "Pantheon forwarded unresolved non-fatal issues to verification instead of failing closed."
+        state.final_verdict = "PENDING_VERIFICATION"
+        state.caveats = _dedupe(
+            self._caveat_text(objection)
+            for _, _, objections in ranked
+            for objection in objections
+        )
+        state.unresolved_vetoes = _dedupe(
+            _objection_summary(objection)
+            for _, _, objections in ranked
+            for objection in objections
+        )
+        for candidate in forwarded:
+            candidate.pantheon_state = state.to_dict()
+        return forwarded, state
 
     async def deliberate(
         self,
@@ -1259,6 +1784,8 @@ class PantheonCoordinator:
         current_state = state or previous_state or PantheonState(mode="pantheon", resolution_mode=self._resolution_mode)
         current_state.mode = "pantheon"
         current_state.resolution_mode = self._resolution_mode
+        current_state.debate_invoked = False
+        current_state.debate_skip_reason = None
         if current_state.final_verdict in {"", "UNKNOWN"}:
             current_state.final_verdict = "PENDING_VERIFICATION"
         current_state.outcome_tier = current_state.outcome_tier or "PENDING"
@@ -1296,17 +1823,24 @@ class PantheonCoordinator:
             ]
 
         all_audits: list[ApolloAudit] = list(current_state.audits)
+        forward_candidates: list[tuple[str, Translation, list[PantheonObjection]]] = []
 
         for candidate_id, original in zip(candidate_ids, survivors):
             candidate = original
+            incoming_reforge: PantheonReforgeRecord | None = None
             for round_index in range(1, self._max_rounds + 1):
+                phase = "independent_ballot" if round_index == 1 else "council"
+                peer_visible = round_index > 1
+                changed_claims = self._changed_claims(incoming_reforge)
                 athena_vote = await self._athena_review(
                     translation=candidate,
                     canon=canon,
                     candidate_id=candidate_id,
                     round_index=round_index,
                     state=current_state,
-                    stage="council",
+                    stage=phase,
+                    peer_visible=peer_visible,
+                    changed_claims=changed_claims,
                     accounting=current_state.accounting,
                 )
                 hermes_vote = await self._hermes_review(
@@ -1315,7 +1849,9 @@ class PantheonCoordinator:
                     candidate_id=candidate_id,
                     round_index=round_index,
                     state=current_state,
-                    stage="council",
+                    stage=phase,
+                    peer_visible=peer_visible,
+                    changed_claims=changed_claims,
                     accounting=current_state.accounting,
                 )
                 apollo_audit, apollo_vote = await self._apollo_audit(
@@ -1325,7 +1861,9 @@ class PantheonCoordinator:
                     candidate_id=candidate_id,
                     round_index=round_index,
                     state=current_state,
-                    stage="council",
+                    stage=phase,
+                    peer_visible=peer_visible,
+                    changed_claims=changed_claims,
                     accounting=current_state.accounting,
                 )
                 all_audits.append(apollo_audit)
@@ -1346,12 +1884,22 @@ class PantheonCoordinator:
                     candidate_id=candidate_id,
                     status="OPEN",
                 )
+                disagreement_rate = self._disagreement_rate(votes, open_objections)
+                if round_index == 1:
+                    current_state.independent_disagreement_rate = disagreement_rate
                 unresolved_round = [_objection_summary(objection) for objection in open_objections]
                 outcome_tier = self._determine_outcome_tier(
                     votes=votes,
                     open_objections=open_objections,
                     round_index=round_index,
                 )
+                if round_index == 1 and outcome_tier is not None:
+                    current_state.debate_skip_reason = self._should_skip_council(
+                        state=current_state,
+                        candidate_id=candidate_id,
+                        votes=votes,
+                        open_objections=open_objections,
+                    ) or "independent_ballots_resolved_without_council"
 
                 if outcome_tier is not None:
                     current_state.audits = all_audits
@@ -1360,13 +1908,46 @@ class PantheonCoordinator:
                         candidate_id=candidate_id,
                         candidate=candidate,
                         round_index=round_index,
+                        phase=phase,
                         votes=votes,
                         resolved_ids=resolved_ids,
                         open_objections=open_objections,
                         outcome_tier=outcome_tier,
+                        disagreement_rate=disagreement_rate,
+                        branch_candidates_considered=1 if incoming_reforge is not None else 0,
+                        reforge_record=incoming_reforge,
                     )
 
-                revised, hephaestus_vote, reforge_record = await self._hephaestus_reforge(
+                if round_index == 1:
+                    current_state.debate_invoked = True
+
+                if round_index >= self._max_rounds:
+                    current_state.rounds.append(
+                        PantheonRound(
+                            round_index=round_index,
+                            candidate_id=candidate_id,
+                            phase=phase,
+                            votes=votes,
+                            consensus=False,
+                            outcome_tier="PENDING",
+                            disagreement_rate=disagreement_rate,
+                            branch_candidates_considered=1 if incoming_reforge is not None else 0,
+                            unresolved_vetoes=unresolved_round,
+                            open_objection_ids=[objection.objection_id for objection in open_objections],
+                            resolved_objection_ids=resolved_ids,
+                            waived_objection_ids=[],
+                            caveats=[],
+                            revision_summary="Council review exhausted its budget with unresolved issues still open.",
+                            reforge=incoming_reforge,
+                        )
+                    )
+                    current_state.unresolved_vetoes = unresolved_round
+                    if not self._blocking_truth_issues(open_objections):
+                        forward_candidates.append((candidate_id, candidate, open_objections))
+                    break
+
+                revised, hephaestus_vote, reforge_record, branch_count = await self._hephaestus_reforge(
+                    state=current_state,
                     translator=translator,
                     problem=problem,
                     structure=structure,
@@ -1381,16 +1962,19 @@ class PantheonCoordinator:
                     PantheonRound(
                         round_index=round_index,
                         candidate_id=candidate_id,
+                        phase=phase,
                         votes=votes,
                         consensus=False,
                         outcome_tier="PENDING",
+                        disagreement_rate=disagreement_rate,
+                        branch_candidates_considered=branch_count,
                         unresolved_vetoes=unresolved_round,
                         open_objection_ids=[objection.objection_id for objection in open_objections],
                         resolved_objection_ids=resolved_ids,
                         waived_objection_ids=[],
                         caveats=[],
                         revision_summary=(
-                            "Hephaestus applied a patch-oriented reforge against the live objection ledger."
+                            "Hephaestus applied targeted repair branches against masked issue clusters."
                             if revised is not None
                             else "Reforge failed; novelty-preserving revision unavailable."
                         ),
@@ -1399,14 +1983,22 @@ class PantheonCoordinator:
                 )
                 current_state.unresolved_vetoes = unresolved_round
                 if revised is None:
+                    if not self._blocking_truth_issues(open_objections):
+                        forward_candidates.append((candidate_id, candidate, open_objections))
                     break
                 candidate = revised
+                incoming_reforge = reforge_record
 
         current_state.audits = all_audits
+        if forward_candidates:
+            return self._forward_with_open_issues(
+                state=current_state,
+                candidates=forward_candidates,
+            )
         open_fatal = [
             objection
             for objection in current_state.objection_ledger
-            if objection.status == "OPEN" and objection.severity == "FATAL"
+            if objection.status == "OPEN" and objection.severity == "FATAL" and objection.issue_type in {"TRUTH", "NOVELTY"}
         ]
         current_state.unresolved_vetoes = [_objection_summary(objection) for objection in open_fatal]
         current_state.final_verdict = "NO_OUTPUT"
@@ -1429,6 +2021,7 @@ class PantheonCoordinator:
             state.final_verdict = "NO_OUTPUT"
             state.consensus_achieved = False
             state.outcome_tier = "FAIL_CLOSED_REJECTION"
+            state.verifier_overrode_council = bool(state.winning_candidate_id)
             if state.winning_candidate_id:
                 verifier_objection = PantheonObjection(
                     objection_id=self._new_objection_id(
@@ -1441,10 +2034,16 @@ class PantheonCoordinator:
                     ),
                     candidate_id=state.winning_candidate_id,
                     agent="verifier",
+                    issue_type="TRUTH",
                     severity="FATAL",
+                    claim_text="Final verification produced no surviving invention.",
                     statement="Final verification produced no surviving invention.",
                     required_change="Resolve the verifier failure or return no output.",
                     closure_test="A verifier-approved invention survives the final verification pass.",
+                    discharge_test="A verifier-approved invention survives the final verification pass.",
+                    evidence=[],
+                    must_preserve=[],
+                    opened_by="verifier",
                     status="OPEN",
                     opened_round=max((round_.round_index for round_ in state.rounds), default=0) + 1,
                     last_seen_round=max((round_.round_index for round_ in state.rounds), default=0) + 1,
@@ -1466,6 +2065,7 @@ class PantheonCoordinator:
             state.outcome_tier = "FAIL_CLOSED_REJECTION"
             state.resolution = "verifier_rejected_consensus"
             state.failure_reason = "Pantheon consensus selected an invention that verification later invalidated."
+            state.verifier_overrode_council = True
             verifier_objection = PantheonObjection(
                 objection_id=self._new_objection_id(
                     candidate_id=state.winning_candidate_id or "unknown",
@@ -1477,10 +2077,16 @@ class PantheonCoordinator:
                 ),
                 candidate_id=state.winning_candidate_id or "",
                 agent="verifier",
+                issue_type="TRUTH",
                 severity="FATAL",
+                claim_text="Final verification invalidated the Pantheon-selected invention.",
                 statement="Final verification invalidated the Pantheon-selected invention.",
                 required_change="Resolve the verifier invalidation before returning the invention.",
                 closure_test="The selected invention passes final verification with a non-invalid verdict.",
+                discharge_test="The selected invention passes final verification with a non-invalid verdict.",
+                evidence=[],
+                must_preserve=[],
+                opened_by="verifier",
                 status="OPEN",
                 opened_round=max((round_.round_index for round_ in state.rounds), default=0) + 1,
                 last_seen_round=max((round_.round_index for round_ in state.rounds), default=0) + 1,

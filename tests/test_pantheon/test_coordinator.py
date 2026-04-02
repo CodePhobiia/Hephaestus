@@ -8,14 +8,20 @@ import pytest
 
 from hephaestus.core.translator import Translation
 from hephaestus.pantheon.coordinator import PantheonCoordinator
-from hephaestus.pantheon.models import AthenaCanon, HermesDossier, PantheonState
+from hephaestus.pantheon.models import AthenaCanon, HermesDossier, PantheonObjection, PantheonState
 
 
 class _Harness:
     def __init__(self, outputs: list[dict[str, object]]) -> None:
         self._outputs = outputs
+        self.prompts: list[str] = []
+        self.systems: list[str | None] = []
 
     async def forge(self, prompt: str, system: str | None = None):
+        self.prompts.append(prompt)
+        self.systems.append(system)
+        if not self._outputs:
+            raise AssertionError("Harness was called more times than expected.")
         payload = self._outputs.pop(0)
         return SimpleNamespace(output=json.dumps(payload), trace=SimpleNamespace(total_cost_usd=0.0))
 
@@ -23,10 +29,20 @@ class _Harness:
 class _TranslatorStub:
     def __init__(self, outputs: list[dict[str, object]] | None = None) -> None:
         self._outputs = outputs or []
+        self.calls: list[dict[str, object]] = []
 
     async def reforge(self, *, prompt: str, structure: object, source_translation: Translation, system: str | None = None) -> Translation:
+        self.calls.append(
+            {
+                "prompt": prompt,
+                "system": system,
+                "source_translation": source_translation.invention_name,
+            }
+        )
+        if not self._outputs:
+            raise AssertionError("Translator reforge was called more times than expected.")
         payload = self._outputs.pop(0)
-        return Translation(
+        translation = Translation(
             invention_name=str(payload.get("invention_name", source_translation.invention_name)),
             mapping=[],
             architecture=str(payload.get("architecture", source_translation.architecture)),
@@ -45,6 +61,8 @@ class _TranslatorStub:
             recovery_commitments=[str(item) for item in payload.get("recovery_commitments", source_translation.recovery_commitments)],
             future_option_preservation=str(payload.get("future_option_preservation", source_translation.future_option_preservation)),
         )
+        setattr(translation, "pantheon_reforge_metadata", payload.get("pantheon_reforge", {}))
+        return translation
 
 
 def _translation(name: str = "Base Invention") -> Translation:
@@ -175,6 +193,89 @@ async def test_screen_translations_prunes_apollo_invalid_before_council() -> Non
 
 
 @pytest.mark.asyncio
+async def test_pantheon_independent_ballots_mask_peer_issues_on_first_pass() -> None:
+    athena = _Harness([
+        {
+            "agent": "athena",
+            "decision": "ASSENT",
+            "reasons": ["structurally valid"],
+            "must_change": [],
+            "must_preserve": ["novel key insight"],
+            "confidence": 0.9,
+        },
+    ])
+    hermes = _Harness([
+        {
+            "agent": "hermes",
+            "decision": "ASSENT",
+            "reasons": ["rollout is manageable"],
+            "must_change": [],
+            "must_preserve": ["operator value"],
+            "confidence": 0.8,
+        },
+    ])
+    apollo = _Harness([
+        {
+            "candidate_id": "cand-1",
+            "verdict": "VALID",
+            "fatal_flaws": [],
+            "structural_weaknesses": [],
+            "decorative_signals": [],
+            "proof_obligations": [],
+            "reasons": ["truth-preserving"],
+            "confidence": 0.9,
+        }
+    ])
+    candidate = _translation()
+    candidate_id = "candidate-1:Base Invention"
+    state = PantheonState(
+        mode="pantheon",
+        canon=AthenaCanon(structural_form="shape"),
+        dossier=HermesDossier(repo_reality_summary="grounded"),
+        survivor_candidate_ids=[candidate_id],
+        objection_ledger=[
+            PantheonObjection(
+                objection_id="obj-hermes-screening",
+                candidate_id=candidate_id,
+                agent="hermes",
+                issue_type="REALITY",
+                severity="REPAIRABLE",
+                claim_text="Needs a staged rollout path.",
+                statement="Needs a staged rollout path.",
+                required_change="Add a staged rollout path.",
+                closure_test="The rollout plan can be staged without breaking operators.",
+                discharge_test="The rollout plan can be staged without breaking operators.",
+                evidence=["Initial screening flagged migration risk."],
+                must_preserve=["operator value"],
+                opened_by="hermes",
+            )
+        ],
+    )
+    coordinator = PantheonCoordinator(
+        athena_harness=athena,
+        hermes_harness=hermes,
+        apollo_harness=apollo,
+        max_rounds=1,
+    )
+    translator = _TranslatorStub([])
+
+    translations, state = await coordinator.deliberate(
+        problem="test problem",
+        structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
+        translations=[candidate],
+        translator=translator,
+        baseline_dossier=None,
+        state=state,
+    )
+
+    assert len(translations) == 1
+    assert state.consensus_achieved is True
+    assert state.debate_skip_reason == "independent_ballots_clear"
+    assert "MASKED ISSUE LEDGER FOR THIS CANDIDATE:\n[]" in athena.prompts[0]
+    assert translator.calls == []
+
+
+@pytest.mark.asyncio
 async def test_pantheon_deliberation_reaches_consensus() -> None:
     athena = _Harness([
         {
@@ -224,20 +325,25 @@ async def test_pantheon_deliberation_reaches_consensus() -> None:
         apollo_harness=apollo,
         max_rounds=2,
     )
+    translator = _TranslatorStub([{}])
     translations, state = await coordinator.deliberate(
         problem="test problem",
         structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
         translations=[_translation()],
-        translator=_TranslatorStub([{}]),
+        translator=translator,
         baseline_dossier=None,
     )
     assert len(translations) == 1
     assert state.consensus_achieved is True
     assert state.resolution == "unanimous_consensus"
     assert state.outcome_tier == "UNANIMOUS_CONSENSUS"
+    assert state.debate_invoked is False
+    assert state.debate_skip_reason == "independent_ballots_clear"
     assert state.winning_candidate_id is not None
     assert state.rounds[-1].consensus is True
+    assert state.rounds[-1].phase == "independent_ballot"
     assert state.rounds[-1].outcome_tier == "UNANIMOUS_CONSENSUS"
+    assert translator.calls == []
     assert state.accounting.agent_call_counts == {
         "athena": 2,
         "hermes": 2,
@@ -333,6 +439,36 @@ async def test_pantheon_deliberation_reforges_after_veto() -> None:
             "baseline_comparison": "better",
             "recovery_commitments": ["preserved novelty core"],
             "future_option_preservation": "keeps future option open",
+            "pantheon_reforge": {
+                "addressed_objection_ids": ["obj-apollo-a"],
+                "remaining_open_objection_ids": [],
+                "changes_made": ["Made the causal state transition explicit without collapsing the mechanism."],
+                "novelty_core_preserved": "novel key insight",
+            },
+        },
+        {
+            "invention_name": "Structural Patch Branch",
+            "architecture": "Structural patch architecture",
+            "mapping": {"elements": []},
+            "mathematical_proof": "proof",
+            "limitations": ["none"],
+            "implementation_notes": "notes",
+            "key_insight": "novel key insight",
+            "phase1_abstract_mechanism": "abstract mechanism",
+            "phase2_target_architecture": "Structural patch architecture",
+            "mechanism_is_decorative": False,
+            "known_pattern_if_decorative": "",
+            "mechanism_differs_from_baseline": "yes",
+            "subtraction_test": "clean",
+            "baseline_comparison": "better",
+            "recovery_commitments": ["preserved novelty core"],
+            "future_option_preservation": "keeps future option open",
+            "pantheon_reforge": {
+                "addressed_objection_ids": ["obj-athena-b"],
+                "remaining_open_objection_ids": [],
+                "changes_made": ["Tightened the architecture around the state transition."],
+                "novelty_core_preserved": "novel key insight",
+            },
         }
     ])
 
@@ -355,14 +491,20 @@ async def test_pantheon_deliberation_reforges_after_veto() -> None:
     assert state.resolution == "unanimous_consensus"
     assert state.outcome_tier == "UNANIMOUS_CONSENSUS"
     assert len(state.rounds) == 2
+    assert state.debate_invoked is True
     assert state.rounds[0].consensus is False
+    assert state.rounds[0].phase == "independent_ballot"
+    assert state.rounds[0].branch_candidates_considered == 2
     assert state.rounds[1].consensus is True
+    assert state.rounds[1].phase == "council"
     assert any(objection.status == "RESOLVED" for objection in state.objection_ledger)
+    assert state.branches_spawned_for_repair == 2
+    assert len(translator.calls) == 2
     assert state.accounting.agent_call_counts == {
         "athena": 3,
         "hermes": 3,
         "apollo": 2,
-        "hephaestus": 1,
+        "hephaestus": 2,
     }
 
 
@@ -548,7 +690,7 @@ async def test_pantheon_qualified_consensus_preserves_advisory_caveat() -> None:
 
 
 @pytest.mark.asyncio
-async def test_pantheon_salvages_repairable_truth_candidate_with_caveats() -> None:
+async def test_pantheon_forwards_repairable_truth_candidate_with_open_issues() -> None:
     athena = _Harness([
         {"structural_form": "shape", "confidence": 0.9},
         {
@@ -600,8 +742,9 @@ async def test_pantheon_salvages_repairable_truth_candidate_with_caveats() -> No
     )
 
     assert len(translations) == 1
-    assert state.consensus_achieved is True
-    assert state.outcome_tier == "SALVAGED_CONSENSUS"
-    assert state.resolution == "salvaged_consensus"
+    assert state.consensus_achieved is False
+    assert state.outcome_tier == "FORWARDED_WITH_OPEN_ISSUES"
+    assert state.resolution == "forward_with_open_issues"
+    assert state.forwarded_candidate_ids == [state.winning_candidate_id]
     assert state.caveats
     assert any("Make the state transition proof explicit." in caveat for caveat in state.caveats)

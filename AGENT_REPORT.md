@@ -1,73 +1,36 @@
-# AGENT REPORT
+# doc01 Pantheon Consensus Lane
 
-## Summary
+## What changed
 
-Completed the unified merge/finalization of the Adaptive Bundle-Proof Lens Engine on `prod/merge`.
-
-This branch now integrates the completed work from:
-- substrate
-- runtime
-- surfaces/state/reporting
-- integration/QA
-
-The merged branch contains the production lens-engine substrate, runtime orchestration, session/research/reporting surfaces, config gating, and hardening fixes in one coherent tree.
-
-## Merge actions performed
-
-- Started from `prod/merge` after the earlier assembly lane had already merged substrate and runtime foundations.
-- Finalized the remaining merged worktree changes carrying the surfaces and integration lane outputs.
-- Resolved the final merge deltas in the lens engine core/surface files, including the remaining unstaged reconciliations in:
-  - `src/hephaestus/lenses/cells.py`
-  - `src/hephaestus/lenses/lineage.py`
-- Preserved the runtime/substrate implementation as the execution backbone while layering in the typed lens-engine session/reporting state from the surfaces branch.
-- Kept the config/backward-compatibility behavior introduced by the integration lane.
-- Replaced the stale substrate-only merge report with this final merged report.
-
-## Final integrated architecture
-
-The unified branch now includes:
-
-### Lens substrate
-- `src/hephaestus/lenses/cells.py`
-- `src/hephaestus/lenses/bundles.py`
-- `src/hephaestus/lenses/lineage.py`
-- `src/hephaestus/lenses/exclusion_ledger.py`
-- `src/hephaestus/lenses/guards.py`
-- `src/hephaestus/lenses/state.py`
-
-### Runtime + pipeline integration
-- bundle-first retrieval path
-- proof-carrying lineage
-- adaptive exclusion / fatigue handling
-- runtime handoff guards
-- recomposition + singleton fallback
-- BranchGenome continuity / invalidation hooks
-- Genesis/search/translation/report propagation
-
-### Session / research / reporting surfaces
-- persisted lens-engine session state
-- reference-lot + compaction integration
-- reference-generation / research fingerprinting
-- formatter + CLI visibility for bundle mode, proof, guards, lineage, invalidations, recompositions, composites
-- docs updates for surfaced behavior
-
-### Compatibility / hardening
-- config/env rollout controls
-- local test harness path pinning
-- final `/history` compatibility hardening from the integration lane
+- Extended Pantheon issue ledger semantics in `src/hephaestus/pantheon/models.py`.
+- Added explicit issue typing, claim/evidence/discharge fields, repair-branch metadata, round phase metadata, and Pantheon observability counters.
+- Reworked `src/hephaestus/pantheon/coordinator.py` around:
+  - independent first-pass ballots before peer-visible council behavior
+  - masked/sparse issue replay instead of full objection transcript replay
+  - issue-type-aware convergence rules
+  - disagreement-sensitive council invocation with `debate_invoked` / `debate_skip_reason`
+  - targeted repair branches clustered by issue type instead of one blunt global reforge
+  - Apollo tie-break adjudication for close repair branches
+  - fail-loud forwarding of non-fatal unresolved candidates to verification
+  - strict fail-closed behavior preserved for open fatal `TRUTH` / `NOVELTY` issues
+- Updated Pantheon prompts in `src/hephaestus/pantheon/prompts.py` to match the new issue ledger schema, masked communication contract, and branch repair flow.
+- Exported `PANTHEON_ISSUE_TYPES` from `src/hephaestus/pantheon/__init__.py`.
+- Expanded `tests/test_pantheon/test_coordinator.py` to cover:
+  - masked first-pass ballots
+  - adaptive skip behavior
+  - targeted multi-branch repair
+  - fail-loud forwarding with open non-fatal issues
 
 ## Tests run
 
-Final unified validation from the merged tree:
+- `pytest -q tests/test_pantheon/test_coordinator.py`
+- `pytest -q tests/test_core/test_genesis.py -k pantheon tests/test_output/test_formatter.py -k pantheon tests/test_export/test_markdown.py -k pantheon`
+- `pytest -q -k pantheon`
+- `python -m py_compile src/hephaestus/pantheon/models.py src/hephaestus/pantheon/prompts.py src/hephaestus/pantheon/coordinator.py src/hephaestus/pantheon/__init__.py`
 
-```bash
-PYTHONPATH=src pytest -q
-```
+## Integration notes
 
-Result:
-- `1290 passed in 182.69s (0:03:02)`
-
-## Notes
-
-- This is the production-ready merged branch prepared in the temp worktree environment.
-- The next operational step after this branch is to port or cherry-pick the finalized commits back into the canonical Hephaestus repo/worktree you want to keep as source of truth.
+- Pantheon state now carries additional observability fields. Existing consumers that treat `pantheon_state` as an opaque dict/object should remain compatible.
+- A new outcome tier, `FORWARDED_WITH_OPEN_ISSUES`, is now possible when Pantheon preserves truth but does not reach full consensus before handing candidates to verification.
+- `allow_fail_closed=False` no longer forces no-output on repairable non-fatal disagreement; fatal `TRUTH` / `NOVELTY` issues still hard-block output.
+- Repair branching stays local to Pantheon and does not reach into runtime orchestration or BranchGenome lanes.
