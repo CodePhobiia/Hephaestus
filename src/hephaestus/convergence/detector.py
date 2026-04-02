@@ -48,6 +48,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from hephaestus.convergence.database import ConvergenceDatabase, PatternRecord
+from hephaestus.novelty import NoveltyVector
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class DetectionResult:
     similarity: float
     matched_pattern: PatternRecord | None
     problem_class: str = ""
+    novelty_vector: NoveltyVector = field(default_factory=NoveltyVector)
 
 
 @dataclass
@@ -116,6 +118,7 @@ class BatchScore:
     is_convergent: bool
     matched_pattern: PatternRecord | None = None
     rank: int = 0
+    novelty_vector: NoveltyVector = field(default_factory=NoveltyVector)
 
 
 @dataclass
@@ -366,6 +369,7 @@ class ConvergenceDetector:
                 similarity=0.0,
                 matched_pattern=None,
                 problem_class=self._loaded_class,
+                novelty_vector=NoveltyVector(),
             )
 
         text_emb = self._embed(text)
@@ -378,6 +382,7 @@ class ConvergenceDetector:
         best_idx = int(np.argmax(similarities))
         best_sim = float(similarities[best_idx])
         best_pattern = self._loaded_patterns[best_idx]
+        neighborhood_density = _mean_topk_similarity(similarities)
 
         is_convergent = best_sim >= self._threshold
 
@@ -394,6 +399,11 @@ class ConvergenceDetector:
             similarity=best_sim,
             matched_pattern=best_pattern if is_convergent else None,
             problem_class=self._loaded_class,
+            novelty_vector=NoveltyVector(
+                banality_similarity=best_sim,
+                prior_art_similarity=neighborhood_density,
+                branch_family_distance=float(np.clip(1.0 - neighborhood_density, 0.0, 1.0)),
+            ),
         )
 
     async def detect(
@@ -481,6 +491,11 @@ class ConvergenceDetector:
                     similarity=0.0,
                     is_convergent=False,
                     rank=i + 1,
+                    novelty_vector=NoveltyVector(
+                        branch_family_distance=1.0,
+                        mechanism_distance=1.0,
+                        evaluator_gain=1.0,
+                    ),
                 )
                 for i, c in enumerate(candidates)
             ]
@@ -507,6 +522,7 @@ class ConvergenceDetector:
         for i, text in enumerate(candidates):
             best_idx = int(np.argmax(sim_matrix[i]))
             best_sim = float(sim_matrix[i, best_idx])
+            neighborhood_density = _mean_topk_similarity(sim_matrix[i])
             is_conv = best_sim >= self._threshold
             matched = self._loaded_patterns[best_idx] if is_conv else None
 
@@ -517,6 +533,11 @@ class ConvergenceDetector:
                     similarity=best_sim,
                     is_convergent=is_conv,
                     matched_pattern=matched,
+                    novelty_vector=NoveltyVector(
+                        banality_similarity=best_sim,
+                        prior_art_similarity=neighborhood_density,
+                        branch_family_distance=float(np.clip(1.0 - neighborhood_density, 0.0, 1.0)),
+                    ),
                 )
             )
 
@@ -568,3 +589,11 @@ class ConvergenceDetector:
             f"patterns={self.loaded_pattern_count}, "
             f"class={self._loaded_class!r})"
         )
+
+
+def _mean_topk_similarity(similarities: np.ndarray, k: int = 3) -> float:
+    if similarities.size == 0:
+        return 0.0
+    ordered = np.sort(similarities)[::-1]
+    window = ordered[: max(1, min(k, ordered.size))]
+    return float(np.mean(window))

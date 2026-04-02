@@ -939,6 +939,22 @@ class Genesis:
                         ledger=branchgenome_ledger,
                     )
 
+                crossover_branches = branch_arena.spawn_crossover_branches(
+                    branch_strategy,
+                    structure=structure,
+                    scored_candidates=scored,
+                )
+                for branch in crossover_branches:
+                    candidate = scored[branch.source_candidate_index]
+                    branch.metrics = assay_branch(
+                        branch,
+                        structure=structure,
+                        candidate=candidate,
+                        strategy=branch_strategy,
+                        banned_patterns=tuple(baselines),
+                        ledger=branchgenome_ledger,
+                    )
+
                 pruned = branch_arena.prune_over_budget(branch_strategy)
                 for branch in pruned:
                     failed_checks = branch.metrics.perturbations_run - branch.metrics.perturbations_passed
@@ -957,6 +973,12 @@ class Genesis:
                         fingerprint_branch(branch),
                         outcome,
                         f"Pre-translation prune for {branch.branch_id} (survival={branch.metrics.score_survival:.3f})",
+                        metadata={
+                            "archive_cell": branch.archive_cell or branch.metrics.archive_cell,
+                            "island_key": branch.island_key or branch.metrics.island_key,
+                            "quality_diversity_score": branch.metrics.quality_diversity_score,
+                            "novelty_vector": branch.metrics.novelty_vector.to_dict(),
+                        },
                     )
 
                 promote_limit = max(
@@ -979,12 +1001,15 @@ class Genesis:
                 ]
                 branchgenome_metrics = branch_arena.observability_snapshot()
                 logger.info(
-                    "BranchGenome promoted %d/%d branches | recovered=%d avg_spread=%.2f avg_option=%.2f avg_comfort=%.2f avg_baseline_attractor=%.2f avg_branch_fatigue=%.2f avg_collapse=%.2f",
+                    "BranchGenome promoted %d/%d branches | recovered=%d crossover=%d archive=%d avg_spread=%.2f avg_option=%.2f avg_qd=%.2f avg_comfort=%.2f avg_baseline_attractor=%.2f avg_branch_fatigue=%.2f avg_collapse=%.2f",
                     branchgenome_metrics["branches_promoted"],
                     branchgenome_metrics["branches_seeded"],
                     branchgenome_metrics["branches_recovered"],
+                    branchgenome_metrics["crossover_branches"],
+                    branchgenome_metrics["positive_archive_size"],
                     branchgenome_metrics["avg_spread_score"],
                     branchgenome_metrics["avg_future_option_preservation"],
+                    branchgenome_metrics["avg_quality_diversity_score"],
                     branchgenome_metrics["avg_comfort_penalty"],
                     branchgenome_metrics["avg_baseline_attractor"],
                     branchgenome_metrics["avg_branch_fatigue"],
@@ -1196,6 +1221,12 @@ class Genesis:
                             f"(branch={branch.branch_id}, verdict={getattr(invention, 'verdict', 'UNKNOWN')}, "
                             f"novelty={getattr(invention, 'novelty_score', 0.0):.2f})"
                         ),
+                        metadata={
+                            "archive_cell": branch.archive_cell or branch.metrics.archive_cell,
+                            "island_key": branch.island_key or branch.metrics.island_key,
+                            "quality_diversity_score": branch.metrics.quality_diversity_score,
+                            "novelty_vector": branch.metrics.novelty_vector.to_dict(),
+                        },
                     )
                     promoted_outcomes[branch.branch_id] = {
                         "invention_name": invention.invention_name,
@@ -1208,6 +1239,13 @@ class Genesis:
                         "operator_family_pattern": branch.operator_family_pattern(),
                         "operator_families": [family.value for family in branch.operator_family_history],
                         "repeated_family_streak": branch.metrics.repeated_family_streak,
+                        "archive_cell": branch.archive_cell or branch.metrics.archive_cell,
+                        "island_key": branch.island_key or branch.metrics.island_key,
+                        "quality_diversity_score": branch.metrics.quality_diversity_score,
+                        "load_bearing_creativity": branch.metrics.load_bearing_creativity,
+                        "retrieval_expansion_hints": list(branch.retrieval_expansion_hints),
+                        "crossover_parent_ids": list(branch.crossover_parent_ids),
+                        "novelty_vector": branch.metrics.novelty_vector.to_dict(),
                         "branch_state": {
                             "mechanism_purity": branch.state_summary.mechanism_purity,
                             "baseline_attractor": branch.state_summary.baseline_attractor,

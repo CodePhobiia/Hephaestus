@@ -13,6 +13,7 @@ from hephaestus.branchgenome.models import (
     CommitmentKind,
     OperatorFamily,
 )
+from hephaestus.novelty import NoveltyVector
 from hephaestus.branchgenome.strategy import (
     BranchStrategy,
     compute_promotion_score,
@@ -121,6 +122,7 @@ def assay_branch(
 
     fingerprint = fingerprint_branch(branch)
     rejection_overlap = ledger.overlap(fingerprint) if ledger is not None else 0.0
+    positive_overlap = ledger.positive_overlap(fingerprint) if ledger is not None else 0.0
     specificity = _specificity_score(base_render)
     genericity = _genericity_score(base_render, banned_patterns)
     token_cost_estimate = sum(max(1, len(rendered.split())) for rendered in rendered_variants)
@@ -172,6 +174,49 @@ def assay_branch(
             + 0.20 * (1.0 - max_baseline_overlap),
         ),
     )
+    novelty_vector = _novelty_vector(
+        branch=branch,
+        candidate=candidate,
+        max_baseline_overlap=max_baseline_overlap,
+        rejection_overlap=rejection_overlap,
+        positive_overlap=positive_overlap,
+        pass_rate=pass_rate,
+    )
+    load_bearing_creativity = novelty_vector.load_bearing_score()
+    diversity_credit = _clamp01(
+        0.50 * novelty_vector.branch_family_distance
+        + 0.30 * novelty_vector.source_domain_distance
+        + 0.20 * novelty_vector.critic_disagreement
+    )
+    archive_novelty = novelty_vector.creativity_score()
+    archive_quality = _clamp01(
+        0.40 * verification_hint
+        + 0.25 * future_option_preservation
+        + 0.20 * load_bearing_creativity
+        + 0.15 * pass_rate
+    )
+    quality_diversity_score = _clamp01(0.52 * archive_quality + 0.48 * archive_novelty)
+    island_key = _island_key(branch, candidate)
+    archive_cell = _archive_cell(
+        island_key=island_key,
+        novelty=archive_novelty,
+        quality=archive_quality,
+        load_bearing=load_bearing_creativity,
+    )
+    retrieval_expansion_readiness = _clamp01(
+        0.45 * max(0.0, novelty_vector.evaluator_gain - novelty_vector.mechanism_distance)
+        + 0.35 * collapse_risk
+        + 0.20 * comfort_penalty
+    )
+    branch.island_key = island_key
+    branch.archive_cell = archive_cell
+    branch.retrieval_expansion_hints = _retrieval_expansion_hints(
+        branch=branch,
+        candidate=candidate,
+        collapse_risk=collapse_risk,
+        comfort_penalty=comfort_penalty,
+        novelty_vector=novelty_vector,
+    )
 
     state_summary = _branch_state_summary(
         branch=branch,
@@ -189,11 +234,21 @@ def assay_branch(
         novelty_hint=novelty_hint,
         spread_score=spread_score,
         rejection_overlap=rejection_overlap,
+        positive_overlap=positive_overlap,
         collapse_risk=collapse_risk,
         verification_hint=verification_hint,
         future_option_preservation=future_option_preservation,
         genericity_penalty=genericity,
         comfort_penalty=comfort_penalty,
+        diversity_credit=diversity_credit,
+        load_bearing_creativity=load_bearing_creativity,
+        quality_diversity_score=quality_diversity_score,
+        archive_novelty=archive_novelty,
+        archive_quality=archive_quality,
+        archive_cell=archive_cell,
+        island_key=island_key,
+        retrieval_expansion_readiness=retrieval_expansion_readiness,
+        novelty_vector=novelty_vector,
         token_cost_estimate=token_cost_estimate,
         runtime_ms_estimate=run_count * 15,
         perturbations_run=run_count,
@@ -482,6 +537,109 @@ def _average_pairwise_distance(texts: Sequence[str]) -> float:
     if not distances:
         return 0.0
     return sum(distances) / len(distances)
+
+
+def _novelty_vector(
+    *,
+    branch: BranchGenome,
+    candidate: Any,
+    max_baseline_overlap: float,
+    rejection_overlap: float,
+    positive_overlap: float,
+    pass_rate: float,
+) -> NoveltyVector:
+    family_distance = _branch_family_distance(branch)
+    mechanism_distance = _clamp01(float(getattr(candidate, "mechanism_novelty", 0.0)))
+    evaluator_gain = _clamp01(
+        0.50 * float(getattr(candidate, "structural_fidelity", 0.0))
+        + 0.25 * float(getattr(candidate, "combined_score", 0.0))
+        + 0.25 * pass_rate
+    )
+    subtraction_delta = _subtraction_delta(branch, candidate, pass_rate)
+    critic_disagreement = _critic_disagreement(branch, candidate)
+    return NoveltyVector(
+        banality_similarity=max_baseline_overlap,
+        prior_art_similarity=max(rejection_overlap, positive_overlap),
+        branch_family_distance=family_distance,
+        source_domain_distance=_clamp01(float(getattr(candidate, "domain_distance", 0.0))),
+        mechanism_distance=mechanism_distance,
+        evaluator_gain=evaluator_gain,
+        subtraction_delta=subtraction_delta,
+        critic_disagreement=critic_disagreement,
+    )
+
+
+def _branch_family_distance(branch: BranchGenome) -> float:
+    families = branch.recent_operator_families()
+    if not families:
+        return 0.0
+    return _clamp01(len(set(families)) / len(families))
+
+
+def _subtraction_delta(branch: BranchGenome, candidate: Any, pass_rate: float) -> float:
+    verification_commitments = sum(
+        1 for commitment in branch.commitments if commitment.kind == CommitmentKind.VERIFICATION_ASSERTION
+    )
+    operator_bonus = 0.20 * sum(
+        1 for operator in branch.recovery_operators if operator.kind.name.endswith(("PROBE", "ABLATION"))
+    )
+    candidate_bonus = 0.20 * float(not bool(getattr(candidate, "would_engineer_reach_for_this", True)))
+    return _clamp01(0.20 * pass_rate + 0.20 * verification_commitments + operator_bonus + candidate_bonus)
+
+
+def _critic_disagreement(branch: BranchGenome, candidate: Any) -> float:
+    strong = list(getattr(candidate, "strong_mappings", []) or [])
+    weak = list(getattr(candidate, "weak_mappings", []) or [])
+    mapping_pressure = len(weak) / max(1, len(strong) + len(weak))
+    novelty_gap = abs(
+        float(getattr(candidate, "structural_fidelity", 0.0)) - float(getattr(candidate, "mechanism_novelty", 0.0))
+    )
+    question_pressure = min(1.0, len(branch.open_questions) / 4.0)
+    return _clamp01(0.40 * novelty_gap + 0.35 * mapping_pressure + 0.25 * question_pressure)
+
+
+def _island_key(branch: BranchGenome, candidate: Any) -> str:
+    if branch.island_key:
+        return branch.island_key
+    lens = getattr(candidate, "lens_used", None)
+    source_family = (
+        str(getattr(lens, "domain_family", "") or getattr(lens, "domain", "") or getattr(candidate, "source_domain", ""))
+        .strip()
+        .replace(" ", "_")
+        .lower()
+    ) or "unknown"
+    lead_family = branch.operator_family_history[0].value if branch.operator_family_history else "untyped"
+    return f"{source_family}:{lead_family}"
+
+
+def _archive_cell(*, island_key: str, novelty: float, quality: float, load_bearing: float) -> str:
+    novelty_bucket = int(_clamp01(novelty) * 4)
+    quality_bucket = int(_clamp01(quality) * 4)
+    load_bucket = int(_clamp01(load_bearing) * 4)
+    return f"{island_key}|n{novelty_bucket}|q{quality_bucket}|l{load_bucket}"
+
+
+def _retrieval_expansion_hints(
+    *,
+    branch: BranchGenome,
+    candidate: Any,
+    collapse_risk: float,
+    comfort_penalty: float,
+    novelty_vector: NoveltyVector,
+) -> tuple[str, ...]:
+    hints: list[str] = []
+    if novelty_vector.evaluator_gain > novelty_vector.mechanism_distance:
+        hints.append(
+            "Retrieve structurally distant mechanisms that solve the same control problem with a less obvious organizing primitive."
+        )
+    if comfort_penalty >= 0.34:
+        baseline = str(getattr(candidate, "target_domain_equivalent", "") or "nearest target-domain baseline")
+        hints.append(f"Exclude {baseline} analogues and expand into domains that avoid queue/cache/retry comfort patterns.")
+    if collapse_risk >= 0.48:
+        hints.append("Prefer recovery-first or failure-derived control mechanisms instead of steady-state-first analogies.")
+    if branch.recovery_operators:
+        hints.append("Retrieve implementation-heavy exemplars that keep subtraction-test commitments load-bearing.")
+    return tuple(dict.fromkeys(hints))
 
 
 def _clamp01(value: float) -> float:

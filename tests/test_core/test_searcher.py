@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from hephaestus.core.decomposer import ProblemStructure
-from hephaestus.core.searcher import CrossDomainSearcher
+from hephaestus.core.searcher import CrossDomainSearcher, RetrievalExpansionRequest
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
 from hephaestus.lenses.bundles import BundleComposer, BundleSelectionResult
 from hephaestus.lenses.loader import Lens, StructuralPattern
@@ -202,3 +202,40 @@ async def test_searcher_can_disable_adaptive_lens_engine() -> None:
     assert searcher.last_runtime is not None
     assert searcher.last_runtime.retrieval_mode == "singleton"
     assert all(candidate.bundle_proof is None for candidate in candidates)
+
+
+@pytest.mark.asyncio
+async def test_searcher_records_retrieval_expansion_request() -> None:
+    structure = _make_structure()
+    lens = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
+    score = _make_score(lens, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
+    selection = BundleSelectionResult(retrieval_mode="singleton", selected_lenses=(score,), fallback_lenses=())
+    seen_prompts: list[str] = []
+
+    async def _forge(prompt: str, **_: object) -> ForgeResult:
+        seen_prompts.append(prompt)
+        return _forge_result("Immune Memory")
+
+    harness = MagicMock()
+    harness.forge = AsyncMock(side_effect=_forge)
+
+    searcher = CrossDomainSearcher(
+        harness=harness,
+        selector=_SelectorStub(selection),
+        num_candidates=2,
+        num_lenses=1,
+    )
+    request = RetrievalExpansionRequest(
+        branch_id="bg-7",
+        failure_mode="collapsed into cache analogue",
+        novelty_target="recover a mechanism that stays strange after subtraction",
+        excluded_families=("cache", "retry"),
+        branch_hints=("Prefer recovery-first mechanisms.",),
+    )
+
+    await searcher.search(structure, expansion_request=request)
+
+    assert searcher.last_runtime is not None
+    assert searcher.last_runtime.retrieval_frontier["branch_id"] == "bg-7"
+    assert "RETRIEVAL FRONTIER EXPANSION" in seen_prompts[0]
+    assert "collapsed into cache analogue" in seen_prompts[0]

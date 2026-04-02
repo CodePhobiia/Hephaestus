@@ -40,6 +40,7 @@ from hephaestus.core.decomposer import ProblemStructure
 from hephaestus.core.searcher import SearchCandidate
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.selector import EmbeddingModel, _cosine_distance
+from hephaestus.novelty import NoveltyVector
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,9 @@ class ScoredCandidate:
     would_engineer_reach_for_this: bool = True  # if True, mechanism is conventional
     scoring_cost_usd: float = 0.0
     scoring_trace: ForgeTrace | None = None
+    novelty_vector: NoveltyVector = field(default_factory=NoveltyVector)
+    creativity_score: float = 0.0
+    retrieval_expansion_headroom: float = 0.0
 
     # Delegate key properties to the underlying candidate
     @property
@@ -225,6 +229,7 @@ class ScoredCandidate:
             f"[{self.source_domain}] "
             f"fidelity={self.structural_fidelity:.2f} "
             f"dist={self.domain_distance:.2f} "
+            f"creativity={self.creativity_score:.2f} "
             f"score={self.combined_score:.3f}"
         )
 
@@ -338,7 +343,20 @@ class CandidateScorer:
                 )
                 # Fallback: use search confidence as fidelity
                 dist = distances.get(id(candidate), 0.5)
-                combined = candidate.confidence * (dist ** self._alpha) * self._bundle_score_multiplier(candidate)
+                novelty_vector = NoveltyVector(
+                    banality_similarity=1.0 - candidate.confidence,
+                    prior_art_similarity=1.0 - candidate.confidence,
+                    source_domain_distance=dist,
+                    mechanism_distance=0.5,
+                    evaluator_gain=candidate.confidence,
+                )
+                creativity_score = novelty_vector.creativity_score()
+                combined = (
+                    candidate.confidence
+                    * (dist ** self._alpha)
+                    * self._novelty_multiplier(creativity_score, True)
+                    * self._bundle_score_multiplier(candidate)
+                )
                 results.append(
                     ScoredCandidate(
                         candidate=candidate,
@@ -346,6 +364,10 @@ class CandidateScorer:
                         domain_distance=dist,
                         combined_score=combined,
                         fidelity_reasoning="Scoring failed; using search confidence",
+                        mechanism_novelty=0.5,
+                        novelty_vector=novelty_vector,
+                        creativity_score=creativity_score,
+                        retrieval_expansion_headroom=max(0.0, candidate.confidence - 0.5),
                     )
                 )
             else:
@@ -411,7 +433,7 @@ class CandidateScorer:
         domain_distance: float,
     ) -> ScoredCandidate:
         """Score a single candidate via LLM fidelity assessment."""
-        prompt = _FIDELITY_PROMPT_TEMPLATE.format(
+        fidelity_prompt = _FIDELITY_PROMPT_TEMPLATE.format(
             structure=structure.structure,
             mathematical_shape=structure.mathematical_shape,
             source_domain=candidate.source_domain,
@@ -419,19 +441,52 @@ class CandidateScorer:
             mechanism=candidate.mechanism,
             structural_mapping=candidate.structural_mapping,
         )
+        novelty_prompt = _MECHANISM_NOVELTY_PROMPT.format(
+            native_domain=structure.native_domain.replace("_", " "),
+            structure=structure.structure,
+            source_domain=candidate.source_domain,
+            mechanism=candidate.mechanism,
+            source_solution=candidate.source_solution,
+        )
+        import asyncio
 
-        result = await self._harness.forge(
-            prompt,
-            system=_FIDELITY_SYSTEM,
-            max_tokens=16000,
-            temperature=0.2,
+        fidelity_result, novelty_result = await asyncio.gather(
+            self._harness.forge(
+                fidelity_prompt,
+                system=_FIDELITY_SYSTEM,
+                max_tokens=16000,
+                temperature=0.2,
+            ),
+            self._harness.forge(
+                novelty_prompt,
+                system=_MECHANISM_NOVELTY_SYSTEM,
+                max_tokens=16000,
+                temperature=0.2,
+            ),
         )
 
-        parsed = self._parse_fidelity(result.output)
+        parsed = self._parse_fidelity(fidelity_result.output)
         fidelity = float(parsed.get("structural_fidelity", 0.5))
         fidelity = float(np.clip(fidelity, 0.0, 1.0))
-
-        combined = fidelity * (domain_distance ** self._alpha) * self._bundle_score_multiplier(candidate)
+        novelty_parsed = self._parse_mechanism_novelty(novelty_result.output)
+        mechanism_novelty = float(np.clip(float(novelty_parsed.get("mechanism_novelty", 0.5)), 0.0, 1.0))
+        would_engineer_reach_for_this = bool(novelty_parsed.get("would_engineer_reach_for_this", True))
+        novelty_vector = self._build_novelty_vector(
+            fidelity=fidelity,
+            domain_distance=domain_distance,
+            mechanism_novelty=mechanism_novelty,
+            would_engineer_reach_for_this=would_engineer_reach_for_this,
+            strong_mappings=parsed.get("strong_mappings", []),
+            weak_mappings=parsed.get("weak_mappings", []),
+        )
+        creativity_score = novelty_vector.creativity_score()
+        combined = (
+            fidelity
+            * (domain_distance ** self._alpha)
+            * self._novelty_multiplier(creativity_score, would_engineer_reach_for_this)
+            * self._bundle_score_multiplier(candidate)
+        )
+        total_scoring_cost = fidelity_result.trace.total_cost_usd + novelty_result.trace.total_cost_usd
 
         return ScoredCandidate(
             candidate=candidate,
@@ -441,8 +496,17 @@ class CandidateScorer:
             fidelity_reasoning=parsed.get("fidelity_reasoning", ""),
             strong_mappings=parsed.get("strong_mappings", []),
             weak_mappings=parsed.get("weak_mappings", []),
-            scoring_cost_usd=result.trace.total_cost_usd,
-            scoring_trace=result.trace,
+            mechanism_novelty=mechanism_novelty,
+            target_domain_equivalent=str(novelty_parsed.get("target_domain_equivalent", "")),
+            novelty_reasoning=str(novelty_parsed.get("novelty_reasoning", "")),
+            would_engineer_reach_for_this=would_engineer_reach_for_this,
+            scoring_cost_usd=total_scoring_cost,
+            scoring_trace=fidelity_result.trace,
+            novelty_vector=novelty_vector,
+            creativity_score=creativity_score,
+            retrieval_expansion_headroom=float(
+                np.clip(max(0.0, fidelity - mechanism_novelty) + 0.25 * float(would_engineer_reach_for_this), 0.0, 1.0)
+            ),
         )
 
     @staticmethod
@@ -453,6 +517,38 @@ class CandidateScorer:
         confidence = float(getattr(proof, "proof_confidence", 0.5))
         role_bonus = 0.03 if getattr(candidate, "bundle_role", "") == "critical" else 0.0
         return float(np.clip(0.94 + 0.18 * confidence + role_bonus, 0.9, 1.12))
+
+    @staticmethod
+    def _novelty_multiplier(creativity_score: float, would_engineer_reach_for_this: bool) -> float:
+        penalty = 0.10 if would_engineer_reach_for_this else 0.0
+        return float(np.clip(0.84 + 0.34 * creativity_score - penalty, 0.72, 1.16))
+
+    @staticmethod
+    def _build_novelty_vector(
+        *,
+        fidelity: float,
+        domain_distance: float,
+        mechanism_novelty: float,
+        would_engineer_reach_for_this: bool,
+        strong_mappings: list[str],
+        weak_mappings: list[str],
+    ) -> NoveltyVector:
+        disagreement = 0.0
+        if strong_mappings or weak_mappings:
+            disagreement = len(weak_mappings) / max(1, len(strong_mappings) + len(weak_mappings))
+        disagreement = float(np.clip(0.55 * disagreement + 0.45 * abs(fidelity - mechanism_novelty), 0.0, 1.0))
+        banality_similarity = float(np.clip(1.0 - mechanism_novelty, 0.0, 1.0))
+        prior_art_similarity = float(np.clip(0.65 if would_engineer_reach_for_this else 0.25, 0.0, 1.0))
+        subtraction_delta = float(np.clip(0.45 * fidelity + 0.55 * mechanism_novelty, 0.0, 1.0))
+        return NoveltyVector(
+            banality_similarity=banality_similarity,
+            prior_art_similarity=prior_art_similarity,
+            source_domain_distance=domain_distance,
+            mechanism_distance=mechanism_novelty,
+            evaluator_gain=fidelity,
+            subtraction_delta=subtraction_delta,
+            critic_disagreement=disagreement,
+        )
 
     def _parse_fidelity(self, raw: str) -> dict[str, Any]:
         """Parse the fidelity scoring JSON."""
@@ -470,5 +566,24 @@ class CandidateScorer:
             data = json.loads(json_match.group())
         except json.JSONDecodeError:
             return {"structural_fidelity": 0.5}
+
+        return data
+
+    def _parse_mechanism_novelty(self, raw: str) -> dict[str, Any]:
+        """Parse the mechanism-novelty JSON."""
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
+            cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+
+        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if not json_match:
+            logger.warning("No JSON in mechanism novelty response, using defaults")
+            return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
+
+        try:
+            data = json.loads(json_match.group())
+        except json.JSONDecodeError:
+            return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
 
         return data

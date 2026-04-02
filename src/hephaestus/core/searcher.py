@@ -105,6 +105,9 @@ CONVENTIONAL TARGET-DOMAIN MECHANISMS TO AVOID REINVENTING:
 DOMAIN TO SEARCH:
 {domain_name}: {domain_description}
 
+RETRIEVAL FRONTIER EXPANSION:
+{retrieval_frontier}
+
 LENS DISCLOSURE CARD (typed comparison surface):
 {lens_card}
 {bundle_context}
@@ -203,6 +206,7 @@ class SearchRuntimeResult:
     exclusion_snapshot: dict[str, Any] = field(default_factory=dict)
     candidates: list[SearchCandidate] = field(default_factory=list)
     fallback_used: bool = False
+    retrieval_frontier: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -213,7 +217,32 @@ class SearchRuntimeResult:
             "selection": self.selection.to_dict() if hasattr(self.selection, "to_dict") else None,
             "exclusion_snapshot": dict(self.exclusion_snapshot),
             "fallback_used": self.fallback_used,
+            "retrieval_frontier": dict(self.retrieval_frontier),
             "candidate_count": len(self.candidates),
+        }
+
+
+@dataclass(frozen=True)
+class RetrievalExpansionRequest:
+    """Optional branch-conditioned retrieval steering for frontier expansion."""
+
+    branch_id: str = ""
+    failure_mode: str = ""
+    novelty_target: str = ""
+    excluded_families: tuple[str, ...] = ()
+    analogy_axes: tuple[str, ...] = ()
+    frontier_bias: str = "balanced"
+    branch_hints: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "branch_id": self.branch_id,
+            "failure_mode": self.failure_mode,
+            "novelty_target": self.novelty_target,
+            "excluded_families": list(self.excluded_families),
+            "analogy_axes": list(self.analogy_axes),
+            "frontier_bias": self.frontier_bias,
+            "branch_hints": list(self.branch_hints),
         }
 
 
@@ -280,6 +309,8 @@ class CrossDomainSearcher:
     async def search(
         self,
         structure: "ProblemStructure",  # noqa: F821 — imported below
+        *,
+        expansion_request: RetrievalExpansionRequest | None = None,
     ) -> list[SearchCandidate]:
         """
         Search for cross-domain candidates matching the problem structure.
@@ -319,6 +350,7 @@ class CrossDomainSearcher:
             bundle_proof=selection.active_bundle,
             selection=selection,
             exclusion_snapshot=dict(selection.exclusion_snapshot),
+            retrieval_frontier=expansion_request.to_dict() if expansion_request is not None else {},
         )
 
         logger.info(
@@ -339,6 +371,7 @@ class CrossDomainSearcher:
                 bundle_peer_ids=tuple(score.lens.lens_id for score in selection.selected_lenses),
                 selection_mode=selection.retrieval_mode,
                 bundle_position=index,
+                expansion_request=expansion_request,
             )
             for index, lens_score in enumerate(selection.selected_lenses)
         ]
@@ -381,6 +414,7 @@ class CrossDomainSearcher:
                     bundle_proof=None,
                     bundle_peer_ids=(),
                     selection_mode="singleton_fallback",
+                    expansion_request=expansion_request,
                 )
                 for lens_score in selection.fallback_lenses[:needed]
             ]
@@ -464,6 +498,7 @@ class CrossDomainSearcher:
         bundle_peer_ids: tuple[str, ...] = (),
         selection_mode: str = "singleton",
         bundle_position: int | None = None,
+        expansion_request: RetrievalExpansionRequest | None = None,
     ) -> SearchCandidate | None:
         """
         Query the LLM for a solved problem in the lens's domain.
@@ -482,6 +517,7 @@ class CrossDomainSearcher:
             bundle_proof=bundle_proof,
             bundle_peer_ids=bundle_peer_ids,
         )
+        frontier_context = self._expansion_context_for_prompt(expansion_request)
 
         dossier = getattr(structure, "baseline_dossier", None)
         baseline_summary = getattr(dossier, "summary", "") or "(no external baseline reconnaissance attached)"
@@ -499,6 +535,7 @@ class CrossDomainSearcher:
             domain_description=" | ".join(
                 p.abstract for p in lens.structural_patterns[:3]
             ),
+            retrieval_frontier=frontier_context,
             lens_card=lens_card.summary_text(),
             bundle_context=bundle_context,
             axioms=axioms_text,
@@ -563,6 +600,7 @@ class CrossDomainSearcher:
                     )
                     if bundle_proof is not None
                     else [],
+                    "retrieval_frontier": expansion_request.to_dict() if expansion_request is not None else {},
                 },
             )
 
@@ -600,6 +638,22 @@ class CrossDomainSearcher:
             f"- conditional_requirements_for_this_lens: {', '.join(conditions) or 'none'}\n"
             "- search for a mechanism that complements the other active bundle members rather than duplicating them.\n"
         )
+
+    @staticmethod
+    def _expansion_context_for_prompt(expansion_request: RetrievalExpansionRequest | None) -> str:
+        if expansion_request is None:
+            return "• default frontier search (no branch-conditioned expansion request)"
+        lines = [
+            f"• branch_id: {expansion_request.branch_id or 'unbound'}",
+            f"• failure_mode: {expansion_request.failure_mode or 'unspecified'}",
+            f"• novelty_target: {expansion_request.novelty_target or 'maximize mechanism distance while staying executable'}",
+            f"• frontier_bias: {expansion_request.frontier_bias}",
+            "• excluded_families: " + (", ".join(expansion_request.excluded_families) or "none"),
+            "• analogy_axes: " + (", ".join(expansion_request.analogy_axes) or "none"),
+        ]
+        lines.extend(f"• branch_hint: {hint}" for hint in expansion_request.branch_hints[:4])
+        lines.append("• search for a mechanism that expands the frontier rather than refining the nearest neighbor baseline.")
+        return "\n".join(lines)
 
     def _parse_candidate(self, raw: str) -> dict[str, Any]:
         """Parse model JSON output into a candidate dict."""

@@ -32,6 +32,9 @@ class BranchArena:
     promoted_ids: list[str] = field(default_factory=list)
     pruned_ids: list[str] = field(default_factory=list)
     recovered_ids: list[str] = field(default_factory=list)
+    crossover_ids: list[str] = field(default_factory=list)
+    positive_archive: dict[str, str] = field(default_factory=dict)
+    island_elites: dict[str, str] = field(default_factory=dict)
 
     def add_branch(self, branch: BranchGenome) -> None:
         self.branches[branch.branch_id] = branch
@@ -48,10 +51,42 @@ class BranchArena:
     def promote_top_k(self, k: int) -> list[BranchGenome]:
         ranked = sorted(self.active_branches(), key=_promotion_sort_key, reverse=True)
         promoted: list[BranchGenome] = []
-        for branch in ranked[:k]:
+        selected_ids: set[str] = set()
+
+        for branch in ranked:
+            if len(promoted) >= k:
+                break
+            cell = branch.archive_cell or branch.metrics.archive_cell
+            if not cell:
+                continue
+            if any((other.archive_cell or other.metrics.archive_cell) == cell for other in promoted):
+                continue
+            promoted.append(branch)
+            selected_ids.add(branch.branch_id)
+
+        for branch in ranked:
+            if len(promoted) >= k:
+                break
+            island = branch.island_key or branch.metrics.island_key
+            if not island or branch.branch_id in selected_ids:
+                continue
+            if any((other.island_key or other.metrics.island_key) == island for other in promoted):
+                continue
+            promoted.append(branch)
+            selected_ids.add(branch.branch_id)
+
+        for branch in ranked:
+            if len(promoted) >= k:
+                break
+            if branch.branch_id in selected_ids:
+                continue
+            promoted.append(branch)
+            selected_ids.add(branch.branch_id)
+
+        for branch in promoted:
             branch.status = BranchStatus.PROMOTED
             self.promoted_ids.append(branch.branch_id)
-            promoted.append(branch)
+            self._register_positive_archive(branch)
         return promoted
 
     def prune_over_budget(self, strategy: BranchStrategy) -> list[BranchGenome]:
@@ -73,12 +108,19 @@ class BranchArena:
                 and stronger_sibling.branch_id != branch.branch_id
                 and stronger_sibling.metrics.score_promotion >= branch.metrics.score_promotion
                 and branch_similarity(branch, stronger_sibling) >= strategy.duplicate_similarity_threshold
+                and (branch.archive_cell or branch.metrics.archive_cell)
+                == (stronger_sibling.archive_cell or stronger_sibling.metrics.archive_cell)
             )
             too_comfortable = (
                 branch.metrics.comfort_penalty >= strategy.recovery_activation_threshold
                 and branch.metrics.future_option_preservation < strategy.min_option_preservation
             )
-            should_prune = any(
+            diversity_reserve = (
+                branch.metrics.quality_diversity_score >= strategy.min_quality_diversity_score
+                and bool(branch.archive_cell or branch.metrics.archive_cell)
+                and (branch.archive_cell or branch.metrics.archive_cell) not in self.positive_archive
+            )
+            hard_prune = any(
                 (
                     branch.metrics.rejection_overlap >= strategy.baseline_equivalent_overlap,
                     branch.state_summary.baseline_attractor >= strategy.max_baseline_attractor,
@@ -86,10 +128,10 @@ class BranchArena:
                     failed_checks > strategy.max_failed_perturbations,
                     branch.state_summary.branch_fatigue >= strategy.max_branch_fatigue,
                     branch.metrics.score_survival < strategy.min_survival_score,
-                    too_comfortable,
-                    duplicate_of_stronger,
                 )
             )
+            soft_prune = too_comfortable or duplicate_of_stronger
+            should_prune = hard_prune or (soft_prune and not diversity_reserve)
             if should_prune:
                 branch.status = BranchStatus.PRUNED
                 if branch.branch_id not in self.pruned_ids:
@@ -116,6 +158,16 @@ class BranchArena:
                 "tokens_spent_branching": 0,
                 "tokens_saved_by_pruning": 0,
                 "family_frequency": _empty_family_frequency(),
+                "positive_archive_size": 0,
+                "archive_cell_count": 0,
+                "island_count": 0,
+                "archive_cells": {},
+                "island_elites": {},
+                "avg_quality_diversity_score": 0.0,
+                "avg_load_bearing_creativity": 0.0,
+                "avg_diversity_credit": 0.0,
+                "retrieval_expansion_ready": 0,
+                "crossover_branches": 0,
                 "repeated_family_streaks": {},
                 "promoted_family_patterns": {},
                 "promoted_branch_outcomes": {},
@@ -144,6 +196,24 @@ class BranchArena:
                 self.branches[branch_id].metrics.token_cost_estimate for branch_id in self.pruned_ids
             ),
             "family_frequency": _family_frequency(all_branches),
+            "positive_archive_size": len(self.positive_archive),
+            "archive_cell_count": len(
+                {branch.archive_cell or branch.metrics.archive_cell for branch in all_branches if branch.archive_cell or branch.metrics.archive_cell}
+            ),
+            "island_count": len(
+                {branch.island_key or branch.metrics.island_key for branch in all_branches if branch.island_key or branch.metrics.island_key}
+            ),
+            "archive_cells": _archive_cell_distribution(all_branches),
+            "island_elites": dict(sorted(self.island_elites.items())),
+            "avg_quality_diversity_score": sum(branch.metrics.quality_diversity_score for branch in all_branches)
+            / len(all_branches),
+            "avg_load_bearing_creativity": sum(branch.metrics.load_bearing_creativity for branch in all_branches)
+            / len(all_branches),
+            "avg_diversity_credit": sum(branch.metrics.diversity_credit for branch in all_branches) / len(all_branches),
+            "retrieval_expansion_ready": sum(
+                1 for branch in all_branches if branch.metrics.retrieval_expansion_readiness >= 0.5
+            ),
+            "crossover_branches": len(self.crossover_ids),
             "repeated_family_streaks": {
                 branch.branch_id: branch.metrics.repeated_family_streak for branch in all_branches
             },
@@ -207,6 +277,66 @@ class BranchArena:
                 created.append(recovery_branch)
         return created
 
+    def spawn_crossover_branches(
+        self,
+        strategy: BranchStrategy,
+        *,
+        structure: Any,
+        scored_candidates: list[Any],
+    ) -> list[BranchGenome]:
+        """Create bounded crossover branches from viable but distinct parents."""
+        created: list[BranchGenome] = []
+        if strategy.max_crossover_branches <= 0:
+            return created
+
+        candidates = [
+            branch
+            for branch in self.active_branches()
+            if branch.metrics.quality_diversity_score >= strategy.min_quality_diversity_score
+            and branch.metrics.future_option_preservation >= strategy.min_option_preservation
+        ]
+        candidates.sort(key=_promotion_sort_key, reverse=True)
+        for idx, left in enumerate(candidates):
+            for right in candidates[idx + 1 :]:
+                if len(created) >= strategy.max_crossover_branches:
+                    return created
+                similarity = branch_similarity(left, right)
+                if not (strategy.crossover_similarity_floor <= similarity <= strategy.crossover_similarity_ceiling):
+                    continue
+                if left.source_candidate_index == right.source_candidate_index:
+                    continue
+                if (left.island_key or left.metrics.island_key) == (right.island_key or right.metrics.island_key):
+                    continue
+                branch_id = f"{left.branch_id}+{right.branch_id}:crossover"
+                if branch_id in self.branches:
+                    continue
+                crossover_branch = _crossover_branch(
+                    branch_id=branch_id,
+                    left=left,
+                    right=right,
+                    left_candidate=scored_candidates[left.source_candidate_index],
+                    right_candidate=scored_candidates[right.source_candidate_index],
+                    structure=structure,
+                )
+                self.add_branch(crossover_branch)
+                self.crossover_ids.append(crossover_branch.branch_id)
+                created.append(crossover_branch)
+        return created
+
+    def _register_positive_archive(self, branch: BranchGenome) -> None:
+        cell = branch.archive_cell or branch.metrics.archive_cell
+        island = branch.island_key or branch.metrics.island_key
+        if cell:
+            incumbent_id = self.positive_archive.get(cell)
+            incumbent = self.branches.get(incumbent_id) if incumbent_id is not None else None
+            if incumbent is None or branch.metrics.quality_diversity_score >= incumbent.metrics.quality_diversity_score:
+                self.positive_archive[cell] = branch.branch_id
+        if island:
+            incumbent_id = self.island_elites.get(island)
+            incumbent = self.branches.get(incumbent_id) if incumbent_id is not None else None
+            if incumbent is None or branch.metrics.quality_diversity_score >= incumbent.metrics.quality_diversity_score:
+                self.island_elites[island] = branch.branch_id
+
 
 def seed_branches_from_translation_inputs(
     scored_candidates: list[Any],
@@ -241,6 +371,7 @@ def seed_branches_from_translation_inputs(
                 rejected_patterns=tuple(pattern for pattern in banned_patterns[:4] if pattern),
                 operator_family_history=_operator_families_for_variant(variant),
                 metrics=BranchMetrics(),
+                island_key=_seed_island_key(candidate, variant),
             )
             arena.add_branch(branch)
 
@@ -254,12 +385,14 @@ def branch_candidate_for_translation(branch: BranchGenome, candidate: Any) -> An
         clone = copy.copy(candidate)
     clone.branch_genome = branch
     clone.branch_rank_score = branch.metrics.score_promotion or branch.metrics.score_survival
+    clone.branch_runtime_hooks = branch.runtime_hooks()
     return clone
 
 
-def _promotion_sort_key(branch: BranchGenome) -> tuple[float, float, float, float, float]:
+def _promotion_sort_key(branch: BranchGenome) -> tuple[float, float, float, float, float, float]:
     return (
         branch.metrics.score_promotion or branch.metrics.score_survival,
+        branch.metrics.quality_diversity_score,
         branch.metrics.future_option_preservation,
         branch.state_summary.mechanism_purity,
         1.0 - branch.state_summary.baseline_attractor,
@@ -274,6 +407,11 @@ def _empty_family_frequency() -> dict[str, int]:
 def _family_frequency(branches: list[BranchGenome]) -> dict[str, int]:
     counts = Counter(family.value for branch in branches for family in branch.operator_family_history)
     return {family.value: counts.get(family.value, 0) for family in OperatorFamily}
+
+
+def _archive_cell_distribution(branches: list[BranchGenome]) -> dict[str, int]:
+    counts = Counter(branch.archive_cell or branch.metrics.archive_cell for branch in branches if branch.archive_cell or branch.metrics.archive_cell)
+    return dict(sorted(counts.items()))
 
 
 def _promoted_family_patterns(branches: Any) -> dict[str, int]:
@@ -308,6 +446,12 @@ def _operator_families_for_variant(variant: str) -> tuple[OperatorFamily, ...]:
         OperatorFamily.CONCRETIZE,
         OperatorFamily.CRITIQUE,
     )
+
+
+def _seed_island_key(candidate: Any, variant: str) -> str:
+    lens = getattr(candidate, "lens_used", None)
+    family = str(getattr(lens, "domain_family", "") or getattr(lens, "domain", "") or "unknown")
+    return f"{family.strip().replace(' ', '_').lower()}:{variant}"
 
 
 def _commitments_for_variant(*, candidate: Any, structure: Any, variant: str) -> tuple[Commitment, ...]:
@@ -599,6 +743,91 @@ def _branch_with_recovery_operator(
             transfer_slack=min(1.0, parent.state_summary.transfer_slack + 0.12),
             branch_fatigue=min(1.0, parent.state_summary.branch_fatigue + 0.08),
         ),
+    )
+
+
+def _crossover_branch(
+    *,
+    branch_id: str,
+    left: BranchGenome,
+    right: BranchGenome,
+    left_candidate: Any,
+    right_candidate: Any,
+    structure: Any,
+) -> BranchGenome:
+    native_domain = str(getattr(structure, "native_domain", "")).replace("_", " ")
+    left_mechanism = next(
+        (commitment for commitment in left.commitments if commitment.kind == CommitmentKind.MECHANISM_CLAIM),
+        left.commitments[0],
+    )
+    right_binding = next(
+        (commitment for commitment in right.commitments if commitment.kind == CommitmentKind.TARGET_BINDING),
+        right.commitments[-1],
+    )
+    crossover_mapping = Commitment(
+        id=f"{branch_id}:crossover-mapping",
+        kind=CommitmentKind.MAPPING_CLAIM,
+        statement=(
+            f"Fuse {left_candidate.source_domain} retention pressure with {right_candidate.source_domain} "
+            f"binding detail so the {native_domain} architecture inherits two independently viable control laws."
+        ),
+        confidence=min(0.92, max(left_mechanism.confidence, right_binding.confidence)),
+        reversible=True,
+        provenance=("crossover", left.branch_id, right.branch_id),
+    )
+    crossover_guard = Commitment(
+        id=f"{branch_id}:crossover-guard",
+        kind=CommitmentKind.VERIFICATION_ASSERTION,
+        statement=(
+            "Reject the crossover if either parent can be deleted without materially changing the translated control path."
+        ),
+        confidence=0.85,
+        reversible=True,
+        provenance=("crossover", "guard"),
+    )
+    commitments = (
+        left_mechanism,
+        crossover_mapping,
+        right_binding,
+        crossover_guard,
+    )
+    open_questions = tuple(
+        dict.fromkeys(
+            (
+                *left.open_questions[:2],
+                *right.open_questions[:2],
+                "Which branch-specific state becomes impossible if either parent mechanism is removed?",
+            )
+        )
+    )[-4:]
+    rejected_patterns = tuple(dict.fromkeys((*left.rejected_patterns, *right.rejected_patterns)))
+    operator_history = tuple(
+        (
+            *left.recent_operator_families(2),
+            *right.recent_operator_families(2),
+            OperatorFamily.CRITIQUE,
+        )
+    )
+    return BranchGenome(
+        branch_id=branch_id,
+        parent_id=left.branch_id,
+        source_candidate_index=left.source_candidate_index,
+        stage_cursor="crossover",
+        commitments=commitments,
+        open_questions=open_questions,
+        recovery_operators=tuple(dict.fromkeys((*left.recovery_operators, *right.recovery_operators))),
+        rejected_patterns=rejected_patterns,
+        operator_family_history=operator_history,
+        metrics=BranchMetrics(),
+        state_summary=BranchStateSummary(
+            mechanism_purity=min(1.0, 0.5 * left.state_summary.mechanism_purity + 0.5 * right.state_summary.mechanism_purity),
+            baseline_attractor=max(0.0, min(left.state_summary.baseline_attractor, right.state_summary.baseline_attractor) - 0.05),
+            transfer_slack=min(1.0, 0.5 * left.state_summary.transfer_slack + 0.5 * right.state_summary.transfer_slack + 0.08),
+            branch_fatigue=min(1.0, 0.5 * left.state_summary.branch_fatigue + 0.5 * right.state_summary.branch_fatigue + 0.06),
+        ),
+        island_key=f"cross:{left.island_key or left.metrics.island_key}:{right.island_key or right.metrics.island_key}",
+        crossover_parent_ids=(left.branch_id, right.branch_id),
+        retrieval_expansion_hints=tuple(dict.fromkeys((*left.retrieval_expansion_hints, *right.retrieval_expansion_hints))),
     )
 
 

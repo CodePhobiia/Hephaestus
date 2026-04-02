@@ -133,7 +133,35 @@ class RejectionLedger:
 
         return max(0.0, min(1.0, best_rejected - 0.25 * best_accepted))
 
-    def record(self, fingerprint: str, outcome: str, summary: str) -> None:
+    def positive_overlap(self, fingerprint: str) -> float:
+        """Return similarity to the strongest accepted entry in the archive."""
+        subject = set(fingerprint.split())
+        if not subject:
+            return 0.0
+
+        best_overlap = 0.0
+        for record in self._records:
+            if str(record.get("outcome", "")) != "accepted":
+                continue
+            other = set(str(record.get("fingerprint", "")).split())
+            best_overlap = max(best_overlap, _jaccard_similarity(subject, other))
+        return max(0.0, min(1.0, best_overlap))
+
+    def archive_records(self, *, outcome: str | None = None) -> list[dict[str, Any]]:
+        """Return ledger records, optionally filtered by normalized outcome."""
+        if outcome is None:
+            return list(self._records)
+        normalized = outcome.strip().lower()
+        return [record for record in self._records if str(record.get("outcome", "")).strip().lower() == normalized]
+
+    def record(
+        self,
+        fingerprint: str,
+        outcome: str,
+        summary: str,
+        *,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Append a ledger entry and keep it available for future overlap checks."""
         normalized_outcome = outcome.strip().lower()
         if normalized_outcome not in _REJECTED_OUTCOMES | {"accepted"}:
@@ -145,6 +173,8 @@ class RejectionLedger:
             "outcome": normalized_outcome,
             "summary": summary,
         }
+        if metadata:
+            record["metadata"] = dict(metadata)
         self._records.append(record)
 
         try:

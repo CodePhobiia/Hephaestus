@@ -120,6 +120,12 @@ def test_assay_branch_scores_survival_and_uses_strategy(tmp_path) -> None:
     assert 0.0 <= metrics.future_option_preservation <= 1.0
     assert 0.0 <= metrics.genericity_penalty <= 1.0
     assert 0.0 <= metrics.comfort_penalty <= 1.0
+    assert 0.0 <= metrics.quality_diversity_score <= 1.0
+    assert 0.0 <= metrics.load_bearing_creativity <= 1.0
+    assert metrics.archive_cell
+    assert metrics.island_key
+    assert metrics.novelty_vector.source_domain_distance == candidate.domain_distance
+    assert branch.retrieval_expansion_hints
     assert -1.0 <= metrics.score_survival <= 1.0
     assert -1.0 <= metrics.score_promotion <= 1.0
 

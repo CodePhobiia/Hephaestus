@@ -7,6 +7,8 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 
+from hephaestus.novelty import NoveltyVector
+
 
 class CommitmentKind(str, Enum):
     """Kinds of partial structural commitments tracked on a branch."""
@@ -85,11 +87,21 @@ class BranchMetrics:
     novelty_hint: float = 0.0
     spread_score: float = 0.0
     rejection_overlap: float = 0.0
+    positive_overlap: float = 0.0
     collapse_risk: float = 0.0
     verification_hint: float = 0.0
     future_option_preservation: float = 0.0
     genericity_penalty: float = 0.0
     comfort_penalty: float = 0.0
+    diversity_credit: float = 0.0
+    load_bearing_creativity: float = 0.0
+    quality_diversity_score: float = 0.0
+    archive_novelty: float = 0.0
+    archive_quality: float = 0.0
+    archive_cell: str = ""
+    island_key: str = ""
+    retrieval_expansion_readiness: float = 0.0
+    novelty_vector: NoveltyVector = field(default_factory=NoveltyVector)
     score_survival: float = 0.0
     score_promotion: float = 0.0
     token_cost_estimate: int = 0
@@ -127,6 +139,10 @@ class BranchGenome:
     metrics: BranchMetrics = field(default_factory=BranchMetrics)
     state_summary: BranchStateSummary = field(default_factory=BranchStateSummary)
     status: BranchStatus = BranchStatus.ACTIVE
+    island_key: str = ""
+    archive_cell: str = ""
+    crossover_parent_ids: tuple[str, ...] = ()
+    retrieval_expansion_hints: tuple[str, ...] = ()
 
     def commitment_text(self) -> str:
         """Return a compact string form of the branch commitments."""
@@ -158,11 +174,18 @@ class BranchGenome:
             "recovery_operators": [operator.summary() for operator in self.recovery_operators],
             "rejected_patterns": list(self.rejected_patterns),
             "operator_families": [family.value for family in self.operator_family_history],
+            "island_key": self.island_key,
+            "archive_cell": self.archive_cell,
+            "crossover_parent_ids": list(self.crossover_parent_ids),
+            "retrieval_expansion_hints": list(self.retrieval_expansion_hints),
             "metrics": {
                 "collapse_risk": self.metrics.collapse_risk,
                 "future_option_preservation": self.metrics.future_option_preservation,
                 "comfort_penalty": self.metrics.comfort_penalty,
                 "genericity_penalty": self.metrics.genericity_penalty,
+                "quality_diversity_score": self.metrics.quality_diversity_score,
+                "load_bearing_creativity": self.metrics.load_bearing_creativity,
+                "novelty_vector": self.metrics.novelty_vector.to_dict(),
             },
         }
         normalized = json.dumps(payload, sort_keys=True, ensure_ascii=True)
@@ -184,8 +207,15 @@ class BranchGenome:
             "branch_id": self.branch_id,
             "status": self.status.value,
             "stage_cursor": self.stage_cursor,
+            "island_key": self.island_key,
+            "archive_cell": self.archive_cell,
             "continuity_signature": self.continuity_signature(),
             "requires_counterexample_probe": self.requires_counterexample_probe(),
             "recovery_operators": [operator.summary() for operator in self.recovery_operators],
+            "crossover_parent_ids": list(self.crossover_parent_ids),
+            "retrieval_expansion_hints": list(self.retrieval_expansion_hints),
+            "quality_diversity_score": self.metrics.quality_diversity_score,
+            "load_bearing_creativity": self.metrics.load_bearing_creativity,
+            "novelty_vector": self.metrics.novelty_vector.to_dict(),
             "rejected_patterns": list(self.rejected_patterns),
         }

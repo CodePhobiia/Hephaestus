@@ -1,103 +1,40 @@
-# AGENT REPORT
-
-## Summary
-
-Implemented the doc03 repo-aware lane on `impl/doc03-repo-aware`.
-
-The branch now adds a durable repo dossier substrate and threads it through the
-existing workspace scanner, workspace prompt context, and CLI status/context
-surfaces. The implementation stays inside the contract scope: workspace
-understanding, repo memory/status surfaces, and repo-grounded architecture
-artifacts.
+# doc04 creativity implementation report
 
 ## What changed
 
-- Added `src/hephaestus/workspace/repo_dossier.py`.
-  - Builds a persistent repo dossier with:
-    - code roots
-    - test roots
-    - documentation/artifact paths
-    - inferred command hints
-    - dependency manifests
-    - inferred subsystem/component map
-    - internal Python dependency edges
-    - git hotspot summaries
-    - generated architecture notes
-  - Persists the dossier to repo-local cache storage:
-    - `.git/hephaestus/repo_dossier.json` + `.md` when git metadata is available
-    - `.hephaestus/cache/repo_dossier.json` + `.md` otherwise
-  - Reuses the cached dossier when the repo fingerprint matches.
-
-- Upgraded `src/hephaestus/workspace/scanner.py`.
-  - Tracks per-file `mtime_ns` and git `head_sha`.
-  - Retains scanned file metadata in `WorkspaceSummary.files`.
-  - Attaches `WorkspaceSummary.repo_dossier`.
-  - Extends the formatted workspace summary with repo-aware lines.
-
-- Upgraded `src/hephaestus/workspace/context.py`.
-  - Carries the repo dossier alongside the workspace summary.
-  - Injects a repo dossier section into prompt text so workspace-aware runs get
-    subsystem, command, and hotspot context rather than only counts/tree data.
-
-- Updated CLI/runtime surfaces.
-  - `src/hephaestus/cli/repl.py`
-    - `/status` now shows repo-awareness health and a dedicated repo panel.
-    - `/context` now includes a detailed repo dossier panel.
-    - `/ws` now surfaces cache state, architecture notes, subsystem names, and
-      suggested commands.
-  - `src/hephaestus/cli/main.py`
-    - `heph scan --json` now includes the serialized repo dossier.
-    - human-readable `heph scan` now shows architecture notes/commands.
-    - `heph workspace` now passes the selected directory into interactive mode.
-    - automatic workspace detection keeps the quick scanner path by skipping
-      dossier generation there.
-
-- Updated exports and tests.
-  - `src/hephaestus/workspace/__init__.py` now exports the dossier APIs.
-  - Added `tests/test_workspace/test_repo_dossier.py`.
-  - Extended scanner/context/REPL/main tests to cover the new repo-aware
-    surfaces and caching behavior.
+- Upgraded `BranchGenome` from a scalar-heuristic flow to a quality-diversity surface.
+  - Added shared novelty-vector support via [`src/hephaestus/novelty/vector.py`](/tmp/heph-doc-impl-20260402-070453/doc04/src/hephaestus/novelty/vector.py).
+  - Extended branch metrics with positive-archive overlap, load-bearing creativity, diversity credit, quality-diversity score, archive cell, island key, and retrieval-expansion readiness.
+  - Added branch runtime metadata for archive placement, crossover parents, and branch-conditioned retrieval hints.
+- Upgraded branch arena evolution and preservation.
+  - Added positive archive / island elite tracking.
+  - Promotion now preserves distinct archive cells and islands before filling globally.
+  - Pruning now keeps uniquely valuable cells alive when they clear the quality-diversity floor.
+  - Added bounded crossover branch creation between viable but structurally distinct islands.
+- Improved novelty/evaluator surfaces.
+  - `CandidateScorer` now executes both structural fidelity and mechanism-novelty scoring, emits a novelty vector, tracks creativity score, and folds mechanism novelty into ranking.
+  - `ConvergenceDetector` now exposes novelty-vector components instead of only a scalar similarity.
+  - `RejectionLedger` now supports positive-archive overlap queries and optional metadata persistence.
+- Added retrieval expansion groundwork.
+  - `CrossDomainSearcher` now accepts an optional `RetrievalExpansionRequest` and records/search-prompts branch-conditioned frontier hints.
+  - Branch assay emits `retrieval_expansion_hints` so future runtime stages can request targeted frontier expansion without changing the branch API again.
+- Wired the new branchgenome behavior into `core/genesis.py`.
+  - Genesis now assays crossover branches, persists archive metadata to the ledger, and includes novelty/archive/crossover details in promoted branch outcomes.
 
 ## Tests run
 
-Focused verification:
-
 ```bash
-pytest tests/test_workspace/test_repo_dossier.py tests/test_workspace/test_scanner.py tests/test_workspace/test_context.py tests/test_cli/test_repl.py tests/test_cli/test_main.py -q
+pytest -q tests/test_branchgenome/test_assay.py tests/test_branchgenome/test_arena.py tests/test_branchgenome/test_ledger.py tests/test_branchgenome/test_genesis_integration.py tests/test_core/test_scorer.py tests/test_core/test_searcher.py tests/test_convergence/test_detector.py tests/test_core/test_structural_novelty.py tests/test_core/test_diversity.py tests/test_novelty/test_vector.py
 ```
 
-Result:
-- `156 passed in 18.71s`
-
-Full-suite verification:
-
-```bash
-pytest -q
-```
-
-Result:
-- `1324 passed in 187.17s (0:03:07)`
-
-Targeted lint check for the new dossier module and its tests:
-
-```bash
-ruff check src/hephaestus/workspace/repo_dossier.py tests/test_workspace/test_repo_dossier.py
-```
-
-Result:
-- `All checks passed!`
+- Result: `78 passed`
 
 ## Integration notes
 
-- The durable repo memory substrate is cache-backed and repo-local; it does not
-  require a database or new service.
-- The scanner remains the single ingestion point for workspace understanding,
-  which keeps the feature grounded in existing Hephaestus structure rather than
-  introducing a parallel indexing system.
-- Prompt enrichment now consumes the dossier through `WorkspaceContext`, so
-  workspace-aware invention/chat surfaces benefit automatically.
-- `heph workspace` previously summarized the chosen repo but did not pass that
-  repo into `run_interactive`; this branch fixes that runtime handoff.
-- A broader repo-wide `ruff check` still reports pre-existing lint debt in
-  long-standing files outside this lane. I only normalized the new dossier
-  module/tests here and left the unrelated backlog untouched.
+- Retrieval expansion is groundwork, not a full second-pass search loop yet.
+  - Branch assay now produces stable `retrieval_expansion_hints`.
+  - Search supports `RetrievalExpansionRequest`.
+  - Genesis does not yet re-enter search using those hints, which keeps this lane inside doc04 scope without forcing a broader runtime refactor.
+- Crossover branches currently translate through the left parent candidate while carrying fused commitments from both parents.
+  - This keeps translation compatibility with the existing scorer/translator contract.
+  - If a later lane wants full dual-parent translation prompts, the branch runtime hooks now expose enough metadata to do it cleanly.

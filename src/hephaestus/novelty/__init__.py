@@ -16,9 +16,11 @@ from hephaestus.novelty.solution_shapes import (
     shape_evidence_table,
     shape_overlap_score,
 )
+from hephaestus.novelty.vector import NoveltyVector
 
 __all__ = [
     "COMMON_ARCHITECTURE_SHAPES",
+    "NoveltyVector",
     "ShapeClassification",
     "ShapeDefinition",
     "ShapeMatch",

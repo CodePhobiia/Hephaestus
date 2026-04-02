@@ -83,6 +83,7 @@ class TestDetectorNoDb:
         assert result.is_convergent
         assert result.similarity >= 0.9
         assert result.matched_pattern is record
+        assert result.novelty_vector.banality_similarity >= 0.9
 
     def test_detect_orthogonal_not_convergent(self) -> None:
         pattern_emb = _unit(32, 0)
@@ -326,6 +327,7 @@ class TestBatchScoring:
         # One novel, one convergent
         assert len(result.novel_candidates) == 1
         assert len(result.convergent_candidates) == 1
+        assert result.candidates[0].novelty_vector.prior_art_similarity >= 0.0
 
     async def test_batch_sets_ranks(self) -> None:
         detector = ConvergenceDetector()

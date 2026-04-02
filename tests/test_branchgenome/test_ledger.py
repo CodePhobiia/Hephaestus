@@ -29,6 +29,22 @@ def test_ledger_records_and_scores_overlap(tmp_path) -> None:
 
     assert ledger.overlap(similar_to_rejected) > 0.30
     assert ledger.overlap(similar_to_accepted) < ledger.overlap(similar_to_rejected)
+    assert ledger.positive_overlap(similar_to_accepted) > 0.20
 
     reloaded = RejectionLedger(tmp_path / "branchgenome.jsonl")
     assert reloaded.overlap(similar_to_rejected) == ledger.overlap(similar_to_rejected)
+
+
+def test_ledger_records_metadata_for_positive_archive(tmp_path) -> None:
+    ledger = RejectionLedger(tmp_path / "branchgenome.jsonl")
+    fingerprint = extract_structural_fingerprint(["Explicit recovery state controls routing."])
+
+    ledger.record(
+        fingerprint,
+        "accepted",
+        "Promoted as an archive elite.",
+        metadata={"archive_cell": "biology:mechanism|n3|q3|l2", "quality_diversity_score": 0.78},
+    )
+
+    accepted = ledger.archive_records(outcome="accepted")
+    assert accepted[0]["metadata"]["archive_cell"] == "biology:mechanism|n3|q3|l2"

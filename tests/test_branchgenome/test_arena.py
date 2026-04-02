@@ -92,6 +92,8 @@ def _make_branch(
     genericity: float = 0.18,
     comfort: float = 0.22,
     promotion: float | None = None,
+    island_key: str = "",
+    archive_cell: str = "",
 ) -> BranchGenome:
     state = state_summary or BranchStateSummary(
         mechanism_purity=0.68,
@@ -131,6 +133,9 @@ def _make_branch(
             future_option_preservation=option_preservation,
             genericity_penalty=genericity,
             comfort_penalty=comfort,
+            quality_diversity_score=0.5 + 0.25 * option_preservation,
+            archive_cell=archive_cell,
+            island_key=island_key,
             score_survival=score,
             score_promotion=promotion if promotion is not None else score + 0.15 * option_preservation,
             perturbations_run=4,
@@ -140,6 +145,8 @@ def _make_branch(
             repeated_family_streak=repeated_family_streak,
         ),
         state_summary=state,
+        island_key=island_key,
+        archive_cell=archive_cell,
     )
 
 
@@ -376,6 +383,42 @@ def test_promote_top_k_prefers_option_preserving_branch_when_scores_are_close() 
     promoted = arena.promote_top_k(1)
 
     assert [branch.branch_id for branch in promoted] == ["option-preserving"]
+
+
+def test_promote_top_k_preserves_distinct_archive_cells() -> None:
+    arena = BranchArena()
+    first = _make_branch(
+        "first",
+        0.62,
+        "Retain explicit recovery memory.",
+        promotion=0.81,
+        island_key="biology:mechanism",
+        archive_cell="biology:mechanism|n3|q3|l2",
+    )
+    second = _make_branch(
+        "second",
+        0.61,
+        "Fuse verification state into admission decisions.",
+        promotion=0.78,
+        island_key="economics:bind",
+        archive_cell="economics:bind|n3|q3|l3",
+    )
+    duplicate = _make_branch(
+        "duplicate",
+        0.60,
+        "A near-duplicate elite from the same archive cell.",
+        promotion=0.77,
+        island_key="biology:mechanism",
+        archive_cell="biology:mechanism|n3|q3|l2",
+    )
+    arena.add_branch(first)
+    arena.add_branch(second)
+    arena.add_branch(duplicate)
+
+    promoted = arena.promote_top_k(2)
+
+    assert {branch.branch_id for branch in promoted} == {"first", "second"}
+    assert set(arena.positive_archive.values()) == {"first", "second"}
 
 
 def test_branch_candidate_for_translation_attaches_branch_metadata() -> None:

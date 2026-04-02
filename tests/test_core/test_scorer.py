@@ -313,7 +313,36 @@ class TestCandidateScorer:
 
         candidates = [_make_candidate(distance=0.8)]
         result = await scorer.score(candidates, _make_structure())
-        assert result[0].scoring_cost_usd == pytest.approx(0.003)
+        assert result[0].scoring_cost_usd == pytest.approx(0.006)
+
+    @pytest.mark.asyncio
+    async def test_mechanism_novelty_flows_into_creativity_score(self):
+        harness = MagicMock()
+        harness.forge = AsyncMock(side_effect=[
+            _make_forge_result(_valid_fidelity_json(0.8)),
+            _make_forge_result(
+                json.dumps(
+                    {
+                        "mechanism_novelty": 0.9,
+                        "target_domain_equivalent": "no close equivalent",
+                        "novelty_reasoning": "The mechanism is still strange in the target domain.",
+                        "would_engineer_reach_for_this": False,
+                    }
+                )
+            ),
+        ])
+
+        scorer = CandidateScorer(
+            harness=harness,
+            embedding_model=_make_mock_embedding_model(distance=0.8),
+            min_domain_distance=0.0,
+        )
+
+        result = await scorer.score([_make_candidate(distance=0.8)], _make_structure())
+
+        assert result[0].mechanism_novelty == pytest.approx(0.9)
+        assert result[0].creativity_score > 0.5
+        assert result[0].novelty_vector.mechanism_distance == pytest.approx(0.9)
 
     @pytest.mark.asyncio
     async def test_all_adjacent_returns_empty(self):
