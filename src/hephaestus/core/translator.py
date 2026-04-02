@@ -1001,7 +1001,13 @@ class SolutionTranslator:
 
         json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
         if not json_match:
-            raise TranslationError(f"No JSON in translation output: {raw[:300]}")
+            # Empty or unparseable output — return safe defaults instead of crashing
+            logger.warning(
+                "Translation returned no parseable JSON for candidate (first 300 chars): %.300s; "
+                "falling back to defaults",
+                raw,
+            )
+            data = {}
 
         data = loads_lenient(json_match.group(), default={}, label="translator")
 
