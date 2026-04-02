@@ -23,6 +23,7 @@ class TestWorkspaceContext:
         ws = _make_workspace(tmp_path)
         ctx = WorkspaceContext.from_directory(ws)
         assert ctx.summary.total_files > 0
+        assert ctx.repo_dossier is not None
         assert ctx.readme_content
         assert "My Project" in ctx.readme_content
 
@@ -36,6 +37,7 @@ class TestWorkspaceContext:
         ctx = WorkspaceContext.from_directory(ws)
         text = ctx.to_prompt_text()
         assert "WORKSPACE CONTEXT" in text
+        assert "REPO DOSSIER" in text
         assert "README" in text
         assert "My Project" in text
 

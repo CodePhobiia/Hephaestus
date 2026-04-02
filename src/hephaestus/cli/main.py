@@ -353,7 +353,7 @@ def cli(
         try:
             from hephaestus.workspace.scanner import WorkspaceScanner
             cwd = Path.cwd()
-            scanner = WorkspaceScanner(cwd, max_files=200)
+            scanner = WorkspaceScanner(cwd, max_files=200, include_repo_dossier=False)
             quick_summary = scanner.scan()
             if quick_summary.total_files >= 2:
                 workspace_root = cwd
@@ -1388,6 +1388,9 @@ def workspace_cmd(directory: Path, model: str, permission: str) -> None:
     console.print(f"  [dim]{summary.total_files} files | {summary.total_lines:,} lines | {summary.primary_language}[/]")
     if summary.git:
         console.print(f"  [dim]Git: {summary.git.branch} {'(dirty)' if summary.git.has_changes else '(clean)'}[/]")
+    if summary.repo_dossier:
+        for line in summary.repo_dossier.summary_lines():
+            console.print(f"  [dim]{line}[/]")
     console.print()
     console.print(f"  [yellow]Workspace mode ready.[/] Use the REPL to chat about and modify this codebase.")
     console.print(f"  [dim]Permission: {permission} | Model: {model}[/]")
@@ -1395,7 +1398,7 @@ def workspace_cmd(directory: Path, model: str, permission: str) -> None:
 
     # Launch REPL with workspace context
     from hephaestus.cli.repl import run_interactive
-    run_interactive(console, model=model)
+    run_interactive(console, model=model, workspace_root=directory)
 
 
 @click.command(
@@ -1428,10 +1431,13 @@ def scan_cmd(directory: Path, tree: bool, as_json: bool) -> None:
         if summary.git:
             data["git"] = {
                 "branch": summary.git.branch,
+                "head_sha": summary.git.head_sha,
                 "has_changes": summary.git.has_changes,
                 "remote": summary.git.remote_url,
             }
-        console.print(_json.dumps(data, indent=2))
+        if summary.repo_dossier:
+            data["repo_dossier"] = summary.repo_dossier.to_dict()
+        console.print(_json.dumps(data, indent=2), soft_wrap=True)
         return
 
     console.print()
@@ -1440,7 +1446,18 @@ def scan_cmd(directory: Path, tree: bool, as_json: bool) -> None:
     console.print(f"  {summary.format_summary()}")
     console.print()
 
-    if tree or not summary.tree:
+    if summary.repo_dossier:
+        console.print("  [bold]Repo Dossier:[/]")
+        for line in summary.repo_dossier.architecture_notes:
+            console.print(f"  - {line}")
+        if summary.repo_dossier.commands:
+            console.print(
+                "  [dim]Commands:[/] "
+                + "; ".join(command.command for command in summary.repo_dossier.commands[:4])
+            )
+        console.print()
+
+    if tree and summary.tree:
         console.print(f"  [bold]Directory Tree:[/]")
         for line in summary.tree.splitlines():
             console.print(f"  {line}")

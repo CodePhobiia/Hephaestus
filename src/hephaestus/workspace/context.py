@@ -5,11 +5,14 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 from hephaestus.workspace.scanner import WorkspaceScanner, WorkspaceSummary
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from hephaestus.workspace.repo_dossier import RepoDossier
 
 
 @dataclass
@@ -21,6 +24,7 @@ class WorkspaceContext:
     """
 
     summary: WorkspaceSummary
+    repo_dossier: "RepoDossier | None" = None
     readme_content: str = ""
     config_contents: dict[str, str] = field(default_factory=dict)  # path -> content
     key_file_contents: dict[str, str] = field(default_factory=dict)  # path -> content
@@ -33,9 +37,13 @@ class WorkspaceContext:
         scanner = WorkspaceScanner(root)
         summary = scanner.scan()
 
-        ctx = cls(summary=summary, budget_chars=budget_chars)
+        ctx = cls(summary=summary, repo_dossier=summary.repo_dossier, budget_chars=budget_chars)
 
         chars_used = len(summary.format_summary()) + len(summary.tree)
+
+        if ctx.repo_dossier is not None:
+            repo_text = ctx.repo_dossier.to_prompt_text(max_chars=min(7_000, budget_chars // 3))
+            chars_used += len(repo_text)
 
         # Load README (most valuable context)
         if summary.readme_path:
@@ -91,10 +99,17 @@ class WorkspaceContext:
             sections.append(self.summary.tree)
             sections.append("")
 
+        if self.repo_dossier:
+            sections.append("--- Repo Dossier ---")
+            sections.append(self.repo_dossier.to_prompt_text(max_chars=7_000))
+            sections.append("")
+
         if self.summary.git:
             git = self.summary.git
             sections.append("--- Git Status ---")
             sections.append(f"Branch: {git.branch}")
+            if git.head_sha:
+                sections.append(f"HEAD: {git.head_sha[:12]}")
             if git.has_changes:
                 sections.append(f"Dirty files: {', '.join(git.dirty_files[:10])}")
             if git.recent_commits:

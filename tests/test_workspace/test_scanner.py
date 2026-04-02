@@ -76,6 +76,7 @@ class TestWorkspaceScanner:
         text = summary.format_summary()
         assert "Files:" in text
         assert "Lines:" in text
+        assert "Repo roots:" in text
 
     def test_ignores_pycache(self, tmp_path: Path):
         ws = _make_workspace(tmp_path)
@@ -91,6 +92,13 @@ class TestWorkspaceScanner:
         summary = WorkspaceScanner(tmp_path).scan()
         assert summary.total_files == 0
         assert summary.primary_language == "unknown"
+        assert summary.repo_dossier is not None
+
+    def test_includes_repo_dossier(self, tmp_path: Path):
+        ws = _make_workspace(tmp_path)
+        summary = WorkspaceScanner(ws).scan()
+        assert summary.repo_dossier is not None
+        assert summary.repo_dossier.code_roots
 
     def test_max_files_limit(self, tmp_path: Path):
         for i in range(20):

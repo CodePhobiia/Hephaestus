@@ -240,6 +240,47 @@ def _get_output(console: Console) -> str:
     return console.file.getvalue()  # type: ignore[attr-defined]
 
 
+def _make_workspace_context(tmp_path: Path) -> Any:
+    from hephaestus.workspace.context import WorkspaceContext
+
+    package = tmp_path / "src" / "demo"
+    (package / "cli").mkdir(parents=True)
+    (package / "core").mkdir(parents=True)
+    (tmp_path / "tests" / "test_cli").mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "cli" / "__init__.py").write_text("", encoding="utf-8")
+    (package / "core" / "__init__.py").write_text("", encoding="utf-8")
+    (package / "cli" / "main.py").write_text(
+        "from demo.core.engine import run_engine\n\n"
+        "def main() -> str:\n"
+        "    return run_engine()\n",
+        encoding="utf-8",
+    )
+    (package / "core" / "engine.py").write_text(
+        "def run_engine() -> str:\n"
+        "    return 'ok'\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tests" / "test_cli" / "test_main.py").write_text(
+        "from demo.cli.main import main\n\n"
+        "def test_main() -> None:\n"
+        "    assert main() == 'ok'\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text("# Demo\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\n"
+        "name = 'demo'\n"
+        "version = '0.1.0'\n"
+        "dependencies = ['pytest>=8.0']\n"
+        "scripts = { demo = 'demo.cli.main:main' }\n"
+        "[project.optional-dependencies]\n"
+        "dev = ['ruff>=0.5']\n",
+        encoding="utf-8",
+    )
+    return WorkspaceContext.from_directory(tmp_path)
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 & 2: Core commands
 # ---------------------------------------------------------------------------
@@ -281,6 +322,22 @@ class TestCoreCommands:
         output = _get_output(console)
         assert "Lens engine" in output
         assert "bundle:adaptive:repl" in output
+
+    @pytest.mark.asyncio
+    async def test_cmd_status_includes_repo_awareness(self, tmp_path: Path) -> None:
+        from hephaestus.cli.repl import _cmd_status
+
+        console = _console()
+        state = _make_session()
+        state.workspace_root = tmp_path
+        state.workspace_context = _make_workspace_context(tmp_path)
+
+        await _cmd_status(console, state, "")
+
+        output = _get_output(console)
+        assert "Repo awareness" in output
+        assert "Repo Awareness" in output
+        assert "Components" in output
 
     @pytest.mark.asyncio
     async def test_cmd_model_show(self) -> None:
@@ -392,6 +449,22 @@ class TestCoreCommands:
         await _cmd_context(console, state, "")
         assert "domain knowledge" in _get_output(console)
 
+    @pytest.mark.asyncio
+    async def test_cmd_context_includes_repo_dossier(self, tmp_path: Path) -> None:
+        from hephaestus.cli.repl import _cmd_context
+
+        console = _console()
+        state = _make_session()
+        state.workspace_root = tmp_path
+        state.workspace_context = _make_workspace_context(tmp_path)
+
+        await _cmd_context(console, state, "")
+
+        output = _get_output(console)
+        assert "Repo Dossier" in output
+        assert "Suggested Commands" in output
+        assert "Subsystems" in output
+
 
 # ---------------------------------------------------------------------------
 # Phase 2: Commands that need an invention
@@ -441,6 +514,24 @@ class TestInventionCommands:
         state.total_cost_usd = 0.92
         await _cmd_usage(console, state, "")
         assert "$0.92" in _get_output(console)
+
+
+class TestWorkspaceCommands:
+    @pytest.mark.asyncio
+    async def test_cmd_ws_includes_repo_dossier_notes(self, tmp_path: Path) -> None:
+        from hephaestus.cli.repl import _cmd_ws
+
+        console = _console()
+        state = _make_session()
+        state.workspace_root = tmp_path
+        state.workspace_context = _make_workspace_context(tmp_path)
+
+        await _cmd_ws(console, state, "")
+
+        output = _get_output(console)
+        assert "Repo cache" in output
+        assert "Components:" in output
+        assert "Commands:" in output
 
 
 # ---------------------------------------------------------------------------

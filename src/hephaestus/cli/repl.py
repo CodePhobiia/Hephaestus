@@ -215,6 +215,13 @@ def _maybe_attr(obj: Any, name: str, default: Any = None) -> Any:
     return getattr(obj, name, default)
 
 
+def _repo_dossier_from_state(state: SessionState) -> Any | None:
+    workspace_context = getattr(state, "workspace_context", None)
+    if workspace_context is None:
+        return None
+    return getattr(workspace_context, "repo_dossier", None)
+
+
 def _inject_workspace_context(problem: str, state: SessionState) -> str:
     """Augment a pipeline problem with repo/workspace context when available.
 
@@ -410,6 +417,16 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
     table.add_row("Output mode", f"[cyan]{getattr(state.config, 'output_mode', 'MECHANISM')}[/]")
     table.add_row("Context additions", f"[cyan]{len(state.context_items)} items[/]")
     table.add_row("Auto-save", f"[cyan]{'ON' if state.config.auto_save else 'OFF'}[/]")
+    repo_dossier = _repo_dossier_from_state(state)
+    if state.workspace_root:
+        table.add_row("Workspace", f"[cyan]{state.workspace_root}[/]")
+    if repo_dossier is not None:
+        table.add_row(
+            "Repo awareness",
+            f"[cyan]{repo_dossier.component_count} components[/], "
+            f"[cyan]{len(repo_dossier.commands)} commands[/], "
+            f"[cyan]{len(repo_dossier.hotspots)} hotspots[/]",
+        )
     if state.session is not None and getattr(state.session, "lens_engine_state", None) is not None:
         lens_state = state.session.lens_engine_state
         table.add_row("Lens engine", f"[cyan]{lens_state.summary()}[/]")
@@ -432,6 +449,15 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
             border_style="dim yellow",
         )
     )
+    if repo_dossier is not None:
+        console.print()
+        console.print(
+            Panel(
+                repo_dossier.format_status_text(),
+                title="[bold yellow]Repo Awareness[/]",
+                border_style="dim yellow",
+            )
+        )
     console.print()
 
 
@@ -894,6 +920,22 @@ async def _cmd_ws(console: Console, state: SessionState, args: str) -> None:
         console.print(f"  [dim]Files:[/] {s.total_files} | [dim]Lines:[/] {s.total_lines:,} | [dim]Language:[/] {s.primary_language}")
         if s.git:
             console.print(f"  [dim]Git:[/] {s.git.branch} {'(dirty)' if s.git.has_changes else '(clean)'}")
+        repo_dossier = _repo_dossier_from_state(state)
+        if repo_dossier is not None:
+            console.print(f"  [dim]Repo cache:[/] {repo_dossier.cache_state} @ {repo_dossier.cache_path}")
+            for note in repo_dossier.architecture_notes[:3]:
+                console.print(f"  [dim]-[/] {note}")
+            if repo_dossier.components:
+                names = ", ".join(component.name for component in repo_dossier.components[:8])
+                extra = len(repo_dossier.components) - min(len(repo_dossier.components), 8)
+                if extra > 0:
+                    names += f" (+{extra} more)"
+                console.print(f"  [dim]Components:[/] {names}")
+            if repo_dossier.commands:
+                console.print(
+                    "  [dim]Commands:[/] "
+                    + "; ".join(command.command for command in repo_dossier.commands[:4])
+                )
         console.print()
 
 
@@ -1035,6 +1077,16 @@ async def _cmd_context(console: Console, state: SessionState, args: str) -> None
                 border_style="dim yellow",
             )
         )
+        repo_dossier = _repo_dossier_from_state(state)
+        if repo_dossier is not None:
+            console.print()
+            console.print(
+                Panel(
+                    repo_dossier.format_context_text(),
+                    title="[bold yellow]Repo Dossier[/]",
+                    border_style="dim yellow",
+                )
+            )
         console.print()
 
 

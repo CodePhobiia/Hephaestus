@@ -11,6 +11,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from hephaestus.cli.main import cli
+from hephaestus.cli.main import cli, scan_cmd, workspace_cmd
 from hephaestus.lenses.state import LensBundleMember, LensBundleProof, LensEngineState
 from hephaestus.research.perplexity import BenchmarkCase, BenchmarkCorpus
 
@@ -223,6 +224,34 @@ def _pantheon_runtime() -> dict[str, Any]:
         "total_duration_seconds": 3.5,
         "agent_call_counts": {"athena": 2, "hermes": 2, "apollo": 1},
     }
+
+
+def _make_workspace_dir(tmp_path: Path) -> Path:
+    package = tmp_path / "src" / "demo"
+    (package / "cli").mkdir(parents=True)
+    (tmp_path / "tests").mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "cli" / "__init__.py").write_text("", encoding="utf-8")
+    (package / "cli" / "main.py").write_text(
+        "def main() -> None:\n"
+        "    return None\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tests" / "test_main.py").write_text(
+        "def test_smoke() -> None:\n"
+        "    assert True\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text("# Demo\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\n"
+        "name = 'demo'\n"
+        "version = '0.1.0'\n"
+        "dependencies = ['pytest>=8.0']\n"
+        "scripts = { demo = 'demo.cli.main:main' }\n",
+        encoding="utf-8",
+    )
+    return tmp_path
 
 
 def _lens_engine_state() -> LensEngineState:
@@ -1051,3 +1080,36 @@ class TestSDKClient:
 
             assert PipelineStage.COMPLETE in stages_seen
             assert final_report is report
+
+
+class TestWorkspaceSurfaces:
+    def test_scan_cmd_json_includes_repo_dossier(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        repo = _make_workspace_dir(tmp_path)
+
+        result = runner.invoke(scan_cmd, [str(repo), "--json"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert "repo_dossier" in payload
+        assert payload["repo_dossier"]["code_roots"] == ["src/demo"]
+        assert payload["repo_dossier"]["components"]
+
+    def test_workspace_cmd_passes_workspace_root(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        runner = CliRunner()
+        repo = _make_workspace_dir(tmp_path)
+        captured: dict[str, Any] = {}
+
+        def _fake_run_interactive(console: Any, model: str, layered_config: Any = None, workspace_root: Any = None) -> None:
+            captured["model"] = model
+            captured["workspace_root"] = workspace_root
+
+        import hephaestus.cli.repl as repl_module
+
+        monkeypatch.setattr(repl_module, "run_interactive", _fake_run_interactive)
+
+        result = runner.invoke(workspace_cmd, [str(repo), "--model", "both"])
+
+        assert result.exit_code == 0
+        assert captured["model"] == "both"
+        assert captured["workspace_root"] == repo

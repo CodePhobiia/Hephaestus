@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from hephaestus.workspace.repo_dossier import RepoDossier
 
 _IGNORE_DIRS = {
     ".git", ".hg", ".svn", "__pycache__", "node_modules", ".venv", "venv",
@@ -39,6 +41,7 @@ class FileInfo:
     extension: str
     size_bytes: int
     line_count: int
+    mtime_ns: int = 0
     is_config: bool = False
 
 
@@ -54,6 +57,7 @@ class DirectoryInfo:
 class GitInfo:
     """Git repository information."""
     branch: str = ""
+    head_sha: str = ""
     has_changes: bool = False
     dirty_files: list[str] = field(default_factory=list)
     recent_commits: list[str] = field(default_factory=list)
@@ -75,6 +79,8 @@ class WorkspaceSummary:
     readme_path: str = ""
     git: GitInfo | None = None
     tree: str = ""  # formatted directory tree
+    files: list[FileInfo] = field(default_factory=list)
+    repo_dossier: "RepoDossier | None" = None
 
     @property
     def primary_language(self) -> str:
@@ -98,15 +104,26 @@ class WorkspaceSummary:
             lines.append(f"Entry points: {', '.join(self.entry_points[:5])}")
         if self.git:
             lines.append(f"Git: {self.git.branch} {'(dirty)' if self.git.has_changes else '(clean)'}")
+        if self.repo_dossier:
+            lines.extend(self.repo_dossier.summary_lines())
         return "\n".join(lines)
 
 
 class WorkspaceScanner:
     """Scans a directory to build a WorkspaceSummary."""
 
-    def __init__(self, root: Path | str, max_files: int = 5000) -> None:
+    def __init__(
+        self,
+        root: Path | str,
+        max_files: int = 5000,
+        *,
+        include_repo_dossier: bool = True,
+        persist_repo_dossier: bool = True,
+    ) -> None:
         self.root = Path(root).resolve()
         self.max_files = max_files
+        self.include_repo_dossier = include_repo_dossier
+        self.persist_repo_dossier = persist_repo_dossier
 
     def scan(self) -> WorkspaceSummary:
         """Perform full workspace scan."""
@@ -117,6 +134,7 @@ class WorkspaceScanner:
 
         files: list[FileInfo] = []
         self._walk(self.root, files)
+        summary.files = list(files)
 
         summary.total_files = len(files)
         summary.total_size_bytes = sum(f.size_bytes for f in files)
@@ -150,6 +168,21 @@ class WorkspaceScanner:
         # Git info
         summary.git = self._scan_git()
 
+        if self.include_repo_dossier:
+            try:
+                from hephaestus.workspace.repo_dossier import build_repo_dossier
+
+                summary.repo_dossier = build_repo_dossier(
+                    self.root,
+                    files=files,
+                    primary_language=summary.primary_language,
+                    config_files=summary.config_files,
+                    entry_points=summary.entry_points,
+                    persist=self.persist_repo_dossier,
+                )
+            except Exception as exc:
+                logger.warning("Repo dossier build failed for %s: %s", self.root, exc)
+
         # Tree
         summary.tree = self._build_tree(max_depth=3, max_entries=50)
 
@@ -176,12 +209,14 @@ class WorkspaceScanner:
                     continue
                 try:
                     size = entry.stat().st_size
+                    mtime_ns = entry.stat().st_mtime_ns
                     if size > 1_000_000:  # skip files > 1MB
                         continue
                     line_count = entry.read_text(encoding="utf-8", errors="replace").count("\n")
                 except (OSError, UnicodeDecodeError):
                     size = 0
                     line_count = 0
+                    mtime_ns = 0
 
                 rel = str(entry.relative_to(self.root))
                 files.append(FileInfo(
@@ -189,6 +224,7 @@ class WorkspaceScanner:
                     extension=ext,
                     size_bytes=size,
                     line_count=line_count,
+                    mtime_ns=mtime_ns,
                     is_config=entry.name in _CONFIG_FILES,
                 ))
 
@@ -202,6 +238,10 @@ class WorkspaceScanner:
         try:
             info.branch = subprocess.run(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, cwd=self.root, timeout=5,
+            ).stdout.strip()
+            info.head_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
                 capture_output=True, text=True, cwd=self.root, timeout=5,
             ).stdout.strip()
 
