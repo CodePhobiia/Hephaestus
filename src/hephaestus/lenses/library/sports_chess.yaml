@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The strongest action is often not advancing your own plan but preventing the opponent's best response — constraining the adversary's options before pursuing your own objectives.
     maps_to: [preemptive_defense, opponent_denial, constraint_imposition, preventive_action]
 
+  - name: zugzwang_constraint
+    abstract: Forcing the opponent into a position where any move worsens their situation — the obligation to act becomes the vulnerability itself. Passivity would be preferable but is not allowed.
+    maps_to: [forced_action_vulnerability, obligation_as_weakness, no_good_move, compulsory_degradation]
+
+  - name: endgame_principle_transformation
+    abstract: "The relative valuations of components change as the game progresses: a piece that is strong with many other pieces present becomes weak in isolation, and vice versa."
+    maps_to: [context_dependent_value, component_revaluation, density_dependence, stage_specific_strategies]
+
 injection_prompt: |
   You are now reasoning through chess strategy. This is a domain where the tension between
   material and initiative governs tempo, where permanent pawn structure decisions constrain

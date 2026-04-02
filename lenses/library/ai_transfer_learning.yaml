@@ -1,0 +1,39 @@
+name: Transfer Learning & Meta-Learning
+domain: artificial_intelligence
+subdomain: transfer_learning
+
+axioms:
+  - "Task similarity determines transfer utility: knowledge transfers well between tasks that share underlying structure (shared features, similar decision boundaries, common subtasks) and harms performance when tasks are structurally dissimilar. Negative transfer is not noise — it is active harm from misleading prior."
+  - "Representation reuse is the core mechanism of transfer: the features learned for task A serve task B when the representations capture structure common to both domains. The reusability of a representation is measured by how much downstream training speed or sample efficiency it provides."
+  - "Catastrophic forgetting occurs when learning new information overwrites representations needed for old tasks. It is not a memory capacity problem — it is an optimization interference problem. Elastic weight consolidation counters this by constraining the modification of parameters important for previous tasks."
+  - "Few-shot learning succeeds when the model has learned an inductive bias from prior experience, not when it memorizes individual examples. The meta-distribution of training tasks determines what kinds of generalization the model learns to perform from limited data."
+  - "Domain adaptation is asymmetric: adapting from a rich source domain to a sparse target domain is easier than the reverse, because the source provides more information. The adaptation direction matters — the richer domain anchors the transfer."
+  - "Learning-to-learn (meta-learning) is not just another task — it changes the system's inductive bias, which changes what it will learn from all future tasks. The meta-learning objective determines the shape of learning itself, not just the output."
+
+structural_patterns:
+  - name: structure_based_transfer
+    abstract: Knowledge transfer succeeds when tasks share underlying structure and fails when they don't. The similarity metric is not surface features but deep structural commonality — shared subroutines, overlapping decision boundaries, common generative processes.
+    maps_to: [structural_similarity, transfer_utility, negative_transfer_avoidance, cross_domain_mapping]
+
+  - name: representation_reusability
+    abstract: Learned representations transfer between tasks when they capture domain-invariant structure. The transfer quality is measured by downstream sample efficiency, not by representation similarity metrics.
+    maps_to: [feature_transfer, domain_invariance, sample_efficiency, reuse_measurement]
+
+  - name: optimization_interference
+    abstract: Learning new information can degrade old knowledge not through storage competition but through parameter interference — gradient updates for new tasks push parameters in directions that harm old task performance. The conflict is in parameter space, not memory space.
+    maps_to: [parameter_interference, gradient_conflict, memory_preservation, importance_weighting]
+
+  - name: inductive_bias_learning
+    abstract: Few-shot capability comes from having learned the right inductive bias through exposure to a diverse meta-distribution of tasks, not from the specific content of the few examples. The examples only select among learned hypotheses.
+    maps_to: [bias_acquisition, task_distribution_shaping, hypothesis_selection, meta_prior]
+
+  - name: asymmetric_adaptation
+    abstract: Transfer from a rich source to a sparse target succeeds more easily than the reverse because the source provides more anchor information. The direction of adaptation is determined by information asymmetry between domains.
+    maps_to: [directional_transfer, information_asymmetry, rich_to_sparse, adaptation_anchor]
+
+  - name: meta_objective_shaping
+    abstract: Learning how to learn changes the system's future learning capacity, not just its current output. The meta-learning objective determines the shape and speed of all subsequent learning — it is a second-order optimization with compounding downstream effects.
+    maps_to: [second_order_optimization, learning_acceleration, capacity_modification, compounding_effects]
+
+injection_prompt: |
+  You are now reasoning through transfer learning and meta-learning. Knowledge transfers when underlying structure is shared, not when surface features match. Representation reuse — not memorization — is the mechanism. Negative transfer is active harm, not just zero benefit. Ask: what structural commonality exists between domains? Does the representation capture invariant structure or domain-specific artifacts? Is optimization for new tasks interfering with old knowledge? What inductive bias was learned from the training task distribution, and does it serve this target? Is the transfer direction from rich to sparse? The meta-learning objective changes what you learn from everything after — choose it carefully.

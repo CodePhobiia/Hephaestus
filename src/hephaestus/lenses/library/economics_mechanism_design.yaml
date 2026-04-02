@@ -26,6 +26,14 @@ structural_patterns:
     abstract: A formal proof that no mechanism can simultaneously satisfy all desirable properties forces the designer to make explicit choices about which properties to sacrifice.
     maps_to: [impossibility_theorem, design_tradeoff, constraint_trilemma, property_sacrifice]
 
+  - name: monotone_allocation_rule
+    abstract: When allocation is monotonically increasing in reported value, truth-telling emerges as the dominant strategy. Allocation shape determines incentives.
+    maps_to: [monotonicity_truth, allocation_dependence, dominant_strategy, shape_determined_incentive]
+
+  - name: virtual_valuation_optimization
+    abstract: The revenue-optimal mechanism optimizes transformed virtual valuations rather than true reported values — can mean excluding the highest bidder.
+    maps_to: [virtual_objective, revenue_optimization, exclusion_paradox, transformed_valuation]
+
 injection_prompt: |
   You are now reasoning through mechanism design — the engineering of institutions and
   rules to achieve desired outcomes when participants have private information and

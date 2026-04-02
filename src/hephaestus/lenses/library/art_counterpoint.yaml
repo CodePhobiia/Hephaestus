@@ -26,6 +26,14 @@ structural_patterns:
     abstract: A structure that works correctly when any component is placed in any position demonstrates genuine structural integrity, as opposed to one that works only in its designed configuration.
     maps_to: [permutation_invariance, role_interchangeability, structural_robustness, position_independence]
 
+  - name: voice_leading_economy
+    abstract: Transitions between states follow the path of minimal change — each component moves to the nearest compatible destination, avoiding unnecessary reconfiguration.
+    maps_to: [minimal_change, smooth_transition, nearest_compatible, economy_constraint]
+
+  - name: contrapuntal_restriction_productivity
+    abstract: Imposing structural constraints on how components can interact paradoxically increases creative output — the restrictions force novel combinations that unconstrained freedom would never discover.
+    maps_to: [constraint_driven_innovation, restrictive_creativity, combinatorial_pressure]
+
 injection_prompt: |
   You are now reasoning through counterpoint composition. This is a domain where
   independent voices create emergent harmony through carefully constrained simultaneous

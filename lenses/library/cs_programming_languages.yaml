@@ -1,0 +1,39 @@
+name: Programming Language Design
+domain: computer_science
+subdomain: programming_languages
+
+axioms:
+  - "Parsing strategy determines expressiveness: LL parsers cannot handle left recursion, LR parsers handle more grammars but produce less intuitive error messages, PEG parsers resolve ambiguity by ordering — the parser's limitations become the language's limitations."
+  - "Evaluation strategy (eager vs lazy) is not a performance detail — it determines which programs terminate, which abstractions are possible, and how programmers reason about control flow. Lazy evaluation enables infinite data structures; eager evaluation enables predictable resource usage."
+  - "The syntax/semantics gap is where programmer intuition breaks: syntactically similar constructs may have dramatically different semantics, and semantically equivalent constructs may look nothing alike. Good language design minimizes the distance between syntactic similarity and semantic similarity."
+  - "Polymorphism comes in layers: ad-hoc (overloading), parametric (generics), and inclusion (subtyping). Each layer introduces different expressiveness, different type inference challenges, and different runtime costs. Combining layers creates interaction effects that complicate the entire type system."
+  - "A macro system turns the language into its own meta-language: code that writes code at compile time. Hygienic macros prevent variable capture and maintain lexical scoping, making them composable; unhygienic macros are more powerful but fragile in composition."
+  - "Module systems manage namespace, visibility, and linkage — they are the boundary between translation units. The module system's design determines whether programs can be understood in isolation (strong encapsulation) or require whole-program knowledge (leaky boundaries)."
+
+structural_patterns:
+  - name: grammar_expressiveness_constraint
+    abstract: The parsing strategy used to process structure determines what forms of expression are possible, impossible, or ambiguous. The parser's formal limitations become the system's expressiveness ceiling.
+    maps_to: [parsing_limits, expressiveness_bounds, ambiguity_resolution, formal_grammar_constraints]
+
+  - name: evaluation_strategy_consequences
+    abstract: The order in which components are evaluated fundamentally determines which computations terminate, which abstractions compose, and how resource usage behaves. It is a semantic property, not an optimization detail.
+    maps_to: [termination_properties, abstraction_composition, resource_predictability, evaluation_order]
+
+  - name: syntax_semantics_alignment
+    abstract: Effective communication requires alignment between structural similarity and meaning similarity — things that look alike should behave alike, and things that behave alike should look alike. Misalignment creates cognitive traps.
+    maps_to: [cognitive_alignment, intuitive_mapping, structural_meaning_coherence, communication_design]
+
+  - name: polymorphism_layer_interaction
+    abstract: Multiple mechanisms for behavioral variation (overloading, parametrization, subtyping) each introduce expressiveness and complexity. Their interactions create emergent properties not present in any single layer alone.
+    maps_to: [variation_mechanisms, layer_interaction, expressiveness_complexity_tradeoff, combinatorial_semantics]
+
+  - name: hygienic_metaprogramming
+    abstract: Code that generates code must preserve the lexical scoping relationships of both the generator and the generated code. Hygiene ensures that compositional metaprogramming does not accidentally capture or shadow variables.
+    maps_to: [scope_preservation, code_generation, lexical_hygiene, compositional_metaprogramming]
+
+  - name: modularity_boundary_design
+    abstract: The boundary between system components must simultaneously hide internal detail (encapsulation), expose necessary interfaces (API design), and support independent evolution (versioning). These pull in different directions.
+    maps_to: [information_hiding, interface_exposure, independent_evolution, boundary_design]
+
+injection_prompt: |
+  You are now reasoning through programming language design. Every language is a set of choices about what computations are natural and which are awkward — parsing strategy, evaluation order, polymorphism mechanisms, metaprogramming boundaries. Ask: what is the grammar of this system's expressiveness? Where are the syntax/semantics misalignments that create cognitive traps? How do different variation mechanisms (overloading, parametrization, abstraction) interact? What does the module system hide and what does it leak? The language designer's choices become the programmer's constraints — make them wisely.

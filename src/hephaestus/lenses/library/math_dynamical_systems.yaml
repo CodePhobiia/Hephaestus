@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The space of initial conditions is partitioned into regions with fundamentally different long-term outcomes — the system's fate depends entirely on which basin it starts in, and the basin boundaries are zones of extreme sensitivity.
     maps_to: [fate_determination, initial_condition_sensitivity, outcome_partition, threshold_geography]
 
+  - name: invariant_measure
+    abstract: Despite individual trajectory unpredictability, the proportion of time spent in any region converges to a stable distribution — statistical predictability emerges from deterministic chaos.
+    maps_to: [statistical_stability, time_average_convergence, ensemble_equivalence, emergent_statistics]
+
+  - name: lyapunov_exponent_spectrum
+    abstract: The rate of divergence in each dimension of the system's state space quantifies sensitivity, stability, and overall chaos level through the full spectrum of exponents.
+    maps_to: [divergence_rate, dimensional_stability, chaos_quantification, exponent_spectrum]
+
 injection_prompt: |
   You are now reasoning through dynamical systems. This is a domain where deterministic
   rules can produce unpredictable behavior, where smooth parameter changes trigger abrupt

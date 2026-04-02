@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The system's dynamic behavior is controlled not by the abundant majority but by the scarce minority whose injection, transport, and recombination determine device function.
     maps_to: [minority_influence, bottleneck_control, scarce_resource_dominance, marginal_actor]
 
+  - name: quantum_confinement
+    abstract: When device dimensions approach the carrier wavelength, classical physics breaks down and quantum effects dominate — shrinking further changes behavior qualitatively, not just quantitatively.
+    maps_to: [scale_dependent_physics, quantum_transition, dimensional_crossover, nonlinear_scaling]
+
+  - name: leakage_power_floor
+    abstract: Even when the device is nominally off, subthreshold leakage current flows and generates heat. As dimensions shrink, the off-state leakage rises exponentially, creating a power floor.
+    maps_to: [baseline_leakage, exponential_growth, minimum_dissipation, thermal_floor]
+
 injection_prompt: |
   You are now reasoning through semiconductor doping. This is a domain where precisely
   controlled impurities create functional boundaries, where forbidden energy gaps define

@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The market's collective beliefs about future uncertainty are encoded in a complex surface of implied parameters, revealing expectations about tail risk, regime change, and time-varying volatility.
     maps_to: [collective_belief, market_expectations, implied_model, wisdom_of_crowds]
 
+  - name: delta_hedge_replication
+    abstract: A continuously rebalanced portfolio replicates the derivative's payoff, making the derivative's price independent of beliefs about future direction.
+    maps_to: [payoff_replication, continuous_rebalancing, belief_independence, hedge_equivalence]
+
+  - name: volatility_surface_arbitrage
+    abstract: Options with different strikes and expirations encode different implied volatilities — inconsistencies create arbitrage that forces convergence.
+    maps_to: [surface_inconsistency, arbitrage_convergence, implied_structure, cross_strike_arbitrage]
+
 injection_prompt: |
   You are now reasoning through options pricing. This is a domain where the value of
   flexibility can be precisely quantified, where convexity turns uncertainty into value,

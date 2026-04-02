@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Observers systematically attribute behavior to the actor's disposition while actors attribute their own behavior to situational forces — the same behavior generates fundamentally different causal explanations depending on perspective.
     maps_to: [perspective_bias, dispositional_attribution, situational_blindness, observer_actor_gap]
 
+  - name: status_hierarchy_formation
+    abstract: Any group of interacting agents spontaneously develops a dominance hierarchy, even when members value equality. The hierarchy reasserts itself even after active suppression.
+    maps_to: [spontaneous_hierarchy, status_dynamics, equality_resistance, natural_dominance]
+
+  - name: information_cascade_failure
+    abstract: Agents sequentially make decisions based on others' prior choices rather than private information, producing collective agreement that is confident but may be entirely wrong.
+    maps_to: [sequential_agreement, private_signal_suppression, herding_dynamics, confidence_accuracy_gap]
+
 injection_prompt: |
   You are now reasoning through social psychology. This is a domain where cognitive
   constraints shape social structure, where group identity drives systematic bias, and

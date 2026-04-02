@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Participants rationally understate their true valuations because the competitive structure penalizes honesty — the optimal strategy is to reveal less than you know.
     maps_to: [bid_shading, strategic_misrepresentation, information_withholding, preference_concealment]
 
+  - name: bid_shading_equilibrium
+    abstract: Bidders reduce bids below true valuation by an amount depending on competitor count and valuation distribution — optimal shading is computable.
+    maps_to: [underbidding_equilibrium, competitive_convergence, valuation_discount, strategic_reduction]
+
+  - name: common_value_uncertainty
+    abstract: When the item has the same value to all but that value is unknown, the winner is the bidder who most overestimated — winner's curse is unavoidable.
+    maps_to: [overestimation_selection, common_bias, structural_disadvantage, information_asymmetry]
+
 injection_prompt: |
   You are now reasoning through auction theory. This is a domain where competitive
   allocation mechanisms create strategic incentives to misrepresent preferences, where

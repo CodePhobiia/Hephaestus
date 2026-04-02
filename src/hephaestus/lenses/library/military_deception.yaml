@@ -26,6 +26,14 @@ structural_patterns:
     abstract: A sophisticated target who suspects deception may dismiss true information, allowing the deceiver to present truth in a context where it will be disbelieved — exploiting the adversary's own sophistication against them.
     maps_to: [recursive_deception, meta_game, sophistication_exploitation, truth_as_weapon]
 
+  - name: controlled_information_leakage
+    abstract: Selectively allowing some true information to be discovered establishes target confidence in the source, making subsequent deception more credible.
+    maps_to: [credibility_establishment, selective_truth, source_validation, trust_building]
+
+  - name: ambiguous_signal_generation
+    abstract: Rather than sending clearly false information, the system generates signals that are consistent with multiple interpretations — only the favored one becomes obvious in hindsight.
+    maps_to: [multi_interpretation, retroactive_clarity, plausible_deniability, signal_ambiguity]
+
 injection_prompt: |
   You are now reasoning through deception operations. This is a domain where information
   is a weapon, where the adversary's existing beliefs are the primary vulnerability, and

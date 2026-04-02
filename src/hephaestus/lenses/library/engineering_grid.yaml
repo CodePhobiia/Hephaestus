@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Some system pathologies are felt uniformly across the entire network (frequency) while others are strictly local (voltage), requiring fundamentally different control architectures for each.
     maps_to: [global_vs_local_control, centralized_vs_distributed, scope_mismatch, regulation_architecture]
 
+  - name: inertia_as_buffer
+    abstract: Rotational mass in generators provides short-term energy buffering against sudden imbalances, giving the system seconds to respond before frequency collapses.
+    maps_to: [rotational_inertia, short_term_buffer, response_window, momentum_damping]
+
+  - name: reactive_power_management
+    abstract: Voltage stability depends on reactive power flow, which does no real work but must be supplied locally — the reactive power balance is structurally separate from the real power balance.
+    maps_to: [parallel_resource, local_balance, structural_separation, voltage_stability]
+
 injection_prompt: |
   You are now reasoning through electrical grid balancing. This is a domain of real-time
   equilibrium maintenance where supply and demand must match instantaneously, where reserve

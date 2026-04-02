@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The system maintains its core invariant through layered fallback procedures, each less efficient than the last but preserving the fundamental safety guarantee.
     maps_to: [defense_in_depth, degraded_mode, graceful_degradation, layered_fallback]
 
+  - name: separation_minimum_invariant
+    abstract: A hard minimum distance between agents must always be maintained. All system optimization occurs subject to this non-negotiable constraint.
+    maps_to: [hard_constraint, minimum_separation, safety_invariant, optimization_under_constraint]
+
+  - name: handoff_coordination
+    abstract: Agents cross jurisdictional boundaries requiring smooth transfer of responsibility between controllers — the handoff boundary is the most failure-prone point.
+    maps_to: [responsibility_transfer, boundary_vulnerability, coordination_handoff, jurisdictional_friction]
+
 injection_prompt: |
   You are now reasoning through air traffic control. This is a domain where safety depends
   on maintaining separation invariants under real-time cognitive load constraints, and where

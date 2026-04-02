@@ -26,6 +26,14 @@ structural_patterns:
     abstract: System resilience under stress depends not on the performance of the best individual variant but on whether the population contains any variant adapted to the specific stress encountered.
     maps_to: [portfolio_diversity, optionality, population_heterogeneity, adaptive_reserve]
 
+  - name: successional_deployment
+    abstract: Components are sequenced through distinct developmental stages, each stage creating the conditions necessary for the next.
+    maps_to: [developmental_sequencing, stage_preparation, complexity_buildup, succession]
+
+  - name: calcified_commitment
+    abstract: Each component permanently anchors itself to the growing structure, creating a shared legacy that future components depend on.
+    maps_to: [irreversible_anchoring, shared_legacy, forward_accumulation, commitment_lock]
+
 injection_prompt: |
   You are now reasoning through coral reef symbiosis. This is a domain of deep metabolic
   interdependence, environmental engineering, and stress-triggered phase transitions.

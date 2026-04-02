@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Every committed action creates a momentary structural vulnerability, and the most devastating response targets not the action itself but the window of exposure that the commitment creates.
     maps_to: [counter_timing, vulnerability_window, commitment_penalty, overextension_exploitation]
 
+  - name: energy_pacing_strategy
+    abstract: Finite energy reserves must be allocated across the full duration of engagement — early expenditure that exceeds sustainable rate creates late-stage vulnerability regardless of skill.
+    maps_to: [resource_pacing, sustainable_rate, duration_planning, late_vulnerability]
+
+  - name: distance_management_initiative
+    abstract: Control of the distance at which engagement occurs is more strategically valuable than individual technique — the agent controlling distance controls the terms of interaction.
+    maps_to: [engagement_range_control, strategic_distance, interaction_terms, range_advantage]
+
 injection_prompt: |
   You are now reasoning through boxing mechanics. This is a domain where spatial control,
   angular geometry, and timing create asymmetric advantages, and where committed offense

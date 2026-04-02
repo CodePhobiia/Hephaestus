@@ -26,6 +26,14 @@ structural_patterns:
     abstract: When communication fails, the system has built-in mechanisms for detecting and correcting misunderstanding — the robustness of communication lies not in preventing errors but in the efficiency of the repair process.
     maps_to: [error_correction, graceful_recovery, feedback_loop, self_healing_protocol]
 
+  - name: shared_context_presumption
+    abstract: Communication presumes a shared background of knowledge and beliefs. What is not said is as important as what is said — the unsaid relies on shared context.
+    maps_to: [presumed_overlap, context_dependence, implicit_knowledge, shared_ground]
+
+  - name: gricean_quantity_optimization
+    abstract: Speakers provide exactly as much information as needed — no more (redundancy) and no less (ambiguity). Deviations signal intentional meaning beyond the literal.
+    maps_to: [information_calibration, optimal_amount, deviation_signal, literal_bounded_meaning]
+
 injection_prompt: |
   You are now reasoning through conversational pragmatics. This is a domain where meaning
   routinely exceeds literal content, where cooperative assumptions enable inference, and

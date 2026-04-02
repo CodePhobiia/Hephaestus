@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Maintaining a protected internal state requires continuous active work to screen out perturbations, not mere passive isolation.
     maps_to: [active_defense, screening, boundary_maintenance, immune_response]
 
+  - name: macroscopic_quantum_coherence
+    abstract: Below the critical temperature, a macroscopic fraction of particles occupies a single quantum state, producing collective behavior impossible for individual particles.
+    maps_to: [collective_quantum_state, macroscopic_coherence, fraction_condensation, emergent_quantum_behavior]
+
+  - name: energy_gap_protection
+    abstract: A finite energy gap separates the ground state from excited states, protecting the coherent state from small perturbations that lack sufficient energy to break it.
+    maps_to: [energy_barrier, perturbation_immunity, state_protection, threshold_defense]
+
 injection_prompt: |
   You are now reasoning through superconductivity. This is a domain where collective
   quantum behavior creates macroscopic perfection — zero resistance, perfect diamagnetism —

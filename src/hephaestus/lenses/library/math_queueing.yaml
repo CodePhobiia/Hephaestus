@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Combining multiple isolated queues into a single shared queue reduces average wait time without adding capacity, because statistical multiplexing allows idle capacity in one queue to absorb bursts from another.
     maps_to: [resource_pooling, statistical_multiplexing, shared_capacity, consolidation_benefit]
 
+  - name: burstable_capacity_design
+    abstract: Designing for sustained peak utilization wastes resources; instead, systems provide excess capacity for bursts with bounded overflow probability.
+    maps_to: [peak_vs_sustained, overflow_bounding, burst_accommodation, probabilistic_capacity]
+
+  - name: jackson_network_decomposition
+    abstract: Networks of queues with Poisson arrivals and exponential service decompose into independent single queues, enabling analysis of complex systems by solving each component separately.
+    maps_to: [independent_decomposition, product_form_solution, separable_analysis, network_factorization]
+
 injection_prompt: |
   You are now reasoning through queueing theory. This is a domain where utilization and
   latency have a nonlinear relationship, where variance matters as much as averages, and

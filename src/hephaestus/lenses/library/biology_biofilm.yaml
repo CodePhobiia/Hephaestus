@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Positional differences within a shared structure create functional specialization among genetically identical agents, with the architecture itself generating role differentiation.
     maps_to: [positional_specialization, structural_roles, emergent_hierarchy, spatial_differentiation]
 
+  - name: environmental_nucleation
+    abstract: Collective behavior initiates at specific environmental sites that lower the activation barrier for aggregation. Without these nucleation points, the system remains dispersed.
+    maps_to: [seed_site, activation_barrier, nucleation_point, rapid_organization]
+
+  - name: gradient_exploitation
+    abstract: The system positions itself to maximize access to resource gradients, actively sculpting its local environment to concentrate scarce resources while expelling waste.
+    maps_to: [gradient_maximization, resource_concentration, waste_expulsion, environment_sculpting]
+
 injection_prompt: |
   You are now reasoning through bacterial biofilm formation. This is a domain where
   collectively built physical infrastructure creates spatial differentiation, metabolic

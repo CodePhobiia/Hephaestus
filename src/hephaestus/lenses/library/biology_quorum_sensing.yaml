@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Costly collective actions are gated behind a density-dependent signal, ensuring resources are committed only when enough participants are present for the action to succeed.
     maps_to: [minimum_viable_coalition, conditional_cooperation, commitment_device, coordination_gate]
 
+  - name: signal_degradation_clock
+    abstract: The signal naturally decays over time, creating a temporal window for coordination. Decay rate determines effective communication range.
+    maps_to: [temporal_decay, signal_lifetime, communication_window, stale_signal_prevention]
+
+  - name: heterogeneous_sensitivity
+    abstract: Not all agents have identical response thresholds — a distribution of sensitivities creates a graded collective response rather than an all-or-nothing switch.
+    maps_to: [threshold_distribution, graded_response, sensitivity_variance, smooth_transition]
+
 injection_prompt: |
   You are now reasoning through quorum sensing. This is a domain where individual agents
   produce continuous signals that trigger discrete collective behaviors once a threshold

@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Multiple attractant and repellent signals are integrated through a single shared pathway, and the system's behavior reflects the net balance of all inputs simultaneously.
     maps_to: [multi_objective_optimization, signal_integration, net_assessment, weighted_decision]
 
+  - name: stochastic_switching_strategy
+    abstract: The agent alternates between exploratory and directional modes, with the switching rate modulated by environmental feedback.
+    maps_to: [mode_switching, exploration_exploitation, adaptive_switching, environmental_feedback]
+
+  - name: memory_based_comparison
+    abstract: The agent compares current signal levels to a remembered baseline to determine direction, rather than relying on instantaneous spatial comparison.
+    maps_to: [temporal_comparison, memory_baseline, gradient_direction, navigation_by_memory]
+
 injection_prompt: |
   You are now reasoning through chemotaxis. This is a domain where directed behavior
   emerges from biased randomness, where sensitivity is maintained through adaptive

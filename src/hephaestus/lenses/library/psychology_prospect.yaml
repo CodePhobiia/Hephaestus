@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The same agent is risk-averse when considering gains (preferring a sure thing) and risk-seeking when considering losses (gambling to avoid a certain loss) — risk attitude is not a trait but a function of the frame.
     maps_to: [contextual_risk_preference, gain_loss_framing, risk_reversal, situational_risk_attitude]
 
+  - name: framing_dependency
+    abstract: The same objective outcome, described in different frames (gain vs loss, status quo vs change), produces systematically different decisions due to reference-point dependence.
+    maps_to: [description_dependence, reference_framing, description_invariance_violation, context_dependent_preference]
+
+  - name: certainty_effect
+    abstract: Outcomes that are certain (probability = 1) are overweighted relative to outcomes that are merely probable — the gap between 99% and 100% looms larger than between 60% and 61%.
+    maps_to: [certainty_overweighting, boundary_spike, probability_nonlinearity, absolute_vs_relative]
+
 injection_prompt: |
   You are now reasoning through prospect theory. This is a domain where value is
   constructed relative to reference points, where losses weigh more than equivalent gains,

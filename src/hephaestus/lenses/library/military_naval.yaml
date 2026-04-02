@@ -26,6 +26,14 @@ structural_patterns:
     abstract: Control of a domain means the ability to use it while denying its use to others — it is established through sensor coverage and weapon reach, not physical presence or occupation.
     maps_to: [area_denial, domain_control, access_management, exclusion_zone]
 
+  - name: depth_advantage_exploitation
+    abstract: Operating in a medium where vertical positioning confers asymmetric advantages — the agent below can detect the agent above while remaining undetected.
+    maps_to: [asymmetric_detection, vertical_stratification, depth_advantage, three_dimensional_positioning]
+
+  - name: endurance_as_weapon
+    abstract: The ability to remain on station for extended periods without resupply creates positional advantage — the endurance-limited adversary must withdraw, ceding the operational area.
+    maps_to: [endurance_advantage, persistent_presence, logistical_limit, attrition_through_presence]
+
 injection_prompt: |
   You are now reasoning through naval warfare. This is a domain where the medium itself
   shapes tactics — sound propagation defines detection geometry, the thermocline creates

@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The most effective stabilizing agent is one with genuine affinity for both sides of a divide — not a neutral party but one that is actively attracted to both phases simultaneously.
     maps_to: [dual_affinity, boundary_spanner, bicultural_mediator, amphiphilic_agent]
 
+  - name: mechanical_energy_input
+    abstract: The mixed state requires continuous energy input to maintain — without agitation the separated state reasserts itself. Stability is kinetic, not thermodynamic.
+    maps_to: [energy_maintenance, kinetic_stability, separation_pressure, continuous_input]
+
+  - name: droplet_size_distribution
+    abstract: Effectiveness of the mixed state depends on size distribution of dispersed elements — too large and they coalesce, too small and viscosity explodes.
+    maps_to: [optimal_distribution, size_dependence, coalescence_risk, viscosity_tradeoff]
+
 injection_prompt: |
   You are now reasoning through emulsification. This is a domain where fundamentally
   immiscible phases are held together by boundary-spanning agents, where stability is

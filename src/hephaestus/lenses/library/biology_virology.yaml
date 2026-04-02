@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The rate of change has an upper bound beyond which the system loses coherence — too much mutation destroys the information that makes the system functional.
     maps_to: [change_rate_limit, information_integrity, mutation_load, reform_fatigue]
 
+  - name: host_dependency_exploitation
+    abstract: The system is stripped down to only the information needed to hijack a more complex system's machinery, outsourcing all metabolic and replicative functions.
+    maps_to: [minimal_genome, host_hijack, resource_parasitism, outsourced_metabolism]
+
+  - name: recombination_leap
+    abstract: Two distinct variants exchange structural material, producing novel combinations that gradual mutation could not achieve in reasonable time.
+    maps_to: [structural_recombination, adaptive_jump, variant_swap, landscape_reset]
+
 injection_prompt: |
   You are now reasoning through viral mutation pathways. This is a domain where adaptation
   happens through population-level exploration of sequence space, bounded by the tension

@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The system shows no visible progress during an initial lag phase where precursors accumulate, then transitions abruptly to rapid exponential development — the delay is not absence of progress but invisible groundwork.
     maps_to: [hockey_stick_growth, latent_accumulation, invisible_progress, autocatalytic_acceleration]
 
+  - name: water_activity_control
+    abstract: "The reaction requires intermediate moisture: too much water prevents temperature rise, too little eliminates molecular mobility. Optimal window is narrow."
+    maps_to: [optimal_moisture, mobility_constraint, temperature_ceiling, narrow_window]
+
+  - name: ph_dependent_pathways
+    abstract: "Reaction pathways and product distribution shift dramatically with pH: alkaline conditions accelerate and produce different outcomes than neutral or acidic."
+    maps_to: [ph_dependence, pathway_selection, product_distribution, condition_dependent_outcome]
+
 injection_prompt: |
   You are now reasoning through Maillard reaction chemistry. This is a domain where
   simple inputs generate combinatorial complexity through cascading reaction pathways,

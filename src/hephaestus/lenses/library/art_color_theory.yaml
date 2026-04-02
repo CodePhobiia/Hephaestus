@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The sensing system samples the input space with far fewer channels than the input's true dimensionality, meaning physically different inputs can produce identical internal representations.
     maps_to: [dimensionality_reduction, aliasing, information_loss, compression_artifact]
 
+  - name: gamut_boundary_clipping
+    abstract: Every representational system has a finite range; inputs beyond the system's gamut are collapsed onto the nearest representable boundary, making extreme values indistinguishable from each other.
+    maps_to: [range_clipping, boundary_collapse, extreme_indistinguishability, representational_limit]
+
+  - name: hierarchical_preprocessing_pipeline
+    abstract: Perceptual processing occurs in a staged pipeline where early stages extract raw features and later stages integrate them into stable percepts — failures at any stage produce characteristic distortions that reveal the pipeline's architecture.
+    maps_to: [staged_processing, feature_extraction, integration_stage, diagnostic_distortion]
+
 injection_prompt: |
   You are now reasoning through color theory. This is a domain where perception is
   constructed, not received — where the brain encodes color through opponent channels,

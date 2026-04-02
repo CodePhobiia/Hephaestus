@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The system has fundamentally different properties along the axis of sequential construction versus the in-plane axes, requiring designers to account for directional weakness in structural analysis.
     maps_to: [directional_weakness, laminated_properties, build_orientation, axis_dependent_strength]
 
+  - name: topological_constraint_design
+    abstract: Complex internal geometries impossible to machine can be printed directly, but overhangs beyond a critical angle require support structures that must later be removed.
+    maps_to: [geometry_constraint, support_requirement, removable_scaffold, direct_fabrication]
+
+  - name: material_state_transition
+    abstract: "The material passes through multiple physical states during construction: solid feedstock, molten processing, then solidified structure. Each state transition introduces specific defect modes."
+    maps_to: [state_multiplicity, transition_defects, phase_path, state_dependent_failure]
+
 injection_prompt: |
   You are now reasoning through 3D printing layer adhesion. This is a domain where
   sequential fabrication creates inherent anisotropy and interface weakness, where thermal

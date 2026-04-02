@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The degree to which knowing one variable reduces uncertainty about another quantifies their true statistical dependency — capturing all forms of relationship, not just linear ones.
     maps_to: [dependency_measurement, predictive_power, information_coupling, statistical_association]
 
+  - name: prefix_free_coding
+    abstract: Messages are encoded so that no codeword is a prefix of another, enabling unambiguous decoding without delimiters. The entropy of the source determines the minimum average codeword length.
+    maps_to: [unambiguous_decoding, delimiter_free, entropy_minimum, optimal_encoding]
+
+  - name: entropy_power_inequality
+    abstract: Combining two independent sources of randomness produces more entropy than either alone — the combined system is inherently less predictable than its parts.
+    maps_to: [randomness_accumulation, combined_entropy, independence_boost, predictability_reduction]
+
 injection_prompt: |
   You are now reasoning through information theory. This is a domain where hard mathematical
   limits govern what can be communicated, compressed, and inferred, and where processing

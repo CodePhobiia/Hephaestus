@@ -26,6 +26,14 @@ structural_patterns:
     abstract: When erosion threatens to collapse meaningful distinctions, the system compensates by preserving the contrast through alternative means — information is conserved even as its carrier is transformed.
     maps_to: [information_preservation, compensatory_adaptation, contrast_maintenance, functional_conservation]
 
+  - name: maximal_onset_assignment
+    abstract: When dividing sound sequences, the system assigns as many boundary consonants to the following position as the language's constraints permit — preferring to begin new units with maximal material.
+    maps_to: [boundary_optimization, forward_assignment, constraint_permit, onset_preference]
+
+  - name: prosodic_hierarchy
+    abstract: "Sound organization operates at multiple nested scales: segment, syllable, foot, phonological word, phrase, utterance — each level constrains the ones below it."
+    maps_to: [nested_scales, hierarchical_constraint, multi_level_organization, scale_dependence]
+
 injection_prompt: |
   You are now reasoning through phonological erosion. This is a domain where change is
   regular, gradual, and follows paths of least articulatory effort, but where the system

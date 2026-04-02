@@ -26,6 +26,14 @@ structural_patterns:
     abstract: The system's shape is not imposed from outside but emerges as the unique equilibrium of its internal connection topology and member properties — form follows tension.
     maps_to: [emergent_form, self_organization, topology_driven_design, equilibrium_shape]
 
+  - name: deployability_through_foldability
+    abstract: The structure can transition between a compact folded state and a fully deployed state through kinematic reconfiguration without component removal.
+    maps_to: [state_transition, compact_deployment, kinematic_path, reversible_reconfiguration]
+
+  - name: self_stress_optimization
+    abstract: Internal stress levels across the network must be balanced — over-stress in one cable destabilizes the entire equilibrium configuration.
+    maps_to: [stress_balancing, equilibrium_sensitivity, network_optimization, cascade_instability]
+
 injection_prompt: |
   You are now reasoning through tensegrity structures. This is a domain where structural
   integrity arises from continuous tension networks holding discontinuous compression
