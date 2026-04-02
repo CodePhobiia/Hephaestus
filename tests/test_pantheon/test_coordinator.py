@@ -95,13 +95,19 @@ async def test_pantheon_deliberation_reaches_consensus() -> None:
         problem="test problem",
         structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
         translations=[_translation()],
-        translator=_TranslatorStub(),
+        translator=_TranslatorStub([{}]),
         baseline_dossier=None,
     )
     assert len(translations) == 1
     assert state.consensus_achieved is True
+    assert state.resolution == "consensus"
     assert state.winning_candidate_id is not None
     assert state.rounds[-1].consensus is True
+    assert state.accounting.agent_call_counts == {
+        "athena": 2,
+        "hermes": 2,
+        "apollo": 1,
+    }
 
 
 @pytest.mark.asyncio
@@ -211,6 +217,127 @@ async def test_pantheon_deliberation_reforges_after_veto() -> None:
     assert len(translations) == 1
     assert translations[0].invention_name == "Reforged Invention"
     assert state.consensus_achieved is True
+    assert state.resolution == "consensus"
     assert len(state.rounds) == 2
     assert state.rounds[0].consensus is False
     assert state.rounds[1].consensus is True
+    assert state.accounting.agent_call_counts == {
+        "athena": 3,
+        "hermes": 3,
+        "apollo": 2,
+        "hephaestus": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_pantheon_fail_closed_rejects_when_enabled() -> None:
+    athena = _Harness([
+        {"structural_form": "shape", "confidence": 0.9},
+        {
+            "decision": "VETO",
+            "veto_type": "STRUCTURAL",
+            "reasons": ["bad structure"],
+            "must_change": ["fix structure"],
+            "must_preserve": [],
+            "confidence": 0.9,
+        },
+    ])
+    hermes = _Harness([
+        {"repo_reality_summary": "grounded", "confidence": 0.8},
+        {
+            "decision": "VETO",
+            "veto_type": "REALITY",
+            "reasons": ["not deployable"],
+            "must_change": ["address deployment"],
+            "must_preserve": [],
+            "confidence": 0.8,
+        },
+    ])
+    apollo = _Harness([
+        {
+            "candidate_id": "cand-1",
+            "verdict": "INVALID",
+            "fatal_flaws": ["invalid"],
+            "proof_obligations": [],
+            "reasons": ["fails"],
+            "confidence": 0.9,
+        }
+    ])
+
+    coordinator = PantheonCoordinator(
+        athena_harness=athena,
+        hermes_harness=hermes,
+        apollo_harness=apollo,
+        max_rounds=1,
+        allow_fail_closed=True,
+    )
+    translations, state = await coordinator.deliberate(
+        problem="test problem",
+        structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
+        translations=[_translation()],
+        translator=_TranslatorStub([{}]),
+        baseline_dossier=None,
+    )
+
+    assert translations == []
+    assert state.consensus_achieved is False
+    assert state.winning_candidate_id is None
+    assert state.resolution == "fail_closed_rejection"
+    assert "fail-closed" in (state.failure_reason or "")
+
+
+@pytest.mark.asyncio
+async def test_pantheon_fail_open_returns_survivor_when_disabled() -> None:
+    athena = _Harness([
+        {"structural_form": "shape", "confidence": 0.9},
+        {
+            "decision": "VETO",
+            "veto_type": "STRUCTURAL",
+            "reasons": ["bad structure"],
+            "must_change": ["fix structure"],
+            "must_preserve": [],
+            "confidence": 0.9,
+        },
+    ])
+    hermes = _Harness([
+        {"repo_reality_summary": "grounded", "confidence": 0.8},
+        {
+            "decision": "VETO",
+            "veto_type": "REALITY",
+            "reasons": ["not deployable"],
+            "must_change": ["address deployment"],
+            "must_preserve": [],
+            "confidence": 0.8,
+        },
+    ])
+    apollo = _Harness([
+        {
+            "candidate_id": "cand-1",
+            "verdict": "INVALID",
+            "fatal_flaws": ["invalid"],
+            "proof_obligations": [],
+            "reasons": ["fails"],
+            "confidence": 0.9,
+        }
+    ])
+
+    coordinator = PantheonCoordinator(
+        athena_harness=athena,
+        hermes_harness=hermes,
+        apollo_harness=apollo,
+        max_rounds=1,
+        allow_fail_closed=False,
+    )
+    translations, state = await coordinator.deliberate(
+        problem="test problem",
+        structure=SimpleNamespace(structure="shape", mathematical_shape="shape", constraints=[]),
+        translations=[_translation()],
+        translator=_TranslatorStub([{}]),
+        baseline_dossier=None,
+    )
+
+    assert len(translations) == 1
+    assert translations[0].invention_name == "Base Invention"
+    assert state.consensus_achieved is False
+    assert state.winning_candidate_id == "candidate-1:Base Invention"
+    assert state.resolution == "fallback_open"

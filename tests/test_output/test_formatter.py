@@ -181,6 +181,29 @@ def _lens_engine_state() -> LensEngineState:
     )
 
 
+def _pantheon_state() -> SimpleNamespace:
+    runtime = {
+        "total_cost_usd": 0.1234,
+        "total_input_tokens": 210,
+        "total_output_tokens": 70,
+        "total_duration_seconds": 3.5,
+        "agent_call_counts": {"athena": 2, "hermes": 2, "apollo": 1, "hephaestus": 1},
+    }
+    return SimpleNamespace(
+        mode="pantheon",
+        resolution="consensus",
+        consensus_achieved=True,
+        final_verdict="NOVEL",
+        winning_candidate_id="candidate-1:Pheromone",
+        unresolved_vetoes=[],
+        failure_reason=None,
+        canon=SimpleNamespace(structural_form="feedback loop"),
+        dossier=SimpleNamespace(repo_reality_summary="fits production constraints"),
+        rounds=[SimpleNamespace(round_index=1, candidate_id="candidate-1:Pheromone", consensus=True)],
+        accounting=runtime,
+    )
+
+
 # ---------------------------------------------------------------------------
 # OutputFormat enum
 # ---------------------------------------------------------------------------
@@ -388,6 +411,26 @@ class TestMarkdownOutput:
         assert "composite:fmt" in md
         assert "research refresh" in md.lower()
 
+    def test_includes_pantheon_runtime_section(self) -> None:
+        md = OutputFormatter().to_markdown(
+            _make_report(
+                pantheon_state=_pantheon_state(),
+                pantheon_runtime=_pantheon_state().accounting,
+                cost_breakdown=SimpleNamespace(
+                    decomposition_cost=0.11,
+                    search_cost=0.12,
+                    scoring_cost=0.05,
+                    translation_cost=0.45,
+                    pantheon_cost=0.1234,
+                    verification_cost=0.15,
+                ),
+            )
+        )
+        assert "PANTHEON MODE" in md
+        assert "Resolution: `consensus`" in md
+        assert "Agent calls" in md
+        assert "`pantheon`=$0.1234" in md
+
 
 # ---------------------------------------------------------------------------
 # JSON output
@@ -423,6 +466,7 @@ class TestJsonOutput:
         assert meta["cost_usd"] == pytest.approx(1.18, abs=1e-2)
         assert meta["depth"] == 3
         assert "claude-opus-4-6" in meta["models_used"]
+        assert meta["cost_breakdown"] is None
 
     def test_lens_engine_in_json(self) -> None:
         data = json.loads(OutputFormatter().to_json(_make_report(lens_engine_state=_lens_engine_state())))
@@ -488,6 +532,28 @@ class TestJsonOutput:
         assert report["external_grounding"]["summary"] == "Grounding summary"
         assert report["implementation_risk_review"]["summary"] == "Risk summary"
 
+    def test_pantheon_runtime_in_json(self) -> None:
+        data = json.loads(
+            OutputFormatter().to_json(
+                _make_report(
+                    pantheon_state=_pantheon_state(),
+                    pantheon_runtime=_pantheon_state().accounting,
+                    cost_breakdown=SimpleNamespace(
+                        decomposition_cost=0.11,
+                        search_cost=0.12,
+                        scoring_cost=0.05,
+                        translation_cost=0.45,
+                        pantheon_cost=0.1234,
+                        verification_cost=0.15,
+                    ),
+                )
+            )
+        )
+        report = data["hephaestus_invention_report"]
+        assert report["pantheon"]["resolution"] == "consensus"
+        assert report["pantheon_runtime"]["agent_call_counts"]["hephaestus"] == 1
+        assert report["meta"]["cost_breakdown"]["pantheon_cost"] == pytest.approx(0.1234)
+
 
 # ---------------------------------------------------------------------------
 # Plain text output
@@ -547,6 +613,26 @@ class TestPlainOutput:
         assert "LENS ENGINE" in plain
         assert "bundle:adaptive:fmt" in plain
         assert "Composite: composite:fmt" in plain
+
+    def test_includes_pantheon_runtime_in_plain_output(self) -> None:
+        plain = OutputFormatter().to_plain(
+            _make_report(
+                pantheon_state=_pantheon_state(),
+                pantheon_runtime=_pantheon_state().accounting,
+                cost_breakdown=SimpleNamespace(
+                    decomposition_cost=0.11,
+                    search_cost=0.12,
+                    scoring_cost=0.05,
+                    translation_cost=0.45,
+                    pantheon_cost=0.1234,
+                    verification_cost=0.15,
+                ),
+            )
+        )
+        assert "PANTHEON MODE" in plain
+        assert "Resolution: consensus" in plain
+        assert "Agent calls: athena=2, hermes=2, apollo=1, hephaestus=1" in plain
+        assert "pantheon=$0.1234" in plain
 
 
 # ---------------------------------------------------------------------------

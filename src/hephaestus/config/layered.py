@@ -49,6 +49,9 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_PANTHEON_REQUIRE_UNANIMITY": "pantheon_require_unanimity",
     "HEPHAESTUS_PANTHEON_ALLOW_FAIL_CLOSED": "pantheon_allow_fail_closed",
     "HEPHAESTUS_PANTHEON_MAX_SURVIVORS_TO_COUNCIL": "pantheon_max_survivors_to_council",
+    "HEPHAESTUS_PANTHEON_ATHENA_MODEL": "pantheon_athena_model",
+    "HEPHAESTUS_PANTHEON_HERMES_MODEL": "pantheon_hermes_model",
+    "HEPHAESTUS_PANTHEON_APOLLO_MODEL": "pantheon_apollo_model",
 }
 
 _INT_FIELDS = {"depth", "candidates", "pantheon_max_rounds", "pantheon_max_survivors_to_council"}

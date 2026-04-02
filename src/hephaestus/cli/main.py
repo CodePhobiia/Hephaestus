@@ -257,6 +257,9 @@ def cli(
     pantheon_require_unanimity = True
     pantheon_allow_fail_closed = True
     pantheon_max_survivors_to_council = 2
+    pantheon_athena_model = None
+    pantheon_hermes_model = None
+    pantheon_apollo_model = None
 
     # ── Layered config ────────────────────────────────────────────────────────
     layered = None
@@ -294,6 +297,9 @@ def cli(
         pantheon_require_unanimity = getattr(resolved, "pantheon_require_unanimity", True)
         pantheon_allow_fail_closed = getattr(resolved, "pantheon_allow_fail_closed", True)
         pantheon_max_survivors_to_council = getattr(resolved, "pantheon_max_survivors_to_council", 2)
+        pantheon_athena_model = getattr(resolved, "pantheon_athena_model", None)
+        pantheon_hermes_model = getattr(resolved, "pantheon_hermes_model", None)
+        pantheon_apollo_model = getattr(resolved, "pantheon_apollo_model", None)
     except Exception:
         pass  # Fall back to CLI defaults
 
@@ -443,6 +449,9 @@ def cli(
                     pantheon_require_unanimity=pantheon_require_unanimity,
                     pantheon_allow_fail_closed=pantheon_allow_fail_closed,
                     pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+                    pantheon_athena_model=pantheon_athena_model,
+                    pantheon_hermes_model=pantheon_hermes_model,
+                    pantheon_apollo_model=pantheon_apollo_model,
                 )
             )
     except KeyboardInterrupt:
@@ -490,6 +499,9 @@ async def _run_genesis(
     pantheon_require_unanimity: bool = True,
     pantheon_allow_fail_closed: bool = True,
     pantheon_max_survivors_to_council: int = 2,
+    pantheon_athena_model: str | None = None,
+    pantheon_hermes_model: str | None = None,
+    pantheon_apollo_model: str | None = None,
 ) -> None:
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
@@ -519,6 +531,9 @@ async def _run_genesis(
         pantheon_require_unanimity=pantheon_require_unanimity,
         pantheon_allow_fail_closed=pantheon_allow_fail_closed,
         pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+        pantheon_athena_model=pantheon_athena_model,
+        pantheon_hermes_model=pantheon_hermes_model,
+        pantheon_apollo_model=pantheon_apollo_model,
     )
 
     genesis = Genesis(config)
@@ -900,11 +915,13 @@ def _bridge_report(genesis_report: Any) -> Any:
         implementation_risk_review=_explicit_attr(top, "implementation_risk_review", None),
         lens_engine_state=_explicit_attr(genesis_report, "lens_engine_state", None),
         pantheon_state=_explicit_attr(genesis_report, "pantheon_state", None),
+        pantheon_runtime=_explicit_attr(genesis_report, "pantheon_runtime", None),
+        cost_breakdown=_explicit_attr(genesis_report, "cost_breakdown", None),
         alternatives=alternatives,
         cost_usd=genesis_report.total_cost_usd,
         input_tokens=getattr(genesis_report, "total_input_tokens", 0),
         output_tokens=getattr(genesis_report, "total_output_tokens", 0),
-        models_used=list(set(genesis_report.model_config.values())),
+        models_used=list(dict.fromkeys(genesis_report.model_config.values())),
         depth=3,
         wall_time_seconds=genesis_report.total_duration_seconds,
     )
@@ -935,6 +952,9 @@ def _build_genesis_config(
     pantheon_require_unanimity: bool = True,
     pantheon_allow_fail_closed: bool = True,
     pantheon_max_survivors_to_council: int = 2,
+    pantheon_athena_model: str | None = None,
+    pantheon_hermes_model: str | None = None,
+    pantheon_apollo_model: str | None = None,
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
     from hephaestus.core.cross_model import get_model_preset
@@ -968,6 +988,9 @@ def _build_genesis_config(
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+            pantheon_athena_model=pantheon_athena_model,
+            pantheon_hermes_model=pantheon_hermes_model,
+            pantheon_apollo_model=pantheon_apollo_model,
         )
 
     if model == "claude-cli":
@@ -998,6 +1021,9 @@ def _build_genesis_config(
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+            pantheon_athena_model=pantheon_athena_model,
+            pantheon_hermes_model=pantheon_hermes_model,
+            pantheon_apollo_model=pantheon_apollo_model,
         )
 
     if model == "codex":
@@ -1028,6 +1054,9 @@ def _build_genesis_config(
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+            pantheon_athena_model=pantheon_athena_model,
+            pantheon_hermes_model=pantheon_hermes_model,
+            pantheon_apollo_model=pantheon_apollo_model,
         )
 
     # Map CLI flag names to preset names
@@ -1058,6 +1087,9 @@ def _build_genesis_config(
         pantheon_require_unanimity=pantheon_require_unanimity,
         pantheon_allow_fail_closed=pantheon_allow_fail_closed,
         pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+        pantheon_athena_model=pantheon_athena_model,
+        pantheon_hermes_model=pantheon_hermes_model,
+        pantheon_apollo_model=pantheon_apollo_model,
     )
 
 
@@ -1235,6 +1267,9 @@ def init_cmd() -> None:
         "# pantheon_require_unanimity: true\n"
         "# pantheon_allow_fail_closed: true\n"
         "# pantheon_max_survivors_to_council: 2\n"
+        "# pantheon_athena_model: claude-opus-4-5\n"
+        "# pantheon_hermes_model: gpt-4o\n"
+        "# pantheon_apollo_model: claude-opus-4-5\n"
         "# auto_save: true\n",
         encoding="utf-8",
     )

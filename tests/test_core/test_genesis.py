@@ -125,6 +125,44 @@ def _make_forge_result(text: str = "{}", cost: float = 0.01) -> ForgeResult:
     return ForgeResult(output=text, trace=trace, success=True)
 
 
+def _make_pantheon_state(
+    *,
+    total_cost_usd: float = 0.0,
+    total_input_tokens: int = 0,
+    total_output_tokens: int = 0,
+    total_duration_seconds: float = 0.0,
+    resolution: str = "consensus",
+    final_verdict: str = "NOVEL",
+) -> SimpleNamespace:
+    accounting = SimpleNamespace(
+        total_cost_usd=total_cost_usd,
+        total_input_tokens=total_input_tokens,
+        total_output_tokens=total_output_tokens,
+        total_duration_seconds=total_duration_seconds,
+        agent_call_counts={"athena": 2, "hermes": 2, "apollo": 1},
+        to_dict=lambda: {
+            "total_cost_usd": total_cost_usd,
+            "total_input_tokens": total_input_tokens,
+            "total_output_tokens": total_output_tokens,
+            "total_duration_seconds": total_duration_seconds,
+            "agent_call_counts": {"athena": 2, "hermes": 2, "apollo": 1},
+        },
+    )
+    return SimpleNamespace(
+        accounting=accounting,
+        resolution=resolution,
+        final_verdict=final_verdict,
+        failure_reason=None,
+        to_dict=lambda: {
+            "mode": "pantheon",
+            "resolution": resolution,
+            "final_verdict": final_verdict,
+            "failure_reason": None,
+            "accounting": accounting.to_dict(),
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Tests: InventionReport
 # ---------------------------------------------------------------------------
@@ -179,6 +217,7 @@ class TestInventionReport:
         assert d["top_invention"]["name"] == "Immune-Memory Task Scheduler"
         assert "cost_breakdown" in d
         assert d["cost_breakdown"]["total"] == pytest.approx(0.051)
+        assert d["pantheon_runtime"] is None
 
     def test_summary(self):
         report = self._make_report()
@@ -194,16 +233,18 @@ class TestCostBreakdown:
             search_cost=0.02,
             scoring_cost=0.005,
             translation_cost=0.04,
+            pantheon_cost=0.01,
             verification_cost=0.015,
         )
-        assert cb.total == pytest.approx(0.09)
+        assert cb.total == pytest.approx(0.10)
 
     def test_to_dict(self):
-        cb = CostBreakdown(decomposition_cost=0.01)
+        cb = CostBreakdown(decomposition_cost=0.01, pantheon_cost=0.02)
         d = cb.to_dict()
         assert "decomposition" in d
+        assert "pantheon" in d
         assert "total" in d
-        assert d["total"] == pytest.approx(0.01)
+        assert d["total"] == pytest.approx(0.03)
 
 
 # ---------------------------------------------------------------------------
@@ -295,13 +336,22 @@ class TestGenesis:
         mocks["searcher"].search = AsyncMock(return_value=[_make_search_candidate()])
         mocks["searcher"].last_runtime = None
         mocks["scorer"].score = AsyncMock(return_value=[_make_scored_candidate()])
-        mocks["translator"].translate = AsyncMock(return_value=[_make_translation()])
+        initial_translation = _make_translation()
+        revised_translation = _make_translation()
+        revised_translation.invention_name = "Pantheon-Revised Scheduler"
+        revised_translation.cost_usd = 0.33
+        mocks["translator"].translate = AsyncMock(return_value=[initial_translation])
         mocks["translator"].last_runtime = None
         mocks["verifier"].verify = AsyncMock(return_value=[_make_verified_invention()])
 
-        pantheon_state = SimpleNamespace(to_dict=lambda: {"mode": "pantheon"}, final_verdict="NOVEL")
+        pantheon_state = _make_pantheon_state(
+            total_cost_usd=0.12,
+            total_input_tokens=210,
+            total_output_tokens=70,
+            total_duration_seconds=3.5,
+        )
         pantheon_stub = MagicMock()
-        pantheon_stub.deliberate = AsyncMock(return_value=([_make_translation()], pantheon_state))
+        pantheon_stub.deliberate = AsyncMock(return_value=([revised_translation], pantheon_state))
         pantheon_stub.finalize_with_verified.return_value = pantheon_state
 
         with (
@@ -322,10 +372,49 @@ class TestGenesis:
             report = await genesis.invent("test problem")
 
         assert report.pantheon_state is pantheon_state
+        assert report.pantheon_runtime == {
+            "total_cost_usd": 0.12,
+            "total_input_tokens": 210,
+            "total_output_tokens": 70,
+            "total_duration_seconds": 3.5,
+            "agent_call_counts": {"athena": 2, "hermes": 2, "apollo": 1},
+        }
+        assert report.cost_breakdown.translation_cost == pytest.approx(initial_translation.cost_usd)
+        assert report.cost_breakdown.pantheon_cost == pytest.approx(0.12)
+        assert report.total_input_tokens == 210
+        assert report.total_output_tokens == 70
         assert len(report.all_candidates) == 1
         assert len(report.scored_candidates) == 1
         assert len(report.translations) == 1
         assert len(report.verified_inventions) == 1
+
+    def test_build_harnesses_uses_dedicated_pantheon_models(self):
+        config = self._make_config()
+        config.use_pantheon_mode = True
+        config.pantheon_athena_model = "gpt-4o"
+        config.pantheon_hermes_model = "claude-opus-4-5"
+        config.pantheon_apollo_model = "gpt-4o-mini"
+
+        adapters = {
+            "claude-opus-4-5": MagicMock(name="claude-opus-4-5"),
+            "gpt-4o": MagicMock(name="gpt-4o"),
+            "gpt-4o-mini": MagicMock(name="gpt-4o-mini"),
+            config.translate_model: MagicMock(name=config.translate_model),
+            config.attack_model: MagicMock(name=config.attack_model),
+            config.defend_model: MagicMock(name=config.defend_model),
+        }
+
+        class _HarnessStub:
+            def __init__(self, adapter, config):
+                self.adapter = adapter
+                self.config = config
+
+        with patch("hephaestus.deepforge.harness.DeepForgeHarness", _HarnessStub):
+            harnesses = Genesis._build_harnesses(config, adapters)
+
+        assert harnesses["pantheon_athena"].adapter is adapters["gpt-4o"]
+        assert harnesses["pantheon_hermes"].adapter is adapters["claude-opus-4-5"]
+        assert harnesses["pantheon_apollo"].adapter is adapters["gpt-4o-mini"]
 
     @pytest.mark.asyncio
     async def test_decomposition_failure_yields_failed(self):

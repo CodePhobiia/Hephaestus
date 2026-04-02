@@ -232,6 +232,10 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
     if lens_state is not None:
         _print_lens_engine(console, lens_state)
 
+    pantheon_state = _maybe_attr(report, "pantheon_state", None)
+    if pantheon_state is not None:
+        _print_pantheon(console, pantheon_state, _maybe_attr(report, "pantheon_runtime", None))
+
     # ── Adversarial verdict ──────────────────────────────────────────────────
     _print_adversarial(console, top)
 
@@ -464,11 +468,12 @@ def print_cost_table(console: Console, report: Any) -> None:
     table.add_column("Cost (USD)", style=GREEN, justify="right")
 
     stage_costs = [
-        ("Decompose", cost.decomposition_cost),
-        ("Search", cost.search_cost),
-        ("Score", cost.scoring_cost),
-        ("Translate", cost.translation_cost),
-        ("Verify", cost.verification_cost),
+        ("Decompose", _safe_number(_maybe_attr(cost, "decomposition_cost", 0.0))),
+        ("Search", _safe_number(_maybe_attr(cost, "search_cost", 0.0))),
+        ("Score", _safe_number(_maybe_attr(cost, "scoring_cost", 0.0))),
+        ("Translate", _safe_number(_maybe_attr(cost, "translation_cost", 0.0))),
+        ("Pantheon", _safe_number(_maybe_attr(cost, "pantheon_cost", 0.0))),
+        ("Verify", _safe_number(_maybe_attr(cost, "verification_cost", 0.0))),
     ]
 
     for name, c in stage_costs:
@@ -476,7 +481,7 @@ def print_cost_table(console: Console, report: Any) -> None:
             table.add_row(name, f"${c:.4f}")
 
     table.add_section()
-    table.add_row("[bold]TOTAL[/]", f"[bold green]${cost.total:.4f}[/]")
+    table.add_row("[bold]TOTAL[/]", f"[bold green]${_safe_number(_maybe_attr(cost, 'total', 0.0)):.4f}[/]")
 
     console.print(table)
 
@@ -489,6 +494,14 @@ def print_cost_table(console: Console, report: Any) -> None:
         f"  [dim]Models:[/] [{CYAN}]{model_str}[/]  "
         f"[dim]Time:[/] [{CYAN}]{elapsed:.1f}s[/]"
     )
+    pantheon_state = _maybe_attr(report, "pantheon_state", None)
+    if pantheon_state is not None:
+        resolution = _safe_text(_maybe_attr(pantheon_state, "resolution", "inactive"), "inactive")
+        verdict = _safe_text(_maybe_attr(pantheon_state, "final_verdict", "UNKNOWN"), "UNKNOWN")
+        console.print(
+            f"  [dim]Pantheon:[/] [{CYAN}]{resolution}[/]  "
+            f"[dim]Verdict:[/] [{CYAN}]{verdict}[/]"
+        )
     console.print()
 
 
@@ -608,8 +621,18 @@ def _safe_text(value: Any, fallback: str = "") -> str:
     return str(value)
 
 
+def _safe_number(value: Any, default: float = 0.0) -> float:
+    """Best-effort numeric coercion for mixed real/test objects."""
+    try:
+        return float(value or 0.0)
+    except Exception:
+        return default
+
+
 def _maybe_attr(obj: Any, name: str, default: Any = None) -> Any:
     """Avoid MagicMock fabricating optional attributes that were never set."""
+    if isinstance(obj, dict):
+        return obj.get(name, default)
     if isinstance(obj, Mock):
         data = getattr(obj, "__dict__", {})
         if isinstance(data, dict) and name in data:
@@ -665,4 +688,39 @@ def _print_lens_engine(console: Console, lens_state: Any) -> None:
         )
 
     console.print(Panel(table, title="[bold yellow]Lens Engine[/]", border_style="dim yellow"))
+    console.print()
+
+
+def _print_pantheon(console: Console, pantheon_state: Any, pantheon_runtime: Any | None) -> None:
+    """Render a concise Pantheon state panel."""
+    table = Table(box=box.SIMPLE, border_style="dim yellow", show_header=False, padding=(0, 1))
+    table.add_column("Key", style=DIM, no_wrap=True)
+    table.add_column("Value", style="white")
+
+    table.add_row("Resolution", _safe_text(_maybe_attr(pantheon_state, "resolution", "inactive"), "inactive"))
+    table.add_row("Consensus", str(bool(_maybe_attr(pantheon_state, "consensus_achieved", False))))
+    table.add_row("Final verdict", _safe_text(_maybe_attr(pantheon_state, "final_verdict", "UNKNOWN"), "UNKNOWN"))
+
+    winning_candidate = _maybe_attr(pantheon_state, "winning_candidate_id", None)
+    if winning_candidate:
+        table.add_row("Winning candidate", _safe_text(winning_candidate))
+
+    unresolved = list(_maybe_attr(pantheon_state, "unresolved_vetoes", []) or [])
+    if unresolved:
+        table.add_row("Unresolved vetoes", ", ".join(str(item) for item in unresolved))
+
+    failure_reason = _maybe_attr(pantheon_state, "failure_reason", None)
+    if failure_reason:
+        table.add_row("Failure reason", _safe_text(failure_reason))
+
+    if pantheon_runtime is not None:
+        total_cost = float(_maybe_attr(pantheon_runtime, "total_cost_usd", 0.0) or 0.0)
+        total_duration = float(_maybe_attr(pantheon_runtime, "total_duration_seconds", 0.0) or 0.0)
+        agent_calls = _maybe_attr(pantheon_runtime, "agent_call_counts", {}) or {}
+        call_text = ", ".join(f"{agent}={count}" for agent, count in agent_calls.items()) or "none"
+        table.add_row("Runtime", f"{total_duration:.2f}s")
+        table.add_row("Pantheon cost", f"${total_cost:.4f}")
+        table.add_row("Agent calls", call_text)
+
+    console.print(Panel(table, title="[bold yellow]Pantheon[/]", border_style="dim yellow"))
     console.print()

@@ -1892,6 +1892,9 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
             pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
             pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
+            pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
+            pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
+            pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
         )
 
     if selected_model in {"opus", "gpt5", "codex", "both"}:
@@ -1922,6 +1925,9 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
             pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
             pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
+            pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
+            pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
+            pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
         )
 
     return GenesisConfig(
@@ -1947,6 +1953,9 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         pantheon_require_unanimity=getattr(cfg, "pantheon_require_unanimity", True),
         pantheon_allow_fail_closed=getattr(cfg, "pantheon_allow_fail_closed", True),
         pantheon_max_survivors_to_council=getattr(cfg, "pantheon_max_survivors_to_council", 2),
+        pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
+        pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
+        pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
     )
 
 

@@ -132,6 +132,53 @@ class PantheonRound:
 
 
 @dataclass
+class PantheonAccounting:
+    total_cost_usd: float = 0.0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_duration_seconds: float = 0.0
+    agent_call_counts: dict[str, int] = field(default_factory=dict)
+    agent_cost_usd: dict[str, float] = field(default_factory=dict)
+    agent_input_tokens: dict[str, int] = field(default_factory=dict)
+    agent_output_tokens: dict[str, int] = field(default_factory=dict)
+    agent_duration_seconds: dict[str, float] = field(default_factory=dict)
+
+    def record(
+        self,
+        *,
+        agent: str,
+        cost_usd: float = 0.0,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        duration_seconds: float = 0.0,
+    ) -> None:
+        self.total_cost_usd += float(cost_usd or 0.0)
+        self.total_input_tokens += int(input_tokens or 0)
+        self.total_output_tokens += int(output_tokens or 0)
+        self.total_duration_seconds += float(duration_seconds or 0.0)
+        self.agent_call_counts[agent] = self.agent_call_counts.get(agent, 0) + 1
+        self.agent_cost_usd[agent] = self.agent_cost_usd.get(agent, 0.0) + float(cost_usd or 0.0)
+        self.agent_input_tokens[agent] = self.agent_input_tokens.get(agent, 0) + int(input_tokens or 0)
+        self.agent_output_tokens[agent] = self.agent_output_tokens.get(agent, 0) + int(output_tokens or 0)
+        self.agent_duration_seconds[agent] = (
+            self.agent_duration_seconds.get(agent, 0.0) + float(duration_seconds or 0.0)
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "total_cost_usd": self.total_cost_usd,
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "total_duration_seconds": self.total_duration_seconds,
+            "agent_call_counts": dict(self.agent_call_counts),
+            "agent_cost_usd": dict(self.agent_cost_usd),
+            "agent_input_tokens": dict(self.agent_input_tokens),
+            "agent_output_tokens": dict(self.agent_output_tokens),
+            "agent_duration_seconds": dict(self.agent_duration_seconds),
+        }
+
+
+@dataclass
 class PantheonState:
     mode: str = "inactive"
     canon: AthenaCanon | None = None
@@ -141,7 +188,10 @@ class PantheonState:
     winning_candidate_id: str | None = None
     consensus_achieved: bool = False
     final_verdict: str = "UNKNOWN"
+    resolution: str = "inactive"
+    failure_reason: str | None = None
     unresolved_vetoes: list[str] = field(default_factory=list)
+    accounting: PantheonAccounting = field(default_factory=PantheonAccounting)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -153,7 +203,10 @@ class PantheonState:
             "winning_candidate_id": self.winning_candidate_id,
             "consensus_achieved": self.consensus_achieved,
             "final_verdict": self.final_verdict,
+            "resolution": self.resolution,
+            "failure_reason": self.failure_reason,
             "unresolved_vetoes": list(self.unresolved_vetoes),
+            "accounting": self.accounting.to_dict(),
         }
 
 
@@ -161,6 +214,7 @@ __all__ = [
     "ApolloAudit",
     "AthenaCanon",
     "HermesDossier",
+    "PantheonAccounting",
     "PantheonRound",
     "PantheonState",
     "PantheonVote",

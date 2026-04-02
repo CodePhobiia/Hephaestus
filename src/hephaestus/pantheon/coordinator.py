@@ -22,6 +22,7 @@ from hephaestus.pantheon.models import (
     ApolloAudit,
     AthenaCanon,
     HermesDossier,
+    PantheonAccounting,
     PantheonRound,
     PantheonState,
     PantheonVote,
@@ -112,11 +113,49 @@ class PantheonCoordinator:
         self._allow_fail_closed = allow_fail_closed
         self._max_survivors_to_council = max(1, max_survivors_to_council)
 
-    async def _forge_json(self, harness: DeepForgeHarness, prompt: str, *, system: str) -> dict[str, Any]:
+    @staticmethod
+    def _record_accounting(
+        accounting: PantheonAccounting,
+        *,
+        agent: str,
+        trace: Any,
+        duration_seconds: float,
+    ) -> None:
+        accounting.record(
+            agent=agent,
+            cost_usd=getattr(trace, "total_cost_usd", 0.0),
+            input_tokens=getattr(trace, "total_input_tokens", 0),
+            output_tokens=getattr(trace, "total_output_tokens", 0),
+            duration_seconds=duration_seconds,
+        )
+
+    async def _forge_json(
+        self,
+        harness: DeepForgeHarness,
+        prompt: str,
+        *,
+        system: str,
+        accounting: PantheonAccounting,
+        agent: str,
+    ) -> dict[str, Any]:
+        t_start = time.monotonic()
         result = await harness.forge(prompt, system=system)
+        self._record_accounting(
+            accounting,
+            agent=agent,
+            trace=result.trace,
+            duration_seconds=time.monotonic() - t_start,
+        )
         return _json_block(result.output)
 
-    async def athena_canon_pass(self, *, problem: str, structure: Any, baseline_dossier: Any = None) -> AthenaCanon:
+    async def athena_canon_pass(
+        self,
+        *,
+        problem: str,
+        structure: Any,
+        baseline_dossier: Any = None,
+        accounting: PantheonAccounting,
+    ) -> AthenaCanon:
         prompt = prompts.ATHENA_CANON_PROMPT.format(
             problem=problem,
             structure=getattr(structure, "structure", ""),
@@ -124,7 +163,13 @@ class PantheonCoordinator:
             constraints="\n".join(f"- {item}" for item in getattr(structure, "constraints", [])[:12]) or "- none",
             baseline=getattr(baseline_dossier, "summary", "") if baseline_dossier is not None else "",
         )
-        data = await self._forge_json(self._athena, prompt, system=prompts.ATHENA_CANON_SYSTEM)
+        data = await self._forge_json(
+            self._athena,
+            prompt,
+            system=prompts.ATHENA_CANON_SYSTEM,
+            accounting=accounting,
+            agent="athena",
+        )
         return AthenaCanon(
             structural_form=str(data.get("structural_form", "")),
             mandatory_constraints=_safe_list(data.get("mandatory_constraints")),
@@ -137,7 +182,14 @@ class PantheonCoordinator:
             confidence=_safe_float(data.get("confidence")),
         )
 
-    async def hermes_dossier_pass(self, *, problem: str, structure: Any, baseline_dossier: Any = None) -> HermesDossier:
+    async def hermes_dossier_pass(
+        self,
+        *,
+        problem: str,
+        structure: Any,
+        baseline_dossier: Any = None,
+        accounting: PantheonAccounting,
+    ) -> HermesDossier:
         prompt = prompts.HERMES_DOSSIER_PROMPT.format(
             problem=problem,
             structure=getattr(structure, "structure", ""),
@@ -145,7 +197,13 @@ class PantheonCoordinator:
             constraints="\n".join(f"- {item}" for item in getattr(structure, "constraints", [])[:12]) or "- none",
             baseline=getattr(baseline_dossier, "summary", "") if baseline_dossier is not None else "",
         )
-        data = await self._forge_json(self._hermes, prompt, system=prompts.HERMES_DOSSIER_SYSTEM)
+        data = await self._forge_json(
+            self._hermes,
+            prompt,
+            system=prompts.HERMES_DOSSIER_SYSTEM,
+            accounting=accounting,
+            agent="hermes",
+        )
         return HermesDossier(
             repo_reality_summary=str(data.get("repo_reality_summary", "")),
             competitor_patterns=_safe_list(data.get("competitor_patterns")),
@@ -158,7 +216,13 @@ class PantheonCoordinator:
             confidence=_safe_float(data.get("confidence")),
         )
 
-    async def _athena_review(self, translation: Translation, canon: AthenaCanon) -> PantheonVote:
+    async def _athena_review(
+        self,
+        translation: Translation,
+        canon: AthenaCanon,
+        *,
+        accounting: PantheonAccounting,
+    ) -> PantheonVote:
         data = await self._forge_json(
             self._athena,
             prompts.ATHENA_REVIEW_PROMPT.format(
@@ -166,6 +230,8 @@ class PantheonCoordinator:
                 candidate=_translation_to_text(translation),
             ),
             system=prompts.ATHENA_REVIEW_SYSTEM,
+            accounting=accounting,
+            agent="athena",
         )
         return PantheonVote(
             agent="athena",
@@ -177,7 +243,13 @@ class PantheonCoordinator:
             confidence=_safe_float(data.get("confidence")),
         )
 
-    async def _hermes_review(self, translation: Translation, dossier: HermesDossier) -> PantheonVote:
+    async def _hermes_review(
+        self,
+        translation: Translation,
+        dossier: HermesDossier,
+        *,
+        accounting: PantheonAccounting,
+    ) -> PantheonVote:
         data = await self._forge_json(
             self._hermes,
             prompts.HERMES_REVIEW_PROMPT.format(
@@ -185,6 +257,8 @@ class PantheonCoordinator:
                 candidate=_translation_to_text(translation),
             ),
             system=prompts.HERMES_REVIEW_SYSTEM,
+            accounting=accounting,
+            agent="hermes",
         )
         return PantheonVote(
             agent="hermes",
@@ -196,7 +270,14 @@ class PantheonCoordinator:
             confidence=_safe_float(data.get("confidence")),
         )
 
-    async def _apollo_audit(self, translation: Translation, canon: AthenaCanon, dossier: HermesDossier) -> ApolloAudit:
+    async def _apollo_audit(
+        self,
+        translation: Translation,
+        canon: AthenaCanon,
+        dossier: HermesDossier,
+        *,
+        accounting: PantheonAccounting,
+    ) -> ApolloAudit:
         data = await self._forge_json(
             self._apollo,
             prompts.APOLLO_AUDIT_PROMPT.format(
@@ -205,6 +286,8 @@ class PantheonCoordinator:
                 candidate=_translation_to_text(translation),
             ),
             system=prompts.APOLLO_AUDIT_SYSTEM,
+            accounting=accounting,
+            agent="apollo",
         )
         return ApolloAudit(
             candidate_id=str(data.get("candidate_id", translation.invention_name)),
@@ -227,6 +310,7 @@ class PantheonCoordinator:
         canon: AthenaCanon,
         dossier: HermesDossier,
         votes: Sequence[PantheonVote],
+        accounting: PantheonAccounting,
     ) -> tuple[Translation | None, PantheonVote]:
         objection_reasons = [reason for vote in votes for reason in vote.reasons]
         must_change = [item for vote in votes for item in vote.must_change]
@@ -242,6 +326,14 @@ class PantheonCoordinator:
                 objections=_votes_to_text(votes),
             ),
             system=prompts.HEPHAESTUS_REFORGE_SYSTEM,
+        )
+        if getattr(result, "trace", None) is not None:
+            setattr(result.trace, "pantheon_owned", True)
+        self._record_accounting(
+            accounting,
+            agent="hephaestus",
+            trace=result.trace,
+            duration_seconds=time.monotonic() - t_start,
         )
         parsed = translator._parse_translation(result.output)
         if not parsed.get("architecture"):
@@ -321,13 +413,27 @@ class PantheonCoordinator:
         previous_state: PantheonState | None = None,
     ) -> tuple[list[Translation], PantheonState]:
         state = PantheonState(mode="pantheon")
-        canon = await self.athena_canon_pass(problem=problem, structure=structure, baseline_dossier=baseline_dossier)
-        dossier = await self.hermes_dossier_pass(problem=problem, structure=structure, baseline_dossier=baseline_dossier)
+        state.final_verdict = "PENDING_VERIFICATION"
+        canon = await self.athena_canon_pass(
+            problem=problem,
+            structure=structure,
+            baseline_dossier=baseline_dossier,
+            accounting=state.accounting,
+        )
+        dossier = await self.hermes_dossier_pass(
+            problem=problem,
+            structure=structure,
+            baseline_dossier=baseline_dossier,
+            accounting=state.accounting,
+        )
         state.canon = canon
         state.dossier = dossier
 
         survivors = list(translations[: self._max_survivors_to_council])
         if not survivors:
+            state.final_verdict = "NO_OUTPUT"
+            state.resolution = "no_candidates"
+            state.failure_reason = "No translation candidates entered Pantheon deliberation."
             return [], state
 
         winning: Translation | None = None
@@ -338,9 +444,9 @@ class PantheonCoordinator:
             candidate = original
             candidate_id = f"candidate-{idx}:{candidate.invention_name}"
             for round_index in range(1, self._max_rounds + 1):
-                athena_vote = await self._athena_review(candidate, canon)
-                hermes_vote = await self._hermes_review(candidate, dossier)
-                apollo_audit = await self._apollo_audit(candidate, canon, dossier)
+                athena_vote = await self._athena_review(candidate, canon, accounting=state.accounting)
+                hermes_vote = await self._hermes_review(candidate, dossier, accounting=state.accounting)
+                apollo_audit = await self._apollo_audit(candidate, canon, dossier, accounting=state.accounting)
                 all_audits.append(apollo_audit)
                 apollo_vote = PantheonVote(
                     agent="apollo",
@@ -375,6 +481,7 @@ class PantheonCoordinator:
                         must_preserve=[candidate.key_insight] if candidate.key_insight else [],
                         confidence=0.85,
                     )
+                    unresolved = []
                     votes.append(hephaestus_vote)
                     state.rounds.append(
                         PantheonRound(
@@ -389,6 +496,8 @@ class PantheonCoordinator:
                     winning = candidate
                     state.consensus_achieved = True
                     state.winning_candidate_id = candidate_id
+                    state.resolution = "consensus"
+                    state.failure_reason = None
                     break
 
                 revised, hephaestus_vote = await self._hephaestus_reforge(
@@ -399,6 +508,7 @@ class PantheonCoordinator:
                     canon=canon,
                     dossier=dossier,
                     votes=votes,
+                    accounting=state.accounting,
                 )
                 votes.append(hephaestus_vote)
                 state.rounds.append(
@@ -424,8 +534,15 @@ class PantheonCoordinator:
         state.audits = all_audits
         state.unresolved_vetoes = unresolved
         if winning is None and self._allow_fail_closed:
+            state.final_verdict = "NO_OUTPUT"
+            state.resolution = "fail_closed_rejection"
+            state.failure_reason = "No candidate survived Pantheon council review and fail-closed was enabled."
+            return [], state
+        if winning is None:
             winning = survivors[0]
             state.winning_candidate_id = f"candidate-1:{winning.invention_name}"
+            state.resolution = "fallback_open"
+            state.failure_reason = "No candidate achieved Pantheon consensus; returning the top survivor because fail-closed was disabled."
         if winning is not None:
             winning.pantheon_state = state.to_dict()
             return [winning], state
@@ -434,11 +551,16 @@ class PantheonCoordinator:
     def finalize_with_verified(self, state: PantheonState, verified_inventions: Sequence[Any]) -> PantheonState:
         if not verified_inventions:
             state.final_verdict = "NO_OUTPUT"
+            if state.consensus_achieved:
+                state.resolution = "verifier_rejected_consensus"
+                state.failure_reason = "Pantheon consensus was reached, but verification produced no surviving invention."
             return state
         top = verified_inventions[0]
         state.final_verdict = str(getattr(top, "verdict", "UNKNOWN"))
         if state.consensus_achieved and getattr(top, "verdict", "UNKNOWN") == "INVALID":
             state.consensus_achieved = False
+            state.resolution = "verifier_rejected_consensus"
+            state.failure_reason = "Pantheon consensus selected an invention that verification later invalidated."
             state.unresolved_vetoes = [
                 *state.unresolved_vetoes,
                 "VERIFIER_INVALIDATED_TOP_INVENTION",

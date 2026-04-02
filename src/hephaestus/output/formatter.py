@@ -49,6 +49,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
+from unittest.mock import Mock
 
 logger = logging.getLogger(__name__)
 
@@ -186,9 +187,11 @@ class InventionReport:
     implementation_risk_review: Any | None = None
     lens_engine_state: Any | None = None
     pantheon_state: Any | None = None
+    pantheon_runtime: Any | None = None
     novelty_proof: Any | None = None       # NoveltyProof
     alternatives: list[AlternativeInvention] = field(default_factory=list)
     cost_usd: float = 0.0
+    cost_breakdown: Any | None = None
     input_tokens: int = 0
     output_tokens: int = 0
     models_used: list[str] = field(default_factory=list)
@@ -414,6 +417,8 @@ class OutputFormatter:
                 "",
             ]
             lines.extend(_pantheon_markdown_lines(report.pantheon_state))
+            if report.pantheon_runtime is not None:
+                lines.extend(_pantheon_runtime_markdown_lines(report.pantheon_runtime))
             lines.append("")
 
         # ── Novelty proof ────────────────────────────────────────────────────
@@ -503,6 +508,13 @@ class OutputFormatter:
             f"**Depth:** {report.depth} | "
             f"**Time:** {time_str}",
             "",
+        ]
+        if report.cost_breakdown is not None:
+            lines += [
+                f"**Stage Costs:** {_cost_breakdown_text(report.cost_breakdown, markdown=True)}",
+                "",
+            ]
+        lines += [
             "═══════════════════════════════════════════════════",
         ]
 
@@ -535,6 +547,7 @@ class OutputFormatter:
                 "implementation_risk_review": _research_obj_to_dict(report.implementation_risk_review),
                 "lens_engine": _lens_engine_to_dict(report.lens_engine_state),
                 "pantheon": _research_obj_to_dict(report.pantheon_state),
+                "pantheon_runtime": _research_obj_to_dict(report.pantheon_runtime),
                 "novelty_proof": _proof_to_dict(report.novelty_proof),
                 "alternatives": [
                     {
@@ -550,6 +563,7 @@ class OutputFormatter:
                 ],
                 "meta": {
                     "cost_usd": round(report.cost_usd, 4),
+                    "cost_breakdown": _research_obj_to_dict(report.cost_breakdown),
                     "models_used": report.models_used,
                     "depth": report.depth,
                     "wall_time_seconds": round(report.wall_time_seconds, 2),
@@ -665,6 +679,8 @@ class OutputFormatter:
         if report.pantheon_state is not None:
             lines.append("PANTHEON MODE:")
             lines.extend(_pantheon_plain_lines(report.pantheon_state))
+            if report.pantheon_runtime is not None:
+                lines.extend(_pantheon_runtime_plain_lines(report.pantheon_runtime))
             lines.append("")
 
         # Novelty proof
@@ -714,6 +730,10 @@ class OutputFormatter:
             f"Cost: ${report.cost_usd:.2f}  Models: {model_str}  "
             f"Tokens: {in_tokens:,} in / {out_tokens:,} out  "
             f"Depth: {report.depth}  Time: {time_str}",
+        ]
+        if report.cost_breakdown is not None:
+            lines.append(f"Stage Costs: {_cost_breakdown_text(report.cost_breakdown, markdown=False)}")
+        lines += [
             "=" * 60,
         ]
 
@@ -882,6 +902,12 @@ def _json_safe(value: Any) -> Any:
         return [_json_safe(item) for item in value]
     if isinstance(value, dict):
         return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, Mock):
+        return {
+            str(k): _json_safe(v)
+            for k, v in value.__dict__.items()
+            if not str(k).startswith("_")
+        }
     if hasattr(value, "__dict__"):
         return {str(k): _json_safe(v) for k, v in value.__dict__.items()}
     return str(value)
@@ -968,53 +994,65 @@ def _lens_engine_plain_lines(state: Any) -> list[str]:
 
 
 def _pantheon_markdown_lines(state: Any) -> list[str]:
+    resolution = _lookup(state, "resolution", "")
+    failure_reason = _lookup(state, "failure_reason", "")
     lines: list[str] = [
-        f"  Mode: `{_as_text(getattr(state, 'mode', ''), 'inactive')}`",
-        f"  Consensus achieved: `{bool(getattr(state, 'consensus_achieved', False))}`",
-        f"  Final verdict: `{_as_text(getattr(state, 'final_verdict', ''), 'UNKNOWN')}`",
+        f"  Mode: `{_as_text(_lookup(state, 'mode', ''), 'inactive')}`",
+        f"  Resolution: `{_as_text(resolution, 'inactive')}`",
+        f"  Consensus achieved: `{bool(_lookup(state, 'consensus_achieved', False))}`",
+        f"  Final verdict: `{_as_text(_lookup(state, 'final_verdict', ''), 'UNKNOWN')}`",
     ]
-    canon = getattr(state, "canon", None)
+    canon = _lookup(state, "canon", None)
     if canon is not None:
-        lines.append(f"  - Athena canon: {_as_text(getattr(canon, 'structural_form', ''), 'n/a')}")
-    dossier = getattr(state, "dossier", None)
+        lines.append(f"  - Athena canon: {_as_text(_lookup(canon, 'structural_form', ''), 'n/a')}")
+    dossier = _lookup(state, "dossier", None)
     if dossier is not None:
-        lines.append(f"  - Hermes dossier: {_as_text(getattr(dossier, 'repo_reality_summary', ''), 'n/a')}")
-    if getattr(state, "winning_candidate_id", None):
-        lines.append(f"  - Winning candidate: `{state.winning_candidate_id}`")
-    unresolved = list(getattr(state, "unresolved_vetoes", []) or [])
+        lines.append(f"  - Hermes dossier: {_as_text(_lookup(dossier, 'repo_reality_summary', ''), 'n/a')}")
+    winning_candidate_id = _lookup(state, "winning_candidate_id", None)
+    if winning_candidate_id:
+        lines.append(f"  - Winning candidate: `{winning_candidate_id}`")
+    unresolved = list(_lookup(state, "unresolved_vetoes", []) or [])
     if unresolved:
         lines.append(f"  - Unresolved vetoes: {', '.join(f'`{item}`' for item in unresolved)}")
-    for round_ in getattr(state, "rounds", [])[-3:]:
+    if failure_reason:
+        lines.append(f"  - Failure reason: {_as_text(failure_reason)}")
+    for round_ in list(_lookup(state, "rounds", []) or [])[-3:]:
         lines.append(
-            f"  - Round {getattr(round_, 'round_index', '?')}: "
-            f"candidate `{getattr(round_, 'candidate_id', '')}` "
-            f"consensus=`{bool(getattr(round_, 'consensus', False))}`"
+            f"  - Round {_lookup(round_, 'round_index', '?')}: "
+            f"candidate `{_lookup(round_, 'candidate_id', '')}` "
+            f"consensus=`{bool(_lookup(round_, 'consensus', False))}`"
         )
     return lines
 
 
 def _pantheon_plain_lines(state: Any) -> list[str]:
+    resolution = _lookup(state, "resolution", "")
+    failure_reason = _lookup(state, "failure_reason", "")
     lines: list[str] = [
-        f"  Mode: {_as_text(getattr(state, 'mode', ''), 'inactive')}",
-        f"  Consensus achieved: {bool(getattr(state, 'consensus_achieved', False))}",
-        f"  Final verdict: {_as_text(getattr(state, 'final_verdict', ''), 'UNKNOWN')}",
+        f"  Mode: {_as_text(_lookup(state, 'mode', ''), 'inactive')}",
+        f"  Resolution: {_as_text(resolution, 'inactive')}",
+        f"  Consensus achieved: {bool(_lookup(state, 'consensus_achieved', False))}",
+        f"  Final verdict: {_as_text(_lookup(state, 'final_verdict', ''), 'UNKNOWN')}",
     ]
-    canon = getattr(state, "canon", None)
+    canon = _lookup(state, "canon", None)
     if canon is not None:
-        lines.append(f"  Athena canon: {_as_text(getattr(canon, 'structural_form', ''), 'n/a')}")
-    dossier = getattr(state, "dossier", None)
+        lines.append(f"  Athena canon: {_as_text(_lookup(canon, 'structural_form', ''), 'n/a')}")
+    dossier = _lookup(state, "dossier", None)
     if dossier is not None:
-        lines.append(f"  Hermes dossier: {_as_text(getattr(dossier, 'repo_reality_summary', ''), 'n/a')}")
-    if getattr(state, "winning_candidate_id", None):
-        lines.append(f"  Winning candidate: {state.winning_candidate_id}")
-    unresolved = list(getattr(state, "unresolved_vetoes", []) or [])
+        lines.append(f"  Hermes dossier: {_as_text(_lookup(dossier, 'repo_reality_summary', ''), 'n/a')}")
+    winning_candidate_id = _lookup(state, "winning_candidate_id", None)
+    if winning_candidate_id:
+        lines.append(f"  Winning candidate: {winning_candidate_id}")
+    unresolved = list(_lookup(state, "unresolved_vetoes", []) or [])
     if unresolved:
         lines.append(f"  Unresolved vetoes: {', '.join(unresolved)}")
-    for round_ in getattr(state, "rounds", [])[-3:]:
+    if failure_reason:
+        lines.append(f"  Failure reason: {_as_text(failure_reason)}")
+    for round_ in list(_lookup(state, "rounds", []) or [])[-3:]:
         lines.append(
-            f"  Round {getattr(round_, 'round_index', '?')}: "
-            f"candidate {getattr(round_, 'candidate_id', '')} "
-            f"consensus={bool(getattr(round_, 'consensus', False))}"
+            f"  Round {_lookup(round_, 'round_index', '?')}: "
+            f"candidate {_lookup(round_, 'candidate_id', '')} "
+            f"consensus={bool(_lookup(round_, 'consensus', False))}"
         )
     return lines
 
@@ -1023,3 +1061,65 @@ def _state_summary_text(state: Any) -> str:
     summary_value = getattr(state, "summary", "")
     summary = summary_value() if callable(summary_value) else summary_value
     return _as_text(summary, "Lens engine state attached.")
+
+
+def _pantheon_runtime_markdown_lines(runtime: Any) -> list[str]:
+    return [
+        (
+            "  - Runtime: "
+            f"`{_lookup(runtime, 'total_duration_seconds', 0.0):.2f}s` "
+            f"| cost=`${_lookup(runtime, 'total_cost_usd', 0.0):.4f}` "
+            f"| tokens=`{int(_lookup(runtime, 'total_input_tokens', 0) or 0):,} in / "
+            f"{int(_lookup(runtime, 'total_output_tokens', 0) or 0):,} out`"
+        ),
+        f"  - Agent calls: {_agent_call_text(_lookup(runtime, 'agent_call_counts', {}), markdown=True)}",
+    ]
+
+
+def _pantheon_runtime_plain_lines(runtime: Any) -> list[str]:
+    return [
+        (
+            "  Runtime: "
+            f"{_lookup(runtime, 'total_duration_seconds', 0.0):.2f}s "
+            f"| cost=${_lookup(runtime, 'total_cost_usd', 0.0):.4f} "
+            f"| tokens={int(_lookup(runtime, 'total_input_tokens', 0) or 0):,} in / "
+            f"{int(_lookup(runtime, 'total_output_tokens', 0) or 0):,} out"
+        ),
+        f"  Agent calls: {_agent_call_text(_lookup(runtime, 'agent_call_counts', {}), markdown=False)}",
+    ]
+
+
+def _agent_call_text(values: Any, *, markdown: bool) -> str:
+    if not isinstance(values, dict) or not values:
+        return "`none`" if markdown else "none"
+    parts = []
+    for agent, count in values.items():
+        label = f"`{agent}`={count}" if markdown else f"{agent}={count}"
+        parts.append(label)
+    return ", ".join(parts)
+
+
+def _cost_breakdown_text(cost: Any, *, markdown: bool) -> str:
+    if cost is None:
+        return "`n/a`" if markdown else "n/a"
+    labels = [
+        ("decomposition_cost", "decompose"),
+        ("search_cost", "search"),
+        ("scoring_cost", "score"),
+        ("translation_cost", "translate"),
+        ("pantheon_cost", "pantheon"),
+        ("verification_cost", "verify"),
+    ]
+    rendered: list[str] = []
+    for attr_name, label in labels:
+        amount = float(_lookup(cost, attr_name, 0.0) or 0.0)
+        if amount <= 0:
+            continue
+        rendered.append(f"`{label}`=${amount:.4f}" if markdown else f"{label}=${amount:.4f}")
+    return ", ".join(rendered) if rendered else ("`none`" if markdown else "none")
+
+
+def _lookup(obj: Any, name: str, default: Any = None) -> Any:
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return getattr(obj, name, default)

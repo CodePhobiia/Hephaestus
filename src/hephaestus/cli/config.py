@@ -69,6 +69,9 @@ class HephaestusConfig:
     pantheon_require_unanimity: bool = True
     pantheon_allow_fail_closed: bool = True
     pantheon_max_survivors_to_council: int = 2
+    pantheon_athena_model: str | None = None
+    pantheon_hermes_model: str | None = None
+    pantheon_apollo_model: str | None = None
 
     # API keys (resolved from env at load time, never persisted)
     anthropic_api_key: str | None = field(default=None, repr=False)
@@ -97,6 +100,9 @@ class HephaestusConfig:
             "pantheon_require_unanimity": self.pantheon_require_unanimity,
             "pantheon_allow_fail_closed": self.pantheon_allow_fail_closed,
             "pantheon_max_survivors_to_council": self.pantheon_max_survivors_to_council,
+            "pantheon_athena_model": self.pantheon_athena_model,
+            "pantheon_hermes_model": self.pantheon_hermes_model,
+            "pantheon_apollo_model": self.pantheon_apollo_model,
         }
 
 
@@ -157,6 +163,9 @@ def load_config() -> HephaestusConfig | None:
         pantheon_max_survivors_to_council = data.get("pantheon_max_survivors_to_council", 2)
         if not isinstance(pantheon_max_survivors_to_council, int) or pantheon_max_survivors_to_council < 1 or pantheon_max_survivors_to_council > 5:
             pantheon_max_survivors_to_council = 2
+        pantheon_athena_model = str(data.get("pantheon_athena_model", "") or "").strip() or None
+        pantheon_hermes_model = str(data.get("pantheon_hermes_model", "") or "").strip() or None
+        pantheon_apollo_model = str(data.get("pantheon_apollo_model", "") or "").strip() or None
         cfg = HephaestusConfig(
             backend=backend,
             default_model=data.get("default_model", _DEFAULT_MODEL),
@@ -177,6 +186,9 @@ def load_config() -> HephaestusConfig | None:
             pantheon_require_unanimity=pantheon_require_unanimity,
             pantheon_allow_fail_closed=pantheon_allow_fail_closed,
             pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+            pantheon_athena_model=pantheon_athena_model,
+            pantheon_hermes_model=pantheon_hermes_model,
+            pantheon_apollo_model=pantheon_apollo_model,
         )
     except Exception:
         cfg = HephaestusConfig()

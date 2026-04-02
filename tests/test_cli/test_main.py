@@ -11,6 +11,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -130,28 +131,28 @@ def _make_cost_breakdown(
     search: float = 0.12,
     score: float = 0.05,
     translate: float = 0.45,
+    pantheon: float = 0.0,
     verify: float = 0.15,
-) -> MagicMock:
-    cb = MagicMock()
-    cb.decomposition_cost = decomp
-    cb.search_cost = search
-    cb.scoring_cost = score
-    cb.translation_cost = translate
-    cb.verification_cost = verify
-    cb.total = decomp + search + score + translate + verify
-
-    def to_dict():
-        return {
+) -> SimpleNamespace:
+    total = decomp + search + score + translate + pantheon + verify
+    return SimpleNamespace(
+        decomposition_cost=decomp,
+        search_cost=search,
+        scoring_cost=score,
+        translation_cost=translate,
+        pantheon_cost=pantheon,
+        verification_cost=verify,
+        total=total,
+        to_dict=lambda: {
             "decomposition": decomp,
             "search": search,
             "scoring": score,
             "translation": translate,
+            "pantheon": pantheon,
             "verification": verify,
-            "total": cb.total,
-        }
-
-    cb.to_dict = to_dict
-    return cb
+            "total": total,
+        },
+    )
 
 
 def _make_invention_report(
@@ -200,6 +201,28 @@ def _make_invention_report(
 
     report.summary = summary_fn
     return report
+
+
+def _pantheon_state() -> SimpleNamespace:
+    return SimpleNamespace(
+        mode="pantheon",
+        resolution="consensus",
+        consensus_achieved=True,
+        final_verdict="NOVEL",
+        winning_candidate_id="candidate-1:Immune Trust Protocol",
+        unresolved_vetoes=[],
+        failure_reason=None,
+    )
+
+
+def _pantheon_runtime() -> dict[str, Any]:
+    return {
+        "total_cost_usd": 0.1234,
+        "total_input_tokens": 210,
+        "total_output_tokens": 70,
+        "total_duration_seconds": 3.5,
+        "agent_call_counts": {"athena": 2, "hermes": 2, "apollo": 1},
+    }
 
 
 def _lens_engine_state() -> LensEngineState:
@@ -795,6 +818,22 @@ class TestDisplay:
         assert "Lens Engine" in output
         assert "bundle:adaptive:main" in output
 
+    def test_print_invention_report_with_pantheon(self) -> None:
+        from io import StringIO
+        from rich.console import Console
+        from hephaestus.cli.display import print_invention_report
+
+        report = _make_invention_report()
+        report.pantheon_state = _pantheon_state()
+        report.pantheon_runtime = _pantheon_runtime()
+        report.cost_breakdown = _make_cost_breakdown(pantheon=0.1234)
+        console = Console(file=StringIO(), highlight=False)
+        print_invention_report(console, report, show_trace=False, show_cost=True)
+        output = console.file.getvalue()  # type: ignore
+        assert "Pantheon" in output
+        assert "consensus" in output
+        assert "$0.1234" in output
+
     def test_print_cost_table(self) -> None:
         """Smoke test for cost table rendering."""
         from io import StringIO
@@ -850,6 +889,21 @@ class TestDisplay:
         payload = json.loads(OutputFormatter().to_json(bridged))
         lens = payload["hephaestus_invention_report"]["lens_engine"]
         assert lens["active_bundle_id"] == "bundle:adaptive:main"
+
+    def test_bridge_report_preserves_pantheon_runtime(self) -> None:
+        from hephaestus.cli.main import _bridge_report
+        from hephaestus.output.formatter import OutputFormatter
+
+        report = _make_invention_report()
+        report.pantheon_state = _pantheon_state()
+        report.pantheon_runtime = _pantheon_runtime()
+        report.cost_breakdown = _make_cost_breakdown(pantheon=0.1234)
+        bridged = _bridge_report(report)
+        payload = json.loads(OutputFormatter().to_json(bridged))
+        pantheon = payload["hephaestus_invention_report"]["pantheon"]
+        runtime = payload["hephaestus_invention_report"]["pantheon_runtime"]
+        assert pantheon["resolution"] == "consensus"
+        assert runtime["total_cost_usd"] == pytest.approx(0.1234)
 
 
 # ---------------------------------------------------------------------------

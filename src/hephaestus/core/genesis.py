@@ -203,6 +203,9 @@ class GenesisConfig:
     pantheon_require_unanimity: bool = True
     pantheon_allow_fail_closed: bool = True
     pantheon_max_survivors_to_council: int = 2
+    pantheon_athena_model: str | None = None
+    pantheon_hermes_model: str | None = None
+    pantheon_apollo_model: str | None = None
     perplexity_model: str | None = None
     branchgenome_rejection_ledger_path: str | None = None
 
@@ -227,6 +230,13 @@ class GenesisConfig:
 
     # Library override
     lens_library_dir: str | None = None
+
+    def resolved_pantheon_models(self) -> dict[str, str]:
+        return {
+            "pantheon_athena": self.pantheon_athena_model or self.decompose_model,
+            "pantheon_hermes": self.pantheon_hermes_model or self.search_model,
+            "pantheon_apollo": self.pantheon_apollo_model or self.defend_model,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +286,7 @@ class CostBreakdown:
     search_cost: float = 0.0
     scoring_cost: float = 0.0
     translation_cost: float = 0.0
+    pantheon_cost: float = 0.0
     verification_cost: float = 0.0
 
     @property
@@ -285,6 +296,7 @@ class CostBreakdown:
             + self.search_cost
             + self.scoring_cost
             + self.translation_cost
+            + self.pantheon_cost
             + self.verification_cost
         )
 
@@ -294,6 +306,7 @@ class CostBreakdown:
             "search": self.search_cost,
             "scoring": self.scoring_cost,
             "translation": self.translation_cost,
+            "pantheon": self.pantheon_cost,
             "verification": self.verification_cost,
             "total": self.total,
         }
@@ -348,6 +361,7 @@ class InventionReport:
     lens_runtime: dict[str, Any] = field(default_factory=dict)
     lens_engine_state: Any | None = None
     pantheon_state: Any | None = None
+    pantheon_runtime: Any | None = None
     branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
     total_duration_seconds: float = 0.0
@@ -376,11 +390,14 @@ class InventionReport:
         for trace in traces:
             if trace is None:
                 continue
+            if getattr(trace, "pantheon_owned", False):
+                continue
             ident = id(trace)
             if ident in seen:
                 continue
             seen.add(ident)
             total += int(getattr(trace, "total_input_tokens", 0) or 0)
+        total += self._metric_value(self.pantheon_runtime, "total_input_tokens")
         return total
 
     @property
@@ -397,11 +414,14 @@ class InventionReport:
         for trace in traces:
             if trace is None:
                 continue
+            if getattr(trace, "pantheon_owned", False):
+                continue
             ident = id(trace)
             if ident in seen:
                 continue
             seen.add(ident)
             total += int(getattr(trace, "total_output_tokens", 0) or 0)
+        total += self._metric_value(self.pantheon_runtime, "total_output_tokens")
         return total
 
     @property
@@ -441,6 +461,7 @@ class InventionReport:
             "lens_runtime": self._research_to_dict(self.lens_runtime),
             "lens_engine": self._research_to_dict(self.lens_engine_state),
             "pantheon": self._research_to_dict(self.pantheon_state),
+            "pantheon_runtime": self._research_to_dict(self.pantheon_runtime),
             "alternatives": [
                 {
                     "name": inv.invention_name,
@@ -475,6 +496,20 @@ class InventionReport:
                 for k, v in obj.__dict__.items()
             }
         return str(obj)
+
+    @staticmethod
+    def _metric_value(obj: Any | None, name: str) -> int:
+        if obj is None:
+            return 0
+        if isinstance(obj, dict):
+            try:
+                return int(obj.get(name, 0) or 0)
+            except Exception:
+                return 0
+        try:
+            return int(getattr(obj, name, 0) or 0)
+        except Exception:
+            return 0
 
     def summary(self) -> str:
         """Human-readable one-line summary."""
@@ -705,6 +740,7 @@ class Genesis:
             # ── Stage 1.5: External reconnaissance (Perplexity) ──────────
             baseline_dossier = None
             pantheon_state = None
+            pantheon_runtime = None
             if self._config.use_perplexity_research:
                 try:
                     from hephaestus.research.perplexity import PerplexityClient
@@ -953,39 +989,6 @@ class Genesis:
             if translation_runtime is not None:
                 lens_runtime["translation"] = translation_runtime.to_dict()
 
-            if self._config.use_pantheon_mode and translations:
-                try:
-                    from hephaestus.pantheon import PantheonCoordinator
-
-                    pantheon = PantheonCoordinator(
-                        athena_harness=self._harnesses["decompose"],
-                        hermes_harness=self._harnesses["search"],
-                        apollo_harness=self._harnesses["defend"],
-                        max_rounds=self._config.pantheon_max_rounds,
-                        require_unanimity=self._config.pantheon_require_unanimity,
-                        allow_fail_closed=self._config.pantheon_allow_fail_closed,
-                        max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
-                    )
-                    translations, pantheon_state = await pantheon.deliberate(
-                        problem=problem,
-                        structure=structure,
-                        translations=translations,
-                        translator=translator,
-                        baseline_dossier=baseline_dossier,
-                    )
-                    if pantheon_state is not None:
-                        lens_runtime["pantheon"] = pantheon_state.to_dict()
-                    if not translations:
-                        yield PipelineUpdate(
-                            stage=PipelineStage.FAILED,
-                            message="Pantheon Mode failed to produce a council-surviving invention",
-                            data=pantheon_state,
-                            elapsed_seconds=elapsed(),
-                        )
-                        return
-                except Exception as exc:
-                    logger.warning("Pantheon Mode skipped after translation failure: %s", exc)
-
             if self._config.use_branchgenome_v1:
                 from hephaestus.branchgenome.models import BranchStatus
 
@@ -1039,6 +1042,48 @@ class Genesis:
 
             cost.translation_cost = sum(t.cost_usd for t in translations)
 
+            if self._config.use_pantheon_mode and translations:
+                try:
+                    from hephaestus.pantheon import PantheonCoordinator
+
+                    pantheon = PantheonCoordinator(
+                        athena_harness=self._harnesses.get("pantheon_athena", self._harnesses["decompose"]),
+                        hermes_harness=self._harnesses.get("pantheon_hermes", self._harnesses["search"]),
+                        apollo_harness=self._harnesses.get("pantheon_apollo", self._harnesses["defend"]),
+                        max_rounds=self._config.pantheon_max_rounds,
+                        require_unanimity=self._config.pantheon_require_unanimity,
+                        allow_fail_closed=self._config.pantheon_allow_fail_closed,
+                        max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
+                    )
+                    translations, pantheon_state = await pantheon.deliberate(
+                        problem=problem,
+                        structure=structure,
+                        translations=translations,
+                        translator=translator,
+                        baseline_dossier=baseline_dossier,
+                    )
+                    if pantheon_state is not None:
+                        pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
+                        cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
+                        lens_runtime["pantheon"] = pantheon_state.to_dict()
+                    if not translations:
+                        failure_reason = self._metric_text(
+                            pantheon_state,
+                            "failure_reason",
+                            "Pantheon Mode failed to produce a council-surviving invention.",
+                        )
+                        resolution = self._metric_text(pantheon_state, "resolution", "")
+                        suffix = f" (resolution={resolution})" if resolution else ""
+                        yield PipelineUpdate(
+                            stage=PipelineStage.FAILED,
+                            message=f"{failure_reason}{suffix}",
+                            data=pantheon_state,
+                            elapsed_seconds=elapsed(),
+                        )
+                        return
+                except Exception as exc:
+                    logger.warning("Pantheon Mode skipped after translation failure: %s", exc)
+
             yield PipelineUpdate(
                 stage=PipelineStage.TRANSLATED,
                 message=(
@@ -1069,10 +1114,12 @@ class Genesis:
                     from hephaestus.pantheon import PantheonCoordinator
 
                     pantheon_state = PantheonCoordinator(
-                        athena_harness=self._harnesses["decompose"],
-                        hermes_harness=self._harnesses["search"],
-                        apollo_harness=self._harnesses["defend"],
+                        athena_harness=self._harnesses.get("pantheon_athena", self._harnesses["decompose"]),
+                        hermes_harness=self._harnesses.get("pantheon_hermes", self._harnesses["search"]),
+                        apollo_harness=self._harnesses.get("pantheon_apollo", self._harnesses["defend"]),
                     ).finalize_with_verified(pantheon_state, verified)
+                    pantheon_runtime = self._pantheon_runtime_from_state(pantheon_state)
+                    cost.pantheon_cost = self._metric_number(pantheon_runtime, "total_cost_usd")
                     lens_runtime["pantheon"] = pantheon_state.to_dict()
                 except Exception as exc:
                     logger.warning("Pantheon finalization skipped: %s", exc)
@@ -1193,6 +1240,7 @@ class Genesis:
                 lens_runtime=lens_runtime,
                 branchgenome_metrics=branchgenome_metrics,
                 pantheon_state=pantheon_state,
+                pantheon_runtime=pantheon_runtime,
                 cost_breakdown=cost,
                 total_duration_seconds=elapsed(),
                 model_config={
@@ -1202,6 +1250,19 @@ class Genesis:
                     "translate": self._config.translate_model,
                     "attack": self._config.attack_model,
                     "defend": self._config.defend_model,
+                    **(
+                        self._config.resolved_pantheon_models()
+                        if self._config.use_pantheon_mode
+                        or any(
+                            model is not None
+                            for model in (
+                                self._config.pantheon_athena_model,
+                                self._config.pantheon_hermes_model,
+                                self._config.pantheon_apollo_model,
+                            )
+                        )
+                        else {}
+                    ),
                 },
             )
             try:
@@ -1253,6 +1314,41 @@ class Genesis:
             fallback.append(candidate)
         return fallback
 
+    @staticmethod
+    def _metric_number(obj: Any | None, name: str) -> float:
+        if obj is None:
+            return 0.0
+        if isinstance(obj, dict):
+            try:
+                return float(obj.get(name, 0.0) or 0.0)
+            except Exception:
+                return 0.0
+        try:
+            return float(getattr(obj, name, 0.0) or 0.0)
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _metric_text(obj: Any | None, name: str, default: str = "") -> str:
+        if obj is None:
+            return default
+        if isinstance(obj, dict):
+            value = obj.get(name, default)
+        else:
+            value = getattr(obj, name, default)
+        return str(value).strip() or default
+
+    @classmethod
+    def _pantheon_runtime_from_state(cls, state: Any | None) -> Any | None:
+        if state is None:
+            return None
+        accounting = state.get("accounting") if isinstance(state, dict) else getattr(state, "accounting", None)
+        if accounting is None:
+            return None
+        if hasattr(accounting, "to_dict"):
+            return accounting.to_dict()
+        return accounting
+
     def _ensure_built(self) -> None:
         """Lazily build all adapters and harnesses."""
         if self._stages_built:
@@ -1295,8 +1391,13 @@ class Genesis:
         adapters: dict[str, Any] = {}
 
         all_models = {
-            cfg.decompose_model, cfg.search_model, cfg.score_model,
-            cfg.translate_model, cfg.attack_model, cfg.defend_model
+            cfg.decompose_model,
+            cfg.search_model,
+            cfg.score_model,
+            cfg.translate_model,
+            cfg.attack_model,
+            cfg.defend_model,
+            *cfg.resolved_pantheon_models().values(),
         }
 
         # Claude Max mode — route ALL models through OAT subscription auth
@@ -1346,22 +1447,8 @@ class Genesis:
             return adapters
 
         # Direct API keys — deduplicate: build each unique model name once
-        anthropic_models = {
-            n for n in [
-                cfg.decompose_model,
-                cfg.translate_model,
-                cfg.defend_model,
-            ]
-            if n.startswith("claude")
-        }
-        openai_models = {
-            n for n in [
-                cfg.search_model,
-                cfg.score_model,
-                cfg.attack_model,
-            ]
-            if n.startswith("gpt") or n.startswith("o3") or n.startswith("o4")
-        }
+        anthropic_models = {n for n in all_models if n.startswith("claude")}
+        openai_models = {n for n in all_models if n.startswith("gpt") or n.startswith("o3") or n.startswith("o4")}
 
         for model_name in anthropic_models:
             adapters[model_name] = _AnthropicAdapter(
@@ -1376,10 +1463,6 @@ class Genesis:
             )
 
         # Fallback: if a model wasn't categorised, try anthropic first
-        all_models = {
-            cfg.decompose_model, cfg.search_model, cfg.score_model,
-            cfg.translate_model, cfg.attack_model, cfg.defend_model
-        }
         for model_name in all_models:
             if model_name not in adapters:
                 try:
@@ -1387,7 +1470,7 @@ class Genesis:
                         model=model_name,
                         api_key=cfg.anthropic_api_key,
                     )
-                except Exception:
+                except Exception as exc:
                     try:
                         adapters[model_name] = _OpenAIAdapter(
                             model=model_name,
@@ -1490,6 +1573,47 @@ class Genesis:
                 temperature=0.3,
             ),
         )
+
+        if cfg.use_pantheon_mode or any(
+            model is not None
+            for model in (
+                cfg.pantheon_athena_model,
+                cfg.pantheon_hermes_model,
+                cfg.pantheon_apollo_model,
+            )
+        ):
+            pantheon_models = cfg.resolved_pantheon_models()
+
+            harnesses["pantheon_athena"] = DeepForgeHarness(
+                adapter=get_adapter(pantheon_models["pantheon_athena"]),
+                config=HarnessConfig(
+                    use_interference=False,
+                    use_pruner=False,
+                    use_pressure=False,
+                    max_tokens=cfg.max_tokens_decompose,
+                    temperature=0.3,
+                ),
+            )
+            harnesses["pantheon_hermes"] = DeepForgeHarness(
+                adapter=get_adapter(pantheon_models["pantheon_hermes"]),
+                config=HarnessConfig(
+                    use_interference=cfg.use_interference_in_search,
+                    use_pruner=False,
+                    use_pressure=False,
+                    max_tokens=cfg.max_tokens_search,
+                    temperature=0.5,
+                ),
+            )
+            harnesses["pantheon_apollo"] = DeepForgeHarness(
+                adapter=get_adapter(pantheon_models["pantheon_apollo"]),
+                config=HarnessConfig(
+                    use_interference=False,
+                    use_pruner=False,
+                    use_pressure=False,
+                    max_tokens=cfg.max_tokens_verify,
+                    temperature=0.3,
+                ),
+            )
 
         return harnesses
 
