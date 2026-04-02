@@ -1,0 +1,39 @@
+name: Configuration Management
+domain: information_technology
+subdomain: configuration_management
+
+axioms:
+  - "Infrastructure as code treats provisioning declaratively: the desired state is defined in version-controlled files, and a reconciliation engine converges the actual state toward it — removing the gap between documentation and reality."
+  - "Idempotency is the correctness criterion for configuration operations: applying the same configuration twice must produce the same result as applying it once — non-idempotent operations accumulate unintended state changes on re-runs."
+  - "Configuration drift is entropy applied to infrastructure: as humans make direct changes outside the IaC process, actual state diverges from declared state silently, creating a growing gap between what is running and what anyone believes is running."
+  - "Immutable infrastructure replaces mutation with replacement: instead of upgrading a running instance, a new instance is built from a known-good image and traffic is cut over — eliminating accumulated in-place state as a failure mode."
+  - "Declarative configuration specifies the target state without encoding the path to reach it; imperative configuration specifies the sequence of steps — declarative systems are more resilient to partial failure because they can resume convergence from any intermediate state."
+  - "Secret management is configuration management's hardest problem: secrets must be versioned and auditable like all configuration, yet must never appear in version-controlled plaintext — injection at runtime from a vault, not baking into images, is the only sound approach."
+
+structural_patterns:
+  - name: declared_state_convergence
+    abstract: The desired final state of a system is expressed as a formal specification, and an automated process continuously compares actual state to declared state and applies corrective changes to eliminate any divergence.
+    maps_to: [declarative_management, drift_elimination, continuous_reconciliation, specification_driven_operation]
+
+  - name: idempotent_operation_design
+    abstract: Every configuration operation is designed so that its repeated application produces identical results — enabling safe re-runs after partial failures without the need to track which steps completed successfully.
+    maps_to: [safe_reapplication, partial_failure_recovery, convergence_guarantee, operation_safety]
+
+  - name: immutable_artifact_promotion
+    abstract: Deployable units are built once from a versioned specification, never modified after creation, and promoted through environments by value — the same artifact that passed testing is what runs in production, with no in-place mutation.
+    maps_to: [artifact_immutability, environment_promotion, build_once_deploy_many, state_accumulation_prevention]
+
+  - name: drift_detection_alerting
+    abstract: The gap between declared and actual state is continuously measured, and deviations beyond a threshold trigger alerts or automatic reconciliation — making configuration drift a visible, measurable quantity rather than a silent accumulation.
+    maps_to: [compliance_monitoring, state_divergence_detection, configuration_audit, automated_remediation]
+
+  - name: gitops_change_traceability
+    abstract: All changes to infrastructure state flow through a version-controlled repository with commit history, code review, and merge controls — creating an immutable audit trail that links every production state to a specific, reviewable change.
+    maps_to: [change_auditability, review_gating, rollback_capability, infrastructure_versioning]
+
+  - name: secret_injection_at_runtime
+    abstract: Sensitive configuration values are never encoded into build artifacts or version control; instead they are resolved and injected from a secured store at the moment of deployment or process startup, keeping secrets ephemeral in the execution environment.
+    maps_to: [secret_hygiene, runtime_resolution, credential_isolation, plaintext_prevention]
+
+injection_prompt: |
+  Think through this as a configuration management problem. What is the declared desired state, and how is actual state continuously reconciled toward it? Identify anywhere that manual direct changes could introduce drift — a gap between what is declared and what is running. Ask whether every configuration operation is idempotent, and whether the system can resume correctly from any partial-failure point without human judgment about what already ran.

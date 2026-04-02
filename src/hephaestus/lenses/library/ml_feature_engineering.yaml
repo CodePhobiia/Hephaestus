@@ -1,0 +1,41 @@
+name: Feature Engineering & Representation Learning
+domain: machine_learning
+subdomain: feature_engineering
+
+axioms:
+  - "The curse of dimensionality means that in high-dimensional spaces, the volume grows exponentially with dimension, making all training points effectively equidistant from any query point; distance-based reasoning, density estimation, and interpolation all degrade unless the true data manifold is low-dimensional."
+  - "Feature crosses (explicit multiplicative combinations of features) allow linear models to capture interaction effects that require exponentially deeper trees or nonlinear networks to discover implicitly; the choice to explicitly encode interactions versus let the model learn them trades interpretability against generalization risk."
+  - "Embedding spaces project discrete or high-dimensional objects into continuous low-dimensional manifolds where geometric relationships encode semantic relationships; the quality of an embedding is measured by whether distances and directions in the space correspond to meaningful task-relevant structure."
+  - "Representation invariance requires that the learned features be unchanged (or predictably transformed) under nuisance transformations; without explicit invariance encoding, models learn spurious correlations that are artifacts of sampling rather than structure in the target concept."
+  - "Dimensionality reduction techniques (PCA, t-SNE, UMAP) differ in which geometric properties they preserve: PCA preserves global variance, t-SNE preserves local neighborhood topology, UMAP approximately preserves both but not identically; choosing wrong preserves the wrong structure."
+  - "Interaction detection in high-dimensional feature spaces requires distinguishing main effects (single-feature contributions) from interaction effects (joint contributions not predictable from marginals); detecting interactions scales combinatorially and requires either model-intrinsic methods or carefully designed permutation tests."
+
+structural_patterns:
+  - name: manifold_hypothesis_exploitation
+    abstract: High-dimensional inputs often lie on or near a low-dimensional manifold; finding the intrinsic coordinates of this manifold transforms an intractable high-dimensional problem into a tractable low-dimensional one without information loss.
+    maps_to: [dimensionality_reduction, intrinsic_coordinate_discovery, complexity_reduction, latent_space_construction]
+
+  - name: explicit_interaction_encoding
+    abstract: Forcing the representation to include explicit cross-products or conjunctions of relevant variables makes structure visible to simple downstream models that would otherwise require deep composition to discover it.
+    maps_to: [interaction_feature_construction, cross_variable_encoding, representation_enrichment, downstream_simplification]
+
+  - name: semantic_geometry_mapping
+    abstract: Designing a representation space where geometric proximity encodes task-relevant similarity allows spatial reasoning tools (nearest-neighbor, interpolation, arithmetic) to substitute for symbolic or logical operations.
+    maps_to: [semantic_space_design, similarity_encoding, analogical_reasoning, retrieval_optimization]
+
+  - name: nuisance_invariance_encoding
+    abstract: Explicitly removing variation due to irrelevant transformations from the representation prevents models from learning brittle shortcuts; invariance must be identified and enforced before or during representation learning.
+    maps_to: [invariance_specification, spurious_correlation_removal, data_augmentation_design, robustness_encoding]
+
+  - name: structure_preservation_selection
+    abstract: Every compression or projection preserves some geometric properties and destroys others; the choice of which properties to preserve must be driven by what the downstream task requires, not by computational convenience.
+    maps_to: [compression_objective_alignment, projection_selection, property_preservation_auditing, task_aligned_reduction]
+
+  - name: marginal_vs_joint_effect_decomposition
+    abstract: The contribution of any set of variables can be decomposed into effects attributable to individual variables and effects that only emerge from their joint presence; failure to separate these leads to incorrect attribution and missed interactions.
+    maps_to: [effect_attribution, interaction_decomposition, variable_importance_analysis, attribution_auditing]
+
+injection_prompt: |
+  Examine the representation your system is working with: is it the raw input space or a learned projection, and does the geometry of that space actually encode the structure relevant to your task?
+  Ask what interactions or invariances are implicit in your data that your current representation forces the model to discover rather than receiving explicitly — and whether that discovery is feasible given your data volume.
+  Identify the intrinsic dimensionality of your problem: if the true degrees of freedom are far lower than the input dimension, you are spending capacity modeling the ambient space rather than the manifold that matters.

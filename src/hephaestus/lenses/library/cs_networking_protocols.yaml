@@ -1,0 +1,39 @@
+name: Network Protocol Design
+domain: cs
+subdomain: networking_protocols
+
+axioms:
+  - "TCP's congestion control (AIMD: Additive Increase, Multiplicative Decrease) probes available bandwidth by slowly increasing the send window until loss is detected, then halving it — this asymmetric response converges to fair sharing among competing flows because all flows back off simultaneously when a bottleneck is congested."
+  - "A three-way handshake establishes bidirectional state before data transfer: SYN establishes sequence numbers and capabilities, SYN-ACK confirms the server's reachability and establishes reverse state, ACK confirms the client received the server's parameters — each step serves a distinct initialization role that cannot be collapsed without losing a guarantee."
+  - "Error correction in protocols is stratified: forward error correction (FEC) adds redundancy so receivers self-correct without retransmission (good for low-latency broadcast); ARQ (Automatic Repeat Request) retransmits only on detected loss (good for point-to-point reliability) — the choice depends on loss rate, RTT, and whether retransmission is feasible."
+  - "Flow control prevents a fast sender from overwhelming a slow receiver by advertising a receive window (remaining buffer space); the sender must not have more unacknowledged bytes in flight than the advertised window — this is receiver-driven backpressure, distinct from congestion control which is network-driven."
+  - "Routing algorithms converge to shortest paths through distributed computation: link-state protocols (OSPF) flood the complete topology and compute paths locally; distance-vector protocols (BGP-style) exchange path-cost summaries with neighbors and may slow-converge due to counting-to-infinity without route poisoning or split-horizon."
+  - "Protocol state machines are the formal backbone of session management: each endpoint tracks connection state (LISTEN, SYN_SENT, ESTABLISHED, TIME_WAIT...) and valid transitions are driven by received segments and timeouts — any segment arriving in an unexpected state is either rejected or triggers a reset."
+
+structural_patterns:
+  - name: additive_increase_multiplicative_decrease
+    abstract: "A resource consumer probes capacity by incrementally increasing demand until a signal (loss, explicit backpressure) is received, then dramatically reduces — the asymmetry of increase rate vs. decrease rate causes all consumers to converge to fair allocation without coordination."
+    maps_to: [congestion_probing, fair_resource_sharing, backpressure_response, probe_and_backoff]
+
+  - name: handshake_state_establishment
+    abstract: "Before a bidirectional channel can carry payloads, both endpoints exchange capability declarations and acknowledgments in a fixed sequence — each round-trip serves a distinct purpose (announce, confirm, complete) and cannot be shortened without leaving one endpoint's state unconfirmed."
+    maps_to: [connection_setup, mutual_capability_negotiation, state_initialization, session_bootstrap]
+
+  - name: sliding_window_pipelining
+    abstract: "A sender maintains a window of unacknowledged in-flight messages, advancing the window as acknowledgments arrive — this decouples throughput from round-trip latency by keeping the pipe full rather than waiting for one acknowledgment before sending the next."
+    maps_to: [pipeline_utilization, in_flight_tracking, throughput_latency_decoupling, window_management]
+
+  - name: layered_error_handling
+    abstract: "Error detection and correction are separated into layers with distinct responsibilities: the physical layer handles bit errors, the data link layer handles frame errors, the transport layer handles segment loss — each layer trusts the layer below and handles only the error class it can correct at its level."
+    maps_to: [layered_responsibility, error_classification, level_appropriate_handling, separation_of_concerns]
+
+  - name: distributed_routing_convergence
+    abstract: "Each node independently computes paths by exchanging local state summaries with neighbors and iterating until all nodes agree — convergence is not instantaneous; transient routing loops or black holes exist during the convergence period, making the convergence time a key protocol metric."
+    maps_to: [distributed_path_computation, convergence_time, transient_inconsistency, iterative_agreement]
+
+  - name: state_machine_session_lifecycle
+    abstract: "A protocol session is a finite-state machine where each state represents a phase of a relationship between endpoints, transitions are triggered by received messages or timeouts, and invalid transitions are explicitly rejected — the state machine is the specification; the implementation must be a faithful encoding of it."
+    maps_to: [session_lifecycle, state_transition_modeling, protocol_formalization, invalid_transition_handling]
+
+injection_prompt: |
+  View this through network protocol design: every interaction is a state machine exchange between endpoints that do not trust each other and cannot assume message delivery. What is the handshake — the minimum exchange to establish shared state before the main protocol proceeds? Where does flow control operate (receiver-driven backpressure) vs. congestion control (network-driven)? Model the full session lifecycle as a state machine: every state, every valid transition, every timeout. What is the error correction strategy — FEC (self-correcting redundancy) or ARQ (retransmission on detection)?

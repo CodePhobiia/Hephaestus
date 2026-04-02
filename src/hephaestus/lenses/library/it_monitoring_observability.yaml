@@ -1,0 +1,39 @@
+name: Monitoring & Observability
+domain: information_technology
+subdomain: monitoring_observability
+
+axioms:
+  - "The three pillars of observability — metrics, logs, and traces — answer different questions: metrics say 'what is the system doing now', logs say 'what happened and when', traces say 'which path did this request take through the system'."
+  - "Alert fatigue is a systemic failure mode: when on-call engineers receive too many low-quality alerts, they habituate to alerting noise, increasing mean time to detect (MTTD) for real incidents."
+  - "SLOs (Service Level Objectives) define the threshold below which user experience degrades meaningfully — the error budget between 100% and the SLO target is the permissible space for risk-taking and change velocity."
+  - "The golden signals of load management are latency, traffic, errors, and saturation — monitoring any system with these four signals captures the most operationally significant failure modes."
+  - "Cardinality is the hidden cost of metrics: each unique combination of label values creates a distinct time series, so high-cardinality labels (user ID, request ID) can explode storage and query cost by orders of magnitude."
+  - "Anomaly detection in time-series data requires baselines that account for seasonality — comparing current traffic to the same time last week outperforms comparing against a rolling short-window average for systems with periodic patterns."
+
+structural_patterns:
+  - name: signal_to_noise_ratio_management
+    abstract: A monitoring system distinguishes actionable signals from background noise by tying every alert to a specific failure mode with a defined response — alerts without owners and runbooks are noise, not signal.
+    maps_to: [alert_quality, noise_reduction, actionable_alerting, on_call_health]
+
+  - name: error_budget_consumption_tracking
+    abstract: "The gap between perfect reliability and a defined threshold is treated as a finite budget: spending it fast allows aggressive releases; exhausting it mandates a reliability freeze, creating a natural tradeoff mechanism."
+    maps_to: [reliability_tradeoff, change_velocity_control, slo_management, risk_allocation]
+
+  - name: distributed_request_tracing
+    abstract: A unique identifier propagates through every service handling a request, enabling post-hoc reconstruction of the causal path and timing of each hop across service boundaries.
+    maps_to: [causality_tracking, latency_attribution, cross_boundary_debugging, request_lineage]
+
+  - name: layered_aggregation_pyramid
+    abstract: Raw events are aggregated progressively — from individual events to per-minute counters to hourly summaries — with detail decreasing and retention increasing as data ages, preserving query efficiency.
+    maps_to: [data_aggregation, retention_tiering, query_performance, storage_optimization]
+
+  - name: baseline_deviation_alerting
+    abstract: Thresholds are not static values but dynamically computed from historical patterns, triggering when current behavior deviates beyond a statistically significant bound from its own seasonal norm.
+    maps_to: [adaptive_thresholds, anomaly_detection, seasonal_baselining, false_positive_reduction]
+
+  - name: dashboard_as_hypothesis
+    abstract: Each dashboard panel encodes an implicit hypothesis about what matters — poorly chosen metrics visualize busyness rather than health; well-chosen panels reflect the user's actual experience of the system.
+    maps_to: [metric_selection, user_centric_monitoring, operational_clarity, hypothesis_encoding]
+
+injection_prompt: |
+  Apply the observability lens: distinguish what you can currently observe from what is invisible to you. Which signals are metrics (rate/level), logs (events), or traces (causal paths)? Ask where alert fatigue might suppress real signals, and whether your thresholds are static numbers or adaptive baselines that account for periodic patterns. Ground everything in how a human operator would experience a degradation.

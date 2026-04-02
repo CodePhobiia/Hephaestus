@@ -1,0 +1,39 @@
+name: Continuous Integration & Delivery
+domain: coding
+subdomain: continuous_integration
+
+axioms:
+  - "Integration pain grows superlinearly with branch lifetime: two branches diverged for one day take roughly four times as long to integrate as two diverged for half a day — deferring integration compounds the cost, not just delays it."
+  - "Trunk-based development means the main branch is always releasable: every commit must leave the system in a deployable state, which requires feature flags, branch by abstraction, or sufficiently small increments — partially complete features must be hidden, not left broken."
+  - "The deployment pipeline is the only authority on what is releasable: a build that passes all pipeline stages is a candidate for production; a build that has not passed is not, regardless of developer confidence."
+  - "Fast feedback requires test suite decomposition: a 30-minute test suite running on every commit provides little value — commit-stage tests must run in minutes; slower tests run on merge; exploratory tests run on schedule."
+  - "Flaky tests destroy the feedback signal: a test that randomly fails trains developers to ignore failures, converting the safety net into noise — a flaky test is worse than no test because it destroys confidence in the entire suite."
+  - "Deployment frequency is a leading indicator of delivery health: teams that deploy more frequently have shorter cycle times, smaller blast radius per deployment, and faster recovery from failures — deployment frequency is not a consequence of stability but a driver of it."
+
+structural_patterns:
+  - name: integration_as_continuous_activity
+    abstract: Rather than merging long-lived parallel workstreams at project end, integration is performed continuously as the smallest possible increments — the cost of each integration is minimized by minimizing the delta.
+    maps_to: [continuous_merging, integration_frequency, incremental_delta, merge_conflict_prevention]
+
+  - name: pipeline_as_release_authority
+    abstract: A staged automated sequence defines what constitutes releasability — no human judgment can override it, and the stages represent the collective definition of production readiness.
+    maps_to: [automated_gate, release_criteria, deployment_pipeline, objective_quality_bar]
+
+  - name: feedback_stratification
+    abstract: Different types of feedback operate at different timescales — immediate feedback catches syntax and unit-level errors; slower feedback catches integration and system-level errors; the stratification allows fast paths to stay fast without eliminating slow-path checks.
+    maps_to: [feedback_latency_stratification, test_pyramid, staged_validation, fast_path_isolation]
+
+  - name: feature_flag_decoupling
+    abstract: The deployment of code and the activation of a feature are separated — code can be deployed to production in a dormant state and activated independently, allowing integration without exposure.
+    maps_to: [dark_launch, deploy_vs_release, feature_toggle, incremental_activation]
+
+  - name: blast_radius_minimization
+    abstract: Smaller and more frequent deployments contain the scope of any individual failure — when a deployment goes wrong, it is small enough to roll back quickly and contains few enough changes to diagnose rapidly.
+    maps_to: [deployment_risk_reduction, change_scope_control, rollback_simplicity, incident_scope_limitation]
+
+  - name: flakiness_as_signal_corruption
+    abstract: A test that sometimes passes and sometimes fails without corresponding code changes corrupts the entire feedback signal by introducing false negatives — the probability of ignoring a real failure grows with the flakiness rate.
+    maps_to: [signal_integrity, false_negative_prevention, test_reliability, feedback_trust]
+
+injection_prompt: |
+  Apply CI/CD thinking: integration pain is a superlinear function of time — ask how to compress the integration window to minimize compounding cost. Treat the deployment pipeline as the only authority on releasability; any build that hasn't cleared every stage is not a candidate for release regardless of confidence. Identify whether flaky tests are corrupting the feedback signal, making failures ignorable. Ask whether feature flags can decouple deployment from activation, allowing continuous delivery without premature feature exposure.

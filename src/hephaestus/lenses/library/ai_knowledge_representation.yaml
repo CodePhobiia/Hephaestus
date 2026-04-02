@@ -1,0 +1,39 @@
+name: Knowledge Representation
+domain: artificial_intelligence
+subdomain: knowledge_representation
+
+axioms:
+  - "Description logics define a formal tradeoff between expressivity and decidability: adding role transitivity (TBox) or nominals (ABox individuals in concept definitions) can push reasoning complexity from polynomial to EXPTIME or undecidable."
+  - "Frames encode knowledge as stereotyped structures with slots and defaults — reasoning is efficient because inheritance fills missing values, but this makes frames inherently non-monotonic: adding new facts can retract previously inherited conclusions."
+  - "Semantic networks encode meaning as graphs of entities and relations, making subsumption (is-a) and property inheritance computable via graph traversal, but lack formal semantics for quantification and negation without augmentation."
+  - "Non-monotonic reasoning formalizes the common pattern that conclusions drawn from incomplete information must be retractable: default logic allows rules with normal conditions that hold 'unless otherwise noted,' modifying the classical inference relation."
+  - "Open-world assumption (OWA) vs. closed-world assumption (CWA) radically changes what can be inferred from absence: under OWA (used in OWL), not knowing a fact means it might be true; under CWA (used in databases), not knowing means it is false."
+  - "Ontology alignment across independently developed knowledge bases is NP-hard in the general case: finding correspondences between concepts in two ontologies requires matching structures whose internal logic may be mutually inconsistent."
+
+structural_patterns:
+  - name: inheritance_with_exception
+    abstract: A hierarchy of categories transmits properties downward by default, but more specific levels can override inherited values — enabling compact representation of typical cases while preserving exceptional specificity.
+    maps_to: [default_reasoning, hierarchical_inheritance, exception_handling, knowledge_compression]
+
+  - name: open_closed_world_boundary
+    abstract: A system explicitly declares which parts of its knowledge are complete (where absence implies falsity) and which are open (where absence implies ignorance), controlling what inferences are licensed from missing data.
+    maps_to: [assumption_boundary, negation_as_failure, completeness_declaration, inference_control]
+
+  - name: subsumption_based_classification
+    abstract: Entities are placed into categories not by explicit assignment but by checking whether their stated properties logically entail membership — enabling automatic classification as new facts are added.
+    maps_to: [automatic_classification, logical_entailment, concept_hierarchy, property_based_sorting]
+
+  - name: defeasible_rule_chaining
+    abstract: Rules fire and propagate conclusions through a chain, but each conclusion can be defeated by a more specific rule or an explicit exception — yielding a form of reasoning that tracks which conclusions survive conflict resolution.
+    maps_to: [default_reasoning, conflict_resolution, rule_priority, retractable_inference]
+
+  - name: ontological_commitment_tradeoff
+    abstract: Choosing a richer conceptual vocabulary (more precise distinctions, reified relations, complex axioms) increases representational power but raises the cost of alignment, integration, and reasoning with independently developed knowledge.
+    maps_to: [expressivity_tradeoff, schema_design, interoperability, integration_cost]
+
+  - name: frame_slot_filling
+    abstract: A structured prototype with named slots and expected value types allows incomplete knowledge to be represented efficiently — missing slot values are filled by inheritance or defaults rather than requiring explicit assertion of every fact.
+    maps_to: [schema_instantiation, default_values, structured_representation, incomplete_knowledge]
+
+injection_prompt: |
+  You are now reasoning through knowledge representation. Ask: what is the open vs. closed world assumption here — does absence of information mean falsity or ignorance? Are conclusions monotone (adding facts only adds conclusions) or defeasible (new facts can retract previous ones)? Identify the inheritance hierarchy: where do defaults propagate, and where do exceptions override them? The expressivity-decidability tradeoff is always present — richer schemas make reasoning harder or undecidable.

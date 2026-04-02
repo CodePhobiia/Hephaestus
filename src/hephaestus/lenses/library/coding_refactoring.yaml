@@ -1,0 +1,39 @@
+name: Refactoring & Code Smells
+domain: coding
+subdomain: refactoring
+
+axioms:
+  - "A refactoring is a behavior-preserving transformation: it changes structure without changing observable behavior, and the two constraints are inseparable — a change that alters behavior is not a refactoring."
+  - "Code smells are symptomatic, not causal: a smell like Long Method or Feature Envy signals that a design decision was deferred or misplaced, but the smell itself is not the problem — the underlying mismatch is."
+  - "The strangler fig pattern exploits parallel existence: rather than rewriting a system, you grow the replacement alongside the original, gradually redirecting traffic until the original is dead — incremental replacement avoids big-bang risk."
+  - "Refactoring under test is safe refactoring: a test suite is the safety net that makes behavior-preservation verifiable — refactoring without tests is editing a live wire and calling it maintenance."
+  - "Shotgun surgery identifies wrong cohesion boundaries: when one conceptual change requires touching many unrelated files, the concept being changed is scattered and should be concentrated into one module."
+  - "Premature generalization is a smell as much as duplication: abstracting before you have three concrete instances creates indirection with no supporting evidence — the abstraction may fit none of the future cases."
+
+structural_patterns:
+  - name: behavior_preserving_transformation
+    abstract: A change to structure that leaves the externally observable contract identical — any valid sequence of inputs produces the same outputs before and after; the transformation is verified by holding behavior fixed while varying form.
+    maps_to: [safe_change, invariant_preservation, incremental_improvement, test_anchored_change]
+
+  - name: smell_as_design_signal
+    abstract: A surface-level symptom whose source is a misaligned design decision — the symptom is information about where structure diverges from intent, not a problem to be mechanically removed.
+    maps_to: [diagnostic_reading, root_cause_analysis, design_misalignment, refactoring_trigger]
+
+  - name: incremental_replacement
+    abstract: A new implementation grows alongside the old one, with traffic or usage gradually redirected until the old implementation has no callers and can be deleted — big-bang replacement risk is eliminated by never having a moment of total cutover.
+    maps_to: [strangler_fig, migration_strategy, parallel_operation, risk_minimization]
+
+  - name: concept_concentration
+    abstract: A single logical concept should be concentrated in one place; when it is scattered across many locations, any evolution of that concept forces a shotgun-surgery operation across the entire codebase.
+    maps_to: [single_source_of_truth, cohesion_repair, locality_of_change, knowledge_consolidation]
+
+  - name: rule_of_three_abstraction
+    abstract: Duplicate once, tolerate it; duplicate twice, consider extraction; on the third instance, the pattern is confirmed and abstraction becomes justified — premature abstraction before three instances optimizes for a hypothesis, not evidence.
+    maps_to: [abstraction_timing, deduplication, generalization_discipline, evidence_based_design]
+
+  - name: composable_micro_transformation
+    abstract: Complex structural changes are decomposed into a sequence of named, independently-safe micro-transformations that each leave the system in a valid state — complexity is achieved through composition of simple atomic steps.
+    maps_to: [incremental_steps, atomic_refactoring, composition_of_transforms, safe_sequencing]
+
+injection_prompt: |
+  Refactoring thinking requires strict separation of behavior from structure: identify which changes preserve all observable contracts and which alter them — conflating the two destroys the safety net. Ask which smells are symptoms of concept scattering (a logical idea split across many places) versus concept tangling (too many ideas in one place). Decompose any complex structural change into atomic behavior-preserving steps you could execute individually with a test suite confirming each one.

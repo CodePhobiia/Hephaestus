@@ -1,0 +1,39 @@
+name: Active Learning & Data Efficiency
+domain: machine_learning
+subdomain: active_learning
+
+axioms:
+  - "Not all data points contribute equally to learning: a dataset of N points contains far more information in the boundary points near the decision boundary than in the clear interior points. Active learning exploits this by sampling where the model is uncertain, not where data is plentiful."
+  - "Uncertainty sampling queries where the model is least confident, but this biases the selected data toward regions where the model is already close to the boundary — it does not discover new regions of uncertainty. This creates a self-reinforcing loop that explores locally but misses global structure."
+  - "Query-by-committee resolves the myopia of single-model uncertainty by training an ensemble of models on different subsets and querying points where the ensemble disagrees. The disagreement information-theoretically bounds the value of each query."
+  - "Pool-based active learning selects from a large pool of unlabeled data rather than generating queries from the entire feature space. This is practically more useful but introduces the pool bias — if the pool does not contain informative examples, the strategy cannot find them."
+  - "Annotation cost optimization balances the information gain of a query against the cost of obtaining its label. A slightly less informative but easily annotated point may be worth more than a maximally informative point that requires expert review."
+  - "The annotation budget curve shows diminishing marginal returns: the first annotations dramatically reduce error, the middle annotations refine the boundary, and the last annotations fine-tune precision. Beyond a threshold, more data points produce less model improvement than hyperparameter optimization."
+
+structural_patterns:
+  - name: informative_boundary_sampling
+    abstract: The most informative data points cluster near the boundary between classes or regimes, not in interior regions. Sampling from boundaries yields maximum information per annotation but requires the model to already have partial boundary knowledge.
+    maps_to: [boundary_proximity, information_maximization, selective_sampling, region_targeting]
+
+  - name: uncertainty_sampling_loop
+    abstract: "Querying where confidence is lowest creates a self-reinforcing exploration pattern: the model explores near known boundaries but may miss entirely new regions. The local optimum is informative; the global optimum may require deliberate exploration beyond uncertainty."
+    maps_to: [local_exploration, self_reinforcing_query, gap_discovery, uncertainty_myopia]
+
+  - name: ensemble_disagreement_value
+    abstract: Training multiple models on different data subsets and querying where they disagree provides information-theoretic bounds on query value. Disagreement captures epistemic uncertainty more reliably than single-model confidence scores.
+    maps_to: [consensus_divergence, epistemic_uncertainty, ensemble_diversity, information_bounding]
+
+  - name: pool_bias_constraint
+    abstract: Selection from a fixed pool of candidates means that query quality is bounded by pool composition. If the pool lacks informative examples, no selection strategy can find them. Pool design is upstream of query strategy.
+    maps_to: [candidate_bound, pool_design_dependency, availability_constraint, selection_limit]
+
+  - name: cost_aware_query_selection
+    abstract: Query utility is a function of both information gain and annotation cost. The optimal strategy maximizes information per unit cost, not information per query. A cheaper annotation with 90% of the information is better than a 10% better one at 10× the cost.
+    maps_to: [cost_efficiency, annotation_budget, information_per_cost, budget_optimization]
+
+  - name: marginal_return_diminishing
+    abstract: Each additional annotation produces less model improvement than the previous one, following a power-law curve. Beyond a threshold, the marginal improvement from more data is less than from algorithmic improvement (architecture, hyperparameters, or training procedure).
+    maps_to: [power_law_scaling, data_vs_algorithm, saturation_threshold, return_curve]
+
+injection_prompt: |
+  You are now reasoning through active learning and data efficiency. Not all data is equal — points near decision boundaries carry exponentially more information per annotation than interior points. Uncertainty sampling biases toward known boundaries; ensembles discover new ones. Ask: where is the annotation budget best spent — more data or better algorithm? Does the selection pool contain informative examples, or is it exhausted? Is query cost proportional to information gain, or are the most informative points disproportionately expensive? The annotation budget curve shows diminishing returns: when do you switch from collecting data to improving the model?

@@ -1,0 +1,39 @@
+name: Network Science
+domain: science
+subdomain: network_science
+
+axioms:
+  - "Network structure determines system behavior more than individual node properties. Two networks with identical node-level dynamics can exhibit radically different macroscopic behavior based solely on their connectivity pattern — the topology is the functional specification."
+  - "Betweenness centrality identifies nodes that control information flow: a node with high betweenness sits on the shortest paths between many other node pairs. Removing a high-betweenness node fragments the network's communication channels far more than removing the highest-degree node."
+  - "Community detection reveals modular structure: densely connected clusters with sparse cross-cluster connections. The modularity metric Q quantifies how much the observed clustering exceeds what would be expected in a random network with the same degree distribution."
+  - "Percolation threshold: as nodes or edges are removed from a network, connectivity persists until a critical fraction is removed, at which point the giant connected component shatters into disconnected clusters. This threshold is determined by the network's degree distribution."
+  - "Small-world networks combine high local clustering (neighbors of a node are likely connected to each other) with short global path lengths (any two nodes are connected by a short chain of intermediaries). This combination enables both local resilience and global efficiency."
+  - "Cascading failures propagate through network dependencies: when a node fails, its load redistributes to neighbors, which may then exceed their capacity and fail, triggering a cascade. The cascade size distribution follows a power law in scale-free networks — most cascades are small, but some destroy the entire network."
+
+structural_patterns:
+  - name: topology_over_nodality
+    abstract: The connection pattern between components determines system behavior more than the components' individual properties. Identical nodes in different topologies produce fundamentally different emergent behavior.
+    maps_to: [structural_primacy, connectivity_determination, topology_as_function, connection_over_content]
+
+  - name: flow_control_centralty
+    abstract: Nodes that lie on shortest paths between other nodes control information flow regardless of their own degree. These bottleneck nodes are the network's communication gatekeepers — their removal is more disruptive than removing hubs.
+    maps_to: [bottleneck_identification, path_dependency, flow_gatekeeping, critical_intermediary]
+
+  - name: community_modularity
+    abstract: Systems decompose into densely connected clusters with sparse inter-cluster links. The degree of modularity determines how independently clusters can evolve and how easily failures or innovations spread between clusters.
+    maps_to: [modular_decomposition, cluster_isolation, cross_cluster_transmission, structural_partition]
+
+  - name: percolation_fragmentation
+    abstract: Gradual component removal produces no visible effect until a critical threshold is crossed, at which point the system suddenly fragments into disconnected components. The threshold depends on the network's degree distribution and is predictable from its structural properties.
+    maps_to: [sudden_fragmentation, critical_threshold, gradual_to_abrupt, connectivity_cliff]
+
+  - name: small_world_efficiency
+    abstract: Systems that combine strong local clustering with sparse long-range shortcuts achieve both resilience (local connections provide redundancy) and global efficiency (shortcuts minimize path length). The shortcuts are disproportionately valuable — a few create global reach.
+    maps_to: [local_resilience_global_reach, shortcut_value, dual_structure_benefit, efficient_connectivity]
+
+  - name: cascading_failure_propagation
+    abstract: Component failure redistributes load to neighbors, potentially triggering their failure in a domino effect. The cascade propagates through dependency links, and its size follows a heavy-tailed distribution — most are small, but some consume the entire system.
+    maps_to: [load_redistribution, domino_effect, cascade_ampliication, systemic_risk_propagation]
+
+injection_prompt: |
+  You are now reasoning through network science. Structure determines function more than individual components do. Betweenness centrality reveals hidden power — nodes on shortest paths control flow, not just the most connected. Communities reveal modular boundaries. Percolation thresholds determine when gradual damage causes sudden collapse. Ask: what does the topology tell me that node properties don't? Where are the betweenness bottlenecks vs the degree hubs? Is the network modular or integrated? How many nodes can fail before fragmentation? Are there small-world shortcuts that enable global propagation of local events? Can failures cascade — what is the dependency graph? The network's structure is its instruction manual.

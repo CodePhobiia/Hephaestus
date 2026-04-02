@@ -1,0 +1,39 @@
+name: Database Internals
+domain: cs
+subdomain: database_internals
+
+axioms:
+  - "A B-tree maintains sorted keys across balanced pages of fixed size, with each internal node holding separator keys that route searches; the tree stays balanced by splitting and merging pages on insert/delete, guaranteeing O(log N) search, insert, and delete with page-sized I/O granularity aligned to disk blocks."
+  - "Write-Ahead Logging (WAL) guarantees durability by requiring that every change be recorded in an append-only log before the corresponding data page is modified — recovery replays the log forward (redo) then rolls back uncommitted transactions (undo), restoring a consistent state after any crash."
+  - "Multi-Version Concurrency Control (MVCC) allows readers and writers to proceed without blocking each other by keeping multiple timestamped versions of each row; a reader sees the snapshot consistent with its transaction start time, and obsolete versions are only reclaimed by a vacuum/garbage-collection process."
+  - "Query optimization is a search over a space of logically equivalent execution plans; the optimizer uses statistics (column cardinalities, histograms) to estimate plan costs and prunes the search space — a wrong cardinality estimate cascades into a wrong join order, the most impactful single source of query regressions."
+  - "ACID atomicity is implemented through undo logging: partial writes from an uncommitted transaction can always be reversed because the log records the before-image of every modified tuple, and rollback replays undo records in reverse order to restore the pre-transaction state."
+  - "Isolation levels (Read Uncommitted → Serializable) trade anomaly prevention for concurrency: Read Committed prevents dirty reads; Repeatable Read prevents non-repeatable reads; Serializable prevents phantom reads — each step narrows the window of observable interleaving, reducing throughput."
+
+structural_patterns:
+  - name: append_only_log_as_truth
+    abstract: The authoritative record of all changes is an immutable append-only sequence; the current state is a derived projection of that log, and recovery consists of replaying the log from a checkpoint — the log is primary, the materialized state is secondary.
+    maps_to: [event_sourcing, audit_trail, recovery_by_replay, immutable_history]
+
+  - name: versioned_snapshot_isolation
+    abstract: Each consumer receives a consistent snapshot frozen at its entry time; multiple versions coexist simultaneously and neither readers nor writers block each other — stale versions are garbage-collected only after all consumers that could reference them have finished.
+    maps_to: [non_blocking_reads, temporal_consistency, snapshot_semantics, concurrent_access]
+
+  - name: page_split_merge_rebalancing
+    abstract: A sorted structure maintains balance by splitting an overflowing node into two and promoting a separator key upward, or merging an underflowing node with a sibling — balance is preserved locally at each modification without global restructuring.
+    maps_to: [incremental_rebalancing, local_invariant_maintenance, load_distribution, hierarchical_splitting]
+
+  - name: statistics_driven_plan_search
+    abstract: The optimizer does not exhaustively evaluate all valid execution plans but uses lightweight statistical summaries of data distributions to estimate plan costs and prune unpromising branches, converging on a near-optimal plan without full enumeration.
+    maps_to: [heuristic_search, cost_estimation, plan_pruning, statistics_informed_decisions]
+
+  - name: isolation_level_tradeoff
+    abstract: A spectrum of anomaly prevention levels exists where each step up eliminates one class of interleaving artifact (dirty read, phantom, non-repeatable read) at the cost of reduced concurrency — the correct level is determined by the application's tolerance for anomalies, not by a preference for safety.
+    maps_to: [consistency_concurrency_tradeoff, anomaly_classification, correctness_performance_spectrum, guard_level_selection]
+
+  - name: checkpoint_recovery_window
+    abstract: Periodic checkpoints flush dirty state to durable storage and truncate the log, bounding the amount of log that must be replayed during recovery — the checkpoint interval sets a tradeoff between steady-state I/O overhead and worst-case recovery time.
+    maps_to: [recovery_time_objective, durability_cost, periodic_compaction, bounded_recovery]
+
+injection_prompt: |
+  Reason through this as a database internals problem. What is the write-ahead log — the immutable record of all mutations from which current state can be reconstructed? Identify the MVCC versioning strategy: how do concurrent readers receive consistent snapshots without blocking writers? Apply query plan reasoning: what are the cardinality estimates, the join order decisions, and the index access paths? Every consistency level is a tradeoff — where on the isolation spectrum does this problem sit, and what anomalies are acceptable?

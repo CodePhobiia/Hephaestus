@@ -1,0 +1,39 @@
+name: Data Pipeline Architecture
+domain: information_technology
+subdomain: data_pipeline
+
+axioms:
+  - "Backpressure is the fundamental flow control mechanism: when downstream processing slows, the signal must propagate upstream to throttle production. Without backpressure, pipelines buffer until they exhaust memory, then crash — the failure mode is always exhaustion, never graceful degradation."
+  - "Schema evolution is inevitable: data producers change their schemas independently of consumers, and any pipeline that assumes static schemas will fail eventually. Forward and backward compatibility must be designed into the serialization format (Avro, Protobuf) and enforced through compatibility checks."
+  - "Exactly-once semantics are an illusion — you can implement exactly-once processing semantics through idempotent writes and transactional checkpoints, but the underlying storage is at-least-once. The gap between exactly-once processing and at-least-once delivery is bridged by deduplication."
+  - "A data pipeline is a DAG of transformations where each node has its own failure mode, latency characteristics, and resource profile. The critical path — the longest chain of dependent transformations — determines end-to-end latency regardless of how fast other branches execute."
+  - "Watermarking is how you define 'complete': a watermark specifies the latest event time for which you guarantee no more data will arrive. All data before the watermark can be processed as final; all data after is speculative. The watermark position determines the latency-completeness tradeoff."
+  - "Data quality checks must be inline, not post-hoc: a pipeline that produces bad data is not merely slow — it is actively harmful. Schema drift, null rate spikes, distribution shifts, and cardinality changes should trigger alerts or halt execution before corrupting downstream systems."
+
+structural_patterns:
+  - name: backpressure_flow_control
+    abstract: When downstream processing capacity is saturated, the slowdown signal propagates upstream to throttle production, preventing resource exhaustion. The system slows gracefully rather than crashes from buffer overflow.
+    maps_to: [rate_limiting, capacity_signaling, graceful_degradation, flow_control]
+
+  - name: schema_evolution_management
+    abstract: Data format changes must be handled through explicit compatibility strategies (forward, backward, full) rather than assumed stability. The serialization format and compatibility policy determine whether schema changes break the pipeline.
+    maps_to: [format_compatibility, versioning_strategy, drift_detection, contract_evolution]
+
+  - name: idempotent_deduplication
+    abstract: Processing correctness is achieved by making every transformation idempotent (safe to repeat) and deduplicating at the output. This bridges the gap between at-least-once delivery guarantees and exactly-once processing semantics.
+    maps_to: [idempotent_operations, output_deduplication, at_least_once_bridging, crash_safety]
+
+  - name: dag_critical_path
+    abstract: In a graph of dependent transformations, the longest dependency chain determines end-to-end latency. Parallelizing non-critical branches cannot reduce overall time — only the critical path matters for latency.
+    maps_to: [dependency_chain, latency_bottleneck, parallelization_limit, path_criticality]
+
+  - name: watermark_event_time
+    abstract: A watermark marks the boundary between 'complete' and 'speculative' data processing. Data before the watermark is final; data after may arrive late. Moving the watermark forward commits to processing completeness at the cost of potentially straggling data.
+    maps_to: [completeness_boundary, straggler_handling, latency_completeness_tradeoff, temporal_cut]
+
+  - name: inline_quality_gates
+    abstract: Quality checks (schema drift, null rates, distribution shifts, cardinality changes) are executed during processing, not after. The pipeline stops or alerts at the first sign of corruption rather than propagating bad data downstream.
+    maps_to: [proactive_validation, corruption_containment, quality_monitoring, execution_halting]
+
+injection_prompt: |
+  You are now reasoning through data pipeline architecture. A pipeline is a DAG of transformations where backpressure prevents exhaustion, schema evolution is inevitable, and exactly-once semantics are achieved through idempotency and deduplication. Ask: where is the critical path? What happens when downstream slows — does upstream know? How does the system handle data arriving late or out of order? Where are the inline quality gates that catch corruption before it spreads? What is the watermark policy for committing to completeness? The pipeline's reliability is determined by its backpressure and quality gates, not by its throughput under ideal conditions.

@@ -1,0 +1,39 @@
+name: Multi-Agent Systems
+domain: artificial_intelligence
+subdomain: multi_agent_systems
+
+axioms:
+  - "Nash equilibrium is descriptive, not prescriptive: rational agents playing best-responses to each other will stabilize at a Nash equilibrium, but there is no algorithmic guarantee that self-interested agents will converge there or coordinate on efficient equilibria when multiple exist."
+  - "Mechanism design inverts game theory: instead of analyzing what rational agents do given a game, it asks what game structure (rules, incentives, information) should be designed so that rational self-interest produces the desired outcome."
+  - "Coalition formation is NP-hard in general: finding the partition of agents into coalitions that maximizes total value (the optimal coalition structure) requires searching a super-exponential space, and computing the Shapley value of any one agent is #P-hard."
+  - "Communication protocol design is inseparable from agent architecture: what agents can observe, what messages they can send, and when they send them jointly determine whether coordination is achievable — shared protocols enable coordination that is impossible with only individual rationality."
+  - "Emergent collective behavior arises from local interaction rules without central control: each agent following a simple local policy produces system-level patterns that are not representable in any individual agent's model."
+  - "The principal-agent problem in multi-agent settings compounds: when multiple agents act on behalf of a principal with partially observable actions, moral hazard and adverse selection both scale with the number of agents, making incentive-compatible contracts exponentially harder to design."
+
+structural_patterns:
+  - name: mechanism_incentive_alignment
+    abstract: The rules of interaction — what information is elicited, what actions are permitted, how outcomes are determined — are engineered so that each participant's individually rational strategy produces the collectively desired result.
+    maps_to: [incentive_design, mechanism_engineering, strategy_alignment, outcome_control]
+
+  - name: coalition_value_attribution
+    abstract: The contribution of a participant to a collective outcome is measured by their marginal impact averaged over all possible orderings of coalition formation — fairly distributing credit for joint achievements.
+    maps_to: [credit_attribution, cooperative_value, fairness_allocation, contribution_measurement]
+
+  - name: emergent_protocol_from_local_rules
+    abstract: No agent models the global pattern; each follows only local rules that respond to its immediate neighborhood — yet globally coherent coordination structures self-organize across the entire system.
+    maps_to: [emergent_coordination, decentralized_control, local_interaction, self_organization]
+
+  - name: information_asymmetry_exploitation
+    abstract: Agents with private information strategically reveal or withhold it to gain advantage; mechanism design responds by constructing revelation principles — rules under which truthful disclosure is each agent's dominant strategy.
+    maps_to: [information_design, revelation_principle, strategic_disclosure, adverse_selection]
+
+  - name: coordination_through_shared_protocol
+    abstract: Agents achieve collective goals not through central direction but through adherence to a mutually known interaction standard — the protocol converts decentralized action into predictable joint behavior.
+    maps_to: [protocol_design, coordination_norm, decentralized_alignment, shared_convention]
+
+  - name: equilibrium_selection_under_multiplicity
+    abstract: When multiple Nash equilibria exist, agents need a selection mechanism — such as focal points, pre-play communication, or correlated equilibrium — to avoid coordination failures caused by mismatched equilibrium expectations.
+    maps_to: [equilibrium_selection, focal_point, coordination_failure, correlated_equilibrium]
+
+injection_prompt: |
+  You are now reasoning through multi-agent systems. Assume every participant is strategically rational and responds to incentives — the system's outcomes emerge from the interaction of self-interested behaviors, not from any single plan. Ask: what is the equilibrium structure, and is it efficient? Are there information asymmetries that enable strategic behavior? Can the rules of the game (mechanism) be redesigned so individual rationality produces collective benefit? Look for emergent coordination that no single agent designed.

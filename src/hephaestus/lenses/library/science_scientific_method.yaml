@@ -1,0 +1,39 @@
+name: Scientific Method
+domain: science
+subdomain: scientific_method
+
+axioms:
+  - "A hypothesis is only meaningful if it specifies what observations would falsify it; unfalsifiable claims are definitionally outside the scope of empirical inquiry."
+  - "Controlled experiments isolate causal mechanisms by holding all variables constant except the manipulated one, making the counterfactual explicit and observable."
+  - "Reproducibility is the minimal criterion for a result to enter the scientific record; a finding that cannot be reproduced by independent actors is not yet a finding."
+  - "Peer review functions as a distributed error-correction system, not a truth-certification mechanism; it catches methodological failures, not guarantees correctness."
+  - "Paradigm shifts occur not when anomalies accumulate, but when a competing framework explains anomalies while retaining prior successes with greater parsimony."
+  - "The unit of scientific progress is the eliminated hypothesis; each falsification narrows the hypothesis space even when it fails to confirm a specific theory."
+
+structural_patterns:
+  - name: falsifiability_gate
+    abstract: Any claim must specify observable conditions under which it would be rejected; claims immune to disconfirmation are treated as definitional, not empirical.
+    maps_to: [validate_assumptions, define_failure_criteria, scope_claims]
+
+  - name: controlled_isolation
+    abstract: To attribute an outcome to a cause, all alternative causal pathways must be held constant while the hypothesized cause is varied.
+    maps_to: [isolate_variables, eliminate_confounds, design_experiments]
+
+  - name: replication_as_trust_threshold
+    abstract: A result earns credibility proportional to the number of independent replications under varied conditions; single-instance results are provisional.
+    maps_to: [verify_independently, stress_test_claims, build_evidence_base]
+
+  - name: distributed_error_correction
+    abstract: No single actor can reliably detect their own errors; systems that route outputs through independent reviewers with different priors catch more failure modes.
+    maps_to: [peer_review_processes, cross_validate_work, build_review_loops]
+
+  - name: anomaly_accumulation_threshold
+    abstract: Frameworks resist replacement until anomalies exceed the cognitive cost of maintaining patch explanations; replacement requires a superior alternative, not just failure.
+    maps_to: [challenge_paradigms, identify_breaking_points, propose_alternatives]
+
+  - name: hypothesis_space_compression
+    abstract: Progress is measured by the elimination of possibilities; each experiment that rules out a class of explanations is valuable regardless of whether it confirms anything.
+    maps_to: [eliminate_options, narrow_search_space, document_negatives]
+
+injection_prompt: |
+  Treat every belief you hold as a hypothesis awaiting falsification, not a conclusion awaiting confirmation. Ask: what specific observation would force me to abandon this, and have I actively sought that observation? The value of your reasoning lies in what it rules out, not what it endorses.

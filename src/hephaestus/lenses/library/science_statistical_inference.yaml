@@ -1,0 +1,39 @@
+name: Statistical Inference
+domain: science
+subdomain: statistical_inference
+
+axioms:
+  - "The p-value is not the probability that the null hypothesis is true — it is the probability of observing data at least as extreme as what was observed, assuming the null hypothesis is true. This subtle distinction matters: p = 0.05 does not mean there is a 5% chance the effect is due to chance. It means that if the null were true, data this extreme would appear 1 in 20 times."
+  - "Bayesian updating provides a coherent framework for incorporating prior knowledge: the posterior distribution combines the prior belief with new evidence through Bayes' theorem. The prior is not a weakness — it is a formalization of existing knowledge that prevents overinterpreting limited data."
+  - "The multiple comparisons problem: when testing many hypotheses simultaneously, the probability of at least one false discovery increases with the number of tests. With 100 tests at α = 0.05, you expect 5 false positives by chance alone. Corrections (Bonferroni, FDR) control this inflation but reduce power."
+  - "Regression to the mean: extreme observations are followed by less extreme ones, not because of an underlying causal mechanism but because extremeness is partially due to random fluctuation. The tallest parents tend to have shorter children not because height 'regresses' but because being exceptionally tall requires good luck, and luck does not replicate."
+  - "Statistical power depends on effect size, sample size, and significance threshold. A study with 80% power has a 20% chance of missing a true effect even when that effect exists at the assumed size. Underpowered studies waste resources by producing results that cannot distinguish signal from noise."
+  - "Confidence intervals provide a range of plausible values for a parameter, not a probability statement about the parameter. A 95% CI means that if the experiment were repeated infinitely, 95% of the computed intervals would contain the true value — not that there is a 95% probability the true value is in this specific interval."
+
+structural_patterns:
+  - name: p_value_misinterpretation
+    abstract: The measured probability answers 'given no effect, how likely is this data?' not 'given this data, how likely is there an effect?' The direction of conditional probability is backward from the intuitive question, leading to systematic overconfidence in observed results.
+    maps_to: [conditional_probability_reversal, evidence_strength, hypothesis_evaluation, misinterpretation_risk]
+
+  - name: bayesian_prior_evidence_integration
+    abstract: Existing knowledge is formalized as a prior distribution and combined with new evidence through a mathematically coherent update rule. The prior prevents overinterpretation of limited data and encodes domain knowledge. The posterior is never the data alone.
+    maps_to: [prior_knowledge_encoding, evidence_weighting, belief_update, progressive_refinement]
+
+  - name: multiple_testing_inflation
+    abstract: Testing multiple hypotheses simultaneously inflates the false discovery rate beyond the nominal significance level. Each additional test increases the cumulative probability of at least one false positive. Corrections control this but penalize all tests for the worst-case multiplicity.
+    maps_to: [false_discovery_control, multiplicity_penalty, correction_cost, testing_volume_risk]
+
+  - name: regression_to_mean
+    abstract: Extreme values are partially driven by random fluctuation, so subsequent observations tend toward the population average. The regression is not causal — it is a statistical inevitability that extreme outcomes require both signal and favorable noise.
+    maps_to: [extreme_value_reversion, noise_contribution, fluctuation_driven_extremes, mean_pull]
+
+  - name: minimum_viable_sensitivity
+    abstract: The ability to detect true effects depends on the joint configuration of effect size, sample size, and significance criterion. A sensitivity analysis before the study determines whether the design can detect effects of practical importance, or whether it is doomed to inconclusiveness.
+    maps_to: [sensitivity_analysis, design_adequacy, detection_capability, study_feasibility]
+
+  - name: interval_vs_point_estimation
+    abstract: Providing a range of plausible values acknowledges uncertainty inherent in estimation, while point estimates convey false precision. The interval width reflects both sample size and data variability — wide intervals indicate genuine uncertainty regardless of point estimate confidence.
+    maps_to: [uncertainty_acknowledgment, range_plausible_values, precision_honesty, estimation_quality]
+
+injection_prompt: |
+  You are now reasoning through statistical inference. The p-value answers the wrong question — it says 'if no effect, how likely this data?' not 'given this data, is there an effect?' Bayesian updating formalizes existing knowledge as a prior and combines it with new evidence. Multiple testing inflates false discoveries; regression to the mean makes extreme results revert. Ask: is the significance level answering the right question? What does the prior knowledge say? How many parallel tests are inflating the false discovery rate? Is the effect actually regression to the mean rather than a real change? Is the study powered to detect what matters? Confidence intervals reveal true uncertainty — wide intervals mean the point estimate is essentially a guess.

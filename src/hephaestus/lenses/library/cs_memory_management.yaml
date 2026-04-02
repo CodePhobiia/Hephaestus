@@ -1,0 +1,39 @@
+name: Memory Management
+domain: cs
+subdomain: memory_management
+
+axioms:
+  - "The generational hypothesis holds empirically across most workloads: newly allocated objects die young (most objects become garbage within one or two collection cycles), so garbage collectors that focus collection effort on young generations achieve high reclamation per unit of work, while long-lived objects are promoted to older generations with less frequent collection."
+  - "Reference counting provides deterministic reclamation but fails on cycles: an object graph where two objects mutually reference each other maintains reference counts of at least one, preventing collection even when no external references exist — cycle detection requires either tracing (mark-and-sweep) or weak reference protocols."
+  - "Tracing garbage collection (mark-and-sweep) avoids cycles by starting from roots (stack, globals, registers), marking all reachable objects, and sweeping unmarked objects as garbage — its weakness is stop-the-world pauses proportional to live heap size during marking."
+  - "Arena (region) allocation assigns objects to a contiguous memory region that is freed all-at-once when the arena's lifetime ends, reducing per-object overhead to a pointer bump and eliminating fragmentation within the arena — correctness depends entirely on the region's lifetime covering all object lifetimes."
+  - "External fragmentation occurs when free memory exists in total but no single contiguous block satisfies an allocation request; compaction (moving objects) eliminates it but requires updating all references, while segregated free lists reduce it by binning same-size objects."
+  - "Incremental and concurrent collectors interleave GC work with mutator execution to reduce pause times, but require write barriers — small code snippets injected at every heap write to track reference changes that occur while the collector holds a stale snapshot of the object graph."
+
+structural_patterns:
+  - name: generational_partitioning
+    abstract: "A population is partitioned by age because empirically most members have short lifespans; high-frequency collection is applied to the youngest partition where reclamation yield is highest, while older partitions are collected infrequently — the partition boundary is based on survival count, not chronological time."
+    maps_to: [population_segmentation, high_yield_focus, age_stratified_processing, promotion_thresholds]
+
+  - name: arena_lifetime_batching
+    abstract: "Instead of individually tracking each allocation's lifetime, all allocations within a well-defined scope are assigned to a shared region; the entire region is reclaimed atomically when the scope ends, trading individual precision for dramatically reduced bookkeeping overhead."
+    maps_to: [scope_bounded_resources, batch_deallocation, lifetime_grouping, overhead_amortization]
+
+  - name: reference_tracing_vs_counting
+    abstract: "Two fundamental strategies for tracking object reachability exist: eager per-reference bookkeeping (counting) gives O(1) reclamation per death but fails on cycles; lazy graph traversal from roots (tracing) handles all topologies but pays for the full traversal periodically — hybrid systems use counting for acyclic objects and tracing for cycle detection."
+    maps_to: [reachability_tracking, cycle_handling, eager_vs_lazy_reclamation, hybrid_strategy]
+
+  - name: write_barrier_snapshot_consistency
+    abstract: "A concurrent observer of a mutable graph must inject hooks at every mutation to maintain a consistent view — without these hooks, modifications made while the observer holds a snapshot will be missed, leading to incorrect conclusions (live objects collected, dead objects retained)."
+    maps_to: [concurrent_observation, mutation_tracking, snapshot_consistency, observer_correctness]
+
+  - name: compaction_vs_fragmentation_tradeoff
+    abstract: "Memory fragmentation can always be eliminated by moving objects and updating references (compaction), but movement invalidates all existing pointers and requires a stop-the-world phase or an indirection layer — systems choose between paying the compaction cost or tolerating fragmentation with segregated allocation."
+    maps_to: [defragmentation_cost, pointer_stability, indirection_overhead, allocation_strategy]
+
+  - name: pause_latency_throughput_tradeoff
+    abstract: "Collectors can maximize throughput by doing all GC work in large batches (fewer interruptions) or minimize pause latency by interleaving GC with application work — these goals are fundamentally opposed; concurrent collectors reduce maximum pause at the cost of ongoing write-barrier overhead and lower total throughput."
+    maps_to: [latency_throughput_tradeoff, batch_vs_incremental, pause_time_budgets, background_work]
+
+injection_prompt: |
+  Apply memory management reasoning: every resource has a lifetime, and the question is who tracks it and when it is reclaimed. Are lifetimes lexically bounded (arena strategy — reclaim all at scope exit)? Is reference counting viable, or are there cycles requiring tracing? What is the generational structure — do young short-lived objects dominate, and can collection effort be concentrated there? Identify fragmentation risks and compaction costs. Every concurrent reclamation scheme requires write barriers — where do mutations need to be intercepted to keep the collector's view consistent?

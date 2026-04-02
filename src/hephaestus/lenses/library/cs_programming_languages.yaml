@@ -1,0 +1,39 @@
+name: Programming Language Design
+domain: cs
+subdomain: programming_languages
+
+axioms:
+  - "Parsing strategies determine how syntax is recognized: recursive descent (LL) builds the parse tree top-down and requires left-factoring to avoid ambiguity; bottom-up parsers (LR/LALR) reduce token sequences into grammar productions and handle a broader class of grammars but produce less intuitive error messages — the parser generator choice constrains the grammar's expressiveness."
+  - "Evaluation order (strict vs. lazy) is not a performance detail but a semantic distinction: strict evaluation evaluates all arguments before a function is entered, making side-effect ordering predictable; lazy evaluation delays computation until the result is consumed, enabling infinite data structures but making space behavior unpredictable and side-effect ordering non-obvious."
+  - "Macro systems operate at different levels of power: textual macros (C preprocessor) substitute tokens without understanding structure, enabling accidental capture and silent errors; hygienic macros (Scheme/Rust) operate on syntax trees and prevent variable capture by maintaining lexical scope — the expressiveness-safety tradeoff is determined by the representation macros operate on."
+  - "Parametric polymorphism (generics) enables writing a single function over all types that share a structural contract (interface/trait), with type safety verified statically; ad-hoc polymorphism (overloading) allows different implementations per type — the combination via type classes or traits unifies both: generic abstraction constrained by type-specific behavior."
+  - "Module systems manage the boundary between what a component exposes and what it hides: signature ascription (ML-style) specifies an interface type that seals internal representations; nominal modules (Java packages) rely on access modifiers — the module system determines whether two independently developed components with identical structure are considered compatible."
+  - "The syntax-semantics gap is where language design bugs hide: two programs with different syntax may have identical semantics (redundancy), while two programs with similar syntax may have radically different semantics (a trap) — good language design minimizes both: distinct meanings get distinct syntax, and identical meanings are recognized as equivalent."
+
+structural_patterns:
+  - name: grammar_driven_recognition
+    abstract: "Input is classified and structured by matching it against a formal grammar that specifies all valid forms — ambiguity occurs when multiple valid parse trees exist for the same input, and the grammar must be designed (or disambiguated) to yield a unique interpretation."
+    maps_to: [formal_specification, ambiguity_resolution, input_validation, structure_recognition]
+
+  - name: evaluation_strategy_semantics
+    abstract: "When and whether subexpressions are evaluated fundamentally changes program meaning, not just performance: eager evaluation commits to all work upfront (predictable resource use, predictable side effects); lazy evaluation defers work (potentially avoids unnecessary computation, enables infinite structures, but complicates resource reasoning)."
+    maps_to: [evaluation_order, strictness_control, resource_predictability, deferred_computation]
+
+  - name: hygienic_code_generation
+    abstract: "When one piece of code generates or transforms another, variable names introduced by the generator must not collide with names in the surrounding code — hygiene is the property that generated code respects the lexical scope of both the generator and the use site, preventing accidental capture."
+    maps_to: [code_generation_safety, scope_isolation, name_collision_prevention, metaprogramming_correctness]
+
+  - name: constrained_genericity
+    abstract: "A generic component is parameterized over types but constrains them to satisfy specific capabilities (interfaces, traits) — this enables writing code that is simultaneously abstract (works for any qualifying type) and specific (can call capability methods), with the constraint verified statically."
+    maps_to: [type_safe_abstraction, capability_constraint, generic_specialization, interface_contract]
+
+  - name: module_boundary_sealing
+    abstract: "A module exposes a public interface that specifies what external consumers can depend on while hiding all internal implementation details — changing internals cannot break external code as long as the interface contract holds, enabling independent evolution of implementation and specification."
+    maps_to: [encapsulation, interface_contract, independent_evolution, information_hiding]
+
+  - name: syntax_semantics_alignment
+    abstract: "The design quality of a notation system is measured by the alignment between syntactic similarity and semantic similarity — good design ensures that things that look the same behave the same, things that look different behave differently, and no valid-looking construction has undefined or surprising meaning."
+    maps_to: [notation_design, cognitive_alignment, surprise_minimization, consistency_principle]
+
+injection_prompt: |
+  Analyze through programming language design: the problem has a syntax (how it is expressed) and a semantics (what it means), and the gap between them is where confusion and bugs live. What is the grammar — the formal specification of valid inputs? What is the evaluation strategy — are computations eager or lazy, and does the order of evaluation matter for correctness? Identify module boundaries: what is exposed, what is hidden, and can internal changes break external consumers? Look for the polymorphism structure: is there a generic abstraction constrained by specific capabilities? Examine metaprogramming: if code generates code, is it hygienic?

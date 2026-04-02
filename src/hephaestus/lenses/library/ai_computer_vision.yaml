@@ -1,0 +1,39 @@
+name: Computer Vision Principles
+domain: artificial_intelligence
+subdomain: computer_vision
+
+axioms:
+  - "Convolutional filters achieve translation equivariance by sharing weights across spatial positions — the same edge detector applies at every location — but this built-in symmetry is a prior that fails for tasks where absolute position matters."
+  - "Hierarchical feature composition is the core of deep visual processing: early layers detect local gradients and edges, intermediate layers compose textures and parts, and late layers represent object-level semantics — with receptive field growing at each stage."
+  - "Spatial attention mechanisms learn to weight feature map regions dynamically: rather than processing all locations equally, a network can selectively amplify task-relevant spatial positions and suppress background, approximating selective visual attention."
+  - "Object detection requires solving localization and classification jointly: anchor-based methods discretize possible bounding box shapes into priors and regress residuals from them, while anchor-free methods predict box center offsets directly — each introduces a different inductive bias about expected object scales."
+  - "Scale invariance is not free: achieving detection across a 100x scale range requires explicit multi-scale processing (feature pyramids, image pyramids, or dilated convolutions with varying receptive fields) because a fixed-stride convolutional stack has a fixed effective receptive field."
+  - "Scene understanding requires resolving figure-ground ambiguity: segmentation models must assign each pixel to a class while accounting for occlusion, context, and spatial continuity — panoptic segmentation unifies semantic (stuff) and instance (things) assignments in one output."
+
+structural_patterns:
+  - name: hierarchical_feature_composition
+    abstract: Simple detectors at one level are composed into complex detectors at the next — each layer's receptive field is larger, enabling progressively more abstract and semantically rich representations to emerge from local operations.
+    maps_to: [hierarchical_abstraction, feature_composition, receptive_field_growth, representation_depth]
+
+  - name: translation_equivariant_weight_sharing
+    abstract: A single detector is applied at every position through weight sharing, so the representation of a feature is the same regardless of where it appears — encoding a spatial invariance prior that dramatically reduces model parameters.
+    maps_to: [parameter_sharing, spatial_invariance, equivariant_representation, inductive_bias]
+
+  - name: multi_scale_pyramid_processing
+    abstract: The same signal is processed at multiple resolutions simultaneously, with detectors operating at each scale and outputs fused — enabling recognition of both fine-grained details and large-scale structure without committing to a single resolution.
+    maps_to: [multi_scale_detection, feature_pyramid, resolution_fusion, scale_invariance]
+
+  - name: spatial_attention_dynamic_weighting
+    abstract: A learned gating mechanism produces a map over spatial positions that amplifies relevant regions and suppresses irrelevant ones before downstream processing — dynamically routing computational resources toward task-relevant content.
+    maps_to: [attention_mechanism, spatial_gating, dynamic_routing, relevance_weighting]
+
+  - name: anchor_prior_residual_regression
+    abstract: A set of canonical templates (sizes, aspect ratios) is defined in advance; detection consists of selecting which templates are active and predicting small residual offsets — converting unbounded box prediction into bounded regression around known priors.
+    maps_to: [anchor_design, residual_prediction, prior_template, bounding_box_regression]
+
+  - name: figure_ground_context_segmentation
+    abstract: Each spatial element is classified by jointly considering its local appearance and global contextual signals — resolving ambiguity between foreground objects and background through spatial coherence constraints.
+    maps_to: [segmentation, context_integration, spatial_coherence, foreground_background_separation]
+
+injection_prompt: |
+  You are now reasoning through computer vision principles. Every visual representation is built by composing local detectors into increasingly abstract structures — ask: what is the effective receptive field, and is it large enough to capture the relevant spatial context? Where are translation equivariance assumptions breaking down (when position matters)? Is scale handled explicitly through multi-scale processing, or is it being ignored? Look for attention mechanisms as dynamic spatial routing: what is being amplified, and what is being suppressed?

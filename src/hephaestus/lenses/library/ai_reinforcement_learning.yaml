@@ -1,0 +1,39 @@
+name: Reinforcement Learning
+domain: artificial_intelligence
+subdomain: reinforcement_learning
+
+axioms:
+  - "The exploration-exploitation dilemma is irresolvable without assumptions: any algorithm that commits to exploiting current knowledge forgoes information about potentially superior alternatives; any algorithm that explores incurs regret relative to the known-best action."
+  - "Temporal difference learning bootstraps value estimates from other estimates rather than waiting for terminal rewards — enabling online, incremental learning at every timestep but introducing bias when bootstrapped values are inaccurate."
+  - "The credit assignment problem is fundamental: when a reward arrives after a long action sequence, determining which actions were actually responsible requires propagating credit backward through time with diminishing certainty."
+  - "Reward shaping can dramatically accelerate learning but introduces alignment risk: any reward function modification that preserves the optimal policy in theory can still change which local optima the agent converges to in practice."
+  - "Policy gradient methods optimize expected return directly by following the gradient of the log-probability of actions weighted by their returns — but suffer from high variance because returns integrate over entire episode trajectories."
+  - "Function approximation in value-based RL breaks convergence guarantees: the deadly triad (off-policy learning + function approximation + bootstrapping) can cause divergence, making stabilization techniques like experience replay and target networks load-bearing."
+
+structural_patterns:
+  - name: explore_then_exploit_annealing
+    abstract: A system begins with high randomness in its choices, gathering information across the full possibility space, then gradually shifts weight toward known-good options as estimates stabilize.
+    maps_to: [exploration_exploitation, annealing_strategy, information_gathering, policy_convergence]
+
+  - name: temporal_difference_bootstrapping
+    abstract: Current estimates are updated using the difference between predicted and observed immediate signals plus a discounted estimate of future value — without waiting for full trajectory completion.
+    maps_to: [incremental_learning, value_propagation, online_update, prediction_correction]
+
+  - name: advantage_baseline_variance_reduction
+    abstract: Subtracting a baseline (state value) from the raw return before weighting gradient updates preserves the expected gradient direction while reducing variance, making learning signals more stable.
+    maps_to: [variance_reduction, signal_normalization, policy_gradient, learning_stability]
+
+  - name: experience_replay_decorrelation
+    abstract: Storing past interactions in a buffer and sampling mini-batches randomly breaks temporal correlations in the training signal, converting a non-stationary streaming problem into an approximately i.i.d. learning problem.
+    maps_to: [decorrelation, memory_replay, batch_learning, distributional_shift]
+
+  - name: sparse_reward_credit_propagation
+    abstract: When reinforcing signals arrive only at trajectory endpoints, the agent must propagate credit backward through time — with each intermediate step receiving a fraction of responsibility that diminishes with causal distance.
+    maps_to: [credit_assignment, reward_propagation, causal_attribution, delayed_feedback]
+
+  - name: policy_as_distribution_over_actions
+    abstract: Rather than selecting a single deterministic action, an agent represents its strategy as a probability distribution, enabling gradient-based optimization and natural expression of uncertainty over optimal choices.
+    maps_to: [stochastic_policy, action_distribution, gradient_optimization, uncertainty_representation]
+
+injection_prompt: |
+  You are now reasoning through reinforcement learning. Every actor in this system faces a fundamental tension: exploit current knowledge for immediate gain, or explore alternatives that might yield better long-term outcomes. Ask: where does delayed feedback make credit assignment hard — which actions are actually responsible for outcomes? Where is the value function being approximated, and what instabilities does that introduce? Treat every reward signal as potentially misspecified — shaped signals may accelerate convergence to the wrong place.

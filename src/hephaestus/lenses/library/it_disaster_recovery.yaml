@@ -1,0 +1,39 @@
+name: Disaster Recovery & Business Continuity
+domain: information_technology
+subdomain: disaster_recovery
+
+axioms:
+  - "RPO (Recovery Point Objective) defines maximum tolerable data loss in time — it constrains backup frequency and replication lag, not recovery speed; RTO (Recovery Time Objective) defines maximum tolerable downtime — it constrains how fast the recovery process itself must complete."
+  - "An untested recovery plan is not a recovery plan — failure modes in runbooks only surface during drills; a backup that has never been restored is an unvalidated assumption, not a guarantee."
+  - "Hot standby keeps a fully running replica in sync continuously, paying a constant replication cost; cold standby keeps archived state that must be instantiated from scratch, paying the cost only at recovery time — the tradeoff is operational cost against RTO."
+  - "Chaos engineering inverts the logic of incident response: instead of waiting for failures to occur, controlled fault injection at production scale reveals systemic brittleness before it manifests as an unplanned outage."
+  - "Business continuity planning (BCP) extends beyond IT recovery — it accounts for personnel unavailability, physical access loss, and regulatory obligations that persist even when systems are fully restored."
+  - "Recovery runbooks rot: procedures accurate at writing time diverge from reality as systems evolve — runbooks that are not updated on every infrastructure change become an additional failure mode at recovery time."
+
+structural_patterns:
+  - name: recovery_objective_tiering
+    abstract: Systems are classified by their RPO and RTO requirements into tiers that receive proportionally different protection levels — critical systems with tight objectives warrant expensive continuous replication; non-critical systems can tolerate longer recovery windows at lower cost.
+    maps_to: [criticality_classification, protection_tiering, cost_justified_resilience, objective_driven_design]
+
+  - name: recovery_proof_by_drill
+    abstract: Recovery capability is treated as a hypothesis to be falsified — periodic full-recovery drills, not passive confidence, are the only evidence that a recovery plan works; failure in a drill is cheaper than failure in production.
+    maps_to: [assumption_testing, drill_based_validation, runbook_verification, readiness_assurance]
+
+  - name: controlled_fault_injection
+    abstract: System resilience is probed by deliberately inducing failures in a controlled manner, observing which assumptions break, and hardening those pathways before an uncontrolled failure exposes them under real conditions.
+    maps_to: [resilience_probing, assumption_breaking, chaos_testing, brittleness_discovery]
+
+  - name: standby_cost_availability_curve
+    abstract: The cost of maintaining standby capacity trades continuously against the cost of recovery time — the point on this curve represents an explicit organizational choice about how much downtime is worth how much ongoing spend.
+    maps_to: [availability_cost_tradeoff, standby_optimization, rto_economics, infrastructure_investment_decision]
+
+  - name: runbook_as_living_document
+    abstract: Operational procedures are tightly coupled to the infrastructure they describe and updated as part of every change process — a procedure that is not maintained as the system evolves is a source of failure, not a mitigation.
+    maps_to: [documentation_lifecycle, procedure_currency, change_coupled_updates, operational_hygiene]
+
+  - name: blast_radius_scoped_failover
+    abstract: Failover is designed to activate at the smallest scope that contains the failure — failing over a single service before a region, failing a region before a full disaster declaration — preventing over-broad recovery actions that introduce new risks.
+    maps_to: [graduated_response, minimal_scope_recovery, escalation_ladder, proportional_failover]
+
+injection_prompt: |
+  Apply disaster recovery thinking: what is the RPO and RTO for this system, and are the current backup and replication mechanisms actually capable of meeting them? Identify any recovery assumptions that have never been tested by a real drill, and ask which runbooks would fail silently because they describe infrastructure that no longer exists. Trace the escalation ladder from single-component failover up to full business continuity activation.

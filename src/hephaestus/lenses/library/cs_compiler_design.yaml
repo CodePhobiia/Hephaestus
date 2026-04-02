@@ -1,0 +1,39 @@
+name: Compiler Design & Optimization
+domain: cs
+subdomain: compiler_design
+
+axioms:
+  - "An Abstract Syntax Tree is a semantic-preserving transformation of source syntax into a tree where each node represents a language construct, enabling analysis and transformation independent of surface notation — the tree is the first representation where reasoning about program structure becomes tractable."
+  - "Static Single Assignment (SSA) form makes every variable defined exactly once and every use point to exactly one definition, turning dataflow analysis from a fixed-point problem over lattices into direct graph traversal — most modern optimizers gate on SSA because it makes dependencies explicit."
+  - "Dead code elimination is safe only when liveness analysis confirms no subsequent read reaches a write: a store is live if any control-flow path from it leads to a read before another write to the same location — elimination without this proof is semantically unsound."
+  - "Constant propagation folds known-value variables into their use sites; its power explodes when combined with constant folding (evaluating constant expressions at compile time) and unreachable branch elimination, forming a cascade where one constant unlocks whole subtrees of dead code."
+  - "Register allocation is a graph coloring problem: build an interference graph where variables that are simultaneously live conflict, then color with K colors (registers) — spilling (pushing uncolored variables to memory) is necessary when the chromatic number exceeds the register count."
+  - "Loop Invariant Code Motion (LICM) hoists computations whose values do not change across iterations to the loop preheader, converting O(N) repeated work into O(1) work — valid only when the hoisted instruction has no side effects and dominates all loop exits."
+
+structural_patterns:
+  - name: multi_pass_lowering
+    abstract: A complex transformation is decomposed into a sequence of passes, each converting one representation into a semantically equivalent lower-level representation, with each pass having a single well-defined responsibility and no pass needing to undo another's work.
+    maps_to: [pipeline_design, incremental_transformation, separation_of_concerns, staged_refinement]
+
+  - name: interference_graph_coloring
+    abstract: Resources that must coexist simultaneously form conflicts; model conflicts as graph edges and assign labels (resources) such that no two conflicting nodes share a label — if labels are insufficient, some nodes must be evicted to secondary storage.
+    maps_to: [resource_allocation, conflict_modeling, constraint_satisfaction, eviction_under_scarcity]
+
+  - name: dataflow_fixed_point
+    abstract: Properties of a program are computed by iterating a transfer function over a lattice of facts at each program point until no change occurs — the fixed point is the most precise set of facts that is consistent with all possible program executions.
+    maps_to: [iterative_analysis, convergence_detection, monotone_propagation, static_inference]
+
+  - name: invariant_hoisting
+    abstract: Computations whose results are unchanged across repeated iterations of a loop or recursive process are extracted to run once before the iteration begins, amortizing their cost over all iterations without changing the result.
+    maps_to: [cost_amortization, precomputation, loop_optimization, redundancy_elimination]
+
+  - name: dead_branch_elimination
+    abstract: Once a condition is proven constant, the branch it governs is unreachable; removing it opens further opportunities in the surviving path — each elimination potentially unlocks more constant propagation downstream in a cascade.
+    maps_to: [reachability_pruning, cascade_optimization, condition_folding, dead_path_removal]
+
+  - name: inlining_tradeoff_surface
+    abstract: Replacing a call site with the callee's body eliminates call overhead and enables cross-procedural optimization, but increases code size (instruction cache pressure) and compilation time — there is a crossover point where further inlining hurts overall performance.
+    maps_to: [specialization_cost, performance_inversion, locality_tradeoffs, expansion_limits]
+
+injection_prompt: |
+  Analyze this through the lens of compiler design: treat the problem as a program to be optimized across multiple passes. What is the intermediate representation — the AST-equivalent that makes structure explicit and enables analysis? Identify what is dead (unused, unreachable, invariant) and eliminate it. Look for constants that can propagate to unlock further simplifications. Model resource conflicts as an interference graph. Every expensive repeated operation is a candidate for hoisting; every unnecessary branch is a candidate for elimination.

@@ -1,0 +1,39 @@
+name: Causal Inference
+domain: science
+subdomain: causal_inference
+
+axioms:
+  - "Correlation does not imply causation, but causation implies correlation — except when confounders cancel the relationship (Simpson's paradox). A correlation can be positive in every subgroup but negative overall, or vice versa. The direction of aggregation can reverse apparent relationships."
+  - "Counterfactual reasoning is the foundation of causal inference: what would have happened to THIS unit if it had received a different treatment? Since we can never observe both the treated and untreated state of the same unit, causal inference is fundamentally a missing data problem."
+  - "Confounding variables create spurious associations by affecting both the treatment and the outcome. Randomization eliminates confounding by balancing confounders across groups, but in observational studies, confounders must be identified through causal graph analysis and controlled through matching, stratification, or instrumental variables."
+  - "Instrumental variables are variables that affect the treatment but not the outcome directly — they act as natural experiments. The instrument creates exogenous variation in treatment assignment, isolating the causal effect from confounding. A valid instrument must pass the relevance condition (correlated with treatment) and exclusion restriction (not correlated with outcome except through treatment)."
+  - "Mediation analysis decomposes a total causal effect into direct and indirect components: the direct effect operates through the primary causal path, while the indirect effect operates through intermediate variables (mediators). The sum of direct and indirect effects equals the total effect only in linear systems."
+  - "Do-calculus provides a formal algebra for determining whether a causal query is identifiable from observational data given a causal graph: by applying three rules of do-operator manipulation, one can determine whether P(Y|do(X)) can be computed from the observed distribution P(V) without running an experiment."
+
+structural_patterns:
+  - name: simpsons_paradox_reversal
+    abstract: Aggregation can reverse the direction of observed relationships — a correlation that is positive in every subgroup becomes negative when aggregated, or vice versa. The apparent contradiction is resolved by recognizing that subgroup composition differs systematically.
+    maps_to: [aggregation_reversal, subgroup_composition_bias, apparent_contradiction, level_dependent_effect]
+
+  - name: counterfactual_missing_data
+    abstract: Causal questions require knowledge of alternative outcomes that cannot be observed simultaneously. The fundamental problem of causal inference is that each unit has only one potential outcome — the other is the fundamental missing data point.
+    maps_to: [potential_outcomes, fundamental_missing, single_realization, alternative_reality_gap]
+
+  - name: confounder_identification
+    abstract: Variables that affect both cause and outcome create spurious associations. These must be identified through structural reasoning about the causal graph, not through correlation patterns alone. Unmeasured confounders cannot be controlled through statistical adjustment.
+    maps_to: [spurious_association, structural_identification, unmeasured_confounding, causal_graph_analysis]
+
+  - name: natural_experiment_instrument
+    abstract: A variable that affects the treatment but not the outcome directly creates exogenous variation that isolates the causal effect. The instrument acts as a naturally occurring randomized experiment, filtering out confounding by exploiting an asymmetric causal relationship.
+    maps_to: [exogenous_variation, natural_randomization, asymmetric_causality, confounding_isolation]
+
+  - name: mediation_decomposition
+    abstract: A total effect decomposes into direct paths (cause directly affects outcome) and indirect paths (cause affects intermediary which affects outcome). The decomposition reveals the mechanism chain and identifies whether the effect operates through direct influence or through intermediate processes.
+    maps_to: [effect_decomposition, mechanism_chain, direct_indirect_split, pathway_identification]
+
+  - name: identifiability_algebra
+    abstract: Given a causal graph and the available observations, a formal algebra determines whether the causal effect can be computed without experimentation. The rules manipulate conditional independencies to transform interventional queries into observational estimands.
+    maps_to: [computability_determination, graph_to_query, interventional_to_observational, algebraic_resolution]
+
+injection_prompt: |
+  You are now reasoning through causal inference. Correlation can reverse under aggregation (Simpson's paradox). Causal questions are missing data problems — you can never observe both the treated and untreated state of the same unit. Confounders create spurious associations that correlation alone cannot detect. Ask: what would have happened to this unit under a different treatment? What variables affect both the putative cause and the outcome? Is there an instrumental variable that acts as a natural experiment? Does the effect operate directly or through mediators? Can the causal query be identified from observational data alone using do-calculus? Correlation tells you what moves together — causal inference tells you what makes what move.

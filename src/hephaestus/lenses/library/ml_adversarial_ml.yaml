@@ -1,0 +1,39 @@
+name: Adversarial Machine Learning
+domain: machine_learning
+subdomain: adversarial_machine_learning
+
+axioms:
+  - "Adversarial examples exist because neural networks learn highly linear decision boundaries in high-dimensional space: a perturbation that is imperceptible in each individual dimension accumulates across many dimensions to cross the decision boundary. The vulnerability is not a bug — it is a consequence of linear behavior in high dimensions."
+  - "Robust optimization trades accuracy for robustness: models trained to resist adversarial perturbation achieve lower clean-data accuracy because the robust decision boundary must separate data with a margin, and this margin reduces the precision of the classification on clean data."
+  - "Adversarial training is a min-max game: an inner maximization generates adversarial examples (attacker's perspective), while an outer minimization trains the model to resist them (defender's perspective). The equilibrium of this game defines the model's robustness envelope."
+  - "Certified defenses provide mathematical guarantees that no adversarial example exists within a bounded perturbation region, unlike empirical defenses which only resist known attack methods. Certification requires computing bounds on the model's output Lipschitz constant or using randomized smoothing."
+  - "Poisoning attacks corrupt the training data to implant backdoors or degrade model performance. Unlike evasion attacks (which modify test-time inputs), poisoning modifies the model itself through the training process. The attack surface includes the entire data pipeline, not just the deployed model."
+  - "Transferability of adversarial examples means that an example crafted to fool one model often fools a different model with different architecture and training data. This suggests adversarial vulnerabilities are fundamental properties of the learning problem, not model-specific artifacts."
+
+structural_patterns:
+  - name: high_dimensional_linear_vulnerability
+    abstract: In high-dimensional spaces, small per-dimension perturbations accumulate across many dimensions to produce large aggregate effects. The system's vulnerability scales with dimensionality, not with individual component sensitivity.
+    maps_to: [dimensional_accumulation, small_signal_aggregation, high_dimensional_fragility, cumulative_perturbation]
+
+  - name: accuracy_robustness_tradeoff
+    abstract: Increasing resistance to adversarial perturbation requires widening the decision boundary margin, which reduces classification precision on clean data. The tradeoff is fundamental — robustness costs clean accuracy.
+    maps_to: [performance_penalty, security_usability_tradeoff, margin_cost, robustness_boundary]
+
+  - name: minimax_adversarial_game
+    abstract: Robustness emerges from an adversarial game between attacker (maximize loss through perturbation) and defender (minimize loss through training). The equilibrium defines the robustness envelope — neither side can improve unilaterally.
+    maps_to: [adversarial_equilibrium, competitive_optimization, attacker_defender_dynamics, game_theoretic_robustness]
+
+  - name: mathematical_certification
+    abstract: Provable absence of attacks within bounded perturbation regions, achieved by computing mathematical bounds rather than testing against known attacks. Certification provides guarantees; empirical testing provides hope.
+    maps_to: [provable_bounds, guarantee_computation, worst_case_analysis, certified_safety]
+
+  - name: training_pipeline_attack
+    abstract: The adversary targets the training process rather than the deployed system, corrupting the model through poisoned data. The defense boundary must extend to data provenance, not just inference-time validation.
+    maps_to: [supply_chain_attack, data_integrity, training_surface, provenance_verification]
+
+  - name: cross_model_vulnerability_transfer
+    abstract: Adversarial weaknesses transfer across models with different architectures and training data, indicating that vulnerabilities are properties of the learning problem itself rather than specific model implementations.
+    maps_to: [universal_vulnerability, problem_inherent_weakness, architecture_independent, fundamental_fragility]
+
+injection_prompt: |
+  You are now reasoning through adversarial machine learning. Adversarial vulnerability is not a bug — it is the mathematical consequence of linear behavior in high-dimensional space where small perturbations accumulate. Robustness costs clean accuracy; certification provides guarantees where empirical testing provides hope. Ask: is the vulnerability a consequence of dimensionality or architecture? Does the system trade accuracy for robustness, and is that tradeoff quantified? Can attacks target the training process, not just the deployed model? Do adversarial weaknesses transfer across different systems — indicating a fundamental problem property? The adversary always has one more dimension to perturb than you have to defend.

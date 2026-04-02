@@ -1,0 +1,39 @@
+name: Service Mesh & Microservice Communication
+domain: information_technology
+subdomain: service_mesh
+
+axioms:
+  - "The sidecar proxy pattern externalizes cross-cutting concerns — mTLS, observability, retries, circuit breaking — from application code into a co-located proxy, allowing uniform policy enforcement without modifying individual services."
+  - "Mutual TLS (mTLS) at the service mesh layer enforces both authentication and encryption for every inter-service call: each service must present a valid certificate, making lateral movement by an attacker who compromises one pod dramatically harder."
+  - "Circuit breaking is a stability pattern that prevents cascading failure: when a downstream service exceeds a failure threshold, the circuit opens and calls fail fast locally rather than queuing up and consuming resources of the caller while waiting for a timeout."
+  - "Traffic splitting enables progressive delivery: the control plane can route a configurable percentage of requests to a new version while the majority still goes to the stable version, allowing canary validation at real traffic scale."
+  - "In a service mesh, distributed tracing requires consistent context propagation: every service must pass trace headers through to downstream calls — a single service that drops the trace context creates an invisible break in the causal chain."
+  - "Service mesh observability is at the network layer, not the application layer — it captures what actually traversed the wire, not what the application reported, making it a ground-truth view of inter-service behavior that cannot be falsified by application bugs."
+
+structural_patterns:
+  - name: sidecar_policy_externalization
+    abstract: A co-located process intercepts all inbound and outbound traffic for a primary process, enforcing policies (encryption, retries, observability) transparently without modifying the primary process — separating infrastructure concerns from business logic.
+    maps_to: [cross_cutting_concern_separation, transparent_policy_enforcement, application_decoupling, proxy_interception]
+
+  - name: circuit_breaker_fast_fail
+    abstract: When a downstream dependency exceeds a failure threshold, the connection is opened and callers receive an immediate local failure rather than waiting for timeout — preventing resource exhaustion in the caller due to accumulated blocked requests.
+    maps_to: [cascade_prevention, fast_failure, resource_protection, dependency_isolation]
+
+  - name: progressive_traffic_splitting
+    abstract: A new version of a component receives a small, controlled percentage of production traffic while the existing version serves the majority — validating behavior at real scale before full cutover, with rollback requiring only a traffic weight adjustment.
+    maps_to: [canary_deployment, risk_staged_rollout, production_validation, rollback_simplicity]
+
+  - name: mutual_authentication_at_transport
+    abstract: Both parties in a communication channel must present and verify cryptographic identity before any data is exchanged — making unauthorized communication impossible even for parties that have gained internal network access.
+    maps_to: [zero_trust_networking, bilateral_authentication, lateral_movement_prevention, network_identity]
+
+  - name: trace_context_propagation
+    abstract: A causality identifier is injected at the request origin and threaded through every downstream call, creating a complete graph of which operations were causally triggered by which request — enabling post-hoc root cause analysis across service boundaries.
+    maps_to: [causality_tracking, cross_service_debugging, latency_attribution, distributed_root_cause]
+
+  - name: resiliency_policy_graduation
+    abstract: Retry, timeout, and fallback policies are tuned per-route based on the criticality and expected latency of each dependency, rather than applying a single universal policy — matching recovery behavior to the specific failure characteristics of each dependency.
+    maps_to: [per_dependency_tuning, resiliency_calibration, timeout_graduation, retry_policy_design]
+
+injection_prompt: |
+  Look at this through a service mesh lens: where do cross-cutting concerns like authentication, retries, and observability live — in application code or in the communication layer? Ask which dependencies have no circuit breaker, meaning their failure can exhaust the caller's resources. Examine how trust is established between services, and whether any new internal network access would be sufficient for lateral movement.

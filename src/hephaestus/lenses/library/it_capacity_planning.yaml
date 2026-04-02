@@ -1,0 +1,39 @@
+name: Capacity Planning & Resource Forecasting
+domain: information_technology
+subdomain: capacity_planning
+
+axioms:
+  - "Capacity planning must account for peak demand, not average demand — the system that works at average load but fails at peak is a system that fails during the moments that matter most. Average utilization is the most misleading metric in capacity planning."
+  - "Resource growth is rarely linear: user base may grow linearly, but data storage grows as the product of user base and per-user data volume (compound growth), and compute costs grow as product of user interactions and per-interaction complexity (exponential if features compound)."
+  - "Headroom is the difference between current usage and the point of failure — and it must include time to provision. 30% headroom with 2-week provisioning lead time is not 30% headroom; it accounts for growth during the provisioning window. Without lead-time adjustment, you provision too late."
+  - "Seasonal patterns create predictable stress: daily cycles (business hours vs off-peak), weekly cycles (weekday vs weekend), annual cycles (holiday spikes, quarter-end reporting). These are forecastable and should be planned for explicitly rather than treated as anomalies."
+  - "Burst provisioning reserves capacity for unexpected spikes beyond all planned forecasts. Without burst capacity, any single unpredictable event forces the system into failure. The burst reserve trades ongoing cost for insurance against catastrophic failure."
+  - "Cost-performance optimization is multi-objective: the cheapest resource is not the fastest, the fastest is not the most reliable, and the most reliable is not the most scalable. The Pareto frontier of cost vs latency vs reliability defines the design space — moving beyond the frontier requires architectural change, not resource selection."
+
+structural_patterns:
+  - name: peak_capacity_design
+    abstract: Systems must be designed for worst-case load, not average load. The margin between average and peak determines how much excess capacity the system carries during normal operation — and how well it performs during critical moments.
+    maps_to: [worst_case_planning, load_variance, surge_capacity, peak_overprovision]
+
+  - name: compound_growth_modeling
+    abstract: Resource consumption grows as the product of independent growth factors (users × data per user × complexity per query), not as a sum. Compound growth appears linear initially and exponential later — the inflection point arrives faster than intuition predicts.
+    maps_to: [multiplicative_growth, non_linear_scaling, growth_acceleration, compound_exhaustion]
+
+  - name: lead_time_adjusted_headroom
+    abstract: Available capacity must be calculated not from current usage to current capacity but from projected usage at the end of provisioning lead time to current capacity. The provisioning delay eats into apparent headroom.
+    maps_to: [provisioning_delay, projected_exhaustion, dynamic_headroom, lead_time_accounting]
+
+  - name: seasonal_forecasting
+    abstract: Predictable periodic patterns (daily, weekly, annual cycles) create reliable stress points that should be explicitly planned for. Seasonal patterns are not anomalies — they are deterministic, and treating them as such eliminates surprise capacity failures.
+    maps_to: [periodic_patterns, predictive_planning, cycle_awareness, deterministic_stress]
+
+  - name: burst_insurance_reserve
+    abstract: A portion of capacity is intentionally held unused as insurance against unpredictable spikes. This reserve has zero return on investment during normal operation but prevents catastrophic failure during unpredictable events.
+    maps_to: [insurance_capacity, reserve_allocation, unpredictable_spikes, failure_insurance]
+
+  - name: pareto_cost_performance
+    abstract: Design choices occupy a Pareto frontier across cost, latency, and reliability dimensions. No single resource optimizes all three simultaneously — improvement in one dimension requires degradation in another unless architectural innovation expands the frontier itself.
+    maps_to: [multi_objective_optimization, pareto_frontier, dimension_tradeoff, architectural_expansion]
+
+injection_prompt: |
+  You are now reasoning through capacity planning and resource forecasting. Design for peak, not average — the system fails when it matters most, not when load is normal. Growth compounds across dimensions: users × data × complexity. Headroom must account for provisioning lead time, not just current utilization. Ask: what are the seasonal patterns, and are they planned for or treated as surprises? What is the burst reserve cost vs the catastrophic failure cost? Where is the Pareto frontier of cost/latency/reliability — and can architectural change expand it? The system that runs efficiently at average load but collapses at peak is not an efficient system.

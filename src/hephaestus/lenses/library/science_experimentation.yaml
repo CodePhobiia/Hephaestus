@@ -1,0 +1,39 @@
+name: Experimental Design
+domain: science
+subdomain: experimental_design
+
+axioms:
+  - "Randomization eliminates systematic bias by ensuring that unknown confounds are equally distributed across treatment and control groups. If you don't randomize, you don't know whether the observed effect is caused by the treatment or by some unmeasured factor correlated with treatment assignment."
+  - "Blocking is the antidote to known variation: if you know a factor affects the outcome (e.g., batch effects, operator skill), you group samples into homogeneous blocks and randomize within blocks. The variation between blocks is subtracted out, increasing the precision of treatment effect estimation."
+  - "The power of an experiment is the probability of detecting a true effect of a specified size. Underpowered experiments waste resources because they have a high probability of producing inconclusive results. Power analysis determines the minimum sample size before the experiment runs, not after."
+  - "Factorial designs test multiple factors simultaneously rather than one at a time. A 2^k factorial design with k factors in 2^k runs tests all main effects and interactions. Testing one factor at a time misses interaction effects — the effect of A may depend entirely on the level of B."
+  - "Blinding prevents measurement bias: when experimenters know which group received treatment, they may (unconsciously) measure outcomes differently. Double-blinding — neither experimenter nor subject knows — eliminates both observer and placebo effects."
+  - "Confounding occurs when a third variable affects both the treatment assignment and the outcome, creating a spurious association. Confounding is the most common source of false conclusions in observational studies and cannot be resolved by statistical adjustment alone — it requires experimental control or instrumental variables."
+
+structural_patterns:
+  - name: randomization_bias_elmination
+    abstract: Random assignment of treatment eliminates systematic bias from unknown factors by distributing them equally across groups. Without randomization, observed correlations may reflect confounding rather than causation.
+    maps_to: [bias_elimination, confound_distribution, causal_attribution, randomized_assignment]
+
+  - name: block_variance_subtraction
+    abstract: Known sources of variation are controlled by grouping similar units together and randomizing within groups. The between-group variation is removed from the error term, increasing sensitivity to treatment effects.
+    maps_to: [variance_reduction, homogenous_grouping, sensitivity_increase, nuisance_control]
+
+  - name: power_minimum_sample
+    abstract: The probability of detecting a true effect determines the minimum required sample size before the experiment runs. Underpowered experiments produce inconclusive results and waste resources — they cannot distinguish 'no effect' from 'couldn't detect the effect.'
+    maps_to: [sensitivity_planning, resource_efficiency, detection_probability, minimum_sample_determination]
+
+  - name: factorial_interaction_discovery
+    abstract: Testing multiple factors simultaneously (factorial design) reveals interaction effects that one-at-a-time testing completely misses. The effect of factor A may reverse depending on the level of factor B — an interaction is a structural property of the system.
+    maps_to: [interaction_detection, simultaneous_factor_test, effect_reversal, combinatorial_experiment]
+
+  - name: blinding_measurement_protection
+    abstract: When experimenters or subjects know the treatment assignment, their expectations bias measurements. Blinding (single or double) prevents expectation-driven distortion of outcomes, protecting the objectivity of measurement.
+    maps_to: [expectation_bias_prevention, measurement_objectivity, observer_protection, placebo_control]
+
+  - name: confounding_identification
+    abstract: A third variable affecting both cause and outcome creates spurious associations that cannot be distinguished from true effects through correlation analysis alone. Identifying and controlling confounds requires structural knowledge of the causal graph, not just statistical adjustment.
+    maps_to: [spurious_association, causal_graph_requirement, third_variable_problem, structural_knowledge]
+
+injection_prompt: |
+  You are now reasoning through experimental design. Randomization eliminates systematic bias from unknown confounds; blocking controls known variation. Power analysis before the experiment determines whether it can detect anything at all — running an underpowered experiment is worse than not running it because it produces false certainty of 'no effect.' Factorial designs reveal interaction effects that one-at-a-time testing misses entirely. Ask: is randomization eliminating or just redistributing bias? Are known confounds blocked? What is the power to detect the effect size I care about? What interactions might exist that single-factor testing would miss? Is there an unmeasured variable causing spurious associations? The experiment's conclusion is only as good as its design — the analysis cannot fix a flawed design.

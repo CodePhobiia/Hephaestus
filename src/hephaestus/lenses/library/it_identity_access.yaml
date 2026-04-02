@@ -1,0 +1,39 @@
+name: Identity & Access Management
+domain: information_technology
+subdomain: identity_access
+
+axioms:
+  - "OAuth 2.0 delegates authorization without sharing credentials: the resource owner grants a client a scoped, time-limited token from an authorization server — the client never sees the owner's password, breaking the credential-sharing anti-pattern."
+  - "Trust chains are transitive and therefore fragile: if entity A trusts B and B trusts C, then A implicitly trusts C — compromising any link in the chain compromises every entity that trusts entities above it."
+  - "The principle of least privilege requires continuous re-evaluation: access rights that were appropriate at provisioning time accumulate into privilege creep as roles change, creating attack surface that grows invisibly over time."
+  - "Federated identity propagates authentication across trust boundaries by exchanging signed assertions rather than credentials — the relying party trusts the identity provider's signature, not the user's direct authentication."
+  - "Credential lifecycle management is the attack surface over time: credentials that are never rotated, never expire, and are never audited represent a permanently open door — even if the original access was fully authorized."
+  - "Privilege escalation paths are often lateral, not vertical: attackers rarely jump directly to root; instead they chain together moderate-privilege misconfigurations, overly permissive service accounts, and ambient authority to reach high-value targets."
+
+structural_patterns:
+  - name: token_scoping_and_expiry
+    abstract: Access rights are encoded in short-lived, narrowly scoped tokens rather than persistent credentials — the scope limits what can be done, and the expiry limits the window of exploitation if the token is stolen.
+    maps_to: [credential_time_bounding, least_privilege_enforcement, token_design, access_scoping]
+
+  - name: trust_chain_rooting
+    abstract: A hierarchy of trust anchors each assertion back to a single root whose compromise is the maximum failure scope — intermediate authorities delegate trust downward but cannot exceed the permissions granted by their own root.
+    maps_to: [trust_hierarchy, authority_delegation, compromise_scoping, root_of_trust]
+
+  - name: role_based_access_boundary
+    abstract: Permissions are assigned to roles rather than individuals, and individuals are assigned to roles — decoupling permission management from identity management so that privilege changes occur at the role level, not per-user.
+    maps_to: [permission_decoupling, access_standardization, privilege_management, role_abstraction]
+
+  - name: federated_assertion_exchange
+    abstract: Cross-domain authentication occurs by exchanging cryptographically signed statements about identity between parties, without requiring the target domain to store or verify credentials directly.
+    maps_to: [cross_domain_trust, credential_abstraction, identity_federation, authentication_delegation]
+
+  - name: access_review_cycle
+    abstract: Granted permissions are periodically audited against current need — access that cannot be justified by a current business reason is revoked, preventing accumulation of residual privilege over time.
+    maps_to: [privilege_hygiene, access_recertification, entitlement_pruning, drift_correction]
+
+  - name: lateral_movement_surface_mapping
+    abstract: The attack surface is analyzed as a graph of reachable permissions from any starting position — understanding which low-privilege accounts can reach high-value resources through chains of permissions reveals non-obvious escalation paths.
+    maps_to: [attack_path_analysis, privilege_graph_mapping, escalation_detection, lateral_risk_assessment]
+
+injection_prompt: |
+  Reason through this using identity and access principles. Who is authenticating to whom, and what trust chain mediates that relationship? Identify where privilege accumulates over time through legitimate but unchecked access grants. Ask whether any credential can be scoped more narrowly, expired sooner, or derived from a federated assertion rather than stored directly — and trace the lateral movement paths an attacker could chain together from any starting point.

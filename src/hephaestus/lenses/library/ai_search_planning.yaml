@@ -1,0 +1,39 @@
+name: Search & Planning Algorithms
+domain: artificial_intelligence
+subdomain: search_planning
+
+axioms:
+  - "A* search is optimal and complete only when the heuristic is admissible (never overestimates) and consistent (satisfies the triangle inequality); violating admissibility can cause the algorithm to miss the true shortest path."
+  - "The branching factor dominates search complexity exponentially: in minimax game trees, alpha-beta pruning can reduce effective branching factor from b to sqrt(b) with perfect move ordering, halving the search depth reachable in fixed time."
+  - "Heuristic quality determines planning tractability: the gap between heuristic value and true cost (heuristic error) directly determines the suboptimality of greedy solutions and the extra nodes expanded by A*."
+  - "Monte Carlo Tree Search decouples search and evaluation: random rollouts provide an unbiased (high-variance) value estimate when no analytic evaluation function exists, and UCB1 balances exploitation of promising nodes with exploration of less-visited branches."
+  - "Constraint satisfaction problems have a phase transition: near a critical constraint density ratio, problems shift abruptly from almost-always-satisfiable to almost-always-unsatisfiable, with hardest instances clustering at the phase boundary."
+  - "Forward (progression) and backward (regression) planning both prune the search space, but the effective branching factor differs: backward search from goals is tractable only when few operators achieve each goal condition."
+
+structural_patterns:
+  - name: admissible_heuristic_guidance
+    abstract: An underestimate of true cost focuses search toward the goal without overshooting — guaranteeing optimality by ensuring no path is prematurely abandoned based on inflated estimates.
+    maps_to: [cost_estimation, optimistic_lower_bound, search_pruning, path_finding]
+
+  - name: alpha_beta_bound_propagation
+    abstract: Two pruning bounds propagate through a decision tree — one for the maximizer, one for the minimizer — and whenever they cross, entire subtrees are proven irrelevant and skipped.
+    maps_to: [adversarial_optimization, branch_elimination, bound_tightening, minimax_search]
+
+  - name: ucb_exploration_exploitation
+    abstract: A selection policy scores each candidate by combining its average reward with a confidence-interval bonus that shrinks with visits, systematically preferring uncertain options until they are sufficiently explored.
+    maps_to: [exploration_exploitation, bandit_strategy, tree_search, uncertainty_bonus]
+
+  - name: constraint_propagation_arc_consistency
+    abstract: Inferring that a value in one variable's domain is inconsistent with all values of a neighbor's domain allows immediate domain reduction, shrinking the search space before any backtracking.
+    maps_to: [constraint_narrowing, early_elimination, inference_propagation, domain_reduction]
+
+  - name: goal_regression_backward_chaining
+    abstract: Starting from the desired end state and identifying which actions could produce it, then recursively resolving preconditions, inverts the search direction and prunes actions irrelevant to the goal.
+    maps_to: [goal_directed_search, precondition_chaining, backward_reasoning, subgoal_decomposition]
+
+  - name: random_rollout_value_estimation
+    abstract: When no analytic evaluation is available, completing a trajectory with a fast random (or default) policy and observing the terminal outcome provides an unbiased estimate of position value through statistical averaging.
+    maps_to: [monte_carlo_estimation, value_approximation, stochastic_sampling, simulation_based_evaluation]
+
+injection_prompt: |
+  You are now reasoning through search and planning algorithms. Every problem has an implicit search space — ask: what are the states, the operators, the cost structure, and the goal test? Where can bounds be propagated early to eliminate dead branches before expanding them? Is there an admissible heuristic — an optimistic lower-bound estimate — that can focus effort toward promising regions? If no analytic value function exists, can random rollouts or sampling substitute? Reason about branching factor and phase transitions: the hardest instances cluster at constraint density thresholds, not at the extremes.

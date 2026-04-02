@@ -1,0 +1,39 @@
+name: Cloud Architecture Patterns
+domain: information_technology
+subdomain: cloud_architecture
+
+axioms:
+  - "Elasticity is not scalability — scalability means handling growth by adding resources; elasticity means automatically acquiring and releasing resources to match current demand. Elasticity turns fixed-cost infrastructure into variable-cost, but requires fast provisioning (seconds, not minutes) and graceful cold-start handling."
+  - "Multi-tenancy introduces noise neighbors: your performance characteristics depend on what other tenants are doing on the same physical infrastructure. Noisy neighbor effects create unpredictable latency spikes that are invisible to application profiling and only manifest under production load."
+  - "Region and zone isolation determines blast radius: a multi-zone deployment survives a datacenter failure; a multi-region deployment survives a regional cloud outage. But multi-region introduces data replication lag, consistency challenges, and cross-region latency that fundamentally changes application design."
+  - "Vendor lock-in is not inherently bad — it is a tradeoff between portability and capability. Cloud-native services (managed databases, serverless functions, proprietary ML APIs) deliver capability that portable abstractions cannot, but migrating off them requires rewriting the parts of your system that depend on unique capabilities."
+  - "Serverless cold starts are the latency equivalent of process startup: functions that have not been invoked recently must be provisioned from zero, including container creation, dependency loading, and initialization. The cold-start penalty is inversely proportional to the function's package size and initialization complexity."
+  - "The cloud cost model is OPEX by design but accumulates structural complexity: unused resources silently drain budgets, pricing models reward commitment with risk (reserved instances), and the marginal cost of each additional service appears small but compounds rapidly across the architecture."
+
+structural_patterns:
+  - name: elastic_scaling
+    abstract: Resources are automatically acquired and released based on demand, transforming fixed-cost infrastructure into variable-cost operational spend. The critical requirement is fast provisioning and handling of cold-start latency during scale-up events.
+    maps_to: [dynamic_provisioning, demand_responsive, cost_variable_scaling, provisioning_latency]
+
+  - name: tenancy_isolation
+    abstract: Performance characteristics are influenced by unrelated workloads sharing physical infrastructure. Noise-neighbor effects create unpredictable variance that is not observable at the application level and manifests only under specific load conditions.
+    maps_to: [interference_risk, unpredictable_variance, shared_infrastructure, isolation_boundaries]
+
+  - name: blast_radius_design
+    abstract: Failure isolation is explicitly designed through geographic and logical boundaries — the deployment topology determines what size of failure the system survives. Each additional isolation tier reduces blast radius but increases complexity and cost.
+    maps_to: [failure_isolation, geographic_distribution, replication_tradeoff, fault_domain_design]
+
+  - name: lock_in_capability_tradeoff
+    abstract: Tight coupling to a specific platform delivers maximum capability in exchange for reduced portability. The migration cost of decoupling is proportional to how deeply the system depends on platform-specific features rather than portable abstractions.
+    maps_to: [coupling_tradeoff, capability_vs_portability, migration_cost, platform_dependency]
+
+  - name: cold_start_penalty
+    abstract: Dormant components require a provisioning phase before they can serve requests, introducing latency spikes that are independent of request complexity. The penalty scales with initialization surface area and can be partially mitigated through warm pools and prediction-based pre-warming.
+    maps_to: [startup_latency, dormant_provisioning, latency_spike, pre_warming]
+
+  - name: compounding_marginal_cost
+    abstract: Individual service costs appear small in isolation but compound non-obviously across the architecture. Hidden costs (data transfer, API calls, cross-region replication) often exceed the visible compute costs by a material margin.
+    maps_to: [cost_accumulation, hidden_expenses, cross_service_compounding, budget_visibility]
+
+injection_prompt: |
+  You are now reasoning through cloud architecture patterns. Elasticity transforms fixed infrastructure into variable resources but introduces cold-start penalties and cost complexity. Multi-tenancy means your performance depends on strangers. Region and zone design determines blast radius — survival scope is a topological property. Ask: what is the cost of being locked in vs the cost of portable abstraction overhead? Where are the hidden costs (data transfer, cross-region traffic, API calls) that compound silently? How does cold-start latency affect the user experience during scale events? The cloud's promise is infinite scale; its trap is infinite complexity.

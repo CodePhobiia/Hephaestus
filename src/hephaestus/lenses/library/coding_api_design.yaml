@@ -1,0 +1,39 @@
+name: API Design & Contract Evolution
+domain: coding
+subdomain: api_design
+
+axioms:
+  - "A public API is a permanent commitment: once published and consumed, every breaking change imposes migration costs on every caller — the asymmetry between writing a bad API and fixing it is enormous."
+  - "Contract-first design reveals ambiguity before implementation: writing the API contract before building the implementation forces every use case to be considered as a caller, surfacing missing capabilities and over-generalized interfaces that no caller actually needs."
+  - "Backward compatibility is a semantic constraint, not a syntactic one: adding a field to a response is syntactically compatible but semantically breaking if callers depend on the absence of that field — compatibility is about behavioral invariants, not schema versions."
+  - "Hyrum's Law: with enough callers, every observable behavior of an implementation becomes a de facto API contract — callers will depend on undocumented behaviors, making any change that alters observable behavior effectively breaking."
+  - "Versioning is a failure mode, not a strategy: the existence of v1 and v2 running in parallel means the API team must maintain two codepaths and callers must choose — good API design minimizes the need for major versions by designing for extensibility from the start."
+  - "Discoverability requires self-description: an API that requires reading external documentation to use correctly has externalized its complexity into the caller's cognitive burden — names, types, and structure should guide correct usage without reference to external sources."
+
+structural_patterns:
+  - name: additive_extensibility
+    abstract: A contract designed for extension through addition rather than modification — new capabilities are added alongside existing ones without altering them, so existing callers are never disrupted by new features.
+    maps_to: [backward_compatibility, extension_without_modification, open_closed_contract, additive_change]
+
+  - name: caller_perspective_inversion
+    abstract: The interface is designed by imagining being a caller before being an implementor — caller convenience, minimal ceremony, and natural naming take precedence over implementation convenience.
+    maps_to: [api_usability, caller_first_design, interface_ergonomics, contract_first]
+
+  - name: de_facto_contract_management
+    abstract: Every observable behavior is a potential de facto contract — behaviors that should not be relied upon must be explicitly marked as unspecified, documented as implementation details, or hidden, otherwise callers will depend on them.
+    maps_to: [hyrum_law_management, undocumented_behavior, implementation_detail_hiding, contract_scope]
+
+  - name: deprecation_runway
+    abstract: An old interface is kept operational alongside its replacement for a defined period, giving callers time to migrate without emergency pressure — the deprecation is announced, measured by usage, and only removed when adoption of the replacement is sufficient.
+    maps_to: [migration_support, deprecation_process, caller_migration_window, parallel_operation]
+
+  - name: semantic_versioning_discipline
+    abstract: Version numbers encode the scope of change — a major version signals a breaking change, a minor version signals additive capability, a patch signals behavioral correction — callers can automate compatibility decisions based on the version signal.
+    maps_to: [version_signaling, compatibility_declaration, breaking_change_communication, dependency_management]
+
+  - name: affordance_through_naming
+    abstract: Names and type signatures should make correct use obvious and incorrect use difficult — an API that guides callers toward correct usage through its structure prevents entire categories of misuse without documentation.
+    maps_to: [api_discoverability, self_documenting_design, misuse_resistance, naming_as_constraint]
+
+injection_prompt: |
+  Apply API design thinking: you are making a permanent commitment to every caller of this interface. Invert to the caller perspective — design from how it will be used, not how it will be implemented. Apply Hyrum's Law: every observable behavior is a potential contract, whether documented or not. Audit the interface for additive extensibility — can new capabilities be added without modifying existing contracts? Identify what should be hidden so callers cannot accidentally depend on it.

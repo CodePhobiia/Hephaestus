@@ -1,0 +1,39 @@
+name: Explainable AI
+domain: artificial_intelligence
+subdomain: explainability
+
+axioms:
+  - "Saliency maps reveal correlation, not causation: highlighting input features that influence output does not explain why the model made its decision. A model can use the right features for the wrong reasons — saliency looks identical for causal and spurious correlations."
+  - "Counterfactual explanations ('if X had been different, the output would change') are more actionable than feature attribution because they describe a minimal change that flips the decision. They answer 'what would I need to do differently?' rather than 'what mattered most?'"
+  - "Model distillation transfers knowledge from a complex model to a simpler interpretable one, but the explanation fidelity is bounded by the capacity gap. A decision tree trained on a neural network's outputs explains the tree, not the network — the explanation error is the gap between teacher and student performance."
+  - "The accuracy-interpretability tradeoff is not always real: some inherently interpretable models (rule lists, sparse linear models, small decision trees) can match black-box performance on structured problems where the ground truth is itself simple."
+  - "Causal explanations require assumptions about the causal graph of the domain — the model alone cannot provide them. Two models with identical predictive performance can have entirely different internal causal structures, both consistent with the data."
+  - "Post-hoc explanation of a black box is fundamentally different from building an interpretable model: post-hoc explanations are themselves approximations that may be wrong, while interpretable models provide exact explanations of their own decisions."
+
+structural_patterns:
+  - name: correlation_vs_causation_attribution
+    abstract: Highlighting which inputs influence outputs reveals statistical dependence, not causal mechanism. The same attribution pattern occurs whether the model uses features for principled or spurious reasons.
+    maps_to: [attribution_limitation, spurious_correlation, causal_distinction, feature_influence]
+
+  - name: counterfactual_minimal_change
+    abstract: Explanation through minimal input modification that changes the output is more actionable than feature importance because it specifies what must change to achieve a different result, not what was most influential.
+    maps_to: [actionable_explanation, minimal_change, decision_boundary, alternative_path]
+
+  - name: distillation_fidelity_gap
+    abstract: Compressing a complex model into an interpretable surrogate produces an explanation of the surrogate, not the original. The fidelity gap equals the performance difference between teacher and student models.
+    maps_to: [surrogate_model_limit, explanation_error, capacity_mismatch, knowledge_transfer_bound]
+
+  - name: inherent_interpretability_match
+    abstract: On problems where the underlying truth is simple, inherently interpretable models can match complex models without sacrificing explanation quality. The tradeoff exists only when the target function is complex.
+    maps_to: [simplicity_matching, no_tradeoff_conditions, structural_simplicity, interpretable_competition]
+
+  - name: causal_assumption_dependency
+    abstract: Any causal explanation requires external assumptions about the domain's causal structure — the model's predictions alone cannot determine causality. The causal graph is an input to explanation, not an output.
+    maps_to: [causal_dependency, external_assumptions, graph_requirement, causal_indeterminacy]
+
+  - name: post_hoc_approximation_error
+    abstract: Explaining a black box after training produces an approximation that may be misleading. The explanation model has its own error, and there is no independent way to verify its accuracy without access to the original model's internal structure.
+    maps_to: [approximation_uncertainty, verification_impossibility, explanation_error, proxy_limitation]
+
+injection_prompt: |
+  You are now reasoning through explainable AI. Correlation is not causation — saliency maps show what features influenced the output, not why. Counterfactuals ('what minimal change flips the decision?') are more actionable than feature importance. The accuracy-interpretability tradeoff may not exist for simple problems. Ask: is the explanation causal or correlational? Is it the true model's explanation or an approximation? What causal graph assumptions underlie the explanation? Can an inherently interpretable model match performance here? Post-hoc explanations are themselves models with their own errors — what is the explanation error?

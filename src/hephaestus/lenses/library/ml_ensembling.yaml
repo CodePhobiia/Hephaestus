@@ -1,0 +1,41 @@
+name: Ensemble Methods
+domain: machine_learning
+subdomain: ensembling
+
+axioms:
+  - "Bagging reduces variance without substantially changing bias by training independent learners on bootstrap samples and averaging; variance reduction scales as 1/n only when learner errors are uncorrelated — correlation among ensemble members is the central limiting factor."
+  - "Boosting reduces bias by sequentially fitting new learners to the residual error of the current ensemble, assigning higher weight to previously misclassified examples; each learner need only be better than random, but the ensemble can achieve arbitrarily low training error."
+  - "The diversity-accuracy tradeoff is fundamental: ensemble members that are individually accurate but highly correlated provide diminishing returns; maximum ensemble gain requires members to make different errors, which typically requires sacrificing individual accuracy."
+  - "Error correlation between ensemble members determines the ceiling on ensemble improvement; if two members always agree on errors, adding the second member provides zero reduction in error rate regardless of aggregation strategy."
+  - "Stacking (meta-learning) trains a second-level learner on the out-of-fold predictions of base learners, allowing it to learn which base learner to trust on which region of input space, effectively learning an input-conditional weighting scheme."
+  - "Mixture of Experts architectures route inputs to specialized sub-models via a learned gating network; unlike static ensembles, the gating is input-dependent, enabling specialization where different components handle different data manifolds with near-zero cross-interference."
+
+structural_patterns:
+  - name: variance_reduction_through_aggregation
+    abstract: Averaging independent noisy estimates of a target reduces variance proportionally to independence; the practical gain is bounded by the correlation among sources, making source independence the primary engineering target.
+    maps_to: [noise_reduction, independent_estimation, aggregation_design, source_diversity_engineering]
+
+  - name: sequential_residual_correction
+    abstract: A sequence of weak correctors, each targeting the remaining error of the current combined system, can collectively solve problems no single corrector could address; each corrector only needs to improve marginally on the current residual.
+    maps_to: [iterative_improvement, residual_targeting, weak_component_composition, staged_correction]
+
+  - name: diversity_accuracy_frontier
+    abstract: For a fixed total resource budget, there exists a frontier between component quality and component diversity; optimal ensembles do not maximize individual component quality but instead balance accuracy with decorrelated failure modes.
+    maps_to: [portfolio_diversification, failure_mode_decorrelation, resource_allocation_tradeoff, team_composition]
+
+  - name: error_correlation_ceiling
+    abstract: The maximum benefit from combining any set of sources is determined by the correlation of their errors; high error correlation creates a hard ceiling that cannot be overcome by changing the aggregation rule.
+    maps_to: [improvement_ceiling_estimation, source_redundancy_audit, combination_strategy_limits, correlation_diagnosis]
+
+  - name: learned_conditional_weighting
+    abstract: Rather than statically combining sources, a meta-system can learn which source to trust as a function of input context, achieving performance gains unavailable to any fixed aggregation scheme.
+    maps_to: [context_sensitive_routing, adaptive_weighting, expert_selection, meta_learning_design]
+
+  - name: input_conditional_specialization
+    abstract: A system decomposes input space into regions and assigns specialized sub-systems to each region; specialization improves per-region performance while a routing mechanism ensures the right specialist handles each input.
+    maps_to: [domain_partitioning, specialization_design, routing_mechanism, workload_distribution]
+
+injection_prompt: |
+  View this problem through ensemble theory: ask whether your current solution is one opinion or a portfolio of diverse, imperfectly-correlated perspectives on the same target.
+  Identify the failure modes of your approach and ask: what alternative approach would make different errors, and how can you combine them such that errors cancel rather than compound?
+  If you have multiple sub-systems or agents, determine whether they are truly diverse or merely correlated variants — high correlation means the ensemble ceiling is already close, and you must engineer genuine disagreement.

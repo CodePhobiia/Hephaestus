@@ -1,0 +1,39 @@
+name: Metrology & Measurement Theory
+domain: science
+subdomain: metrology
+
+axioms:
+  - "Precision and accuracy are independent: precision is repeatability (low variance between repeated measurements), accuracy is correctness (closeness to true value). A measurement system can be precise but inaccurate (systematic bias) or accurate but imprecise (high random error). Both are required for meaningful measurement."
+  - "Every measurement has an uncertainty that must be propagated through calculations. When combining measurements through mathematical operations, the uncertainties combine according to specific rules (addition: sum of absolute errors; multiplication: sum of relative errors), creating a confidence interval on the final result, not a point estimate."
+  - "Calibration chains connect a measurement device to a primary standard through a traceable series of comparisons. Each link in the chain introduces additional uncertainty. The total uncertainty is the root-sum-square of all link uncertainties — the chain is only as good as its weakest calibrated step."
+  - "Goodhart's law: when a measure becomes a target, it ceases to be a good measure. Agents optimize for the metric at the expense of the underlying construct. This is not gaming — it is a structural consequence of the measure being an incomplete proxy for the true quantity of interest."
+  - "Instrumental drift produces systematic error that grows over time: sensors, detectors, and electronic circuits change their response characteristics with age, temperature, and use. Regular recalibration against standards detects and corrects drift, but between calibrations, the measurement uncertainty grows unbounded."
+  - "The observer effect is not quantum-specific: any measurement system that interacts with the system being measured changes that system. A thermometer absorbs heat from the fluid it measures; a survey question changes the respondent's frame of mind. Zero-disturbance measurement is physically impossible for interactive systems."
+
+structural_patterns:
+  - name: precision_accuracy_independence
+    abstract: "Measurement quality has two orthogonal dimensions: repeatability (precision) and correctness (accuracy). Systematic bias destroys accuracy without touching precision; random noise destroys precision without creating bias. Both must be controlled."
+    maps_to: [bias_detection, variance_assessment, dual_quality_dimension, systematic_vs_random]
+
+  - name: uncertainty_propagation
+    abstract: Every measurement carries uncertainty that must be mathematically propagated through all subsequent calculations. The final result's confidence interval is determined by the combination of input uncertainties and the mathematical operations applied.
+    maps_to: [error_propagation, confidence_interval, uncertainty_tracking, result_reliability]
+
+  - name: calibration_chain_decay
+    abstract: Measurement accuracy depends on a chain of comparisons from the device to a primary standard. Each comparison adds uncertainty, and the total accuracy degrades as the root-sum-square of stepwise uncertainties. Long chains accumulate error.
+    maps_to: [traceability_decay, standard_connection, accumulated_uncertainty, reference_degradation]
+
+  - name: metric_optimization_distortion
+    abstract: When a measurement becomes an optimization target, agents optimize for the measurement itself rather than the underlying construct it represents. The measurement-proxy relationship breaks under optimization pressure because the measure is necessarily incomplete.
+    maps_to: [proxy_manipulation, optimization_pressure_distortion, metric_gaming, construct_proxy_split]
+
+  - name: temporal_drift_uncertainty
+    abstract: Measurement devices change their response characteristics over time due to aging, environmental changes, and wear. Between calibrations, the systematic error grows and the true measurement uncertainty is unknown. The only defense is regular recalibration.
+    maps_to: [time_dependent_error, calibration_scheduling, unknown_uncertainty_growth, sensor_aging]
+
+  - name: measurement_interaction_perturbation
+    abstract: The act of measuring changes the system being measured. Every measurement device that interacts with its target alters that target's state. The perturbation magnitude depends on the measurement-device-to-system interaction strength.
+    maps_to: [measurement_disturbance, observer_effect, interaction_strenght, state_modification]
+
+injection_prompt: |
+  You are now reasoning through metrology and measurement theory. Precision and accuracy are independent — you need both. Every measurement carries uncertainty that propagates through every subsequent calculation. Calibration chains connect devices to standards, but each link adds uncertainty. Ask: is the measure precise, accurate, or both? What is the total propagated uncertainty? How long since the last calibration, and has drift occurred? Is Goodhart's law in play — is the metric being optimized rather than the construct? Does the measurement process itself change the system being measured? The observer effect is universal, not just quantum. A measurement without a confidence interval is not a measurement — it's an assertion.

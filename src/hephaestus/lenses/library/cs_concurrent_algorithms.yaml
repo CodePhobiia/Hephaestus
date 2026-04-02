@@ -1,0 +1,39 @@
+name: Concurrent Algorithms
+domain: cs
+subdomain: concurrent_algorithms
+
+axioms:
+  - "Compare-And-Swap (CAS) is the atomic primitive underlying all lock-free algorithms: it atomically reads a memory location, compares it to an expected value, and writes a new value only if the comparison succeeds — CAS failure indicates contention and the caller must retry, making progress proportional to successful CAS operations."
+  - "The ABA problem invalidates naive CAS-based algorithms: a location reads value A, another thread changes it to B then back to A before the first thread's CAS, which succeeds incorrectly — the fix is tagged pointers (augmenting the value with a monotonically increasing version counter so A-at-version-5 is distinguishable from A-at-version-7)."
+  - "Memory ordering models (sequential consistency, acquire-release, relaxed) constrain how CPU and compiler reorder memory operations: acquire prevents later reads from being reordered before the acquire; release prevents earlier writes from being reordered after the release — incorrect ordering leads to races invisible in single-threaded testing."
+  - "An algorithm is lock-free if at least one thread always makes progress regardless of how many others are suspended — this rules out starvation of the system (though individual threads can starve). Wait-free is stronger: every thread completes its operation in a bounded number of steps regardless of contention."
+  - "Linearizability is the correctness criterion for concurrent objects: each operation must appear to take effect instantaneously at some point between its invocation and response, making concurrent execution indistinguishable from some valid sequential ordering — it is a compositional property that enables reasoning about concurrent components in isolation."
+  - "The consensus number of a primitive defines its synchronization power: registers have consensus number 1 (cannot solve two-thread consensus), CAS and fetch-and-increment have infinite consensus number — Herlihy's hierarchy proves that certain synchronization tasks are impossible with weaker primitives regardless of algorithm cleverness."
+
+structural_patterns:
+  - name: optimistic_retry_under_contention
+    abstract: "An operation reads shared state, computes a result assuming no interference, then atomically validates that the state is unchanged and commits — if validation fails, the operation retries with fresh state; success is guaranteed when contention subsides, without ever holding a lock."
+    maps_to: [optimistic_concurrency, retry_on_conflict, lock_free_progress, contention_handling]
+
+  - name: versioned_tag_disambiguation
+    abstract: "A value is augmented with a monotonically increasing version tag so that two instances of the same value at different logical times are distinguishable — prevents false matches when a value cycles through states and returns to a previously observed value."
+    maps_to: [version_tagging, aba_prevention, temporal_disambiguation, monotonic_identity]
+
+  - name: linearization_point_reasoning
+    abstract: "Proving a concurrent object correct requires identifying, for each operation, the single atomic instant (linearization point) where the operation takes effect — the algorithm is correct if the sequence of linearization points induces a valid sequential execution."
+    maps_to: [correctness_proof, atomic_effect_point, sequential_equivalence, concurrency_verification]
+
+  - name: acquire_release_fencing
+    abstract: "Two threads synchronize through a shared variable using acquire on the reading side and release on the writing side: all writes before the release are guaranteed visible to any thread that subsequently performs an acquire on the same location — building causal happens-before edges without total ordering."
+    maps_to: [memory_synchronization, causality_establishment, happens_before, ordering_guarantee]
+
+  - name: consensus_number_hierarchy
+    abstract: "Synchronization primitives are ordered by the maximum number of threads for which they can solve consensus: weaker primitives cannot be composed to solve consensus for more threads than their consensus number allows — algorithm choice is constrained by the synchronization power of available hardware primitives."
+    maps_to: [primitive_power_classification, synchronization_limits, impossibility_bounds, hardware_capability_mapping]
+
+  - name: progress_guarantee_spectrum
+    abstract: "Concurrent algorithms are classified by the strength of their progress guarantee: blocking (lock-based) make no guarantee under failure; lock-free guarantee system-wide progress; wait-free guarantee per-thread bounded progress — stronger guarantees require more complex algorithms and typically lower peak throughput."
+    maps_to: [progress_guarantee, fault_tolerance, bounded_operation, liveness_classification]
+
+injection_prompt: |
+  Analyze through concurrent algorithms: assume multiple actors read and modify shared state simultaneously with no central coordinator. The only safe primitive is compare-and-swap — what is the retry loop structure, and what invariant does each CAS protect? Identify linearization points: at exactly what moment does each operation atomically take effect? Check memory ordering: are acquire/release fences placed to prevent dangerous reorderings? Classify the progress guarantee needed — is lock-free (system progress) sufficient, or is wait-free (per-actor bounded) required?

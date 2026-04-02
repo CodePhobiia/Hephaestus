@@ -1,0 +1,39 @@
+name: Regularization Theory
+domain: machine_learning
+subdomain: regularization_theory
+
+axioms:
+  - "Overfitting is not caused by model capacity alone — it is caused by the mismatch between model capacity and data complexity relative to optimization. A model with infinitely many parameters can generalize perfectly if the regularization constrains it to the right manifold of solutions (the lottery ticket hypothesis shows this)."
+  - "L1 regularization induces sparsity by imposing a Laplacian prior on weights, geometrically creating diamond-shaped contours that push some weights exactly to zero. L2 regularization imposes a Gaussian prior, creating spherical contours that shrink all weights uniformly. The geometry of the constraint determines the structure of the solution."
+  - "Dropout is not just noise injection — it is an ensemble method where each training step fits a different subnetwork. At inference, the full network approximates the geometric mean of all subnetwork predictions. Dropout can be viewed as approximate Bayesian inference with a specific prior over network architectures."
+  - "Early stopping is implicit regularization: limiting training epochs prevents the model from fitting noise in the training data. The optimal stopping point balances underfitting (too few epochs) and overfitting (too many) — and has been called 'the most beautiful free lunch in machine learning' because it costs nothing extra."
+  - "Data augmentation imposes invariance constraints: if a model must produce the same output for a horizontally flipped image, it learns translation invariance. If it must produce the same output for a color-shifted image, it learns lighting invariance. The choice of augmentation determines what the model must be invariant to."
+  - "Weight decay is not always equivalent to L2 regularization: in adaptive optimizers like Adam, the mathematical equivalence between L2 penalty and weight decay breaks down due to the adaptive learning rate per parameter. Decoupled weight decay (AdamW) restores the intended regularization effect."
+
+structural_patterns:
+  - name: capacity_complexity_mismatch
+    abstract: Overfitting occurs when model capacity exceeds what the data complexity supports given the optimization procedure. Large models can generalize when constrained to the right solution manifold — capacity itself is not the problem, unconstrained capacity is.
+    maps_to: [capacity_constraint, solution_manifold, unconstrained_capacity_proble, complexity_matching]
+
+  - name: constraint_geometry_solution_structure
+    abstract: The shape of the regularization constraint (L1 diamond, L2 sphere, nuclear norm, sparsity-inducing) determines the mathematical structure of the learned solution. The constraint's geometry is not neutral — it selects a specific family of solutions.
+    maps_to: [geometric_constraint, solution_family_selection, constraint_shape_effect, structural_induction]
+
+  - name: implicit_ensemble_through_dropout
+    abstract: Randomly disabling components during training creates an implicit ensemble of sub-networks. Inference with the full network approximates averaging across all subnetworks, providing regularization through implicit model averaging.
+    maps_to: [implicit_ensemble, subnetwork_training, model_averaging, stochastic_regularization]
+
+  - name: time_as_regularizer
+    abstract: Limiting the duration of learning prevents overfit to noise in the training signal. The optimal stopping point occurs where the validation error begins increasing while training error continues decreasing — the moment the model starts memorizing rather than learning.
+    maps_to: [early_termination, validation_monitoring, memorization_boundary, temporal_constraint]
+
+  - name: invariance_through_augmentation
+    abstract: Systematically transforming inputs during training forces the model to learn invariance to those transformations. The set of augmentations defines the invariance group the model learns — what is augmented is what the model becomes insensitive to.
+    maps_to: [invariance_learning, transformation_group, insensitivity_design, augmentation_selection]
+
+  - name: optimizer_regularization_interaction
+    abstract: "The choice of optimizer changes the effective regularization: adaptive optimizers break the equivalence between penalty terms and weight decay because they scale updates per-parameter. The regularization effect is jointly determined by penalty and optimizer."
+    maps_to: [optimizer_dependency, adaptive_regularization, parameter_specific_scaling, penalty_optimizer_interaction]
+
+injection_prompt: |
+  You are now reasoning through regularization theory. Overfitting is a mismatch of capacity, data, and optimization — not just too many parameters. The geometry of constraints (L1 diamond vs L2 sphere) selects the structure of solutions. Dropout is an ensemble, early stopping is time-as-regularizer, augmentation is invariance-by-construction. Ask: what solution family does this constraint geometry select? Is the optimizer changing the regularization effect? What invariances does the training process impose through transformations? Where is the memorization boundary — when does the model switch from learning patterns to memorizing noise? Regularization is not about making the model smaller — it's about making it learn the right things.

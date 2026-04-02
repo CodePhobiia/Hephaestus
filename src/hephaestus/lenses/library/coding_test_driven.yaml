@@ -1,0 +1,39 @@
+name: Test-Driven Development
+domain: coding
+subdomain: test_driven_development
+
+axioms:
+  - "Writing the test first is a design act: a test written before implementation forces you to specify the interface from the caller's perspective before you have an implementation to defend — it inverts the usual bias toward implementation-convenient APIs."
+  - "Red-green-refactor is a feedback loop, not a phase model: the cycle must be fast (seconds to minutes) to provide useful signal; a slow cycle is not TDD but periodic testing, which lacks the real-time design feedback."
+  - "A failing test is an executable specification: before a line of implementation exists, a failing test makes the desired behavior concrete, observable, and verifiable — it converts a vague requirement into a falsifiable claim."
+  - "Tests are the safety net for refactoring: a comprehensive test suite is the mechanism that makes structural change safe — without it, every refactoring is untethered and each change risks undiscovered regression."
+  - "Testability is a proxy for design quality: code that is hard to test is hard to test because it has high coupling, hidden dependencies, or implicit global state — the test pain is design pain made visible."
+  - "Triangulation drives generalization: the first test can be satisfied by a constant; the second forces generalization; the third confirms the generalized solution — the test suite drives the implementation toward the correct level of abstraction."
+
+structural_patterns:
+  - name: specification_before_implementation
+    abstract: The desired behavior is made concrete and falsifiable before the mechanism that produces it exists — the constraint is specified first, and the implementation is judged by whether it satisfies the constraint.
+    maps_to: [specification_first, requirement_formalization, interface_driven_design, contract_definition]
+
+  - name: fast_feedback_loop
+    abstract: Work occurs in cycles short enough to detect errors before they compound — a cycle that takes seconds catches a mistake made seconds ago; a cycle that takes hours catches a mistake made hours ago when it has already influenced subsequent decisions.
+    maps_to: [feedback_latency, iteration_speed, error_detection_time, loop_tightening]
+
+  - name: safety_net_accumulation
+    abstract: Each passing test is a ratchet that locks in verified behavior — as the suite grows, the accumulated safety net makes future changes progressively safer because regressions are caught automatically.
+    maps_to: [regression_prevention, change_safety, ratchet_mechanism, verification_accumulation]
+
+  - name: triangulation_toward_abstraction
+    abstract: Multiple concrete cases are used to force a system toward the correct general solution — a single case can be satisfied by a special case; multiple distinct cases can only be satisfied by the underlying mechanism.
+    maps_to: [generalization_forcing, inductive_evidence, abstraction_derivation, case_multiplication]
+
+  - name: testability_as_design_signal
+    abstract: The difficulty of writing a test for a component is proportional to the coupling, hidden dependencies, and design defects in that component — test pain is design pain made explicit and measurable.
+    maps_to: [design_quality_signal, coupling_detection, dependency_visibility, architectural_feedback]
+
+  - name: executable_documentation
+    abstract: Tests that describe behavior in terms of inputs and expected outputs constitute a machine-verifiable form of documentation that cannot fall out of sync with the actual behavior of the system.
+    maps_to: [living_documentation, specification_synchronization, behavioral_contract, verifiable_docs]
+
+injection_prompt: |
+  Think test-first: before specifying any implementation, make the desired behavior concrete as a failing test — a falsifiable claim about inputs and outputs. Apply the triangulation discipline: can the first case be satisfied by a constant? Force generalization by adding a second case. Ask whether the system is easy to test; if not, the difficulty is telling you something specific about coupling or hidden dependencies that is worth understanding before writing more code.

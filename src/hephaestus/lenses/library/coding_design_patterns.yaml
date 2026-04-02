@@ -1,0 +1,39 @@
+name: Design Patterns & Pattern Languages
+domain: coding
+subdomain: design_patterns
+
+axioms:
+  - "A pattern is a named solution to a recurring problem in a context — the name is as important as the structure, because shared vocabulary allows practitioners to communicate design intent at high bandwidth."
+  - "Patterns encode tradeoffs, not optimal solutions: the GoF patterns each solve one force at the cost of another — applying Observer eliminates polling at the cost of unpredictable notification order; the tradeoff must be evaluated in context."
+  - "Pattern misapplication is common: recognizing that a situation superficially resembles a pattern leads to applying the pattern's structure while ignoring whether its forces are actually present — cargo-cult pattern use increases complexity without solving the original problem."
+  - "Patterns are not implementations but loci of variability: the point of Strategy is not the class hierarchy but the explicit identification of 'this algorithm varies independently' — the mechanism isolates the dimension of variation."
+  - "Pattern languages compose: individual patterns address specific forces, and patterns at different granularities combine into larger structures — a system is an interacting composition of patterns, not a single pattern applied globally."
+  - "The anti-pattern is as instructive as the pattern: recognizing a Blob, a Poltergeist, or a Golden Hammer means recognizing a category of recurring failure with a specific cause — anti-patterns are negative patterns with diagnostic value."
+
+structural_patterns:
+  - name: named_solution_vocabulary
+    abstract: Shared names for recurring solutions compress communication — a single name encodes the structure, forces, consequences, and tradeoffs of a solution, enabling precise expert communication without re-explanation.
+    maps_to: [shared_vocabulary, design_communication, pattern_recognition, expert_shorthand]
+
+  - name: variability_locus_isolation
+    abstract: Identifying the specific dimension along which a design will vary and constructing an explicit boundary around that variation point — the structure makes variability intentional and controlled rather than accidental.
+    maps_to: [extension_point_design, variability_management, open_closed_principle, variation_isolation]
+
+  - name: force_tradeoff_resolution
+    abstract: A design choice resolves competing forces by accepting the cost of one in exchange for the benefit of another — a pattern is valid only when its specific forces are present; the same structure applied to different forces is not the same pattern.
+    maps_to: [tradeoff_analysis, force_evaluation, context_appropriate_design, pattern_validity]
+
+  - name: pattern_composition
+    abstract: Complex designs emerge from combining multiple patterns at different scales, each addressing different forces — architectural integrity requires that the compositions of patterns be consistent with each other's assumptions.
+    maps_to: [pattern_composition, multi_scale_design, pattern_interaction, architectural_coherence]
+
+  - name: anti_pattern_diagnostic
+    abstract: A named category of recurring failure with a specific cause and a refactoring path — recognizing the anti-pattern compresses diagnosis by providing both a name for what is wrong and a known direction toward correction.
+    maps_to: [failure_mode_recognition, diagnostic_framework, known_bad_patterns, refactoring_direction]
+
+  - name: context_sensitive_application
+    abstract: A structural solution must be validated against the forces present in its specific context — applying a pattern's form without verifying its forces produces the illusion of design with the reality of added complexity.
+    maps_to: [contextual_design, force_validation, application_appropriateness, cargo_cult_prevention]
+
+injection_prompt: |
+  Apply pattern thinking: ask not whether this situation resembles a pattern structurally, but whether its forces are present — what varies independently, what must be extended without modification, what must be decoupled. Name the design intent explicitly: naming the pattern commits you to its specific tradeoffs. Check whether the pattern's costs are acceptable in this context. Look for anti-patterns by name: is there a Blob accumulating unrelated responsibilities, a Golden Hammer pattern over-applied because it worked once before?

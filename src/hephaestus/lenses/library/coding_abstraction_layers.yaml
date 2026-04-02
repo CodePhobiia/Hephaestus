@@ -1,0 +1,39 @@
+name: Abstraction Layers & Leaky Abstractions
+domain: coding
+subdomain: abstraction_layers
+
+axioms:
+  - "The Law of Leaky Abstractions (Spolsky): all non-trivial abstractions leak — the details of the underlying layer bleed through in edge cases, performance characteristics, and failure modes, requiring callers to understand what they were supposed to ignore."
+  - "An abstraction is a cost-benefit trade: the benefit is cognitive simplicity at the call site; the cost is the layer boundary that hides information needed to reason about edge cases — the trade is worthwhile only when the simplified case is far more common than the edge case."
+  - "Layer violations occur at both boundaries: a high-level layer that calls into two levels below violates the layer contract; a low-level layer that calls into a higher-level layer creates a dependency inversion that propagates complexity upward."
+  - "Performance cliffs are a form of abstraction leak: when a high-level operation (like ORM query generation) silently produces an inefficient underlying operation (N+1 queries), the performance model of the abstraction is a lie about the actual resource cost."
+  - "The right abstraction captures invariants, not convenient groupings: a good abstraction level is one where statements are uniformly true without case analysis — mixing concerns at different levels forces perpetual special-casing."
+  - "Abstraction debt accumulates when layers are added to paper over design problems: each added indirection layer increases the cognitive overhead of understanding the actual execution path, and the accumulated indirection eventually becomes harder to reason about than the original problem."
+
+structural_patterns:
+  - name: abstraction_leak_surface
+    abstract: Every abstraction has a surface through which underlying details escape — edge cases, failure modes, and performance characteristics that cannot be hidden — and the leak surface determines how much caller knowledge is actually required.
+    maps_to: [edge_case_analysis, failure_mode_visibility, performance_transparency, leakage_audit]
+
+  - name: layer_boundary_contract
+    abstract: Each layer boundary defines a contract about what the layer above may observe and what the layer below must provide — layer violations are cases where code reaches past its immediate neighbor, creating hidden coupling to deeper implementation details.
+    maps_to: [layered_architecture, boundary_enforcement, coupling_across_layers, contract_adherence]
+
+  - name: performance_model_fidelity
+    abstract: An abstraction's apparent cost model should reflect its actual cost model — when high-level operations silently produce expensive low-level operations, callers build systems based on a cost model that is wrong and cannot optimize correctly.
+    maps_to: [performance_transparency, cost_model_accuracy, n_plus_one_detection, resource_model]
+
+  - name: invariant_level_uniformity
+    abstract: A good abstraction level is characterized by statements that are uniformly true without case analysis — if reasoning at a given level requires constant context-switching between levels, the abstraction boundaries are in the wrong place.
+    maps_to: [invariant_preservation, abstraction_coherence, case_analysis_elimination, level_uniformity]
+
+  - name: indirection_budget
+    abstract: Cognitive overhead scales with the number of indirection layers between a call site and the execution that actually occurs — each layer added to defer a design decision draws from a finite budget of system comprehensibility.
+    maps_to: [cognitive_load_management, indirection_cost, comprehensibility_budget, layer_proliferation]
+
+  - name: abstraction_benefit_locality
+    abstract: The value of an abstraction is realized at the call site, but its cost is paid by anyone who needs to understand or debug the underlying implementation — abstractions that benefit many callers while burdening few implementors are net positive; the reverse is net negative.
+    maps_to: [benefit_vs_cost_allocation, caller_vs_implementor, abstraction_value, design_asymmetry]
+
+injection_prompt: |
+  Reason through abstraction layers: identify what each layer hides and ask whether it actually succeeds in hiding it. Apply the leak test — are there edge cases, failure modes, or performance behaviors the caller must understand despite the abstraction? Audit for layer violations where code reaches past its immediate neighbor. Ask whether the performance model at the abstraction level is honest about the actual cost of operations underneath. Count indirection layers: is the cognitive overhead of traversing them worth the simplification provided?

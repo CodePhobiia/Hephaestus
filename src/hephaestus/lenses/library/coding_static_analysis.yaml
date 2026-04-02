@@ -1,0 +1,39 @@
+name: Static Analysis & Formal Verification
+domain: coding
+subdomain: static_analysis
+
+axioms:
+  - "A type system is a proof system: every well-typed program is a constructive proof that certain classes of runtime errors cannot occur. The type checker is a theorem prover, and type inference is proof search."
+  - "Abstract interpretation approximates program semantics by mapping concrete execution traces to abstract values in a lattice. By computing a fixed point over the abstract domain, one can prove properties about all possible executions — including those that will never actually occur."
+  - "The halting problem is not a practical barrier — most real-world verification succeeds because programs operate over finite structures with bounded recursion and finite-state control flow. Undecidability is a theoretical ceiling, not a practical floor."
+  - "Property-based testing differs fundamentally from example-based testing: instead of checking specific inputs, tests assert invariants that must hold for all inputs in a domain. Counter-example shrinking transforms a failing case into the minimal reproducer, revealing the essence of the bug."
+  - "Soundness and completeness are in tension: a sound analyzer never produces false positives (every reported issue is real), but must over-approximate and may miss bugs; a complete analyzer never misses a bug but may report false positives. Practical tools balance this tension through configurable precision."
+  - "The weakest precondition calculus transforms post-condition verification into a backward symbolic computation: given a desired property at program exit, compute the minimum condition that must hold at program entry. If the entry precondition is satisfied, the postcondition is guaranteed."
+
+structural_patterns:
+  - name: proof_by_type_structure
+    abstract: Structural constraints on data and operations prove the absence of certain error classes without executing the system. The structure itself is the proof — if it compiles, the class of errors is eliminated.
+    maps_to: [error_elimination, structural_proof, compile_time_guarantee, constraint_enforcement]
+
+  - name: abstract_interpretation_lattice
+    abstract: Concrete behavior is approximated by mapping to abstract values in a lattice structure, then computing fixed points to prove properties about all possible executions without actually running them.
+    maps_to: [behavior_approximation, fixed_point_computation, property_verification, symbolic_analysis]
+
+  - name: invariant_based_testing
+    abstract: Instead of testing specific cases, assert properties that must hold universally across the input domain. When a property fails, reduce the counter-example to its minimal form to reveal the core structural issue.
+    maps_to: [universal_invariants, counterexample_reduction, input_domain_coverage, property_assertion]
+
+  - name: soundness_completeness_tradeoff
+    abstract: "Verification systems face an inherent tension: guarantee no false positives (sound but incomplete) or detect all defects (complete but with false positives). The balance point determines the tool's practical utility and user trust."
+    maps_to: [precision_recall_tradeoff, approximation_bounds, confidence_calibration, configurable_precision]
+
+  - name: backwards_precondition_computation
+    abstract: Desired post-conditions are propagated backward through system structure to compute the minimal entry conditions that guarantee correctness. This reverses the direction of analysis from forward simulation to backward proof.
+    maps_to: [backward_reasoning, guarantee_derivation, precondition_synthesis, reverse_propagation]
+
+  - name: decidability_by_bounding
+    abstract: Problems that are theoretically undecidable become tractable when constrained to finite structures, bounded recursion depth, or finite-state abstractions. Practical verification succeeds by shrinking the problem space to decidable fragments.
+    maps_to: [finite_approximation, bounded_verification, tractable_subsets, practical_decidability]
+
+injection_prompt: |
+  You are now reasoning through static analysis and formal verification. Programs can be proven correct — or at least proven free of certain error classes — without running them. Types are proofs, the type checker is a theorem prover, and abstract interpretation proves properties about all possible executions. Ask: what invariants hold universally? What properties can be proven by structure alone? What finite bounded fragment captures the essence of the undecidable general case? Think in preconditions, postconditions, and loop invariants — the system's correctness should emerge from its constraints, not from testing every path.

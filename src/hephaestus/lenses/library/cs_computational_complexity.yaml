@@ -1,0 +1,39 @@
+name: Computational Complexity
+domain: computer_science
+subdomain: computational_complexity
+
+axioms:
+  - "Reduction is the master technique for proving hardness: if problem A can be solved using an oracle for problem B, then B is at least as hard as A. NP-completeness proofs work by reducing a known hard problem to the target — the reduction preserves difficulty, making hardness a transitive property."
+  - "Time-space tradeoffs are fundamental: you can always trade memory for time (memoization, lookup tables, index structures) or time for memory (recomputation, streaming processing). The Pareto frontier between these two extremes defines the complexity class of the problem."
+  - "Amortized analysis reveals the true cost of operations that appear expensive individually but are cheap on average: a dynamic array doubling strategy has O(n) worst-case insertion but O(1) amortized cost because expensive doublings are rare and the cheap operations subsidize them."
+  - "Lower bounds establish the minimum work required by any algorithm for a problem, not just the best known algorithm. Comparison sorting has an Ω(n log n) lower bound because any comparison-based sorting algorithm generates a decision tree with at least n! leaves."
+  - "Approximation algorithms sacrifice exactness for tractability when exact solutions are computationally prohibitive. The approximation ratio ρ measures worst-case performance: a 2-approximation for vertex cover guarantees the solution is at most twice the optimal, regardless of input structure."
+  - "Randomized algorithms use randomness to beat deterministic complexity bounds: Las Vegas algorithms are always correct but have random runtime; Monte Carlo algorithms have fixed runtime but may be wrong with bounded probability. The randomness creates uncertainty in exchange for efficiency gains."
+
+structural_patterns:
+  - name: transitive_hardness
+    abstract: "Difficulty transfers through reductions: if solving A lets you solve B, then A is at least as hard as B. Hardness is not isolated — problems form equivalence classes of mutual reducibility. Proving one problem hard proves an entire class hard."
+    maps_to: [difficulty_transfer, reduction_chain, equivalence_class, hardness_provenance]
+
+  - name: time_space_pareto
+    abstract: "Performance tradeoffs exist between resource types: more memory enables faster computation, less memory requires recomputation. The Pareto frontier defines the best achievable balance — no algorithm simultaneously dominates all others in both dimensions."
+    maps_to: [resource_tradeoff, pareto_optimal, memory_speed_exchange, dual_dimension_optimization]
+
+  - name: amortized_cost_averaging
+    abstract: Individual operation costs may be high on average when spread across many operations. Expensive operations are subsidized by many cheap ones, and the average cost per operation is the relevant metric for system behavior, not the worst case.
+    maps_to: [average_cost_distribution, rare_expensive_operation, subsidy_pattern, long_term_averaging]
+
+  - name: impossibility_lower_bound
+    abstract: Mathematical proof that no algorithm (not just no known algorithm) can solve a problem below a certain resource threshold. The lower bound is a fundamental property of the problem structure, not a limitation of current technique.
+    maps_to: [fundamental_limit, impossibility_proof, theoretical_minimum, problem_inherent_cost]
+
+  - name: approximation_ratio_guarantee
+    abstract: When exact solutions are intractable, algorithms provide bounded-approximation solutions with mathematical guarantees on worst-case quality. The approximation ratio defines the quality floor — the solution is never worse than ρ times the optimal.
+    maps_to: [bounded_approximation, worst_case_guarantee, quality_floor, tractable_near_optimal]
+
+  - name: randomized_efficiency_tradeoff
+    abstract: Introducing randomness exchanges deterministic certainty for resource efficiency — either correct answers with variable time (Las Vegas) or variable correctness with fixed time (Monte Carlo). The tradeoff is parameterized by the failure probability.
+    maps_to: [probabilistic_efficiency, correctness_time_exchange, parameterized_uncertainty, randomized_speedup]
+
+injection_prompt: |
+  You are now reasoning through computational complexity. Hardness is transitive through reductions — proving one problem hard proves a family of problems hard. Lower bounds establish fundamental minimums that no algorithm can beat. Amortized analysis reveals true cost by averaging over time. Ask: what is the fundamental lower bound on work required? Can the problem be reduced to something already classified? What is the time-space Pareto frontier? Is an approximation acceptable with a bounded quality guarantee? Does randomization unlock efficiency gains at an acceptable uncertainty cost? Complexity is not about the best known algorithm — it's about what is fundamentally possible.

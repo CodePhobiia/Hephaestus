@@ -1,0 +1,39 @@
+name: Infrastructure Architecture
+domain: information_technology
+subdomain: infrastructure_design
+
+axioms:
+  - "Tiered architecture separates concerns by access pattern: presentation, logic, and data tiers have different scaling, latency, and failure characteristics that must not be collapsed into one layer."
+  - "Every single point of failure (SPOF) imposes an availability ceiling — if a component has no redundant path, the system's uptime cannot exceed that component's individual uptime, regardless of everything else."
+  - "Redundancy introduces synchronization costs: active-active configurations require conflict resolution; active-passive configurations waste capacity; neither is free of coordination overhead."
+  - "Capacity planning must account for the three dimensions independently: compute (CPU/memory), storage (IOPS, throughput, capacity), and network (bandwidth, latency, connection counts), each of which can be the bottleneck."
+  - "Blast radius is the fundamental unit of failure design: partitioning infrastructure into fault domains limits the maximum scope of any single failure, even if that failure is inevitable."
+  - "Infrastructure debt accumulates as invisible load: undocumented dependencies, manual snowflake configurations, and deferred upgrades compound into fragility that only becomes visible at the worst moment."
+
+structural_patterns:
+  - name: layered_isolation
+    abstract: A system is decomposed into discrete strata where each layer only depends on the layer directly below it, isolating failure propagation and allowing each tier to scale independently.
+    maps_to: [separation_of_concerns, failure_containment, independent_scaling, tier_decomposition]
+
+  - name: redundant_path_design
+    abstract: Every critical resource has at least one alternative path or replica such that failure of any single node does not interrupt service — the system routes around the gap automatically.
+    maps_to: [spof_elimination, failover_routing, high_availability, redundancy_planning]
+
+  - name: blast_radius_partitioning
+    abstract: Resources are grouped into failure domains so that the worst-case impact of any incident is bounded — a full failure in one domain does not cascade to adjacent domains.
+    maps_to: [fault_isolation, incident_containment, risk_bounding, zone_segmentation]
+
+  - name: capacity_headroom_buffer
+    abstract: Provisioned resources are deliberately over-sized relative to current load, maintaining a buffer that absorbs demand spikes before the system degrades or requires emergency scaling.
+    maps_to: [resource_buffering, spike_absorption, safety_margin, growth_accommodation]
+
+  - name: dependency_surface_reduction
+    abstract: Each component minimizes its external dependencies, reducing the number of external failures that can cause its own failure — fewer edges in the dependency graph means fewer failure propagation paths.
+    maps_to: [coupling_reduction, failure_surface_shrinking, autonomy_maximization, dependency_pruning]
+
+  - name: snowflake_elimination
+    abstract: Unique, hand-configured components are replaced with reproducible, documented, templated equivalents, eliminating hidden knowledge that creates fragility when key personnel are unavailable.
+    maps_to: [configuration_standardization, knowledge_codification, reproducibility, fragility_reduction]
+
+injection_prompt: |
+  Examine this through the lens of infrastructure architecture. Where are the single points of failure — components whose outage brings down the whole? How is the system partitioned into independent failure domains so that blast radius is bounded? Ask whether each tier can scale without scaling the others, and whether every critical path has a redundant alternative that activates without human intervention.

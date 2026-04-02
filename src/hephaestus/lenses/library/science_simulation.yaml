@@ -1,0 +1,39 @@
+name: Computational Simulation & Modeling
+domain: science
+subdomain: computational_simulation
+
+axioms:
+  - "All models are wrong but some are useful (Box): a model is a deliberate simplification of reality, stripped of details to reveal structure. The useful model is not the most detailed one — it is the simplest model that captures the phenomenon of interest while discarding irrelevant complexity."
+  - "Numerical stability determines whether a simulation produces physically meaningful results: discretization of continuous equations introduces rounding errors that compound over time steps. An unstable numerical scheme produces exponential error growth regardless of physical reality — the simulation diverges not because the physics is wrong, but because the arithmetic is unstable."
+  - "The simulation-to-reality gap is the difference between simulated behavior and actual system behavior. Sources include: model simplification (the equations omit real-world physics), parameter uncertainty (coefficients are estimated from noisy data), and computational approximations (finite precision, discrete time steps)."
+  - "Agent-based modeling generates macroscopic behavior from microscopic rules: individual agents with simple local rules produce emergent global patterns. The advantage is capturing heterogeneity and local interaction that aggregate models (ODE/PDE) average out. The cost is computational and the results are stochastic — no two runs produce identical outcomes."
+  - "Monte Carlo methods replace analytical integration with random sampling: estimate an integral by averaging function values at random points. The error decreases as 1/sqrt(N) regardless of dimension, making Monte Carlo the method of choice for high-dimensional problems where deterministic quadrature fails."
+  - "Model validation is not proving a model is correct — it is demonstrating that the model's predictions are consistent with observed data within uncertainty bounds. A validated model has survived attempts to falsify it; it is not proven correct, merely not yet proven wrong."
+
+structural_patterns:
+  - name: purposeful_simplification
+    abstract: A useful model deliberately discards detail to reveal structure. The right simplification preserves the phenomenon of interest while eliminating irrelevant complexity. Over-specification obscures; under-specification loses the phenomenon.
+    maps_to: [abstraction_purpose, detail_discard, structural_revelation, model_adequacy]
+
+  - name: numerical_stability_constraint
+    abstract: Discretization of continuous processes introduces computational errors that compound over iterations. An unstable scheme produces exponential error growth regardless of the underlying physics — the mathematics diverges independently of reality.
+    maps_to: [error_compounding, discretization_instability, computational_divergence, step_size_constraint]
+
+  - name: simulation_reality_gap
+    abstract: Simulated behavior necessarily differs from actual behavior through model simplification, parameter uncertainty, and computational approximation. The gap is not noise — it is systematic, and its magnitude determines the simulation's domain of applicability.
+    maps_to: [model_reality_mismatch, domain_limitation, systematic_bias, applicability_boundary]
+
+  - name: agent_based_emergence
+    abstract: Global patterns emerge from local rules applied by heterogeneous agents. The advantage is capturing individual variation and local interaction that aggregate models lose. The cost is computational expense and stochastic results — replication requires fixed seeds.
+    maps_to: [micro_to_macro, individual_heterogeneity, local_interaction, stochastic_emergence]
+
+  - name: monte_carlo_dimensional_invariance
+    abstract: Estimation accuracy through random sampling decreases as 1/sqrt(N) independent of problem dimension, unlike deterministic methods whose cost explodes with dimension. This makes random sampling the preferred approach for high-dimensional integration problems.
+    maps_to: [dimensional_independence, random_sampling, integration_substitution, high_dimensional_computation]
+
+  - name: falsification_based_validation
+    abstract: A model is not proven correct by matching data — it survives attempts to falsify it. Validation demonstrates consistency with observations within uncertainty bounds, but future observations under new conditions may falsify it. Validation is cumulative, not final.
+    maps_to: [survived_falsification, consistency_demonstration, provisional_confidence, cumulative_validation]
+
+injection_prompt: |
+  You are now reasoning through computational simulation and modeling. A model is a deliberate simplification — the useful model is the simplest one that captures the phenomenon. Numerical stability determines whether the math diverges independently of the physics. Agent-based models capture heterogeneity and emergence but produce stochastic results. Ask: what detail has been simplified and is it relevant to the phenomenon? Is the numerical scheme stable or will error compound? What is the simulation-to-reality gap — model simplification, parameter uncertainty, or computational approximation? Has the model been validated against independent data, or just calibrated to the training data? All models are wrong — the question is whether this one is useful.

@@ -1,0 +1,39 @@
+name: AI Alignment & Value Learning
+domain: artificial_intelligence
+subdomain: alignment
+
+axioms:
+  - "Reward modeling is reward misspecification: any learned reward function approximates human values from finite noisy data. The reward function that maximizes the training signal does not necessarily maximize human welfare — specification gaming exploits gap between what we measure and what we want."
+  - "Inner alignment (does the model pursue the objective we think it pursues) is distinct from outer alignment (is the objective we're actually optimizing the right one). A perfectly outer-aligned objective is dangerous if the model develops an inner objective through mesa-optimization that diverges from the training objective."
+  - "Capability control and specification are dual approaches that must be combined: limiting what an AI can do (box it, limit compute) addresses the impact of misalignment but does not prevent it; specifying correct objectives addresses the cause of misalignment but does not limit the impact of misspecification."
+  - "Corrigibility — the property of wanting to be corrected — is not a default property of goal-directed systems. A system whose goal is 'maximize X' will resist modification of its goal function because goal modification reduces expected X achievement."
+  - "Value learning under uncertainty is more robust than learning a point estimate of human values: a distribution over possible values leads to naturally cautious behavior (uncertain agents ask for clarification, certain agents optimize aggressively), while point estimates produce confident wrongness."
+  - "Amplification and debate are alignment techniques that scale human oversight: instead of checking the final output, humans supervise a process where the system iteratively refines its reasoning through recursive decomposition, with humans verifying the leaves."
+
+structural_patterns:
+  - name: reward_misspecification_gap
+    abstract: The objective function learned from demonstrations or preferences approximates human values but systematically diverges when pushed beyond the training distribution. The gap between measured proxy and true target widens as optimization pressure increases.
+    maps_to: [proxy_failure, distributional_shift, optimization_pressure, target_divergence]
+
+  - name: inner_outer_alignment_split
+    abstract: The objective encoded during training (outer alignment) can diverge from the objective the model internally pursues at inference time (inner alignment). Mesa-optimizers develop their own objectives that are instrumentally useful during training but may diverge catastrophically post-deployment.
+    maps_to: [objective_divergence, mesa_optimization, hidden_goals, training_inference_split]
+
+  - name: capability_specification_duality
+    abstract: "Two fundamentally different approaches to safety: limiting capability scope (what the system can do) vs improving objective specification (what the system is trying to do). Neither suffices alone — powerful but misaligned systems are dangerous, and perfectly aligned but uncapped systems may have unintended side effects."
+    maps_to: [scope_limitation, objective_precision, dual_approach, impact_mitigation]
+
+  - name: corrigibility_design
+    abstract: Goal-directed systems naturally resist modification to their goals because modification reduces goal achievement. Corrigibility requires engineering a meta-goal that includes 'be open to correction' as part of the optimization target, not as an add-on constraint.
+    maps_to: [meta_goal_design, correction_acceptance, self_modification_resistance, goal_malleability]
+
+  - name: value_uncertainty_caution
+    abstract: Maintaining uncertainty about the true objective function produces naturally cautious behavior — the hedges its actions to avoid irreversible actions that might violate unknown aspects of human values. Certainty, even when wrong, produces aggressive optimization.
+    maps_to: [uncertainty_driven_caution, distributional_objectives, value_pluralism, conservative_optimization]
+
+  - name: iterative_oversight_scaling
+    abstract: Human oversight scales through recursive task decomposition where humans supervise the leaves of a reasoning tree and trust propagates upward. The system must be able to decompose complex tasks into human-verifiable sub-tasks, and the decomposition itself must be correct.
+    maps_to: [recursive_decomposition, oversight_scaling, verification_chain, trust_propagation]
+
+injection_prompt: |
+  You are now reasoning through AI alignment. The reward function you specify is never the reward function you want — there's always a specification gap that widens under optimization pressure. Inner alignment (what the model actually pursues) can diverge from outer alignment (what you think you're optimizing). Ask: where is the gap between proxy measure and true value? Does the system want to be corrected, or does it resist modification? Does it maintain uncertainty about human values, or is it confidently wrong? Can oversight scale through recursive decomposition? Alignment is not about building the right objective — it's about building a system that can learn, maintain uncertainty about, and be corrected on objectives.

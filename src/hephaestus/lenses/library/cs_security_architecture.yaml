@@ -1,0 +1,39 @@
+name: Security Architecture
+domain: cs
+subdomain: security_architecture
+
+axioms:
+  - "Defense in depth layers independent security mechanisms so that no single failure grants an attacker full access: perimeter firewalls, network segmentation, application-level authentication, encryption at rest, and runtime sandboxing each address different attack classes — the principle is that breaching layer N should not make layer N+1 easier to breach."
+  - "The principle of least privilege dictates that every component operates with the minimum permissions necessary for its function and no more: a web server that only reads static files should not have write access to the database — over-permissioning converts any component compromise into a lateral movement opportunity."
+  - "Capability-based security replaces ambient authority (a process can do anything its user can) with explicit capabilities (unforgeable tokens granting specific rights to specific resources): a process that holds no capability to the network literally cannot make network requests, regardless of its user's privileges — capabilities make the absence of authority provable."
+  - "Zero-trust architecture assumes the network is already compromised: every request is authenticated and authorized regardless of origin (even from inside the perimeter), all communications are encrypted, and access decisions are made per-request based on identity, device posture, and context — there is no trusted zone."
+  - "Threat modeling (STRIDE, attack trees) systematically enumerates what can go wrong before writing defensive code: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege are the six canonical threat categories — every component is analyzed for susceptibility to each, and mitigations are designed per-threat, not per-component."
+  - "The attack surface is the sum of all points where an untrusted actor can inject input or observe output: every exposed API endpoint, every parsed file format, every network listener, every environment variable read — reducing attack surface (removing unnecessary features, closing ports, restricting parsers) is the most reliable way to reduce vulnerability count."
+
+structural_patterns:
+  - name: layered_independent_defenses
+    abstract: "Multiple independent security mechanisms are arranged in depth so that each layer addresses a different attack vector and no two layers share a failure mode — the system's security is the product of the layers' independent failure probabilities, not the minimum of them."
+    maps_to: [defense_in_depth, independent_failure_modes, layered_mitigation, compound_security]
+
+  - name: least_privilege_scoping
+    abstract: "Every actor in a system is granted exactly the permissions required for its current task and no more, with permissions scoped as narrowly as possible in time, resource, and action — excess permissions are not merely wasteful, they are exploitable; they become the attacker's toolkit after compromise."
+    maps_to: [minimal_permissions, scope_reduction, privilege_minimization, access_scoping]
+
+  - name: capability_token_authority
+    abstract: "Authority to act on a resource is conveyed through unforgeable tokens that are explicitly passed, not inferred from identity — a component without a token has provably zero access to the corresponding resource, and tokens can be attenuated (reduced in scope) before delegation, enabling fine-grained authority control."
+    maps_to: [explicit_authority, unforgeable_token, delegated_access, provable_restriction]
+
+  - name: zero_trust_per_request_verification
+    abstract: "No request is trusted based on network location or prior authentication; every request presents credentials, which are verified against current policy including identity, device state, and contextual risk signals — trust is never cached; it is established fresh for each interaction."
+    maps_to: [continuous_verification, context_aware_auth, no_implicit_trust, per_request_policy]
+
+  - name: attack_surface_minimization
+    abstract: "Security improves most reliably not by adding defenses but by removing exposure: every interface, parser, listener, and feature that is removed is an entire class of vulnerabilities that cannot exist — the safest code is code that was never written, the safest port is the one that was never opened."
+    maps_to: [surface_reduction, feature_removal, exposure_elimination, minimal_interface]
+
+  - name: threat_model_enumeration
+    abstract: "Before designing defenses, systematically enumerate all threat categories against each component using a structured framework — mitigations are then mapped per-threat rather than per-intuition, ensuring that defense effort is allocated proportional to threat likelihood and impact rather than developer familiarity."
+    maps_to: [systematic_threat_analysis, risk_enumeration, structured_defense_mapping, threat_categorization]
+
+injection_prompt: |
+  Apply security architecture reasoning: assume the system is under active attack and the network is already compromised. What is the attack surface — every point where untrusted input enters or sensitive data exits? Apply least privilege: does each component have only the permissions it needs, or does excess authority create lateral movement paths? Map the defense layers: are they independent (different failure modes) or do they share a common root of trust that, if compromised, collapses all defenses? Apply threat modeling: for each component, which of Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege apply, and what is the mitigation for each?

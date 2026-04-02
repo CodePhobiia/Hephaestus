@@ -1,0 +1,39 @@
+name: Data Visualization Principles
+domain: science
+subdomain: data_visualization
+
+axioms:
+  - "Visual encoding channels have different perceptual effectiveness: position along a common scale is the most accurate channel humans can decode, followed by length, angle, area, color saturation, and color hue. Choosing the wrong channel for the data's precision requirement destroys information regardless of the visualization's aesthetic quality."
+  - "Preattentive processing identifies visual properties detected by the visual system in under 200ms without conscious effort: orientation, motion, color hue, size. Encoding the most important data dimension in a preattentive channel makes it instantly visible; encoding important data in non-preattentive channels (like shape) requires deliberate search."
+  - "Gestalt principles govern how the visual system groups elements before conscious analysis: proximity (near things appear related), similarity (similar things appear related), continuity (things on a line appear connected), closure (the mind fills gaps). Effective visualizations align the data's structure with the Gestalt grouping — effective visualizations fight it."
+  - "Dimensionality reduction visualizes high-dimensional data by projecting it to 2D or 3D, but the projection necessarily distorts pairwise distances. t-SNE preserves local structure but distorts global relationships; UMAP preserves both; PCA preserves linear variance. The choice determines what patterns are visible and what is hidden."
+  - "Interactive visualization extends the static display by allowing the viewer to change perspective, filter data, adjust scales, and explore detail on demand. The interaction design is as important as the visual encoding — a great static chart with poor interaction is less useful than a mediocre chart with great interaction."
+  - "The data-ink ratio (Tufte): every mark on the display should represent data. Grid lines, borders, 3D effects, gradient fills that don't encode data are chartjunk — they consume attention and reduce the signal-to-noise ratio of the visualization."
+
+structural_patterns:
+  - name: perceptual_channel_hierarchy
+    abstract: Not all visual encoding methods are equally accurate. Position and length convey quantitative precision; angle and area convey approximate magnitude; color conveys categorical distinction. The channel must match the data's precision requirement.
+    maps_to: [encoding_accuracy, channel_selection, precision_matching, perceptual_hierarchy]
+
+  - name: preattentive_popout
+    abstract: Some visual properties are detected immediately without conscious search (color, motion, orientation). Encoding important information in preattentive channels makes patterns instantly visible; encoding in non-preattentive channels requires exhaustive search.
+    maps_to: [instant_detection, visual_search_cost, attention_direction, immediate_pattern]
+
+  - name: gestalt_structure_alignment
+    abstract: The visual system groups elements by proximity, similarity, continuity, and closure before conscious analysis. Aligning the data's structural relationships with these grouping principles makes the structure visible; misaligning them creates visual confusion.
+    maps_to: [automatic_grouping, structural_visibility, perception_alignment, grouping_by_design]
+
+  - name: projection_distortion_tradeoff
+    abstract: Reducing dimensionality necessarily distorts relationships — local vs global structure, linear vs nonlinear patterns. The projection algorithm determines what survives and what is lost, and different algorithms reveal different patterns in the same data.
+    maps_to: [dimensional_distortion, local_vs_global, algorithm_dependency, pattern_selectivity]
+
+  - name: interaction_exploration_amplification
+    abstract: Interactive controls (filtering, zooming, detail-on-demand, linked views) extend static visualization into multi-dimensional exploration. The interaction design determines the exploration path — what the viewer can discover depends on what the interface allows.
+    maps_to: [exploratory_capacity, view_manipulation, detail_disclosure, interactive_discovery]
+
+  - name: signal_noise_visual_ratio
+    abstract: Every visual element that does not encode data reduces the signal-to-noise ratio of the visualization. Removing non-data ink (grid lines, borders, decorative elements) increases the clarity of the data signal. Maximum clarity achieves the highest data-ink ratio.
+    maps_to: [visual_clarity, noise_reduction, data_density, minimalism_principle]
+
+injection_prompt: |
+  You are now reasoning through data visualization principles. Visual encoding channels have different perceptual accuracy — position is precise, color hue is not. Preattentive properties (color, motion, orientation) are detected instantly; everything else requires search. Gestalt grouping principles organize visual elements before conscious thought. Ask: is the encoding channel matched to the data's precision requirement? Is the important information in a preattentive channel? Do Gestalt groupings reflect the data's structure or fight it? What does the dimensionality reduction distortion? Is every mark on the display encoding data, or is there chartjunk consuming attention? The visualization is an interface between data and perception — design it for the human visual system, not for the data format.

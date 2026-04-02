@@ -1,0 +1,39 @@
+name: File System Design
+domain: cs
+subdomain: file_systems
+
+axioms:
+  - "Journaling guarantees metadata consistency across crashes by writing intended changes to a sequential log before applying them to on-disk structures — recovery replays committed journal entries and discards incomplete ones, bounding recovery time to journal size rather than disk size."
+  - "Copy-on-Write (COW) file systems never modify data in place: writes go to new disk locations and the metadata tree is updated atomically by swinging a root pointer — this eliminates the need for journaling because every state is a consistent snapshot, but creates fragmentation as logically sequential data becomes physically scattered."
+  - "Extent-based allocation replaces per-block tracking with (start_block, length) records that describe contiguous runs of blocks, dramatically reducing metadata overhead for large files and preserving sequential I/O performance — extent trees replace block pointer arrays when files are large enough."
+  - "Inodes store file metadata (permissions, timestamps, size, block pointers) separately from directory entries (name-to-inode mappings), enabling hard links (multiple names for one inode) and making rename atomic — the separation means metadata operations and data operations can be optimized independently."
+  - "Crash recovery correctness depends on the ordering of disk writes: if metadata is updated before data is written, a crash leaves pointers to garbage; if data is written before metadata, a crash leaks allocated blocks but never exposes garbage — write ordering is enforced through barriers, journaling, or COW semantics."
+  - "Consistency guarantees exist on a spectrum: synchronous writes guarantee durability at the cost of throughput; delayed allocation batches writes for efficiency but risks data loss in a crash window; fsync provides application-controlled durability points between these extremes."
+
+structural_patterns:
+  - name: journal_before_modify
+    abstract: Before modifying any in-place structure, the intended changes are first recorded in an append-only log; if the modification is interrupted, the log provides a complete record for either completing or undoing the change — the log transforms an interrupted partial mutation into a recoverable event.
+    maps_to: [write_ahead_logging, crash_recovery, atomic_mutation, intent_recording]
+
+  - name: copy_on_write_snapshot
+    abstract: Instead of modifying existing data, a new version is written to a fresh location and the reference is atomically redirected — every past state remains accessible as a valid snapshot, and no partial writes are ever visible because the old version persists until the atomic switch completes.
+    maps_to: [immutable_versioning, atomic_state_transition, snapshot_preservation, non_destructive_update]
+
+  - name: extent_contiguity_preservation
+    abstract: Allocating large contiguous runs of storage rather than individual blocks preserves physical locality, which directly translates to sequential I/O throughput — fragmentation is the gradual loss of contiguity over time as allocations and deletions interleave.
+    maps_to: [locality_optimization, contiguous_allocation, sequential_throughput, fragmentation_prevention]
+
+  - name: metadata_data_separation
+    abstract: Structural information about a resource (its attributes, permissions, relationships) is stored separately from the resource content itself, enabling multiple references to the same content and allowing structure operations to proceed independently of content operations.
+    maps_to: [indirection_layer, reference_multiplicity, independent_evolution, structural_decoupling]
+
+  - name: write_ordering_correctness
+    abstract: The order in which mutations reach durable storage determines what states are observable after a crash — certain orderings guarantee that inconsistencies are self-healing (leaked but not corrupted), while others can expose uninitialized data or dangling references.
+    maps_to: [durability_ordering, crash_state_analysis, write_barrier, corruption_prevention]
+
+  - name: delayed_allocation_batching
+    abstract: Allocation decisions are deferred until writeback time, allowing the allocator to see the full set of pending writes and make globally better placement decisions — this improves contiguity and reduces allocation overhead but introduces a vulnerability window where data exists only in volatile memory.
+    maps_to: [deferred_commitment, batch_optimization, volatility_window, lazy_allocation]
+
+injection_prompt: |
+  Analyze through file system design: every persistent structure must survive unexpected power loss. What is the journaling or COW strategy — how are in-flight mutations made recoverable? Examine write ordering: which writes must reach disk before which others to prevent corruption? Identify the metadata-data separation: what is structural information vs. content, and can they evolve independently? Consider allocation strategy: are extents preserving contiguity, or is fragmentation degrading sequential access? Every durability guarantee has a performance cost — where is the tradeoff point?

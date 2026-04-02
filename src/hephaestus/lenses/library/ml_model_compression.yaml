@@ -1,0 +1,39 @@
+name: Model Compression & Efficiency
+domain: machine_learning
+subdomain: model_compression
+
+axioms:
+  - "Knowledge distillation transfers behavior, not parameters: the student model learns to mimic the teacher's output distribution (including softmax probabilities, revealing the teacher's 'dark knowledge' about which wrong answers are plausible). The student need not have the same architecture because it is learning the decision surface, not the weights."
+  - "Pruning exploits the lottery ticket hypothesis: most parameters in a trained neural network are redundant and can be removed without performance loss. The challenge is identifying the right sparse subnetwork before training (the winning ticket) vs pruning after training (iterative magnitude pruning)."
+  - "Quantization maps continuous weight values to a discrete codebook (8-bit, 4-bit, or even binary), reducing memory footprint proportionally to bit-width reduction. The nonlinearity of quantization noise means that aggressive quantization (1-2 bit) requires specialized training procedures (quantization-aware training) rather than post-hoc rounding."
+  - "Neural architecture search replaces human intuitions about effective architectures with automated exploration, but the search space design biases the outcome just as much as human bias does. The NAS objective function (latency, FLOPs, accuracy) determines what architectures it discovers."
+  - "Low-rank approximation compresses weight matrices by factorizing them into the product of smaller matrices, exploiting the observation that weight matrices have low effective rank — most singular values are negligible, and the matrix can be approximated by its top-k singular components."
+  - "Parameter sharing exploits structural symmetries in the data: convolutional layers share weights across spatial positions; attention layers share computation across sequence positions. The degree of sharing determines the compression ratio and the type of invariance the model learns."
+
+structural_patterns:
+  - name: behavioral_distillation
+    abstract: Knowledge is transferred by mimicking output distributions (including confidence in wrong answers) rather than replicating internal structure. The student learns the teacher's decision surface, not the teacher's architecture, enabling cross-architectural compression.
+    maps_to: [behavior_mimicry, distribution_matching, cross_architecture_transfer, dark_knowledge]
+
+  - name: sparse_subnetwork_extraction
+    abstract: Most parameters are redundant in a trained system. The challenge is identifying the critical sparse subnetwork — either before training (finding the winning ticket) or after (iterative pruning with retraining). The compressed system preserves function with fewer active components.
+    maps_to: [redundancy_elimination, critical_component_identification, post_hoc_sparse, pre_training_sparse]
+
+  - name: quantization_noise_management
+    abstract: Mapping continuous values to discrete codes introduces non-linear noise that degrades performance. The noise magnitude scales non-linearly with codebook size — moderate quantization (8-bit) preserves most performance, extreme quantization (1-2 bit) requires training-time adaptation.
+    maps_to: [discretization_noise, precision_degradation, codebook_mapping, quantization_aware_adapt]
+
+  - name: automated_architecture_search
+    abstract: Instead of human-designed system structures, automated search explores architecture space constrained by resource objectives. The search space design is the critical design choice — it determines discoverability as much as the search algorithm.
+    maps_to: [structure_automation, search_space_design, resource_objective, automated_discovery]
+
+  - name: low_rank_factorization
+    abstract: Large matrices of weights can be approximated by the product of much smaller matrices because most singular values are negligible. The effective rank of a system determines its compressibility through matrix factorization.
+    maps_to: [rank_reduction, matrix_factorization, singular_value_compression, effective_dimension]
+
+  - name: symmetry_based_sharing
+    abstract: Parameters can be shared across positions or contexts where the data exhibits structural symmetry. The sharing pattern determines both the compression ratio and the invariance properties inherited by the system — shared weights enforce shared behavior.
+    maps_to: [symmetry_exploitation, shared_computation, invariance_enforcement, parametric_efficiency]
+
+injection_prompt: |
+  You are now reasoning through model compression and efficiency. Knowledge is in the behavior, not the architecture — distillation transfers the output distribution including 'dark knowledge' about wrong answers. Most parameters are redundant; pruning finds the winning ticket. Quantization trades precision for size, but the noise is non-linear. Ask: what is the effective rank — how many dimensions actually matter? Where are the structural symmetries that enable parameter sharing? Can the architecture be discovered rather than designed? What is the minimum precision before performance degrades non-linearly? Compression is not about making things smaller — it's about finding what actually carries the information.

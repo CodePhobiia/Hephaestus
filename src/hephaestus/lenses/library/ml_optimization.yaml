@@ -1,0 +1,41 @@
+name: Optimization Landscapes
+domain: machine_learning
+subdomain: optimization
+
+axioms:
+  - "Stochastic gradient descent introduces noise into gradient estimates that acts as an implicit annealing schedule; the noise magnitude is proportional to learning rate times gradient variance, and this noise determines which loss basin the optimizer settles into, not just whether it converges."
+  - "Saddle points in high-dimensional loss surfaces are surrounded by directions of negative curvature; gradient descent escapes them slowly because gradient magnitude near saddle points is near-zero, making them more dangerous in practice than local minima."
+  - "Sharp minima (high curvature, narrow basins) tend to generalize worse than flat minima (low curvature, broad basins) because small perturbations to weights from test-distribution shifts move loss sharply; flatness implies robustness to perturbation."
+  - "Learning rate scheduling acts as a temperature control: high rates explore broadly (escape sharp minima), low rates exploit locally (fine-tune within basins); warmup schedules prevent early divergence when gradient estimates are unreliable due to small batch statistics."
+  - "Mode connectivity reveals that independently trained models can often be connected by low-loss paths in parameter space, suggesting the loss surface has a connected low-loss manifold rather than isolated local minima, fundamentally challenging the notion of being 'stuck' in a local minimum."
+  - "Loss surface geometry is shaped by data distribution and architecture jointly: residual connections flatten the surface by enabling gradient flow; batch normalization smooths it by reducing sensitivity to weight scale; both changes affect not just speed of convergence but which solutions are reachable."
+
+structural_patterns:
+  - name: noise_as_exploration_mechanism
+    abstract: Injecting controlled randomness into a deterministic search process enables escape from locally optimal regions that would trap a purely greedy searcher; noise level governs the exploration-exploitation balance.
+    maps_to: [exploration_strategy, local_optima_escape, search_diversification, stochasticity_tuning]
+
+  - name: curvature_trapping
+    abstract: Regions where the gradient of a cost function vanishes but curvature is mixed (some directions improve, others worsen) act as soft traps; systems spend disproportionate time near such regions because progress signals are weak.
+    maps_to: [bottleneck_identification, progress_signal_analysis, stagnation_diagnosis, gradient_flow_audit]
+
+  - name: basin_width_generalization_proxy
+    abstract: The robustness of a solution to small perturbations in its defining parameters predicts how well it transfers to slightly different conditions; wide, flat solutions transfer better than narrow, sharp ones.
+    maps_to: [robustness_testing, transfer_quality_prediction, solution_stability_scoring, perturbation_analysis]
+
+  - name: temperature_scheduled_search
+    abstract: Phased search strategies that start with broad exploration and progressively narrow toward exploitation find better final solutions than constant-temperature approaches; the schedule shape matters as much as the endpoints.
+    maps_to: [phased_search_design, annealing_schedule, exploration_exploitation_transition, convergence_control]
+
+  - name: solution_space_connectivity
+    abstract: Independently derived solutions that appear isolated may lie on a connected low-cost manifold; this connectivity implies that interpolating between solutions is feasible and that diversity of starting points matters less than assumed.
+    maps_to: [solution_interpolation, diversity_assessment, manifold_navigation, ensemble_construction]
+
+  - name: architecture_as_landscape_shaper
+    abstract: The structure of a system — not just its parameters — determines the shape of the optimization surface it presents to search; structural choices that create gradient highways or smooth curvature are independent levers from parameterization.
+    maps_to: [architecture_design, gradient_pathway_engineering, surface_smoothing, structural_prior_selection]
+
+injection_prompt: |
+  Reframe this problem as a landscape navigation challenge: what does the cost surface look like, where are the traps, and what does 'flat' vs 'sharp' mean for the solutions you care about?
+  Ask whether your search procedure's noise level is tuned to the scale of the basins you want to find — too little noise and you get stuck, too much and you can't settle.
+  Consider whether the solutions you're finding are on a connected low-loss manifold, which would mean diversity of approach matters far less than the quality of any one path.

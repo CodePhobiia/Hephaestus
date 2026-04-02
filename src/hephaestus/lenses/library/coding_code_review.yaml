@@ -1,0 +1,39 @@
+name: Code Review & Collective Code Ownership
+domain: coding
+subdomain: code_review
+
+axioms:
+  - "Code review is primarily a knowledge transfer mechanism, not a defect detection mechanism: the secondary effect of catching bugs is valuable, but the primary value is distributing system understanding across multiple minds."
+  - "Collective ownership inverts the bus factor: code owned by one person is fragile not because that person is bad but because understanding is concentrated — collective ownership spreads the risk of lost context."
+  - "Review comments are proposals, not verdicts: the author has context the reviewer lacks; the reviewer has distance the author lacks — productive review is a negotiation between incomplete perspectives."
+  - "Small diffs are asymmetrically reviewable: a 50-line change receives deep review; a 500-line change receives shallow approval — the review quality per line drops sharply with diff size."
+  - "Style debates crowd out substance: when review cycles are consumed by formatting and naming conventions, they are unavailable for architectural and correctness concerns — automated enforcement of style frees human review for higher-order reasoning."
+  - "Nit accumulation degrades review culture: a reviewer who comments on every minor imperfection trains authors to dismiss feedback as pedantry, making it harder to signal when something genuinely matters."
+
+structural_patterns:
+  - name: distributed_knowledge_redundancy
+    abstract: Understanding of a system is intentionally spread across multiple participants so that no single point of cognitive failure can strand the system in an unmodifiable state.
+    maps_to: [knowledge_distribution, bus_factor_reduction, collective_ownership, redundant_expertise]
+
+  - name: perspective_differential
+    abstract: Two parties with different information (author has context, reviewer has distance) produce better outcomes through structured exchange than either could independently — the value of review is precisely the mismatch in perspective.
+    maps_to: [fresh_eyes, cognitive_diversity, perspective_exchange, collaborative_reasoning]
+
+  - name: diff_size_reviewability_threshold
+    abstract: The depth of review a change receives is a nonlinear function of its size — beyond a threshold, review quality collapses because reviewers cannot hold the full context in working memory; small atomic changes are the unit of review.
+    maps_to: [change_decomposition, review_effectiveness, cognitive_load, incremental_delivery]
+
+  - name: automated_style_enforcement
+    abstract: Mechanical concerns (formatting, linting, naming conventions) should be enforced by automated tools, freeing human attention for concerns that require judgment — offloading low-level feedback prevents it from crowding out high-level reasoning.
+    maps_to: [automation_of_mechanical_tasks, cognitive_budget_allocation, review_focus, tool_enforcement]
+
+  - name: social_consensus_on_quality
+    abstract: Code quality standards are social constructs maintained by collective enforcement — a team's quality floor is determined by what it consistently accepts and rejects, not by what its style guide says.
+    maps_to: [social_norms, quality_enforcement, team_standards, norm_establishment]
+
+  - name: signal_to_noise_calibration
+    abstract: A reviewer who surfaces every possible concern reduces the signal-to-noise ratio of their feedback, making it harder for authors to identify which issues are critical — feedback prioritization is a skill distinct from issue identification.
+    maps_to: [feedback_prioritization, critical_path_focus, communication_clarity, review_discipline]
+
+injection_prompt: |
+  Apply code review thinking: this is primarily a knowledge distribution problem, not a defect detection problem. Ask how understanding of this component would survive the departure of its author — what review practices would spread that context. Evaluate the diff size: is this reviewable as a unit, or has it exceeded the cognitive threshold where meaningful review becomes impossible? Identify what style enforcement can be automated so that human review bandwidth is available for structural and correctness reasoning.

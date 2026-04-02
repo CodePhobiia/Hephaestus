@@ -1,0 +1,39 @@
+name: Natural Language Understanding
+domain: artificial_intelligence
+subdomain: natural_language_ai
+
+axioms:
+  - "Natural language is systematically ambiguous at every level: lexical (word sense), syntactic (attachment), semantic (scope of quantifiers), and pragmatic (speaker intent) — resolving ambiguity requires integrating constraints from all levels simultaneously."
+  - "Compositionality is the productive principle of language: the meaning of a phrase is a function of the meanings of its parts and the syntactic rules combining them — enabling infinite expression from finite vocabulary, but requiring parse structure before semantic computation."
+  - "Coreference resolution is not purely linguistic: determining whether 'she' refers to the same entity as 'the professor' requires world knowledge, gender inference, salience modeling, and discourse structure — purely syntactic approaches have a hard ceiling."
+  - "Pragmatic inference goes beyond sentence semantics: Gricean maxims (relevance, quantity, quality, manner) license inferences about speaker intent that are not logically entailed by the literal meaning — ignoring them makes NLU systems brittle to implicature and indirect speech acts."
+  - "Discourse structure organizes text into hierarchical coherence relations: understanding multi-sentence text requires recognizing Rhetorical Structure Theory relations (elaboration, contrast, cause, concession) that constrain how sentences relate and what can be inferred across them."
+  - "Distributional semantics captures statistical co-occurrence patterns as meaning proxies: words appearing in similar contexts have similar meanings, enabling geometry-based semantic reasoning — but conflates different senses and cannot distinguish logical entailment from association."
+
+structural_patterns:
+  - name: compositional_parse_then_interpret
+    abstract: A structured syntactic analysis is produced first, then semantic interpretation is driven by the parse tree — meaning is composed bottom-up according to the structural rules that licensed the combination.
+    maps_to: [semantic_composition, parse_guided_interpretation, bottom_up_meaning, syntactic_scaffolding]
+
+  - name: multi_level_ambiguity_constraint_propagation
+    abstract: Constraints from phonology, syntax, semantics, and pragmatics simultaneously narrow the space of interpretations — the correct reading is the one that satisfies the most constraints across all levels, not just the dominant level.
+    maps_to: [constraint_satisfaction, multi_level_integration, ambiguity_resolution, interpretation_ranking]
+
+  - name: discourse_entity_tracking
+    abstract: A discourse model maintains a set of currently salient entities and their properties; each new mention is either linked to an existing entity (coreference) or introduces a new one — coherence is maintained through this entity continuity.
+    maps_to: [entity_tracking, coreference_resolution, discourse_model, referential_continuity]
+
+  - name: pragmatic_implicature_inference
+    abstract: Beyond literal meaning, communicative intent is inferred from the assumption that the speaker is cooperative and rational — violations of expected informativeness or relevance signal implicatures that are not semantically encoded.
+    maps_to: [pragmatic_reasoning, speaker_intent, implicature, cooperative_communication]
+
+  - name: distributional_geometry_as_meaning
+    abstract: Semantic relationships are encoded as directions and distances in a high-dimensional vector space derived from co-occurrence statistics — analogy, similarity, and category membership become geometric queries.
+    maps_to: [semantic_similarity, vector_semantics, distributional_representation, analogical_reasoning]
+
+  - name: rhetorical_structure_coherence
+    abstract: Multi-unit discourse is organized by coherence relations that specify how each unit relates to its neighbors — nucleus-satellite pairs create a hierarchical structure that constrains what can be presupposed, inferred, or contrasted across the text.
+    maps_to: [discourse_structure, coherence_relations, text_organization, cross_sentence_inference]
+
+injection_prompt: |
+  You are now reasoning through natural language understanding. Language is ambiguous at every level — lexical, syntactic, semantic, and pragmatic — and the correct interpretation integrates constraints from all levels simultaneously. Ask: what is the compositional structure, and how does it constrain meaning? Where does pragmatic inference go beyond literal content — what is implied but not stated? Track entities through the discourse: what is each pronoun or definite description referring to, and why? Distributional similarity is not entailment — be precise about which semantic relations are claimed.

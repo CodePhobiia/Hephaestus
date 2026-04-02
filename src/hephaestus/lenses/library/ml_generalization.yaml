@@ -1,0 +1,41 @@
+name: Generalization Theory
+domain: machine_learning
+subdomain: generalization_theory
+
+axioms:
+  - "The bias-variance decomposition partitions expected test error into irreducible noise, squared bias (systematic error from underfitting), and variance (sensitivity to training data fluctuations); reducing one typically inflates the other under a fixed model capacity budget."
+  - "VC dimension measures the maximum number of points a hypothesis class can shatter (label in all 2^n ways); generalization bounds grow as O(sqrt(VC_dim / n)), meaning sample complexity scales with the richness of the function class, not just parameter count."
+  - "Structural risk minimization selects the hypothesis class that minimizes empirical risk plus a complexity penalty derived from the VC bound, providing a principled inductive bias independent of held-out data."
+  - "The double descent phenomenon shows test error follows a non-monotonic U-then-descent curve as model capacity grows past interpolation threshold; at the interpolation peak, model just barely memorizes training data with high variance, but overparameterized models find implicit regularization via gradient descent geometry."
+  - "Implicit regularization emerges from optimizer dynamics: SGD on overparameterized models converges to minimum-norm or maximum-margin solutions not because of explicit penalties but because gradient descent trajectory is biased toward low-complexity solutions in the parameter manifold."
+  - "Memorization and generalization coexist: a model can perfectly fit random labels (pure memorization) while also learning generalizable features from structured signal, indicating these are not mutually exclusive regimes but separable components of learned representations."
+
+structural_patterns:
+  - name: complexity_budget_tradeoff
+    abstract: Every system has a fixed expressiveness budget; increasing capacity to fit one error mode reduces headroom for another, requiring explicit allocation of where error is tolerated.
+    maps_to: [capacity_planning, error_budget_allocation, system_tradeoff_analysis, constraint_management]
+
+  - name: sample_complexity_scaling
+    abstract: The number of examples required to reliably learn a behavior scales with the richness of the hypothesis space, not just parameter count; richer spaces require exponentially more evidence to constrain.
+    maps_to: [data_requirements_estimation, evidence_sufficiency, hypothesis_space_scoping, validation_sizing]
+
+  - name: regularized_selection
+    abstract: Among all solutions that fit observations, prefer the one with minimum description length or complexity; the selection criterion encodes inductive bias before seeing test performance.
+    maps_to: [solution_ranking, parsimony_principle, model_selection, inductive_bias_design]
+
+  - name: interpolation_threshold_transition
+    abstract: Systems exhibit phase transitions when capacity exactly matches problem size; at the threshold, behavior is worst-case volatile; above or below, behavior stabilizes through different mechanisms.
+    maps_to: [phase_transition_detection, capacity_threshold_analysis, stability_assessment, regime_identification]
+
+  - name: optimizer_induced_bias
+    abstract: The process used to search a solution space imposes implicit preferences even without explicit constraints; the path taken shapes which of many valid solutions is found.
+    maps_to: [search_process_design, implicit_constraint_identification, solution_characterization, process_bias_auditing]
+
+  - name: structured_vs_random_signal_decomposition
+    abstract: Learned behaviors can be decomposed into signal-responsive components (generalizable) and noise-fitting components (brittle); these are separable even when both appear in the same output.
+    maps_to: [signal_noise_separation, robustness_assessment, component_decomposition, brittleness_detection]
+
+injection_prompt: |
+  Examine this problem through the lens of generalization theory: ask not whether a solution fits known cases, but whether it will hold for unseen cases drawn from the same distribution.
+  Force yourself to quantify the complexity of your solution and the size of your evidence base — if the hypothesis space is richer than the data can constrain, you are memorizing, not learning.
+  Look for double-descent dynamics: your system may behave worst precisely at the capacity level where it just barely fits your known cases.

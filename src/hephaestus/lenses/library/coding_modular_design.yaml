@@ -1,0 +1,39 @@
+name: Modular Design & Information Hiding
+domain: coding
+subdomain: modular_design
+
+axioms:
+  - "Information hiding (Parnas 1972) means each module conceals a design decision that is likely to change — the module boundary exists precisely to absorb that change without propagating it outward."
+  - "Cohesion is not grouping by type but grouping by reason to change: a module has high cohesion when everything inside it changes together, and low cohesion when parts change for different reasons."
+  - "Coupling is transitive: if A depends on B and B depends on C, A effectively depends on C's internals whenever the B-C interface is not respected — indirect coupling accumulates silently and compounds."
+  - "An interface is a binding contract, not a convenience facade: callers may only observe what the interface exposes, and the module is free to change any internal detail not mentioned in that contract."
+  - "The stable dependencies principle: a module should depend only on modules that are more stable than itself — instability flows toward stability, so high-churn modules must sit at the outer edges of the dependency graph."
+  - "Fan-in/fan-out asymmetry: a module with high fan-in (many callers) must be maximally stable and minimal because changing it is expensive; a module with high fan-out carries hidden coupling that must be carefully managed."
+
+structural_patterns:
+  - name: encapsulation_boundary
+    abstract: A hard boundary around internal state such that all external interaction passes through a defined surface — changes inside the boundary cannot escape; changes outside cannot contaminate the inside.
+    maps_to: [information_hiding, change_containment, interface_contract, isolation]
+
+  - name: cohesion_by_change_reason
+    abstract: Grouping elements by their rate and reason of change rather than by semantic similarity — elements that must change together should live together; elements with different change drivers must be separated.
+    maps_to: [single_responsibility, change_locality, cohesive_grouping, refactoring_pressure]
+
+  - name: dependency_inversion
+    abstract: High-level policy should depend on abstractions, and the concrete implementations of low-level details should depend on those same abstractions — dependency direction is a design choice decoupled from call direction.
+    maps_to: [decoupling, abstraction_dependency, plugin_architecture, testability]
+
+  - name: stability_gradient
+    abstract: Modules are arranged in a gradient from unstable (frequently changing, few dependents) to stable (rarely changing, many dependents) — all dependency arrows should point toward greater stability.
+    maps_to: [dependency_management, architectural_layering, stability_ordering, change_propagation]
+
+  - name: interface_narrowing
+    abstract: Exposing the smallest surface area through which two components interact forces callers into a well-defined relationship and maximizes the freedom to change implementation details.
+    maps_to: [minimal_interface, surface_area_reduction, coupling_minimization, api_design]
+
+  - name: fan_in_amplification
+    abstract: A component that is called by many others has its design flaws amplified across the entire system — the more dependents a component has, the more critical correctness, stability, and minimality of its interface become.
+    maps_to: [leverage_points, high_impact_components, central_dependency_management, stability_enforcement]
+
+injection_prompt: |
+  Apply modular design thinking: every boundary exists to hide a specific decision that is likely to change. Identify what decisions each component is concealing — if callers can see those decisions, the boundary is in the wrong place. Ask whether dependencies point from unstable toward stable; if not, a stability inversion is introducing hidden fragility. Audit each interface for surface area: every exposed detail is a commitment that constrains all future implementations.

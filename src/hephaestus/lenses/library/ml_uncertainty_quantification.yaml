@@ -1,0 +1,41 @@
+name: Uncertainty Quantification
+domain: machine_learning
+subdomain: uncertainty_quantification
+
+axioms:
+  - "Epistemic uncertainty (model uncertainty) arises from insufficient data and can in principle be reduced by collecting more observations; aleatoric uncertainty (data uncertainty) arises from inherent stochasticity in the process and cannot be reduced regardless of sample size — conflating them leads to overconfident models in data-sparse regions."
+  - "Bayesian inference maintains a posterior distribution over model parameters given observed data; predictions are made by integrating over this posterior, which naturally produces wider prediction intervals in regions where the posterior is diffuse (high epistemic uncertainty)."
+  - "Monte Carlo dropout approximates Bayesian inference in neural networks by keeping dropout active at test time and sampling multiple forward passes; the variance of predictions across samples estimates epistemic uncertainty without requiring explicit posterior computation."
+  - "Conformal prediction produces prediction sets with guaranteed marginal coverage — the true label falls in the set with probability at least 1-α — without assumptions about the data distribution beyond exchangeability; coverage is a statistical guarantee, not an asymptotic approximation."
+  - "Calibration measures whether predicted confidence scores match empirical frequencies: a model is calibrated if among all instances where it predicts 70% confidence, approximately 70% are correct; miscalibration (overconfidence or underconfidence) means the probability outputs cannot be used directly as beliefs."
+  - "Confidence sets in high dimensions can be pathologically large even for well-calibrated models because joint coverage of multiple dimensions requires wider individual intervals; the curse of dimensionality applies to uncertainty quantification as severely as to density estimation."
+
+structural_patterns:
+  - name: reducible_vs_irreducible_uncertainty_decomposition
+    abstract: Any system's total uncertainty can be partitioned into the portion attributable to insufficient information (removable by acquiring more) and the portion intrinsic to the process (irreducible); confusing these leads to wrong interventions.
+    maps_to: [uncertainty_source_attribution, information_gap_identification, irreducibility_assessment, data_collection_prioritization]
+
+  - name: posterior_integration_prediction
+    abstract: Rather than committing to a single hypothesis, maintain a distribution over hypotheses and produce outputs by averaging over all hypotheses weighted by their posterior probability; output uncertainty reflects hypothesis uncertainty.
+    maps_to: [belief_distribution_maintenance, hypothesis_averaging, prediction_with_uncertainty, bayesian_decision_making]
+
+  - name: sampling_based_variance_estimation
+    abstract: When analytical integration over uncertainty is intractable, repeated sampling from a stochastic version of the system and measuring output variance yields an empirical estimate of uncertainty without requiring closed-form distributions.
+    maps_to: [monte_carlo_estimation, variance_sampling, uncertainty_approximation, stochastic_probing]
+
+  - name: distribution_free_coverage_guarantee
+    abstract: Prediction regions can be constructed to contain the true outcome with a specified probability without assuming any particular data distribution; the guarantee holds by construction via sample-splitting and quantile estimation.
+    maps_to: [coverage_guarantee_construction, assumption_free_bounding, conformal_set_design, statistical_validity_enforcement]
+
+  - name: calibration_alignment
+    abstract: A system's expressed confidence must be aligned with its empirical accuracy rate at that confidence level; misalignment means the uncertainty outputs cannot be trusted as probabilities and must be recalibrated before use in decisions.
+    maps_to: [confidence_calibration, reliability_auditing, probability_correction, decision_ready_uncertainty]
+
+  - name: dimensional_coverage_scaling
+    abstract: Coverage guarantees degrade or sets grow exponentially when extended from one-dimensional to joint multi-dimensional uncertainty; systems must account for this when making simultaneous claims about multiple uncertain quantities.
+    maps_to: [joint_uncertainty_management, high_dimensional_coverage, simultaneous_inference, coverage_budget_allocation]
+
+injection_prompt: |
+  Reframe your outputs through the lens of uncertainty quantification: every prediction is not a point but a distribution, and the width of that distribution is information-carrying, not a failure mode to hide.
+  Separate what you don't know because of insufficient data (epistemic) from what you cannot know due to inherent randomness (aleatoric) — they require fundamentally different interventions.
+  Ask whether your system's expressed confidence is calibrated: if it says 90%, does the true value fall in the predicted range 90% of the time, and if not, your probability outputs are not probabilities.

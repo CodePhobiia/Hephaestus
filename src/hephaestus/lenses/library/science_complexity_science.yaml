@@ -1,0 +1,39 @@
+name: Complex Systems & Emergence
+domain: science
+subdomain: complexity_science
+
+axioms:
+  - "Self-organized criticality: systems with many interacting components naturally evolve toward a critical state without external parameter tuning. Sandpile models, forest fires, and financial markets all exhibit power-law distributed events — the system organizes itself to the edge between order and chaos."
+  - "Power-law distributions (scale-free behavior) differ qualitatively from normal distributions: in normal distributions, extreme events are essentially impossible; in power-law distributions, catastrophic events are rare but inevitable. The mean is not a meaningful summary statistic for power-law systems."
+  - "Scale-free networks arise from preferential attachment: new nodes connect preferentially to existing high-degree nodes, creating hubs that dominate connectivity. These networks are robust to random node removal (most nodes have few connections) but fragile to targeted hub attack."
+  - "Phase transitions in complex systems are abrupt changes in macroscopic behavior driven by continuous changes in a control parameter. Near the critical point, the system exhibits maximum correlation length — every part of the system becomes coupled to every other part."
+  - "Critical slowing down occurs before phase transitions: as a system approaches a tipping point, its recovery rate from small perturbations decreases, variance increases, and autocorrelation rises. These early warning signals precede the transition — but only if you're measuring the right order parameters."
+  - "Emergence is not magic — it is the property that system-level behaviors are not deducible from component-level rules through simple summation. The emergent behavior exists at a different level of description than the rules that generate it, requiring new explanatory vocabulary."
+
+structural_patterns:
+  - name: edge_of_chaos_self_organization
+    abstract: Systems with interacting components spontaneously evolve to a critical state between ordered and chaotic regimes, maximizing computational and adaptive capacity without external tuning. The critical state is an attractor, not a fine-tuned configuration.
+    maps_to: [critical_attractor, adaptive_optimum, spontaneous_organization, boundary_regime]
+
+  - name: power_law_tail_dominance
+    abstract: In scale-free systems, extreme events follow a fat-tailed distribution where catastrophes are rare but inevitable. Average-case analysis fails because the mean is dominated by tail events, and the most likely state is unrepresentative of the system's risk profile.
+    maps_to: [fat_tail_risk, average_case_failure, extreme_event_inevitability, scale_free_statistics]
+
+  - name: preferential_attachment_network
+    abstract: New components connect to existing high-connectivity nodes, creating a rich-get-richer dynamic that produces hub-dominated networks. The resulting topology is robust to random failure but fragile to targeted hub removal.
+    maps_to: [rich_get_richer, hub_dominance, robust_to_random_fragile_to_targeted, network_inequality]
+
+  - name: catastrophic_phase_shift
+    abstract: Continuous changes in a control parameter produce discontinuous changes in system behavior. Near the critical threshold, all components become correlated and the system's macroscopic state changes irreversibly — like water freezing or markets crashing.
+    maps_to: [tipping_point, discontinuous_transition, critical_coupling, regime_change]
+
+  - name: early_warning_signals
+    abstract: "Before a phase transition, measurable statistical changes occur: recovery from perturbations slows (increased autocorrelation), variance increases, and spatial correlation length grows. These signals precede the transition but require measuring the right order parameters at the right time scale."
+    maps_to: [precursor_detection, variance_increase, autocorlation_rise, transition_anticipation]
+
+  - name: emergence_level_gap
+    abstract: System-level behaviors emerge that cannot be predicted by examining components in isolation. The emergent behavior requires a new level of description and explanation, not just more detailed component analysis. The whole is not the sum of parts — it is something categorically different.
+    maps_to: [irreducible_complexity, new_level_description, non_additive_behavior, emergence_gap]
+
+injection_prompt: |
+  You are now reasoning through complex systems and emergence. Systems self-organize to critical states without tuning — the edge of chaos is an attractor. Power-law distributions make extreme events inevitable, not impossible. Phase transitions are sudden: continuous parameter changes produce discontinuous behavior jumps. Ask: is the system approaching a tipping point — are recovery times slowing and variance increasing? Is it a scale-free network — robust to random failure but fragile to hub attack? What level of description does the emergent behavior require that the component rules don't provide? The critical slowing down warning is your only advance notice of a coming phase shift.
