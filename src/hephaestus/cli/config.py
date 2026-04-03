@@ -57,6 +57,9 @@ class HephaestusConfig:
     candidates: int = 8
     auto_save: bool = True
     theme: str = "rich"
+    exploration_mode: str = "standard"
+    pressure_translate_enabled: bool = True
+    pressure_search_mode: str = "adaptive"
     divergence_intensity: str = "STANDARD"
     output_mode: str = "MECHANISM"
     use_perplexity_research: bool = True
@@ -89,6 +92,9 @@ class HephaestusConfig:
             "candidates": self.candidates,
             "auto_save": self.auto_save,
             "theme": self.theme,
+            "exploration_mode": self.exploration_mode,
+            "pressure_translate_enabled": self.pressure_translate_enabled,
+            "pressure_search_mode": self.pressure_search_mode,
             "divergence_intensity": self.divergence_intensity,
             "output_mode": self.output_mode,
             "use_perplexity_research": self.use_perplexity_research,
@@ -129,6 +135,15 @@ def load_config() -> HephaestusConfig | None:
         candidates = data.get("candidates", 8)
         if not isinstance(candidates, int) or not 1 <= candidates <= 20:
             candidates = 8
+        exploration_mode = str(data.get("exploration_mode", "standard")).lower()
+        if exploration_mode not in ("standard", "forge"):
+            exploration_mode = "standard"
+        pressure_translate_enabled = data.get("pressure_translate_enabled", True)
+        if not isinstance(pressure_translate_enabled, bool):
+            pressure_translate_enabled = str(pressure_translate_enabled).strip().lower() in ("1", "true", "yes", "on")
+        pressure_search_mode = str(data.get("pressure_search_mode", "adaptive")).lower()
+        if pressure_search_mode not in ("off", "adaptive", "always"):
+            pressure_search_mode = "adaptive"
         divergence_intensity = str(data.get("divergence_intensity", "STANDARD")).upper()
         if divergence_intensity not in VALID_INTENSITIES:
             divergence_intensity = "STANDARD"
@@ -179,6 +194,9 @@ def load_config() -> HephaestusConfig | None:
             candidates=candidates,
             auto_save=data.get("auto_save", True),
             theme=data.get("theme", "rich"),
+            exploration_mode=exploration_mode,
+            pressure_translate_enabled=pressure_translate_enabled,
+            pressure_search_mode=pressure_search_mode,
             divergence_intensity=divergence_intensity,
             output_mode=output_mode,
             use_perplexity_research=use_perplexity_research,

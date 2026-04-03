@@ -29,10 +29,23 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-import numpy as np
-from sentence_transformers import SentenceTransformer
+if TYPE_CHECKING:
+    import numpy as np
+    from sentence_transformers import SentenceTransformer
+
+
+def _get_numpy() -> Any:
+    """Lazy import for numpy."""
+    import numpy as np
+    return np
+
+
+def _get_sentence_transformer(model_name: str) -> Any:
+    """Lazy import and instantiation for SentenceTransformer."""
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(model_name)
 
 from hephaestus.deepforge.adapters.base import BaseAdapter, GenerationResult
 from hephaestus.deepforge.exceptions import (
@@ -74,7 +87,7 @@ class BlockedPath:
 
     round_index: int
     text: str
-    embedding: np.ndarray
+    embedding: Any  # np.ndarray — lazy-loaded
     reason: str
 
 
@@ -161,7 +174,7 @@ class AntiTrainingPressure:
         *,
         max_rounds: int = 3,
         structural_distance_threshold: float = _STRUCTURAL_DISTANCE_THRESHOLD,
-        embed_model: SentenceTransformer | None = None,
+        embed_model: Any | None = None,
         embed_model_name: str = _DEFAULT_EMBED_MODEL,
     ) -> None:
         if max_rounds < 1:
@@ -170,7 +183,7 @@ class AntiTrainingPressure:
         self._adapter = adapter
         self._max_rounds = max_rounds
         self._threshold = structural_distance_threshold
-        self._embed_model: SentenceTransformer | None = embed_model
+        self._embed_model: Any | None = embed_model
         self._embed_model_name = embed_model_name
 
         logger.debug(
@@ -339,18 +352,18 @@ class AntiTrainingPressure:
     # Structural distance
     # ------------------------------------------------------------------
 
-    def _embed(self, text: str) -> np.ndarray:
+    def _embed(self, text: str) -> Any:
         """Compute a normalised embedding vector for *text*."""
         if self._embed_model is None:
             logger.info("Loading embedding model %s …", self._embed_model_name)
-            self._embed_model = SentenceTransformer(self._embed_model_name)
-        vec: np.ndarray = self._embed_model.encode(
+            self._embed_model = _get_sentence_transformer(self._embed_model_name)
+        vec = self._embed_model.encode(
             text, normalize_embeddings=True, show_progress_bar=False
         )
         return vec
 
     def _min_structural_distance(
-        self, embedding: np.ndarray, blocked: list[BlockedPath]
+        self, embedding: Any, blocked: list[BlockedPath]
     ) -> float:
         """
         Compute the minimum cosine distance from *embedding* to all *blocked* paths.
@@ -360,6 +373,7 @@ class AntiTrainingPressure:
         if not blocked:
             return 1.0  # Nothing to compare against; treat as maximally different
 
+        np = _get_numpy()
         similarities = [float(np.dot(embedding, bp.embedding)) for bp in blocked]
         max_sim = max(similarities)
         return 1.0 - max_sim
@@ -387,6 +401,7 @@ class AntiTrainingPressure:
         """
         emb_a = self._embed(text_a)
         emb_b = self._embed(text_b)
+        np = _get_numpy()
         sim = float(np.dot(emb_a, emb_b))
         distance = 1.0 - sim
         return distance >= (1.0 - self._threshold), distance

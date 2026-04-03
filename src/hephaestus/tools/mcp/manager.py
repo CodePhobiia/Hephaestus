@@ -30,12 +30,18 @@ class MCPManager:
         self._server_tools[config.name] = tools
 
         for tool in tools:
+            # Create a closure bound to the qualified name so that runtime can invoke it
+            async def _make_handler(qname: str) -> Any:
+                async def _handler(**kwargs: Any) -> str:
+                    return await self.call(qname, kwargs)
+                return _handler
+
             self._registry.register(ToolDefinition(
                 name=tool.qualified_name,
                 description=tool.description,
                 input_schema=tool.input_schema,
                 category="dangerous",
-                handler=None,
+                handler=await _make_handler(tool.qualified_name),
             ))
 
     async def remove_server(self, name: str) -> None:

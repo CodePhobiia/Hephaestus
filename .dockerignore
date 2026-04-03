@@ -1,0 +1,53 @@
+# Version control
+.git/
+.gitignore
+.hg/
+.svn/
+
+# Environments
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hephaestus/
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.mo
+*.pot
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Output
+outputs/
+research/
+
+# Node (if any web tools used later)
+node_modules/
+npm-debug.log
+yarn-error.log

@@ -183,6 +183,31 @@ class GenesisConfig:
     attack_model: str = "gpt-4o"
     defend_model: str = "claude-opus-4-5"
 
+    # Exploration & Domains
+    depth: int = 3  # min: 1, max: 10
+    domain_hint: str | None = None
+    exploration_mode: str = "standard"  # standard | forge
+    pressure_translate_enabled: bool = True
+    pressure_search_mode: str = "adaptive"  # off | adaptive | always
+
+    @property
+    def exploration_budget(self) -> dict[str, int]:
+        """Strict semantic mapping of depth to operational bounds.
+        
+        Depth 1: Minimal exploration. No forge permutations.
+        Depth 3: Balanced. +1 internal translates, standard candidates.
+        Depth 5+: Aggressive expansion. Heavy translate pressure, max adaptive search loops.
+        """
+        base_candidates = 4 + self.depth
+        translate_perms = 1 if self.exploration_mode == "standard" and self.depth < 3 else (2 if self.depth < 5 else 3)
+        pressure_max_rounds = self.depth if self.exploration_mode == "forge" else 0
+        return {
+            "search_candidates": min(16, base_candidates),
+            "translate_permutations": translate_perms,
+            "pressure_max_rounds": max(1, pressure_max_rounds),
+            "adaptive_search_loops": 1 if self.depth < 4 else 2
+        }
+
     # Pipeline parameters
     num_search_lenses: int = 10
     num_candidates: int = 8
@@ -209,8 +234,6 @@ class GenesisConfig:
     pantheon_hermes_model: str | None = None
     pantheon_apollo_model: str | None = None
     perplexity_model: str | None = None
-    branchgenome_rejection_ledger_path: str | None = None
-
     # V2 system prompt parameters
     divergence_intensity: str = "STANDARD"  # STANDARD | AGGRESSIVE | MAXIMUM
     output_mode: str = "MECHANISM"  # MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM | PROTOCOL | TAXONOMY | INTERFACE
@@ -368,7 +391,7 @@ class InventionReport:
     branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
     total_duration_seconds: float = 0.0
-    model_config: dict[str, str] = field(default_factory=dict)
+    models_used: list[str] = field(default_factory=list)
 
     @property
     def top_invention(self) -> Any:
@@ -480,7 +503,7 @@ class InventionReport:
             ],
             "cost_breakdown": self.cost_breakdown.to_dict(),
             "total_duration_seconds": self.total_duration_seconds,
-            "models": self.model_config,
+            "models": self.models_used,
             "branchgenome": dict(self.branchgenome_metrics),
         }
 
@@ -1523,15 +1546,15 @@ class Genesis:
                 deliberation_graph=deliberation,
                 cost_breakdown=cost,
                 total_duration_seconds=elapsed(),
-                model_config={
-                    "decompose": self._config.decompose_model,
-                    "search": self._config.search_model,
-                    "score": self._config.score_model,
-                    "translate": self._config.translate_model,
-                    "attack": self._config.attack_model,
-                    "defend": self._config.defend_model,
-                    **(
-                        self._config.resolved_pantheon_models()
+                models_used=[
+                    self._config.decompose_model,
+                    self._config.search_model,
+                    self._config.score_model,
+                    self._config.translate_model,
+                    self._config.attack_model,
+                    self._config.defend_model,
+                    *(
+                        list(self._config.resolved_pantheon_models().values())
                         if self._config.use_pantheon_mode
                         or any(
                             model is not None
@@ -1541,9 +1564,9 @@ class Genesis:
                                 self._config.pantheon_apollo_model,
                             )
                         )
-                        else {}
+                        else []
                     ),
-                },
+                ],
             )
             try:
                 from hephaestus.lenses.state import LensEngineState
@@ -1988,7 +2011,8 @@ class Genesis:
             config=HarnessConfig(
                 use_interference=cfg.use_interference_in_search,
                 use_pruner=False,
-                use_pressure=False,
+                use_pressure=getattr(cfg, "pressure_search_mode", "off") in ("always", "adaptive"),
+                max_pressure_rounds=cfg.exploration_budget.get("pressure_max_rounds", 1),
                 max_tokens=cfg.max_tokens_search,
                 temperature=0.5,
             ),
@@ -2012,7 +2036,8 @@ class Genesis:
             config=HarnessConfig(
                 use_interference=False,
                 use_pruner=False,
-                use_pressure=False,
+                use_pressure=getattr(cfg, "pressure_translate_enabled", True),
+                max_pressure_rounds=cfg.exploration_budget.get("pressure_max_rounds", 1),
                 max_tokens=cfg.max_tokens_translate,
                 temperature=0.7,
             ),

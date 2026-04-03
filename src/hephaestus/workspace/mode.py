@@ -116,7 +116,7 @@ class WorkspaceMode:
         registry = _build_workspace_registry(root)
 
         # Build permission policy
-        policy = PermissionPolicy(permission_mode, workspace_root=root)
+        policy = PermissionPolicy(permission_mode, workspace_root=root, registry=registry)
 
         # Build session
         session = Session(meta=SessionMeta(

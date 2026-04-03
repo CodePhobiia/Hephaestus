@@ -45,6 +45,9 @@ class HephaestusClient:
     candidates: int = 8
     intensity: str = "STANDARD"
     output_mode: str = "MECHANISM"
+    exploration_mode: str = "standard"
+    pressure_translate_enabled: bool = True
+    pressure_search_mode: str = "adaptive"
 
     async def invent(self, problem: str, **overrides: Any) -> InventionResult:
         """Run the full genesis pipeline and return a simplified result."""
@@ -60,6 +63,9 @@ class HephaestusClient:
             openai_key=self.openai_key,
             divergence_intensity=overrides.get("intensity", self.intensity),
             output_mode=overrides.get("output_mode", self.output_mode),
+            exploration_mode=overrides.get("exploration_mode", self.exploration_mode),
+            pressure_translate=overrides.get("pressure_translate", self.pressure_translate_enabled),
+            pressure_search_mode=overrides.get("pressure_search_mode", self.pressure_search_mode),
         )
 
         genesis = Genesis(config)
@@ -80,6 +86,9 @@ class HephaestusClient:
             openai_key=self.openai_key,
             divergence_intensity=overrides.get("intensity", self.intensity),
             output_mode=overrides.get("output_mode", self.output_mode),
+            exploration_mode=overrides.get("exploration_mode", self.exploration_mode),
+            pressure_translate=overrides.get("pressure_translate", self.pressure_translate_enabled),
+            pressure_search_mode=overrides.get("pressure_search_mode", self.pressure_search_mode),
         )
 
         genesis = Genesis(config)

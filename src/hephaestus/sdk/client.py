@@ -78,9 +78,6 @@ class Hephaestus:
         environment variable.
     model:
         Model selection strategy: ``"both"`` (default), ``"opus"``, or ``"gpt5"``.
-    depth:
-        Anti-training pressure depth (1–10, default 3). Higher = more novel,
-        more expensive.
     candidates:
         Number of cross-domain search candidates (default 8).
     domain:
@@ -102,13 +99,16 @@ class Hephaestus:
         openai_key: str | None = None,
         *,
         model: str = "both",
-        depth: int = 3,
         candidates: int = 8,
         domain: str | None = None,
         num_translations: int = 3,
         run_prior_art: bool = True,
         use_perplexity_research: bool | None = None,
         perplexity_model: str | None = None,
+        depth: int = 3,
+        exploration_mode: str = "standard",
+        pressure_translate_enabled: bool = True,
+        pressure_search_mode: str = "adaptive",
     ) -> None:
         self._anthropic_key = anthropic_key or os.environ.get("ANTHROPIC_API_KEY")
         self._openai_key = openai_key or os.environ.get("OPENAI_API_KEY")
@@ -116,6 +116,9 @@ class Hephaestus:
         self._depth = depth
         self._candidates = candidates
         self._domain = domain
+        self._exploration_mode = exploration_mode.lower()
+        self._pressure_translate_enabled = pressure_translate_enabled
+        self._pressure_search_mode = pressure_search_mode.lower()
         self._num_translations = num_translations
         self._run_prior_art = run_prior_art
         self._use_perplexity_research = (
@@ -142,10 +145,14 @@ class Hephaestus:
         cls,
         *,
         model: str = "both",
-        depth: int = 3,
         candidates: int = 8,
         use_perplexity_research: bool | None = None,
         perplexity_model: str | None = None,
+        depth: int = 3,
+        domain: str | None = None,
+        exploration_mode: str = "standard",
+        pressure_translate_enabled: bool = True,
+        pressure_search_mode: str = "adaptive",
     ) -> "Hephaestus":
         """
         Create a Hephaestus client using API keys from environment variables.
@@ -156,8 +163,6 @@ class Hephaestus:
         ----------
         model:
             Model selection: ``"both"`` | ``"opus"`` | ``"gpt5"``.
-        depth:
-            Anti-training pressure depth (default 3).
         candidates:
             Number of search candidates (default 8).
 
@@ -177,10 +182,14 @@ class Hephaestus:
             anthropic_key=os.environ.get("ANTHROPIC_API_KEY"),
             openai_key=os.environ.get("OPENAI_API_KEY"),
             model=model,
-            depth=depth,
             candidates=candidates,
+            domain=domain,
             use_perplexity_research=use_perplexity_research,
             perplexity_model=perplexity_model,
+            depth=depth,
+            exploration_mode=exploration_mode,
+            pressure_translate_enabled=pressure_translate_enabled,
+            pressure_search_mode=pressure_search_mode,
         )
 
     # ------------------------------------------------------------------
@@ -530,11 +539,6 @@ class Hephaestus:
         return self._model
 
     @property
-    def depth(self) -> int:
-        """The configured pressure depth."""
-        return self._depth
-
-    @property
     def candidates(self) -> int:
         """The configured number of search candidates."""
         return self._candidates
@@ -578,6 +582,11 @@ class Hephaestus:
             translate_model=models["translate"],
             attack_model=models["attack"],
             defend_model=models["defend"],
+            depth=self._depth,
+            domain_hint=self._domain,
+            exploration_mode=self._exploration_mode,
+            pressure_translate_enabled=self._pressure_translate_enabled,
+            pressure_search_mode=self._pressure_search_mode,
             num_candidates=self._candidates,
             num_translations=self._num_translations,
             run_prior_art=self._run_prior_art,

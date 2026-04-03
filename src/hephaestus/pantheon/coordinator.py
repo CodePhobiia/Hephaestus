@@ -83,17 +83,48 @@ class PantheonError(RuntimeError):
     """Raised when Pantheon Mode fails irrecoverably."""
 
 
+def _extract_outermost_json(text: str) -> str:
+    """Extract the outermost JSON object using brace-depth counting.
+
+    Handles nested objects correctly, unlike a non-greedy regex.
+    """
+    start = text.find("{")
+    if start == -1:
+        raise PantheonError(f"No JSON object found: {text[:240]}")
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"' and not escape:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    raise PantheonError(f"Unbalanced braces in JSON: {text[:240]}")
+
+
 def _json_block(raw: str) -> dict[str, Any]:
     cleaned = raw.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
         cleaned = re.sub(r"\n?```\s*$", "", cleaned)
-    match = re.search(r"\{.*?\}", cleaned, re.DOTALL)
-    if not match:
-        raise PantheonError(f"No JSON object found: {raw[:240]}")
-    parsed = loads_lenient(match.group(), label="pantheon")
+    json_str = _extract_outermost_json(cleaned)
+    parsed = loads_lenient(json_str, label="pantheon")
     if parsed is None:
-        raise PantheonError(f"Pantheon JSON parse failed on invalid JSON: {match.group()[:200]}")
+        raise PantheonError(f"Pantheon JSON parse failed on invalid JSON: {json_str[:200]}")
     return parsed
 
 
@@ -539,6 +570,7 @@ class PantheonCoordinator:
         round_index: int,
         seen_ids: set[str],
         stage: str,
+        explicitly_addressed_ids: set[str] | None = None,
     ) -> list[str]:
         resolved: list[str] = []
         for objection in state.objection_ledger:
@@ -547,7 +579,10 @@ class PantheonCoordinator:
             if objection.objection_id in seen_ids:
                 continue
             if objection.severity == "FATAL":
-                continue  # never auto-resolve fatal — requires explicit discharge
+                if explicitly_addressed_ids and objection.objection_id in explicitly_addressed_ids:
+                    pass  # explicitly addressed in reforge
+                else:
+                    continue  # never auto-resolve fatal — requires explicit discharge
             objection.status = "RESOLVED"
             objection.last_updated_round = round_index
             objection.resolved_round = round_index
@@ -1424,6 +1459,7 @@ class PantheonCoordinator:
         masked_objections: Sequence[PantheonObjection],
         accounting: PantheonAccounting,
         branch_label: str,
+        state: PantheonState,
     ) -> tuple[Translation | None, PantheonReforgeRecord | None]:
         targeted_payload = [objection.to_dict() for objection in targeted_objections]
         targeted_ids = [objection.objection_id for objection in targeted_objections]
@@ -1463,12 +1499,56 @@ class PantheonCoordinator:
             return None, None
 
         metadata = getattr(revised, "pantheon_reforge_metadata", {}) or {}
+
+        # Canonicalize model-returned objection IDs against the actual ledger.
+        # The model may echo alias IDs that don't match canonical objection_id values.
+        raw_addressed = list(metadata.get("addressed_objection_ids", []) or [])
+        raw_remaining = list(metadata.get("remaining_open_objection_ids", []) or [])
+
+        canonical_ids = {obj.objection_id for obj in state.objection_ledger}
+        all_targeted_set = set(targeted_ids)
+
+        def _canonicalize_ids(raw_ids: list[str]) -> list[str]:
+            """Map model-returned IDs to canonical objection_id values. Unrecognized IDs are dropped."""
+            result: list[str] = []
+            for raw_id in raw_ids:
+                raw_id = str(raw_id).strip()
+                if not raw_id:
+                    continue
+                # Exact match
+                if raw_id in canonical_ids:
+                    result.append(raw_id)
+                    continue
+                # Fuzzy match against targeted objections
+                best_match: str | None = None
+                best_score = 0.0
+                for objection in state.objection_ledger:
+                    if objection.objection_id not in all_targeted_set:
+                        continue
+                    score = _similarity_score(
+                        objection, raw_id, raw_id, raw_id,
+                    )
+                    if score > best_score:
+                        best_match = objection.objection_id
+                        best_score = score
+                if best_match is not None and best_score >= 0.7:
+                    result.append(best_match)
+                else:
+                    logger.debug(
+                        "Reforge returned unrecognized objection ID %r (no canonical match >= 0.7)",
+                        raw_id,
+                    )
+            return result
+
+        addressed_ids = _canonicalize_ids(raw_addressed)
+        remaining_ids = _canonicalize_ids(raw_remaining)
+
         reforge_record = PantheonReforgeRecord(
             branch_label=branch_label,
             targeted_objection_ids=targeted_ids,
             targeted_issue_types=_dedupe(objection.issue_type for objection in targeted_objections),
-            addressed_objection_ids=list(metadata.get("addressed_objection_ids", []) or targeted_ids),
-            remaining_open_objection_ids=list(metadata.get("remaining_open_objection_ids", []) or []),
+            addressed_objection_ids=addressed_ids,
+            remaining_open_objection_ids=remaining_ids,
             masked_open_objection_ids=masked_ids,
             changes_made=list(metadata.get("changes_made", []) or self._reforge_changes(translation, revised)),
             novelty_core_preserved=str(metadata.get("novelty_core_preserved", revised.key_insight or translation.key_insight) or ""),
@@ -1568,6 +1648,7 @@ class PantheonCoordinator:
                 masked_objections=masked,
                 accounting=accounting,
                 branch_label=f"{cluster_key.lower()}-repair-{branch_index}",
+                state=state,
             )
             if revised is None or reforge_record is None:
                 continue
@@ -1745,6 +1826,25 @@ class PantheonCoordinator:
         state.failure_reason = None
         state.unresolved_vetoes = []
         state.consensus_without_verification = True
+
+        # Strict Invariants Block
+        for objection in state.objection_ledger:
+            if objection.status == "OPEN":
+                objection.resolved_round = None
+                objection.waived_round = None
+            elif objection.status == "RESOLVED":
+                objection.waived_round = None
+
+        fatals_open = any(obj.status == "OPEN" and obj.severity == "FATAL" for obj in state.objection_ledger)
+        if fatals_open and state.consensus_achieved:
+            state.consensus_achieved = False
+            state.outcome_tier = "FAIL_CLOSED_REJECTION"
+            state.resolution = "fail_closed_rejection"
+            state.final_verdict = "NO_OUTPUT"
+            state.failure_reason = "Invariant violation: Consensus claimed while FATAL objections remain OPEN."
+            state.forwarded_candidate_ids = []
+            return [], state
+
         candidate.pantheon_state = state.to_dict()
         return [candidate], state
 
@@ -1777,6 +1877,25 @@ class PantheonCoordinator:
             for _, _, objections in ranked
             for objection in objections
         )
+        # Strict Invariants Block
+        for objection in state.objection_ledger:
+            if objection.status == "OPEN":
+                objection.resolved_round = None
+                objection.waived_round = None
+            elif objection.status == "RESOLVED":
+                objection.waived_round = None
+
+        fatals_open = any(obj.status == "OPEN" and obj.severity == "FATAL" for obj in state.objection_ledger)
+        if fatals_open and state.final_verdict != "NO_OUTPUT" and state.outcome_tier != "FAIL_CLOSED_REJECTION":
+            # Cannot progress past FATAL objections
+            state.consensus_achieved = False
+            state.outcome_tier = "FAIL_CLOSED_REJECTION"
+            state.resolution = "fail_closed_rejection"
+            state.final_verdict = "NO_OUTPUT"
+            state.failure_reason = "Invariant violation: Forwarded to verification with FATAL objections open."
+            state.forwarded_candidate_ids = []
+            return [], state
+
         for candidate in forwarded:
             candidate.pantheon_state = state.to_dict()
         return forwarded, state
@@ -1888,12 +2007,14 @@ class PantheonCoordinator:
                 seen_ids = set()
                 for vote in votes:
                     seen_ids.update(vote.objection_ids)
+                addressed_ids_set = set(incoming_reforge.addressed_objection_ids) if incoming_reforge is not None else set()
                 resolved_ids = self._resolve_missing_open_objections(
                     state=current_state,
                     candidate_id=candidate_id,
                     round_index=round_index,
                     seen_ids=seen_ids,
                     stage="council",
+                    explicitly_addressed_ids=addressed_ids_set,
                 )
                 open_objections = self._candidate_objections(
                     current_state,

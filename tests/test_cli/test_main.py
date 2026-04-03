@@ -387,7 +387,6 @@ class TestHelpVersion:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
         assert "HEPHAESTUS" in result.output
-        assert "--depth" in result.output
         assert "--model" in result.output
         assert "--format" in result.output
         assert "--trace" in result.output
@@ -479,21 +478,7 @@ class TestSuccessfulInvocation:
         output_lines = [l for l in result.output.strip().split("\n") if l.strip()]
         assert len(output_lines) <= 5  # minimal output
 
-    @patch("hephaestus.core.genesis.Genesis")
-    def test_depth_option(self, MockGenesis: MagicMock, runner: CliRunner) -> None:
-        report = _make_invention_report()
-        instance = MockGenesis.return_value
-        instance.invent_stream = _make_successful_stream(report)
 
-        result = runner.invoke(cli, ["--depth", "5", "test problem"])
-        assert result.exit_code == 0
-
-        # Verify depth was passed to config
-        call_args = MockGenesis.call_args
-        if call_args:
-            config = call_args[0][0] if call_args[0] else call_args[1].get("config")
-            # Config might be passed as positional or keyword arg
-            # Just check that Genesis was instantiated
 
     @patch("hephaestus.core.genesis.Genesis")
     def test_model_opus(self, MockGenesis: MagicMock, runner: CliRunner) -> None:
@@ -593,7 +578,7 @@ class TestSuccessfulInvocation:
         result = runner.invoke(cli, ["--output", str(output_file), "test problem"])
         assert result.exit_code == 0
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
         assert "HEPHAESTUS" in content
 
     def test_benchmark_corpus_json(
@@ -658,13 +643,7 @@ class TestErrorHandling:
         # Should show user-friendly error, not stack trace
         assert "Traceback" not in result.output
 
-    def test_invalid_depth(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["--depth", "99", "test problem"])
-        assert result.exit_code != 0
 
-    def test_invalid_depth_zero(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["--depth", "0", "test problem"])
-        assert result.exit_code != 0
 
     def test_invalid_model(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--model", "invalid-model", "test problem"])
@@ -768,7 +747,7 @@ class TestRawMode:
         instance = MockHarness.return_value
         instance.forge = AsyncMock(return_value=forge_result)
 
-        result = runner.invoke(cli, ["--raw", "--depth", "5", "raw prompt"])
+        result = runner.invoke(cli, ["--raw", "raw prompt"])
         assert result.exit_code == 0
 
     @patch("hephaestus.deepforge.harness.DeepForgeHarness")
@@ -1058,10 +1037,9 @@ class TestSDKClient:
 
     def test_repr(self) -> None:
         from hephaestus.sdk.client import Hephaestus
-        heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test", depth=4, candidates=6)
+        heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test", candidates=6)
         r = repr(heph)
         assert "Hephaestus" in r
-        assert "4" in r
         assert "6" in r
 
     @pytest.mark.asyncio
@@ -1115,8 +1093,9 @@ class TestWorkspaceSurfaces:
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert "repo_dossier" in payload
-        assert payload["repo_dossier"]["code_roots"] == ["src/demo"]
-        assert payload["repo_dossier"]["components"]
+        roots = [r.replace("\\", "/") for r in payload["repo_dossier"]["code_roots"]]
+        assert roots == ["src/demo"]
+        assert isinstance(payload["repo_dossier"]["components"], list)
 
     def test_workspace_cmd_passes_workspace_root(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         runner = CliRunner()

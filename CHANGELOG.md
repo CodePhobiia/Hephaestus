@@ -6,7 +6,7 @@ All notable changes to Hephaestus are documented in this file.
 
 ### Added — Core Pipeline
 - 5-stage genesis pipeline: Decompose → Search → Score → Translate → Verify
-- Cross-domain structural transfer with 80+ cognitive lenses
+- Cross-domain structural transfer with 160+ cognitive lenses
 - DeepForge anti-training pressure system
 - Adversarial novelty verification (cross-model)
 - Prior art search (Semantic Scholar, patent databases)
@@ -75,7 +75,7 @@ All notable changes to Hephaestus are documented in this file.
 - Async SDK client with invent() and invent_stream()
 
 ### Added — Quality
-- 80+ domain lenses across 15+ knowledge families
+- 160+ domain lenses across 15+ knowledge families
 - Lens validation and statistics
 - 1100+ tests with comprehensive coverage
 - .gitignore, CI-ready project structure

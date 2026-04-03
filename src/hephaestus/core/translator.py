@@ -564,13 +564,25 @@ class SolutionTranslator:
 
             lens_id = order[0]
             candidate = pending.pop(lens_id)
-            translation = await self._translate_candidate(
-                candidate,
-                structure,
-                bundle_proof=active_bundle,
-                previous_translation=translations[-1] if translations else None,
-                guidance=guidance,
-            )
+            try:
+                translation = await self._translate_candidate(
+                    candidate,
+                    structure,
+                    bundle_proof=active_bundle,
+                    previous_translation=translations[-1] if translations else None,
+                    guidance=guidance,
+                )
+            except TranslationError as exc:
+                invalidated.add(lens_id)
+                runtime.recomposition_events.append({
+                    "original_bundle_id": getattr(active_bundle, "bundle_id", ""),
+                    "invalidated_lens_ids": [lens_id],
+                    "reason": f"Translation error: {exc}",
+                    "new_bundle": None,
+                    "fallback_required": True,
+                })
+                active_bundle = None
+                break
             guard = evaluate_handoff_guards(
                 structure=structure,
                 candidate=candidate,
@@ -676,7 +688,8 @@ class SolutionTranslator:
             lenses=[forge_lens],
             use_interference=True,
             use_pruner=False,   # Pruner not needed for translation
-            use_pressure=False, # Pressure not needed — interference is active
+            use_pressure=self._harness.config.use_pressure,
+            max_pressure_rounds=self._harness.config.max_pressure_rounds,
             injection_strategy=InjectionStrategy.FULL,
             max_tokens=16000,
             temperature=0.7,    # Higher temperature for creative translation
@@ -767,7 +780,11 @@ class SolutionTranslator:
             temperature=0.7,
         )
 
-        parsed = self.parse_translation(result.output)
+        parsed_raw = result.output
+        if config.use_pressure:
+            parsed_raw = await self._deterministic_schema_pass(parsed_raw, system_override=translate_system)
+
+        parsed = self.parse_translation(parsed_raw)
         translation = self._build_translation(
             parsed=parsed,
             candidate=candidate,
@@ -804,7 +821,11 @@ class SolutionTranslator:
             max_tokens=16000,
             temperature=0.7,
         )
-        parsed = self.parse_translation(result.output)
+        parsed_raw = result.output
+        if getattr(self._harness.config, "use_pressure", False):
+            parsed_raw = await self._deterministic_schema_pass(parsed_raw, system_override=system)
+
+        parsed = self.parse_translation(parsed_raw)
         translation = self._build_translation(
             parsed=parsed,
             candidate=source_translation.source_candidate,
@@ -895,6 +916,23 @@ class SolutionTranslator:
     def parse_translation(self, raw: str) -> dict[str, Any]:
         """Public wrapper for translation JSON parsing."""
         return self._parse_translation(raw)
+
+    async def _deterministic_schema_pass(self, raw_forge_output: str, system_override: str | None = None) -> str:
+        """Run a deterministic two-pass extraction on raw forge output to ensure JSON schema adherence."""
+        prompt = (
+            "Extract the following raw invention into the required JSON schema.\n"
+            "DO NOT alter the architecture, mechanism, or creative aspects.\n"
+            "ONLY output valid JSON matching the translation schema.\n\n"
+            f"<raw_output>\n{raw_forge_output}\n</raw_output>"
+        )
+        sys_prompt = system_override if system_override is not None else _TRANSLATE_SYSTEM
+        result = await self._harness.adapter.generate(
+            prompt,
+            system=sys_prompt,
+            max_tokens=16000,
+            temperature=0.0
+        )
+        return result.text
 
     def _build_translation(
         self,
@@ -993,7 +1031,12 @@ class SolutionTranslator:
         )
 
     def _parse_translation(self, raw: str) -> dict[str, Any]:
-        """Parse the translation JSON output."""
+        """Parse the translation JSON output.
+
+        Raises ``TranslationError`` if the model output contains no
+        parseable JSON — callers must handle this to avoid producing
+        fake-looking successful translations from malformed output.
+        """
         cleaned = raw.strip()
         if cleaned.startswith("```"):
             cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
@@ -1001,18 +1044,30 @@ class SolutionTranslator:
 
         json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
         if not json_match:
-            logger.warning(
-                "Translation returned no parseable JSON for candidate (first 300 chars): %.300s; "
-                "falling back to defaults",
-                raw,
+            raise TranslationError(
+                f"No parseable JSON in model output (first 300 chars): {raw[:300]}"
             )
-            data = {}
-        else:
-            data = loads_lenient(json_match.group(), default={}, label="translator")
 
-        # Ensure required fields exist with defaults
-        data.setdefault("invention_name", "Cross-Domain Invention")
-        data.setdefault("architecture", "Architecture generation failed")
+        data = loads_lenient(json_match.group(), default=None, label="translator")
+        if data is None or not isinstance(data, dict):
+            raise TranslationError(
+                f"JSON parse failed on model output (first 300 chars): {raw[:300]}"
+            )
+
+        # Require critical fields — fail if the JSON parsed but is
+        # substantively empty (no invention name AND no architecture)
+        has_name = bool(data.get("invention_name", "").strip()) if isinstance(data.get("invention_name"), str) else bool(data.get("invention_name"))
+        has_arch = bool(data.get("architecture", "").strip()) if isinstance(data.get("architecture"), str) else bool(data.get("architecture"))
+        has_phase2 = bool(data.get("phase2_target_architecture", "").strip()) if isinstance(data.get("phase2_target_architecture"), str) else bool(data.get("phase2_target_architecture"))
+        if not has_name and not has_arch and not has_phase2:
+            raise TranslationError(
+                "Model returned JSON but with no substantive content "
+                "(missing invention_name, architecture, and phase2_target_architecture)"
+            )
+
+        # Defaults for optional fields only — JSON DID parse successfully
+        data.setdefault("invention_name", "Unnamed Invention")
+        data.setdefault("architecture", "")
         data.setdefault("limitations", [])
         data.setdefault("key_insight", "")
         data.setdefault("implementation_notes", "")

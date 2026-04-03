@@ -14,7 +14,7 @@ class ToolDefinition:
     description: str
     input_schema: dict[str, Any]
     category: str = "safe"  # read | write | dangerous | safe
-    handler: Callable[..., Any] | None = None
+    handler: Callable[..., Any] | Any | None = None
 
 
 @dataclass
@@ -97,7 +97,10 @@ class ToolRegistry:
         self._active_profile: str | None = None
 
     def register(self, tool: ToolDefinition) -> None:
-        """Add a tool to the registry."""
+        """Add a tool to the registry. The handler is automatically wrapped in the ToolInvocation ABI if it isn't already."""
+        from hephaestus.tools.invocation import ToolInvocation
+        if tool.handler is not None and not isinstance(tool.handler, ToolInvocation):
+            tool.handler = ToolInvocation(name=tool.name, handler=tool.handler)
         self._tools[tool.name] = tool
 
     def get(self, name: str) -> ToolDefinition | None:

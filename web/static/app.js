@@ -9,8 +9,6 @@
   // ── DOM refs ──────────────────────────────────────────────────────────────
 
   const problemInput     = document.getElementById('problem');
-  const depthSlider      = document.getElementById('depth');
-  const depthValue       = document.getElementById('depth-value');
   const candidatesSlider = document.getElementById('candidates');
   const candidatesValue  = document.getElementById('candidates-value');
   const modelSelect      = document.getElementById('model');
@@ -42,12 +40,6 @@
   const resModels        = document.getElementById('res-models');
 
   // ── Slider live-update ────────────────────────────────────────────────────
-
-  if (depthSlider && depthValue) {
-    depthSlider.addEventListener('input', () => {
-      depthValue.textContent = depthSlider.value;
-    });
-  }
 
   if (candidatesSlider && candidatesValue) {
     candidatesSlider.addEventListener('input', () => {
@@ -84,7 +76,6 @@
 
     const payload = {
       problem,
-      depth:      parseInt(depthSlider?.value || '3', 10),
       model:      modelSelect?.value || 'both',
       candidates: parseInt(candidatesSlider?.value || '8', 10),
     };

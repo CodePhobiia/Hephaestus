@@ -66,7 +66,7 @@ During chain-of-thought reasoning, deepforge **injects foreign axioms** mid-reas
 - OpenAI: System prompt injection with structured output constraints
 - Open-weight: Direct context injection during generation
 
-**Axiom Library:** A curated and expandable library of **cognitive lenses** — axiom sets from 200+ knowledge domains (biology, physics, military strategy, music theory, urban planning, game theory, mycology, linguistics, thermodynamics, etc.). For any problem, the harness selects the lens that is most structurally distant from the problem's native domain while still mapping onto its mathematical shape.
+**Axiom Library:** A curated and expandable library of **cognitive lenses** — axiom sets from 160+ knowledge domains (biology, physics, military strategy, music theory, urban planning, game theory, mycology, linguistics, thermodynamics, etc.). For any problem, the harness selects the lens that is most structurally distant from the problem's native domain while still mapping onto its mathematical shape.
 
 #### Mechanism 2: Convergence Pruning
 deepforge monitors the model's output stream in real-time. When it detects the model heading toward a known convergence point (common answer pattern, cliché solution, well-trodden path), it **kills the generation and retries** with the detected path explicitly blocked.

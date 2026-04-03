@@ -278,12 +278,17 @@ class ConversationRuntime:
 
         # Execute.
         try:
-            import asyncio
-
-            if asyncio.iscoroutinefunction(tool_def.handler):
-                output = await tool_def.handler(**tool_input)
+            from hephaestus.tools.invocation import ToolContext, ToolInvocation
+            
+            context = ToolContext(policy=self.policy)
+            if isinstance(tool_def.handler, ToolInvocation):
+                output = await tool_def.handler.execute(context, **tool_input)
             else:
-                output = tool_def.handler(**tool_input)
+                import asyncio
+                if asyncio.iscoroutinefunction(tool_def.handler):
+                    output = await tool_def.handler(**tool_input)
+                else:
+                    output = tool_def.handler(**tool_input)
             output_str = str(output)
             is_error = False
         except Exception as exc:

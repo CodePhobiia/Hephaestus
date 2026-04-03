@@ -18,7 +18,7 @@ services:
       - HEPH_PORT=8000
       - HEPH_LOG_LEVEL=info
     env_file:
-      - .env.docker
+      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]

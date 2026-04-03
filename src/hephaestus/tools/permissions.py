@@ -14,51 +14,14 @@ class PermissionMode(str, Enum):
     FULL_ACCESS = "full_access"
 
 
-# Tool categories by permission level required.
-READ_TOOLS = frozenset({
-    "read_file",
-    "list_directory",
-    "search_files",
-    "grep_search",
-    "list_inventions",
-    "compare_inventions",
-    "calculator",
-    "calculate",
-})
-
-WRITE_TOOLS = frozenset({
-    "write_file",
-    "write_notes",
-    "save_note",
-    "export_invention",
-    "export",
-})
-
-DANGEROUS_TOOLS = frozenset({
-    "web_search",
-    "web_fetch",
-    "execute_command",
-    "shell",
-})
-
-# "safe" tools are always allowed regardless of mode.
-SAFE_TOOLS = frozenset({
-    "calculator",
-    "calculate",
-    "list_inventions",
-    "compare_inventions",
-})
-
-
-def _tool_category(tool_name: str) -> str:
-    """Return the category string for a tool name."""
-    if tool_name in READ_TOOLS:
-        return "read"
-    if tool_name in WRITE_TOOLS:
-        return "write"
-    if tool_name in DANGEROUS_TOOLS:
-        return "dangerous"
-    return "safe"
+def _tool_category(tool_name: str, registry: Any = None) -> str:
+    """Return the category string for a tool name by querying the registry if available."""
+    if registry:
+        tool_def = registry.get(tool_name)
+        if tool_def:
+            return tool_def.category
+    # Default-deny if no registry or tool not found
+    return "unknown"
 
 
 class PermissionPolicy:
@@ -68,13 +31,15 @@ class PermissionPolicy:
         self,
         mode: PermissionMode,
         workspace_root: Path | None = None,
+        registry: Any = None,
     ) -> None:
         self.mode = mode
         self.workspace_root = workspace_root.resolve() if workspace_root else None
+        self.registry = registry
 
     def check(self, tool_name: str, action: str = "") -> bool:
         """Return whether *tool_name* (with optional *action*) is allowed."""
-        cat = _tool_category(tool_name)
+        cat = _tool_category(tool_name, self.registry)
 
         if cat == "safe":
             return True
@@ -87,11 +52,13 @@ class PermissionPolicy:
             )
         if cat == "dangerous":
             return self.mode == PermissionMode.FULL_ACCESS
+        if cat == "unknown":
+            return False
         return False  # pragma: no cover
 
     def explain_denial(self, tool_name: str) -> str:
         """Return a human-readable reason the tool is denied."""
-        cat = _tool_category(tool_name)
+        cat = _tool_category(tool_name, self.registry)
         if cat == "write":
             return (
                 f"Tool '{tool_name}' requires at least WORKSPACE_WRITE mode. "
@@ -102,4 +69,6 @@ class PermissionPolicy:
                 f"Tool '{tool_name}' requires FULL_ACCESS mode. "
                 f"Current mode: {self.mode.value}."
             )
+        if cat == "unknown":
+            return f"Tool '{tool_name}' is not registered and is explicitly denied."
         return f"Tool '{tool_name}' is not allowed under current policy."

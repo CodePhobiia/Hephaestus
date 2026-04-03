@@ -16,6 +16,7 @@ from hephaestus.tools.file_ops import (
     write_file,
 )
 from hephaestus.tools.registry import ToolDefinition, ToolRegistry
+from hephaestus.tools.invocation import ToolContext
 from hephaestus.tools.web_tools import web_fetch, web_search
 
 # ── shared todo list for the session ────────────────────────────────
@@ -44,14 +45,99 @@ _CALC_ALLOWED_NAMES: set[str] = {
 }
 
 
+_MAX_EXPR_LEN = 500
+_MAX_AST_DEPTH = 10
+
+_AST_ALLOWED_CALLS: dict[str, Any] = {
+    "abs": abs,
+    "round": round,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "int": int,
+    "float": float,
+    "pow": pow,
+    "sqrt": math.sqrt,
+}
+
+
+def _ast_eval_node(node: Any, depth: int = 0) -> Any:
+    """Recursively evaluate an AST node — only safe arithmetic."""
+    import ast
+
+    if depth > _MAX_AST_DEPTH:
+        raise ValueError("Expression too deeply nested")
+
+    # Numeric literal
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+
+    # Boolean literal (True/False are valid in arithmetic context)
+    if isinstance(node, ast.Constant) and isinstance(node.value, bool):
+        return node.value
+
+    # Unary operators: +x, -x
+    if isinstance(node, ast.UnaryOp):
+        operand = _ast_eval_node(node.operand, depth + 1)
+        if isinstance(node.op, ast.UAdd):
+            return +operand
+        if isinstance(node.op, ast.USub):
+            return -operand
+        raise ValueError(f"Unsupported unary operator: {type(node.op).__name__}")
+
+    # Binary operators: +, -, *, /, //, %, **
+    if isinstance(node, ast.BinOp):
+        left = _ast_eval_node(node.left, depth + 1)
+        right = _ast_eval_node(node.right, depth + 1)
+        op_map = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+        }
+        op_func = op_map.get(type(node.op))
+        if op_func is None:
+            raise ValueError(f"Unsupported binary operator: {type(node.op).__name__}")
+        # Guard against absurd exponents
+        if isinstance(node.op, ast.Pow) and isinstance(right, (int, float)) and abs(right) > 1000:
+            raise ValueError("Exponent too large")
+        return op_func(left, right)
+
+    # Whitelisted function calls: abs(x), sqrt(x), min(a, b), etc.
+    if isinstance(node, ast.Call):
+        if not isinstance(node.func, ast.Name):
+            raise ValueError("Only simple function calls allowed (no methods or attributes)")
+        func_name = node.func.id
+        if func_name not in _AST_ALLOWED_CALLS:
+            raise ValueError(f"Function not allowed: {func_name}")
+        args = [_ast_eval_node(arg, depth + 1) for arg in node.args]
+        if node.keywords:
+            raise ValueError("Keyword arguments not allowed in calculator")
+        return _AST_ALLOWED_CALLS[func_name](*args)
+
+    # Name lookup — only True/False
+    if isinstance(node, ast.Name):
+        if node.id == "True":
+            return True
+        if node.id == "False":
+            return False
+        raise ValueError(f"Name not allowed: {node.id}")
+
+    raise ValueError(f"Unsupported expression element: {type(node).__name__}")
+
+
 def _safe_eval(expression: str) -> str:
-    """Evaluate a simple arithmetic expression safely."""
-    # Only allow digits, operators, parens, dots, whitespace, and a few builtins
-    allowed_builtins = {k: __builtins__[k] for k in _CALC_ALLOWED_NAMES  # type: ignore[index]
-                        if k in (__builtins__ if isinstance(__builtins__, dict) else vars(__builtins__))}
-    allowed_builtins["math"] = math
+    """Evaluate a simple arithmetic expression using AST parsing — no eval()."""
+    import ast
+
+    if len(expression) > _MAX_EXPR_LEN:
+        return f"Calculation error: expression too long ({len(expression)} chars, max {_MAX_EXPR_LEN})"
     try:
-        result = eval(expression, {"__builtins__": allowed_builtins}, {})  # noqa: S307
+        tree = ast.parse(expression.strip(), mode="eval")
+        result = _ast_eval_node(tree.body)
     except Exception as exc:
         return f"Calculation error: {exc}"
     return str(result)
@@ -60,70 +146,70 @@ def _safe_eval(expression: str) -> str:
 # ── handler wrappers ────────────────────────────────────────────────
 
 
-def _handle_read_file(params: dict[str, Any]) -> str:
+def _handle_read_file(context: ToolContext, **kwargs: Any) -> str:
     return read_file(
-        path=params["path"],
-        max_chars=params.get("max_chars", 20_000),
+        path=kwargs["path"],
+        max_chars=kwargs.get("max_chars", 20_000),
     )
 
 
-def _handle_write_file(params: dict[str, Any]) -> str:
+def _handle_write_file(context: ToolContext, **kwargs: Any) -> str:
     return write_file(
-        path=params["path"],
-        content=params["content"],
+        path=kwargs["path"],
+        content=kwargs["content"],
     )
 
 
-def _handle_list_directory(params: dict[str, Any]) -> str:
+def _handle_list_directory(context: ToolContext, **kwargs: Any) -> str:
     return list_directory(
-        path=params["path"],
-        max_entries=params.get("max_entries", 100),
+        path=kwargs["path"],
+        max_entries=kwargs.get("max_entries", 100),
     )
 
 
-def _handle_search_files(params: dict[str, Any]) -> str:
+def _handle_search_files(context: ToolContext, **kwargs: Any) -> str:
     return search_files(
-        pattern=params["pattern"],
-        directory=params["directory"],
-        max_results=params.get("max_results", 50),
+        pattern=kwargs["pattern"],
+        directory=kwargs["directory"],
+        max_results=kwargs.get("max_results", 50),
     )
 
 
-def _handle_grep_search(params: dict[str, Any]) -> str:
+def _handle_grep_search(context: ToolContext, **kwargs: Any) -> str:
     return grep_search(
-        query=params["query"],
-        directory=params["directory"],
-        max_results=params.get("max_results", 50),
+        query=kwargs["query"],
+        directory=kwargs["directory"],
+        max_results=kwargs.get("max_results", 50),
     )
 
 
-def _handle_web_search(params: dict[str, Any]) -> str:
+def _handle_web_search(context: ToolContext, **kwargs: Any) -> str:
     return asyncio.run(web_search(
-        query=params["query"],
-        max_results=params.get("max_results", 5),
+        query=kwargs["query"],
+        max_results=kwargs.get("max_results", 5),
     ))
 
 
-def _handle_web_fetch(params: dict[str, Any]) -> str:
+def _handle_web_fetch(context: ToolContext, **kwargs: Any) -> str:
     return asyncio.run(web_fetch(
-        url=params["url"],
-        max_chars=params.get("max_chars", 15_000),
+        url=kwargs["url"],
+        max_chars=kwargs.get("max_chars", 15_000),
     ))
 
 
-def _handle_calculator(params: dict[str, Any]) -> str:
-    return _safe_eval(params["expression"])
+def _handle_calculator(context: ToolContext, **kwargs: Any) -> str:
+    return _safe_eval(kwargs["expression"])
 
 
-def _handle_todo_add(params: dict[str, Any]) -> str:
+def _handle_todo_add(context: ToolContext, **kwargs: Any) -> str:
     item = _session_todos.add(
-        title=params["title"],
-        notes=params.get("notes", ""),
+        title=kwargs["title"],
+        notes=kwargs.get("notes", ""),
     )
     return f"Added todo {item.id}: {item.title}"
 
 
-def _handle_todo_list(params: dict[str, Any]) -> str:
+def _handle_todo_list(context: ToolContext, **kwargs: Any) -> str:
     return _session_todos.summary()
 
 
@@ -245,7 +331,7 @@ _TOOL_DEFS: list[ToolDefinition] = [
     ToolDefinition(
         name="web_search",
         description="Search the web and return formatted results.",
-        category="safe",
+        category="dangerous",
         input_schema={
             "type": "object",
             "properties": {
@@ -266,7 +352,7 @@ _TOOL_DEFS: list[ToolDefinition] = [
     ToolDefinition(
         name="web_fetch",
         description="Fetch a URL and return extracted text content.",
-        category="safe",
+        category="dangerous",
         input_schema={
             "type": "object",
             "properties": {

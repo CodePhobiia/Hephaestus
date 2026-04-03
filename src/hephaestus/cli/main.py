@@ -109,7 +109,27 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
 @click.option(
     "--domain",
     default=None,
-    help="Hint for the target domain (e.g. 'distributed-systems', 'biology').",
+    help="Hint for the target domain (soft bias on lens routing).",
+)
+@click.option(
+    "--exploration-mode",
+    default="standard",
+    show_default=True,
+    type=click.Choice(["standard", "forge"], case_sensitive=False),
+    help="Exploration mechanism mode.",
+)
+@click.option(
+    "--pressure-translate/--no-pressure-translate",
+    default=True,
+    show_default=True,
+    help="Enable pressure rounds exclusively for Translate mechanisms.",
+)
+@click.option(
+    "--pressure-search-mode",
+    default="adaptive",
+    show_default=True,
+    type=click.Choice(["off", "adaptive", "always"], case_sensitive=False),
+    help="Pressure behavior applied to the Search phase.",
 )
 @click.option(
     "--trace",
@@ -237,6 +257,9 @@ def cli(
     research_model: str | None,
     benchmark_topic: str | None,
     benchmark_count: int,
+    exploration_mode: str,
+    pressure_translate: bool,
+    pressure_search_mode: str,
 ) -> None:
     """Main CLI entry point."""
     import logging as _logging
@@ -928,8 +951,7 @@ def _bridge_report(genesis_report: Any) -> Any:
         cost_usd=genesis_report.total_cost_usd,
         input_tokens=getattr(genesis_report, "total_input_tokens", 0),
         output_tokens=getattr(genesis_report, "total_output_tokens", 0),
-        models_used=list(dict.fromkeys(genesis_report.model_config.values())),
-        depth=3,
+        models_used=list(dict.fromkeys(_explicit_attr(genesis_report, "model_config", {}).values())),
         wall_time_seconds=genesis_report.total_duration_seconds,
     )
 
@@ -963,6 +985,9 @@ def _build_genesis_config(
     pantheon_athena_model: str | None = None,
     pantheon_hermes_model: str | None = None,
     pantheon_apollo_model: str | None = None,
+    exploration_mode: str = "standard",
+    pressure_translate: bool = True,
+    pressure_search_mode: str = "adaptive",
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
     from hephaestus.core.cross_model import get_model_preset
@@ -981,6 +1006,11 @@ def _build_genesis_config(
             translate_model=models["translate"],
             attack_model=models["attack"],
             defend_model=models["defend"],
+            depth=depth,
+            domain_hint=domain,
+            exploration_mode=exploration_mode.lower(),
+            pressure_translate_enabled=pressure_translate,
+            pressure_search_mode=pressure_search_mode.lower(),
             num_candidates=candidates,
             use_interference_in_translate=True,
             divergence_intensity=divergence_intensity.upper(),
@@ -1015,6 +1045,11 @@ def _build_genesis_config(
             translate_model=models["translate"],
             attack_model=models["attack"],
             defend_model=models["defend"],
+            depth=depth,
+            domain_hint=domain,
+            exploration_mode=exploration_mode.lower(),
+            pressure_translate_enabled=pressure_translate,
+            pressure_search_mode=pressure_search_mode.lower(),
             num_candidates=candidates,
             use_interference_in_translate=True,
             divergence_intensity=divergence_intensity.upper(),
@@ -1049,6 +1084,11 @@ def _build_genesis_config(
             translate_model=models["translate"],
             attack_model=models["attack"],
             defend_model=models["defend"],
+            depth=depth,
+            domain_hint=domain,
+            exploration_mode=exploration_mode.lower(),
+            pressure_translate_enabled=pressure_translate,
+            pressure_search_mode=pressure_search_mode.lower(),
             num_candidates=candidates,
             use_interference_in_translate=True,
             divergence_intensity=divergence_intensity.upper(),
@@ -1083,6 +1123,11 @@ def _build_genesis_config(
         translate_model=models["translate"],
         attack_model=models["attack"],
         defend_model=models["defend"],
+        depth=depth,
+        domain_hint=domain,
+        exploration_mode=exploration_mode.lower(),
+        pressure_translate_enabled=pressure_translate,
+        pressure_search_mode=pressure_search_mode.lower(),
         num_candidates=candidates,
         use_interference_in_translate=True,
         divergence_intensity=divergence_intensity.upper(),

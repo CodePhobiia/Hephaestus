@@ -32,6 +32,49 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Auth / rate-limit / concurrency primitives
+# ---------------------------------------------------------------------------
+
+_HEPH_API_KEY = os.environ.get("HEPH_API_KEY", "")
+_RATE_LIMIT_RPM = int(os.environ.get("HEPH_RATE_LIMIT_RPM", "10"))
+_MAX_CONCURRENT = int(os.environ.get("HEPH_MAX_CONCURRENT", "2"))
+_invention_semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
+
+# Simple in-memory token bucket for rate limiting
+_rate_bucket: list[float] = []
+
+# Global spend guardrails (reset manually or per restart)
+_SPEND_LIMIT_USD = float(os.environ.get("HEPH_SPEND_LIMIT_USD", "20.0"))
+_global_spend_usd = 0.0
+
+def _check_spend_limit() -> bool:
+    """Return True if within the global spend boundary."""
+    return _global_spend_usd < _SPEND_LIMIT_USD
+
+
+def _check_rate_limit() -> bool:
+    """Return True if the request is within rate limits."""
+    now = time.time()
+    window = 60.0
+    # Prune expired entries
+    while _rate_bucket and _rate_bucket[0] < now - window:
+        _rate_bucket.pop(0)
+    if len(_rate_bucket) >= _RATE_LIMIT_RPM:
+        return False
+    _rate_bucket.append(now)
+    return True
+
+
+def _check_auth(request: Request) -> bool:
+    """Validate API key if HEPH_API_KEY is configured."""
+    if not _HEPH_API_KEY:
+        return True  # No key configured — open access
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip() == _HEPH_API_KEY
+    return False
+
+# ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
@@ -51,7 +94,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-import os
+import os  # noqa: E402 — used above and here
 
 # CORS: Restrict to explicitly configured origins (never use wildcard with credentials)
 _HEPH_ALLOWED_ORIGINS = os.environ.get("HEPH_ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:3000").split(",")
@@ -77,9 +120,13 @@ class InventRequest(BaseModel):
     """Request body for the /api/invent endpoint."""
 
     problem: str = Field(..., min_length=5, max_length=4000, description="Problem to invent a solution for")
-    depth: int = Field(default=3, ge=1, le=10, description="Anti-training pressure depth")
     model: str = Field(default="both", description="Model selection: both | opus | gpt5")
     candidates: int = Field(default=8, ge=2, le=20, description="Number of search candidates")
+    domain_hint: str | None = Field(default=None, description="Soft domain bias constraint")
+    depth: int = Field(default=3, ge=1, le=10, description="Exploration bounds and scale")
+    exploration_mode: str = Field(default="standard", description="standard or forge modes")
+    pressure_translate_enabled: bool = Field(default=True, description="Applies rigorous deepforge mechanics")
+    pressure_search_mode: str = Field(default="adaptive", description="off, adaptive, or always")
 
 
 class HealthResponse(BaseModel):
@@ -158,7 +205,7 @@ def _format_report(report: Any) -> dict[str, Any]:
         alternatives.append({
             "name": getattr(inv, "invention_name", ""),
             "source_domain": getattr(inv, "source_domain", ""),
-            "novelty_score": round(getattr(inv, "novelty_score", 0.0), 3),
+            "novelty_score": round(getattr(inv, "novelty_score", 3) if getattr(inv, "novelty_score", None) is not None else 0.0, 3),
             "feasibility": getattr(inv, "feasibility_rating", ""),
         })
 
@@ -178,8 +225,8 @@ def _format_report(report: Any) -> dict[str, Any]:
     return {
         "invention_name": getattr(top, "invention_name", "Unknown"),
         "source_domain": getattr(top, "source_domain", ""),
-        "novelty_score": round(getattr(top, "novelty_score", 0.0), 3),
-        "structural_validity": round(getattr(top, "structural_validity", 0.0), 3),
+        "novelty_score": round(getattr(top, "novelty_score", 3) if getattr(top, "novelty_score", None) is not None else 0.0, 3),
+        "structural_validity": round(getattr(top, "structural_validity", 3) if getattr(top, "structural_validity", None) is not None else 0.0, 3),
         "feasibility_rating": getattr(top, "feasibility_rating", ""),
         "verdict": getattr(getattr(top, "adversarial_result", None), "verdict", ""),
         "key_insight": getattr(getattr(top, "translation", None), "key_insight", ""),
@@ -207,12 +254,37 @@ def _format_report(report: Any) -> dict[str, Any]:
 
 @app.get("/api/health", response_model=HealthResponse, tags=["meta"])
 async def health() -> HealthResponse:
-    """Health check — always returns 200 if the server is running."""
+    """Liveness check — returns 200 if the process is up."""
     return HealthResponse(
         status="ok",
         version="0.1.0",
         anthropic_configured=bool(os.environ.get("ANTHROPIC_API_KEY")),
         openai_configured=bool(os.environ.get("OPENAI_API_KEY")),
+    )
+
+
+@app.get("/api/ready", tags=["meta"])
+async def readiness() -> JSONResponse:
+    """Readiness check — verifies lens loading and basic configuration."""
+    checks: dict[str, bool] = {
+        "anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "openai_key": bool(os.environ.get("OPENAI_API_KEY")),
+    }
+    try:
+        from hephaestus.lenses.loader import LensLoader
+        loader = LensLoader()
+        lens_list = loader.list_available(skip_errors=True)
+        checks["lenses_loaded"] = len(lens_list) > 0
+        checks["lens_count"] = len(lens_list)
+    except Exception:
+        checks["lenses_loaded"] = False
+
+    ready = checks.get("lenses_loaded", False) and (
+        checks.get("anthropic_key", False) or checks.get("openai_key", False)
+    )
+    return JSONResponse(
+        content={"ready": ready, "checks": checks},
+        status_code=200 if ready else 503,
     )
 
 
@@ -230,15 +302,35 @@ async def list_lenses() -> JSONResponse:
 
 
 @app.post("/api/invent", tags=["invention"])
-async def invent_stream_endpoint(request_body: InventRequest) -> StreamingResponse:
+async def invent_stream_endpoint(request_body: InventRequest, request: Request) -> StreamingResponse:
     """
     Run the Hephaestus invention pipeline and stream SSE progress events.
+
+    Requires ``Authorization: Bearer <key>`` if ``HEPH_API_KEY`` is set.
 
     Returns a ``text/event-stream`` response. Events:
     - ``stage``  — pipeline stage updates (one per stage)
     - ``result`` — final invention result (JSON)
     - ``error``  — pipeline error
     """
+    # Auth check
+    if not _check_auth(request):
+        async def _auth_error():
+            yield _sse_error("Unauthorized. Provide a valid API key via Authorization: Bearer <key>.", stage="auth")
+        return StreamingResponse(_auth_error(), media_type="text/event-stream", status_code=401)
+
+    # Rate limit check
+    if not _check_rate_limit():
+        async def _rate_error():
+            yield _sse_error(f"Rate limit exceeded ({_RATE_LIMIT_RPM} requests/min). Try again later.", stage="rate_limit")
+        return StreamingResponse(_rate_error(), media_type="text/event-stream", status_code=429)
+
+    # Spend guardrail check
+    if not _check_spend_limit():
+        async def _spend_error():
+            yield _sse_error(f"Global spend limit reached (${_SPEND_LIMIT_USD:.2f}). Contact admin.", stage="spend_limit")
+        return StreamingResponse(_spend_error(), media_type="text/event-stream", status_code=402)
+
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
     openai_key = os.environ.get("OPENAI_API_KEY")
 
@@ -256,47 +348,77 @@ async def invent_stream_endpoint(request_body: InventRequest) -> StreamingRespon
 
     async def event_generator():
         try:
-            from hephaestus.core.genesis import Genesis, GenesisConfig, PipelineStage
+            # Acquire concurrency semaphore
+            async with _invention_semaphore:
+                from hephaestus.core.genesis import Genesis, GenesisConfig, PipelineStage
+                from hephaestus.core.cross_model import get_model_preset
+                
+                preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model, "both")
+                models = get_model_preset(preset_key)
 
-            # Build config from request
-            cfg = GenesisConfig(
-                anthropic_api_key=anthropic_key,
-                openai_api_key=openai_key,
-                num_candidates=request_body.candidates,
-                num_translations=min(3, request_body.candidates),
-            )
-            genesis = Genesis(cfg)
-
-            async for update in genesis.invent_stream(request_body.problem):
-                stage_name = update.stage.name
-                event_data = _format_stage_event(
-                    stage_name=stage_name,
-                    message=update.message,
-                    elapsed=update.elapsed_seconds,
+                # Build config from request
+                cfg = GenesisConfig(
+                    anthropic_api_key=anthropic_key,
+                    openai_api_key=openai_key,
+                    num_candidates=request_body.candidates,
+                    num_translations=min(3, request_body.candidates),
+                    decompose_model=models["decompose"],
+                    search_model=models["search"],
+                    score_model=models["score"],
+                    translate_model=models["translate"],
+                    attack_model=models["attack"],
+                    defend_model=models["defend"],
+                    domain_hint=request_body.domain_hint,
+                    depth=request_body.depth,
+                    exploration_mode=request_body.exploration_mode.lower(),
+                    pressure_translate_enabled=request_body.pressure_translate_enabled,
+                    pressure_search_mode=request_body.pressure_search_mode.lower(),
                 )
+                genesis = Genesis(cfg)
 
-                if stage_name == "COMPLETE":
-                    # Emit the stage update first
-                    yield _sse_event("stage", event_data)
-                    # Then emit the full result
-                    try:
-                        result_data = _format_report(update.data)
-                        yield _sse_event("result", result_data)
-                    except Exception as fmt_exc:
-                        logger.exception("Failed to format report")
-                        yield _sse_error(f"Result formatting error: {fmt_exc}")
-                    return
+                async for update in genesis.invent_stream(request_body.problem):
+                    # Disconnect-aware: stop if the client hung up
+                    if await request.is_disconnected():
+                        logger.info("Client disconnected — cancelling invention pipeline")
+                        return
 
-                elif stage_name == "FAILED":
-                    yield _sse_event("stage", event_data)
-                    yield _sse_error(update.message, stage=stage_name)
-                    return
+                    stage_name = update.stage.name
+                    event_data = _format_stage_event(
+                        stage_name=stage_name,
+                        message=update.message,
+                        elapsed=update.elapsed_seconds,
+                    )
 
-                else:
-                    yield _sse_event("stage", event_data)
+                    if stage_name == "COMPLETE":
+                        # Emit the stage update first
+                        yield _sse_event("stage", event_data)
+                        # Then emit the full result
+                        try:
+                            result_data = _format_report(update.data)
+                            yield _sse_event("result", result_data)
+                        except Exception as fmt_exc:
+                            logger.exception("Failed to format report")
+                            yield _sse_error(f"Result formatting error: {fmt_exc}")
+                        return
 
-                # Small yield to flush
-                await asyncio.sleep(0)
+                    elif stage_name == "FAILED":
+                        yield _sse_event("stage", event_data)
+                        yield _sse_error(update.message, stage=stage_name)
+                        return
+
+                    else:
+                        yield _sse_event("stage", event_data)
+                        
+                    # Update global spend per cycle to prevent infinite spins if metrics exposed
+                    if update.data and hasattr(update.data, "total_cost_usd"):
+                        global _global_spend_usd
+                        _global_spend_usd += getattr(update.data, "total_cost_usd", 0.0)
+                        if not _check_spend_limit():
+                            yield _sse_error(f"Spend boundary exceeded mid-flight (${_SPEND_LIMIT_USD:.2f}). Aborting.", stage="spend_limit")
+                            return
+
+                    # Small yield to flush
+                    await asyncio.sleep(0)
 
         except Exception as exc:
             logger.exception("Unexpected error in invention stream")
@@ -315,6 +437,100 @@ async def invent_stream_endpoint(request_body: InventRequest) -> StreamingRespon
 
 # ---------------------------------------------------------------------------
 # Static / UI routes
+# ---------------------------------------------------------------------------
+# Production API endpoints — metrics, providers, runs
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/metrics", tags=["observability"])
+async def prometheus_metrics() -> StreamingResponse:
+    """Prometheus-compatible metrics endpoint."""
+    from hephaestus.telemetry.metrics import get_metrics
+
+    content = get_metrics().export_prometheus()
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
+@app.get("/api/providers", tags=["observability"])
+async def provider_health(request: Request) -> JSONResponse:
+    """Return provider availability summary."""
+    if not _check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from hephaestus.providers.diagnostics import provider_health_summary
+    from hephaestus.providers import build_default_registry
+
+    registry = build_default_registry()
+    return JSONResponse(content=provider_health_summary(registry))
+
+
+@app.get("/api/runs", tags=["runs"])
+async def list_runs(
+    request: Request,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> JSONResponse:
+    """List pipeline runs with optional status filter."""
+    if not _check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from hephaestus.execution.run_store import SQLiteRunStore
+    from hephaestus.execution.models import RunStatus
+
+    store = SQLiteRunStore()
+    await store.initialize()
+    try:
+        status_filter = RunStatus(status) if status else None
+        runs = await store.list_runs(status=status_filter, limit=limit, offset=offset)
+        return JSONResponse(content={
+            "runs": [r.to_dict() for r in runs],
+            "count": len(runs),
+        })
+    finally:
+        await store.close()
+
+
+@app.get("/api/runs/{run_id}", tags=["runs"])
+async def get_run(run_id: str, request: Request) -> JSONResponse:
+    """Get a single run's details."""
+    if not _check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from hephaestus.execution.run_store import SQLiteRunStore
+
+    store = SQLiteRunStore()
+    await store.initialize()
+    try:
+        record = await store.get(run_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        return JSONResponse(content=record.to_dict())
+    finally:
+        await store.close()
+
+
+@app.post("/api/runs/{run_id}/cancel", tags=["runs"])
+async def cancel_run(run_id: str, request: Request) -> JSONResponse:
+    """Cancel a queued or running pipeline run."""
+    if not _check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from hephaestus.execution.run_store import SQLiteRunStore
+
+    store = SQLiteRunStore()
+    await store.initialize()
+    try:
+        cancelled = await store.cancel(run_id)
+        return JSONResponse(content={"cancelled": cancelled, "run_id": run_id})
+    finally:
+        await store.close()
+
+
+# ---------------------------------------------------------------------------
+# Web UI
 # ---------------------------------------------------------------------------
 
 
