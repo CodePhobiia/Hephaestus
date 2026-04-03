@@ -7,8 +7,21 @@ from hephaestus.forgebase.domain.event_types import Clock, EventFactory
 from hephaestus.forgebase.repository.content_store import StagedContentStore
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
 from hephaestus.forgebase.service.id_generator import IdGenerator
+from hephaestus.forgebase.store.sqlite.claim_derivation_repo import SqliteClaimDerivationRepository
+from hephaestus.forgebase.store.sqlite.claim_repo import SqliteClaimRepository
+from hephaestus.forgebase.store.sqlite.claim_support_repo import SqliteClaimSupportRepository
 from hephaestus.forgebase.store.sqlite.event_repo import SqliteEventRepository
+from hephaestus.forgebase.store.sqlite.finding_repo import SqliteFindingRepository
+from hephaestus.forgebase.store.sqlite.job_repo import SqliteJobRepository
+from hephaestus.forgebase.store.sqlite.link_repo import SqliteLinkRepository
+from hephaestus.forgebase.store.sqlite.merge_conflict_repo import SqliteMergeConflictRepository
+from hephaestus.forgebase.store.sqlite.merge_proposal_repo import SqliteMergeProposalRepository
+from hephaestus.forgebase.store.sqlite.page_repo import SqlitePageRepository
+from hephaestus.forgebase.store.sqlite.run_artifact_repo import SqliteRunArtifactRepository
+from hephaestus.forgebase.store.sqlite.run_ref_repo import SqliteRunRefRepository
+from hephaestus.forgebase.store.sqlite.source_repo import SqliteSourceRepository
 from hephaestus.forgebase.store.sqlite.vault_repo import SqliteVaultRepository
+from hephaestus.forgebase.store.sqlite.workbook_repo import SqliteWorkbookRepository
 
 
 class SqliteUnitOfWork(AbstractUnitOfWork):
@@ -33,7 +46,19 @@ class SqliteUnitOfWork(AbstractUnitOfWork):
 
         # Wire up repos
         self.vaults = SqliteVaultRepository(db)
-        # Remaining repos will be wired in subsequent tasks as they're implemented
+        self.sources = SqliteSourceRepository(db)
+        self.pages = SqlitePageRepository(db)
+        self.claims = SqliteClaimRepository(db)
+        self.claim_supports = SqliteClaimSupportRepository(db)
+        self.claim_derivations = SqliteClaimDerivationRepository(db)
+        self.links = SqliteLinkRepository(db)
+        self.workbooks = SqliteWorkbookRepository(db)
+        self.merge_proposals = SqliteMergeProposalRepository(db)
+        self.merge_conflicts = SqliteMergeConflictRepository(db)
+        self.jobs = SqliteJobRepository(db)
+        self.findings = SqliteFindingRepository(db)
+        self.run_refs = SqliteRunRefRepository(db)
+        self.run_artifacts = SqliteRunArtifactRepository(db)
 
     async def begin(self) -> None:
         await self._db.execute("BEGIN")
