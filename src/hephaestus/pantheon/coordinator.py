@@ -88,7 +88,7 @@ def _json_block(raw: str) -> dict[str, Any]:
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
         cleaned = re.sub(r"\n?```\s*$", "", cleaned)
-    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    match = re.search(r"\{.*?\}", cleaned, re.DOTALL)
     if not match:
         raise PantheonError(f"No JSON object found: {raw[:240]}")
     parsed = loads_lenient(match.group(), label="pantheon")
@@ -308,8 +308,12 @@ class PantheonCoordinator:
         accounting: PantheonAccounting,
         agent: str,
     ) -> dict[str, Any]:
+        import asyncio as _asyncio
         t_start = time.monotonic()
-        result = await harness.forge(prompt, system=system)
+        result = await _asyncio.wait_for(
+            harness.forge(prompt, system=system),
+            timeout=300.0,
+        )
         self._record_accounting(
             accounting,
             agent=agent,
@@ -410,7 +414,7 @@ class PantheonCoordinator:
             if score > best_score:
                 best_match = objection
                 best_score = score
-        return best_match if best_score >= 0.72 else None
+        return best_match if best_score >= 0.85 else None
 
     def _new_objection_id(
         self,
@@ -1806,8 +1810,10 @@ class PantheonCoordinator:
 
         canon = current_state.canon
         dossier = current_state.dossier
-        assert canon is not None
-        assert dossier is not None
+        if canon is None:
+            raise RuntimeError("PantheonState.canon is None — prepare_pipeline must run before deliberate()")
+        if dossier is None:
+            raise RuntimeError("PantheonState.dossier is None — prepare_pipeline must run before deliberate()")
 
         survivors = list(translations[: self._max_survivors_to_council])
         if not survivors:

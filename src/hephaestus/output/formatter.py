@@ -196,7 +196,7 @@ class InventionReport:
     input_tokens: int = 0
     output_tokens: int = 0
     models_used: list[str] = field(default_factory=list)
-    depth: int = 3
+    depth: int = 0
     wall_time_seconds: float = 0.0
 
 

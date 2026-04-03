@@ -301,6 +301,10 @@ class CodexOAuthAdapter(BaseAdapter):
             raw=result,
         )
 
+    def _reset_cancel(self):
+        """Reset cancellation flag from previous call."""
+        self._cancelled = False
+
     async def generate_stream(
         self,
         prompt: str,

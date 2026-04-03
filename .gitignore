@@ -36,3 +36,7 @@ htmlcov/
 
 # Docker
 .docker/
+
+# Secrets (never commit real values)
+.env.*
+!.env.example

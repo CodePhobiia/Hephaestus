@@ -227,6 +227,10 @@ class LayeredConfig:
                 raise ConfigValidationError(
                     f"Invalid candidates: {candidates!r}. Must be positive integer."
                 )
+            if candidates > 50:
+                raise ConfigValidationError(
+                    f"Invalid candidates: {candidates!r}. Capped at 50 to prevent runaway LLM costs."
+                )
 
 
 def _coerce(field_name: str, raw: str) -> Any:

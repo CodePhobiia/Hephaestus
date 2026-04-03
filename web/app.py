@@ -51,12 +51,16 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+import os
+
+# CORS: Restrict to explicitly configured origins (never use wildcard with credentials)
+_HEPH_ALLOWED_ORIGINS = os.environ.get("HEPH_ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_HEPH_ALLOWED_ORIGINS,
+    allow_credentials=False,  # Only enable if auth cookies/tokens in use; currently session-based
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Serve static files if directory exists

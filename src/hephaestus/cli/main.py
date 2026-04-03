@@ -271,7 +271,7 @@ def cli(
         resolved = layered.resolve()
 
         # Use config values where CLI didn't explicitly override
-        _VALID_CLI_MODELS = {"claude-max", "claude-cli", "opus", "gpt5", "both"}
+        _VALID_CLI_MODELS = {"claude-max", "claude-cli", "codex", "opus", "gpt5", "both"}
         src = ctx.get_parameter_source
         if src("depth") != click.core.ParameterSource.COMMANDLINE:
             depth = resolved.depth
@@ -302,8 +302,9 @@ def cli(
         pantheon_athena_model = getattr(resolved, "pantheon_athena_model", None)
         pantheon_hermes_model = getattr(resolved, "pantheon_hermes_model", None)
         pantheon_apollo_model = getattr(resolved, "pantheon_apollo_model", None)
-    except Exception:
-        pass  # Fall back to CLI defaults
+    except Exception as exc:
+        logger = __import__('logging').getLogger(__name__)
+        logger.warning("Config load failed, using CLI defaults: %s", exc)
 
     # ── Benchmark corpus mode ────────────────────────────────────────────────
     if benchmark_topic:

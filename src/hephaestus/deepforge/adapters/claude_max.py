@@ -135,7 +135,7 @@ def _load_oat_token() -> str:
     token = profile["token"]
     if not token.startswith("sk-ant-oat"):
         raise AuthenticationError(
-            f"Token doesn't look like an OAT token (expected sk-ant-oat prefix): {token[:20]}..."
+            f"Token doesn't look like an OAT token (expected sk-ant-oat prefix): {token[:4]}**REDACTED**..."
         )
     return token
 
