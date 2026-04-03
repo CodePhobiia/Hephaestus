@@ -50,7 +50,7 @@ dev = [
 ]
 
 [project.scripts]
-heph = "hephaestus.cli.main:cli"
+heph = "hephaestus.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/CodePhobiia/hephaestus"

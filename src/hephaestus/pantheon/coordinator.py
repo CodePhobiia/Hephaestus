@@ -10,6 +10,7 @@ Wraps the standard Genesis pipeline with a four-agent council:
 from __future__ import annotations
 
 from hephaestus.core.json_utils import loads_lenient
+import asyncio
 import hashlib
 import json
 import logging
@@ -541,6 +542,8 @@ class PantheonCoordinator:
                 continue
             if objection.objection_id in seen_ids:
                 continue
+            if objection.severity == "FATAL":
+                continue  # never auto-resolve fatal — requires explicit discharge
             objection.status = "RESOLVED"
             objection.last_updated_round = round_index
             objection.resolved_round = round_index
@@ -1311,7 +1314,7 @@ class PantheonCoordinator:
 
         for index, translation in enumerate(translations, start=1):
             candidate_id = self._candidate_id(index, translation)
-            hermes_vote = await self._hermes_review(
+            hermes_task = self._hermes_review(
                 translation=translation,
                 dossier=state.dossier,
                 candidate_id=candidate_id,
@@ -1322,7 +1325,7 @@ class PantheonCoordinator:
                 changed_claims=[],
                 accounting=state.accounting,
             )
-            apollo_audit, apollo_vote = await self._apollo_audit(
+            apollo_task = self._apollo_audit(
                 translation=translation,
                 canon=state.canon,
                 dossier=state.dossier,
@@ -1333,6 +1336,9 @@ class PantheonCoordinator:
                 peer_visible=False,
                 changed_claims=[],
                 accounting=state.accounting,
+            )
+            hermes_vote, (apollo_audit, apollo_vote) = await asyncio.gather(
+                hermes_task, apollo_task
             )
             audits.append(apollo_audit)
 
@@ -1833,7 +1839,7 @@ class PantheonCoordinator:
                 phase = "independent_ballot" if round_index == 1 else "council"
                 peer_visible = round_index > 1
                 changed_claims = self._changed_claims(incoming_reforge)
-                athena_vote = await self._athena_review(
+                athena_task = self._athena_review(
                     translation=candidate,
                     canon=canon,
                     candidate_id=candidate_id,
@@ -1844,7 +1850,7 @@ class PantheonCoordinator:
                     changed_claims=changed_claims,
                     accounting=current_state.accounting,
                 )
-                hermes_vote = await self._hermes_review(
+                hermes_task = self._hermes_review(
                     translation=candidate,
                     dossier=dossier,
                     candidate_id=candidate_id,
@@ -1855,7 +1861,7 @@ class PantheonCoordinator:
                     changed_claims=changed_claims,
                     accounting=current_state.accounting,
                 )
-                apollo_audit, apollo_vote = await self._apollo_audit(
+                apollo_task = self._apollo_audit(
                     translation=candidate,
                     canon=canon,
                     dossier=dossier,
@@ -1866,6 +1872,9 @@ class PantheonCoordinator:
                     peer_visible=peer_visible,
                     changed_claims=changed_claims,
                     accounting=current_state.accounting,
+                )
+                athena_vote, hermes_vote, (apollo_audit, apollo_vote) = await asyncio.gather(
+                    athena_task, hermes_task, apollo_task
                 )
                 all_audits.append(apollo_audit)
                 votes = [athena_vote, hermes_vote, apollo_vote]

@@ -1037,7 +1037,13 @@ class Genesis:
                 )
 
                 for branch in branch_arena.active_branches():
-                    candidate = scored[branch.source_candidate_index]
+                    idx = branch.source_candidate_index
+                    if idx < 0 or idx >= len(scored):
+                        logger.warning(
+                            "BranchGenome branch %s has out-of-range source_candidate_index %d (scored has %d); skipping",
+                            branch.branch_id, idx, len(scored))
+                        continue
+                    candidate = scored[idx]
                     branch.metrics = assay_branch(
                         branch,
                         structure=structure,
@@ -1053,7 +1059,13 @@ class Genesis:
                     scored_candidates=scored,
                 )
                 for branch in recovery_branches:
-                    candidate = scored[branch.source_candidate_index]
+                    idx = branch.source_candidate_index
+                    if idx < 0 or idx >= len(scored):
+                        logger.warning(
+                            "BranchGenome recovery branch %s has out-of-range source_candidate_index %d (scored has %d); skipping",
+                            branch.branch_id, idx, len(scored))
+                        continue
+                    candidate = scored[idx]
                     branch.metrics = assay_branch(
                         branch,
                         structure=structure,
@@ -1069,7 +1081,13 @@ class Genesis:
                     scored_candidates=scored,
                 )
                 for branch in crossover_branches:
-                    candidate = scored[branch.source_candidate_index]
+                    idx = branch.source_candidate_index
+                    if idx < 0 or idx >= len(scored):
+                        logger.warning(
+                            "BranchGenome crossover branch %s has out-of-range source_candidate_index %d (scored has %d); skipping",
+                            branch.branch_id, idx, len(scored))
+                        continue
+                    candidate = scored[idx]
                     branch.metrics = assay_branch(
                         branch,
                         structure=structure,
@@ -1119,9 +1137,19 @@ class Genesis:
                     )
                     return
 
+                def _safe_branch_candidate(branch):
+                    idx = branch.source_candidate_index
+                    if idx < 0 or idx >= len(scored):
+                        logger.warning(
+                            "BranchGenome promoted branch %s has out-of-range source_candidate_index %d; skipping",
+                            branch.branch_id, idx)
+                        return None
+                    return branch_candidate_for_translation(branch, scored[idx])
+
                 translation_inputs = [
-                    branch_candidate_for_translation(branch, scored[branch.source_candidate_index])
-                    for branch in promoted_branches
+                    inp for inp in
+                    (_safe_branch_candidate(b) for b in promoted_branches)
+                    if inp is not None
                 ]
                 branchgenome_metrics = branch_arena.observability_snapshot()
                 logger.info(

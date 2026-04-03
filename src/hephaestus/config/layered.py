@@ -160,7 +160,9 @@ class LayeredConfig:
         for env_var, field_name in _ENV_MAP.items():
             raw = os.environ.get(env_var)
             if raw is not None and field_name in config_fields:
-                merged[field_name] = _coerce(field_name, raw)
+                coerced = _coerce(field_name, raw)
+                if coerced is not None:
+                    merged[field_name] = coerced
                 self._sources[field_name] = "<env>"
 
         # Validate
@@ -228,9 +230,17 @@ class LayeredConfig:
 
 
 def _coerce(field_name: str, raw: str) -> Any:
-    """Coerce a string env var value to the appropriate type."""
+    """Coerce a string env var value to the appropriate type.
+
+    Returns None if the value cannot be coerced — caller falls back
+    to the merged default.
+    """
     if field_name in _INT_FIELDS:
-        return int(raw)
+        try:
+            return int(raw)
+        except ValueError:
+            logger.warning("Invalid integer for %s: %r — using default", field_name, raw)
+            return None
     if field_name in _BOOL_FIELDS:
         return raw.lower() in ("1", "true", "yes")
     return raw

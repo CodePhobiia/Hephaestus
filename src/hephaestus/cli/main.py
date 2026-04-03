@@ -1251,7 +1251,7 @@ def init_cmd() -> None:
     heph_dir = cwd / ".hephaestus"
 
     if heph_dir.exists():
-        console.print(f"  [{AMBER}]⚠[/] .hephaestus/ already exists in {cwd}")
+        console.print(f"  [yellow]⚠[/] .hephaestus/ already exists in {cwd}")
         return
 
     heph_dir.mkdir()

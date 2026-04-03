@@ -641,6 +641,10 @@ class NoveltyVerifier:
         # Step 4.5: Apply quality penalties
         if not load_bearing_passed:
             novelty_score *= 0.5  # 50% penalty for decorative domain transfer
+            logger.info(
+                "Novelty score penalized (load-bearing failed): %.2f for %s",
+                novelty_score, translation.invention_name,
+            )
 
         # Self-reported decorative transfer penalty
         if getattr(translation, "mechanism_is_decorative", False):
@@ -650,10 +654,6 @@ class NoveltyVerifier:
                 "Known pattern: %s",
                 novelty_score, translation.invention_name,
                 getattr(translation, "known_pattern_if_decorative", "unknown"),
-            )
-            logger.info(
-                "Novelty score penalized (load-bearing failed): %.2f for %s",
-                novelty_score, translation.invention_name,
             )
 
         if guard_failures:

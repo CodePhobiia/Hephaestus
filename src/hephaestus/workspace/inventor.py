@@ -391,17 +391,16 @@ class WorkspaceInventor:
 
 def _parse_problems(text: str) -> list[IdentifiedProblem]:
     """Parse the model's JSON response into IdentifiedProblem objects."""
-    import json
     import re
+    from hephaestus.core.json_utils import loads_lenient
 
     # Extract JSON array from response
     match = re.search(r'\[.*\]', text, re.DOTALL)
     if not match:
         return []
 
-    try:
-        data = json.loads(match.group())
-    except json.JSONDecodeError:
+    data = loads_lenient(match.group(), default=None, label="workspace_problems")
+    if data is None or not isinstance(data, list):
         return []
 
     problems = []
