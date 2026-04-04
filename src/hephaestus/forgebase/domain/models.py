@@ -14,14 +14,20 @@ from hephaestus.forgebase.domain.enums import (
     DirtyTargetKind,
     EntityKind,
     FindingCategory,
+    FindingDisposition,
     FindingSeverity,
     FindingStatus,
+    InventionEpistemicState,
     JobKind,
     JobStatus,
     LinkKind,
     MergeResolution,
     MergeVerdict,
     PageType,
+    RemediationRoute,
+    RemediationStatus,
+    ResearchOutcome,
+    RouteSource,
     SourceFormat,
     SourceStatus,
     SourceTrustTier,
@@ -339,6 +345,18 @@ class LintFinding:
     suggested_action: str | None
     status: FindingStatus
     resolved_at: datetime | None = None
+    finding_fingerprint: str | None = None
+    remediation_status: RemediationStatus = RemediationStatus.OPEN
+    disposition: FindingDisposition = FindingDisposition.ACTIVE
+    remediation_route: RemediationRoute | None = None
+    route_source: RouteSource | None = None
+    detector_version: str | None = None
+    confidence: float = 1.0
+    affected_entity_ids: list[EntityId] = field(default_factory=list)
+    research_job_id: EntityId | None = None
+    repair_workbook_id: EntityId | None = None
+    repair_batch_id: EntityId | None = None
+    verification_job_id: EntityId | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -510,3 +528,127 @@ class VaultSynthesisManifest:
     candidates_resolved: int
     augmentor_calls: int
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Repair batches
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RepairBatch:
+    batch_id: EntityId
+    vault_id: EntityId
+    batch_fingerprint: str
+    batch_strategy: str
+    batch_reason: str
+    finding_ids: list[EntityId]
+    policy_version: str
+    workbook_id: EntityId | None
+    created_by_job_id: EntityId
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Research packets
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ResearchPacket:
+    packet_id: EntityId
+    finding_id: EntityId
+    vault_id: EntityId
+    augmentor_kind: str
+    outcome: ResearchOutcome
+    created_at: datetime
+
+
+@dataclass
+class ResearchPacketDiscoveredSource:
+    id: EntityId
+    packet_id: EntityId
+    url: str
+    title: str
+    summary: str
+    relevance: float
+    trust_tier: str
+
+
+@dataclass
+class ResearchPacketIngestJob:
+    packet_id: EntityId
+    ingest_job_id: EntityId
+
+
+@dataclass
+class ResearchPacketContradictionResult:
+    packet_id: EntityId
+    summary: str
+    resolution: str
+    confidence: float
+    supporting_evidence: list[str]
+
+
+@dataclass
+class ResearchPacketFreshnessResult:
+    packet_id: EntityId
+    is_stale: bool
+    reason: str
+    newer_evidence: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Lint reports
+# ---------------------------------------------------------------------------
+
+@dataclass
+class LintReport:
+    report_id: EntityId
+    vault_id: EntityId
+    workbook_id: EntityId | None
+    job_id: EntityId
+    finding_count: int
+    findings_by_category: dict[str, int]
+    findings_by_severity: dict[str, int]
+    debt_score: float
+    debt_policy_version: str
+    raw_counts: dict[str, Any]
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Invention page metadata
+# ---------------------------------------------------------------------------
+
+@dataclass
+class InventionPageMeta:
+    page_id: EntityId
+    vault_id: EntityId
+    invention_state: InventionEpistemicState
+    run_id: str
+    run_type: str
+    models_used: list[str]
+    created_at: datetime
+    updated_at: datetime
+    novelty_score: float | None = None
+    fidelity_score: float | None = None
+    domain_distance: float | None = None
+    source_domain: str | None = None
+    target_domain: str | None = None
+    pantheon_verdict: str | None = None
+    pantheon_outcome_tier: str | None = None
+    pantheon_consensus: bool | None = None
+    objection_count_open: int = 0
+    objection_count_resolved: int = 0
+    total_cost_usd: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Promotion result
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PromotionResult:
+    page_id: EntityId
+    eligible_claims: list[EntityId]
+    blocked_claims: list[tuple[EntityId, str]]
+    overall_eligible: bool

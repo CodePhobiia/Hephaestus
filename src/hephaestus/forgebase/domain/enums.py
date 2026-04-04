@@ -37,6 +37,12 @@ class LinkKind(str, Enum):
     RELATED_CONCEPT = "related_concept"
     PAGE_TO_PAGE = "page_to_page"
     SUPERSEDES = "supersedes"
+    MOTIVATED_BY = "motivated_by"
+    MAPS_TO = "maps_to"
+    DERIVES_FROM = "derives_from"
+    PRIOR_ART_OF = "prior_art_of"
+    CONSTRAINED_BY = "constrained_by"
+    CHALLENGED_BY = "challenged_by"
 
 
 class SourceFormat(str, Enum):
@@ -104,10 +110,10 @@ class FindingSeverity(str, Enum):
 
 class FindingCategory(str, Enum):
     DUPLICATE_PAGE = "duplicate_page"
-    WEAK_BACKLINK = "weak_backlink"
+    BROKEN_REFERENCE = "broken_reference"
     UNSUPPORTED_CLAIM = "unsupported_claim"
     CONTRADICTORY_CLAIM = "contradictory_claim"
-    STALE_PAGE = "stale_page"
+    STALE_EVIDENCE = "stale_evidence"
     ORPHANED_PAGE = "orphaned_page"
     MISSING_CANONICAL = "missing_canonical"
     UNRESOLVED_TODO = "unresolved_todo"
@@ -179,3 +185,59 @@ class CompilePhase(str, Enum):
     TIER2_CLUSTER = "tier2_cluster"
     TIER2_SYNTHESIZE = "tier2_synthesize"
     TIER2_GRAPH = "tier2_graph"
+
+
+class RemediationStatus(str, Enum):
+    OPEN = "open"
+    TRIAGED = "triaged"
+    RESEARCH_PENDING = "research_pending"
+    RESEARCH_COMPLETED = "research_completed"
+    REPAIR_PENDING = "repair_pending"
+    REPAIR_WORKBOOK_CREATED = "repair_workbook_created"
+    AWAITING_REVIEW = "awaiting_review"
+    MERGED_PENDING_VERIFY = "merged_pending_verify"
+    VERIFIED = "verified"
+
+
+class RemediationRoute(str, Enum):
+    REPORT_ONLY = "report_only"
+    RESEARCH_ONLY = "research_only"
+    REPAIR_ONLY = "repair_only"
+    RESEARCH_THEN_REPAIR = "research_then_repair"
+
+
+class RouteSource(str, Enum):
+    POLICY = "policy"
+    USER = "user"
+    AUTOMATION = "automation"
+    RETRIAGE = "retriage"
+
+
+class FindingDisposition(str, Enum):
+    ACTIVE = "active"
+    RESOLVED = "resolved"
+    FALSE_POSITIVE = "false_positive"
+    WONT_FIX = "wont_fix"
+    ABANDONED = "abandoned"
+
+
+class ResearchOutcome(str, Enum):
+    SUFFICIENT_FOR_REPAIR = "sufficient_for_repair"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+    NEW_SOURCES_PENDING = "new_sources_pending"
+    NO_ACTIONABLE_RESULT = "no_actionable_result"
+
+
+class InventionEpistemicState(str, Enum):
+    PROPOSED = "proposed"
+    REVIEWED = "reviewed"
+    VERIFIED = "verified"
+    CONTESTED = "contested"
+    REJECTED = "rejected"
+
+
+class ProvenanceKind(str, Enum):
+    GENERATED = "generated"
+    DERIVED = "derived"
+    EMPIRICAL = "empirical"
+    INHERITED = "inherited"
