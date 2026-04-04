@@ -10,6 +10,7 @@ import aiosqlite
 
 from hephaestus.forgebase.compiler.backend import CompilerBackend
 from hephaestus.forgebase.compiler.backends.mock_backend import MockCompilerBackend
+from hephaestus.forgebase.compiler.policy import DEFAULT_POLICY as DEFAULT_SYNTHESIS_POLICY
 from hephaestus.forgebase.compiler.tier1 import SourceCompiler
 from hephaestus.forgebase.compiler.tier2 import VaultSynthesizer
 from hephaestus.forgebase.domain.event_types import Clock, WallClock
@@ -25,7 +26,26 @@ from hephaestus.forgebase.integration.bridge import (
 from hephaestus.forgebase.integration.genesis_adapter import GenesisAdapter
 from hephaestus.forgebase.integration.pantheon_adapter import PantheonAdapter
 from hephaestus.forgebase.integration.research_adapter import ResearchAdapter
+from hephaestus.forgebase.linting.analyzer import LintAnalyzer
+from hephaestus.forgebase.linting.analyzers.mock_analyzer import MockLintAnalyzer
+from hephaestus.forgebase.linting.detectors.broken_reference import BrokenReferenceDetector
+from hephaestus.forgebase.linting.detectors.contradictory_claim import ContradictoryClaimDetector
+from hephaestus.forgebase.linting.detectors.duplicate_page import DuplicatePageDetector
+from hephaestus.forgebase.linting.detectors.missing_canonical import MissingCanonicalDetector
+from hephaestus.forgebase.linting.detectors.missing_figure import MissingFigureDetector
+from hephaestus.forgebase.linting.detectors.orphaned_page import OrphanedPageDetector
+from hephaestus.forgebase.linting.detectors.resolvable_by_search import ResolvableBySearchDetector
+from hephaestus.forgebase.linting.detectors.source_gap import SourceGapDetector
+from hephaestus.forgebase.linting.detectors.stale_evidence import StaleEvidenceDetector
+from hephaestus.forgebase.linting.detectors.unresolved_todo import UnresolvedTodoDetector
+from hephaestus.forgebase.linting.detectors.unsupported_claim import UnsupportedClaimDetector
+from hephaestus.forgebase.linting.engine import LintEngine
+from hephaestus.forgebase.linting.remediation.repair_job import RepairWorkbookJob
+from hephaestus.forgebase.linting.remediation.research_job import FindingResearchJob
+from hephaestus.forgebase.linting.remediation.verification_job import FindingVerificationJob
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
+from hephaestus.forgebase.research.augmentor import ResearchAugmentor
+from hephaestus.forgebase.research.perplexity_augmentor import NoOpAugmentor
 from hephaestus.forgebase.service.branch_service import BranchService
 from hephaestus.forgebase.service.claim_service import ClaimService
 from hephaestus.forgebase.service.compile_service import CompileService
@@ -75,6 +95,10 @@ class ForgeBase:
         source_compiler: SourceCompiler,
         vault_synthesizer: VaultSynthesizer,
         normalization: NormalizationPipeline,
+        lint_engine: LintEngine,
+        research_job: FindingResearchJob,
+        repair_job: RepairWorkbookJob,
+        verification_job: FindingVerificationJob,
         dispatcher: EventDispatcher | None = None,
         fanout: PostCommitFanout | None = None,
     ) -> None:
@@ -93,6 +117,10 @@ class ForgeBase:
         self.source_compiler = source_compiler
         self.vault_synthesizer = vault_synthesizer
         self.normalization = normalization
+        self.lint_engine = lint_engine
+        self.research_job = research_job
+        self.repair_job = repair_job
+        self.verification_job = verification_job
         self.dispatcher = dispatcher
         self.fanout = fanout
 
@@ -208,6 +236,79 @@ async def create_forgebase(
         default_actor=actor,
     )
 
+    # --- Lint analyzer ---
+    lint_analyzer: LintAnalyzer
+    if cfg.compiler_backend == "anthropic" or (
+        cfg.compiler_backend == "auto"
+        and os.environ.get("ANTHROPIC_API_KEY")
+    ):
+        try:
+            from hephaestus.forgebase.linting.analyzers.anthropic_analyzer import (
+                AnthropicLintAnalyzer,
+            )
+            lint_analyzer = AnthropicLintAnalyzer()
+        except (ImportError, Exception):
+            lint_analyzer = MockLintAnalyzer()
+    else:
+        lint_analyzer = MockLintAnalyzer()
+
+    # --- Lint detectors (all 11) ---
+    detectors = [
+        StaleEvidenceDetector(),
+        OrphanedPageDetector(),
+        DuplicatePageDetector(),
+        BrokenReferenceDetector(),
+        MissingCanonicalDetector(policy=DEFAULT_SYNTHESIS_POLICY),
+        UnresolvedTodoDetector(),
+        MissingFigureDetector(),
+        UnsupportedClaimDetector(analyzer=lint_analyzer),
+        ContradictoryClaimDetector(analyzer=lint_analyzer),
+        SourceGapDetector(analyzer=lint_analyzer),
+        ResolvableBySearchDetector(analyzer=lint_analyzer),
+    ]
+
+    # --- LintEngine ---
+    lint_engine = LintEngine(
+        uow_factory=uow_factory,
+        detectors=detectors,
+        lint_service=lint_svc,
+        default_actor=actor,
+    )
+
+    # --- Research augmentor ---
+    augmentor: ResearchAugmentor = NoOpAugmentor()
+
+    # --- Remediation jobs ---
+    research_job = FindingResearchJob(
+        uow_factory=uow_factory,
+        augmentor=augmentor,
+        lint_service=lint_svc,
+        default_actor=actor,
+    )
+
+    repair_job = RepairWorkbookJob(
+        uow_factory=uow_factory,
+        branch_service=branch_svc,
+        page_service=page_svc,
+        claim_service=claim_svc,
+        link_service=link_svc,
+        lint_service=lint_svc,
+        default_actor=actor,
+    )
+
+    # Build category-name -> detector mapping for verification
+    detector_map: dict[str, object] = {}
+    for d in detectors:
+        for cat in d.categories:
+            detector_map[cat.value] = d
+
+    verification_job = FindingVerificationJob(
+        uow_factory=uow_factory,
+        detectors=detector_map,
+        lint_service=lint_svc,
+        default_actor=actor,
+    )
+
     # --- Event infrastructure ---
     dispatcher = EventDispatcher(db=db, consumers=consumer_registry)
     fanout = PostCommitFanout()
@@ -228,6 +329,10 @@ async def create_forgebase(
         source_compiler=source_compiler,
         vault_synthesizer=vault_synthesizer,
         normalization=normalization,
+        lint_engine=lint_engine,
+        research_job=research_job,
+        repair_job=repair_job,
+        verification_job=verification_job,
         dispatcher=dispatcher,
         fanout=fanout,
     )

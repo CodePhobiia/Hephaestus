@@ -31,6 +31,11 @@ async def test_create_forgebase_default():
     assert fb.dispatcher is not None
     assert fb.fanout is not None
     assert fb.uow_factory is not None
+    # Linting components
+    assert fb.lint_engine is not None
+    assert fb.research_job is not None
+    assert fb.repair_job is not None
+    assert fb.verification_job is not None
     await fb.close()
 
 
