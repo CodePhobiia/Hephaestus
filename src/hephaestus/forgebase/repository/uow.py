@@ -17,6 +17,10 @@ from hephaestus.forgebase.repository.merge_conflict_repo import MergeConflictRep
 from hephaestus.forgebase.repository.merge_proposal_repo import MergeProposalRepository
 from hephaestus.forgebase.repository.page_repo import PageRepository
 from hephaestus.forgebase.repository.run_artifact_repo import KnowledgeRunArtifactRepository
+from hephaestus.forgebase.repository.candidate_evidence_repo import CandidateEvidenceRepository
+from hephaestus.forgebase.repository.compile_manifest_repo import CompileManifestRepository
+from hephaestus.forgebase.repository.concept_candidate_repo import ConceptCandidateRepository
+from hephaestus.forgebase.repository.dirty_marker_repo import DirtyMarkerRepository
 from hephaestus.forgebase.repository.run_ref_repo import KnowledgeRunRefRepository
 from hephaestus.forgebase.repository.source_repo import SourceRepository
 from hephaestus.forgebase.repository.vault_repo import VaultRepository
@@ -42,6 +46,10 @@ class AbstractUnitOfWork(ABC):
     findings: FindingRepository
     run_refs: KnowledgeRunRefRepository
     run_artifacts: KnowledgeRunArtifactRepository
+    concept_candidates: ConceptCandidateRepository
+    candidate_evidence: CandidateEvidenceRepository
+    compile_manifests: CompileManifestRepository
+    dirty_markers: DirtyMarkerRepository
     content: StagedContentStore
 
     # Infrastructure — injected
