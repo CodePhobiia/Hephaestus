@@ -112,6 +112,14 @@ class SqliteLinkRepository(LinkRepository):
         rows = await cursor.fetchall()
         return [self._row_to_link(r) for r in rows]
 
+    async def list_by_vault(self, vault_id: EntityId) -> list[Link]:
+        cursor = await self._db.execute(
+            "SELECT * FROM fb_links WHERE vault_id = ? ORDER BY created_at",
+            (str(vault_id),),
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_link(r) for r in rows]
+
     @staticmethod
     def _row_to_link(row: aiosqlite.Row) -> Link:
         return Link(

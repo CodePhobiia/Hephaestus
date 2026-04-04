@@ -25,3 +25,6 @@ class ClaimRepository(ABC):
 
     @abstractmethod
     async def list_by_page(self, page_id: EntityId) -> list[Claim]: ...
+
+    @abstractmethod
+    async def list_by_vault(self, vault_id: EntityId) -> list[Claim]: ...

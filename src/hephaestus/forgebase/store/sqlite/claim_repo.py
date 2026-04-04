@@ -77,6 +77,14 @@ class SqliteClaimRepository(ClaimRepository):
         rows = await cursor.fetchall()
         return [self._row_to_claim(r) for r in rows]
 
+    async def list_by_vault(self, vault_id: EntityId) -> list[Claim]:
+        cursor = await self._db.execute(
+            "SELECT * FROM fb_claims WHERE vault_id = ? ORDER BY created_at",
+            (str(vault_id),),
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_claim(r) for r in rows]
+
     @staticmethod
     def _row_to_claim(row: aiosqlite.Row) -> Claim:
         return Claim(
