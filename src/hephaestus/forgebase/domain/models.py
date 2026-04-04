@@ -8,7 +8,10 @@ from typing import Any
 from hephaestus.forgebase.domain.enums import (
     ActorType,
     BranchPurpose,
+    CandidateKind,
+    CandidateStatus,
     ClaimStatus,
+    DirtyTargetKind,
     EntityKind,
     FindingCategory,
     FindingSeverity,
@@ -30,6 +33,7 @@ from hephaestus.forgebase.domain.values import (
     BlobRef,
     ContentHash,
     EntityId,
+    EvidenceSegmentRef,
     VaultRevisionId,
     Version,
 )
@@ -398,3 +402,111 @@ class EventDelivery:
     lease_expires_at: datetime | None
     last_error: str | None
     delivered_at: datetime | None
+
+
+# ---------------------------------------------------------------------------
+# Backend call metadata
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BackendCallRecord:
+    model_name: str
+    backend_kind: str
+    prompt_id: str
+    prompt_version: str
+    schema_version: int
+    repair_invoked: bool
+    input_tokens: int
+    output_tokens: int
+    duration_ms: int
+    raw_output_ref: BlobRef | None = None
+
+
+# ---------------------------------------------------------------------------
+# Concept candidates
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ConceptCandidate:
+    candidate_id: EntityId
+    vault_id: EntityId
+    workbook_id: EntityId | None
+    source_id: EntityId
+    source_version: Version
+    source_compile_job_id: EntityId
+    name: str
+    normalized_name: str
+    aliases: list[str]
+    candidate_kind: CandidateKind
+    confidence: float
+    salience: float
+    status: CandidateStatus
+    resolved_page_id: EntityId | None
+    compiler_policy_version: str
+    created_at: datetime
+
+
+@dataclass
+class ConceptCandidateEvidence:
+    evidence_id: EntityId
+    candidate_id: EntityId
+    segment_ref: EvidenceSegmentRef
+    role: str
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Dirty tracking
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SynthesisDirtyMarker:
+    marker_id: EntityId
+    vault_id: EntityId
+    workbook_id: EntityId | None
+    target_kind: DirtyTargetKind
+    target_key: str
+    first_dirtied_at: datetime
+    last_dirtied_at: datetime
+    times_dirtied: int
+    last_dirtied_by_source: EntityId
+    last_dirtied_by_job: EntityId
+    consumed_by_job: EntityId | None
+    consumed_at: datetime | None
+
+
+# ---------------------------------------------------------------------------
+# Compile manifests
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SourceCompileManifest:
+    manifest_id: EntityId
+    vault_id: EntityId
+    workbook_id: EntityId | None
+    source_id: EntityId
+    source_version: Version
+    job_id: EntityId
+    compiler_policy_version: str
+    prompt_versions: dict[str, str]
+    backend_calls: list[BackendCallRecord]
+    claim_count: int
+    concept_count: int
+    relationship_count: int
+    source_content_hash: ContentHash
+    created_at: datetime
+
+
+@dataclass
+class VaultSynthesisManifest:
+    manifest_id: EntityId
+    vault_id: EntityId
+    workbook_id: EntityId | None
+    job_id: EntityId
+    base_revision: VaultRevisionId
+    synthesis_policy_version: str
+    prompt_versions: dict[str, str]
+    backend_calls: list[BackendCallRecord]
+    candidates_resolved: int
+    augmentor_calls: int
+    created_at: datetime

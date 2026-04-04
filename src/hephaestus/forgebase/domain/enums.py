@@ -147,3 +147,35 @@ class ActorType(str, Enum):
     USER = "user"
     AGENT = "agent"
     RUN = "run"
+
+
+class CandidateKind(str, Enum):
+    CONCEPT = "concept"
+    ENTITY = "entity"
+    MECHANISM = "mechanism"
+    TERM = "term"
+
+
+class CandidateStatus(str, Enum):
+    ACTIVE = "active"
+    CLUSTERED = "clustered"
+    PROMOTED = "promoted"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
+
+
+class DirtyTargetKind(str, Enum):
+    CONCEPT = "concept"
+    MECHANISM = "mechanism"
+    COMPARISON = "comparison"
+    TIMELINE = "timeline"
+    OPEN_QUESTION = "open_question"
+    SOURCE_INDEX = "source_index"
+
+
+class CompilePhase(str, Enum):
+    TIER1_EXTRACTION = "tier1_extraction"
+    TIER1_PERSIST = "tier1_persist"
+    TIER2_CLUSTER = "tier2_cluster"
+    TIER2_SYNTHESIZE = "tier2_synthesize"
+    TIER2_GRAPH = "tier2_graph"

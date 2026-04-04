@@ -268,3 +268,139 @@ class TestDomainEvent:
             payload={"source_id": "source_01HXYZ12345678901234ABCDEF"},
         )
         assert ev.event_type == "source.ingested"
+
+
+from hephaestus.forgebase.domain.enums import (
+    CandidateKind, CandidateStatus, DirtyTargetKind,
+)
+from hephaestus.forgebase.domain.models import (
+    BackendCallRecord,
+    ConceptCandidate,
+    ConceptCandidateEvidence,
+    SourceCompileManifest,
+    SynthesisDirtyMarker,
+    VaultSynthesisManifest,
+)
+from hephaestus.forgebase.domain.values import EvidenceSegmentRef
+
+
+class TestBackendCallRecord:
+    def test_create(self):
+        rec = BackendCallRecord(
+            model_name="claude-sonnet-4-5",
+            backend_kind="anthropic",
+            prompt_id="claim_extraction",
+            prompt_version="1.0.0",
+            schema_version=1,
+            repair_invoked=False,
+            input_tokens=500,
+            output_tokens=200,
+            duration_ms=1200,
+            raw_output_ref=None,
+        )
+        assert rec.model_name == "claude-sonnet-4-5"
+        assert not rec.repair_invoked
+
+
+class TestConceptCandidate:
+    def test_create(self):
+        cc = ConceptCandidate(
+            candidate_id=_eid("cand"),
+            vault_id=_eid("vault"),
+            workbook_id=None,
+            source_id=_eid("source"),
+            source_version=Version(1),
+            source_compile_job_id=_eid("job"),
+            name="Solid Electrolyte Interphase",
+            normalized_name="solid electrolyte interphase",
+            aliases=["SEI", "SEI layer"],
+            candidate_kind=CandidateKind.MECHANISM,
+            confidence=0.92,
+            salience=0.85,
+            status=CandidateStatus.ACTIVE,
+            resolved_page_id=None,
+            compiler_policy_version="1.0.0",
+            created_at=_now(),
+        )
+        assert cc.status == CandidateStatus.ACTIVE
+        assert cc.normalized_name == "solid electrolyte interphase"
+
+
+class TestConceptCandidateEvidence:
+    def test_create(self):
+        ev = ConceptCandidateEvidence(
+            evidence_id=_eid("cevd"),
+            candidate_id=_eid("cand"),
+            segment_ref=EvidenceSegmentRef(
+                source_id=_eid("source"),
+                source_version=Version(1),
+                segment_start=100,
+                segment_end=300,
+                section_key="3.2",
+                preview_text="The SEI layer...",
+            ),
+            role="DEFINITION",
+            created_at=_now(),
+        )
+        assert ev.role == "DEFINITION"
+        assert ev.segment_ref.segment_start == 100
+
+
+class TestSynthesisDirtyMarker:
+    def test_create(self):
+        dm = SynthesisDirtyMarker(
+            marker_id=_eid("dirty"),
+            vault_id=_eid("vault"),
+            workbook_id=None,
+            target_kind=DirtyTargetKind.CONCEPT,
+            target_key="solid electrolyte interphase",
+            first_dirtied_at=_now(),
+            last_dirtied_at=_now(),
+            times_dirtied=1,
+            last_dirtied_by_source=_eid("source"),
+            last_dirtied_by_job=_eid("job"),
+            consumed_by_job=None,
+            consumed_at=None,
+        )
+        assert dm.times_dirtied == 1
+        assert dm.consumed_by_job is None
+
+
+class TestSourceCompileManifest:
+    def test_create(self):
+        m = SourceCompileManifest(
+            manifest_id=_eid("mfst"),
+            vault_id=_eid("vault"),
+            workbook_id=None,
+            source_id=_eid("source"),
+            source_version=Version(1),
+            job_id=_eid("job"),
+            compiler_policy_version="1.0.0",
+            prompt_versions={"claim_extraction": "1.0.0", "concept_extraction": "1.0.0"},
+            backend_calls=[],
+            claim_count=5,
+            concept_count=3,
+            relationship_count=2,
+            source_content_hash=ContentHash(sha256="a" * 64),
+            created_at=_now(),
+        )
+        assert m.claim_count == 5
+
+
+class TestVaultSynthesisManifest:
+    def test_create(self):
+        m = VaultSynthesisManifest(
+            manifest_id=_eid("mfst"),
+            vault_id=_eid("vault"),
+            workbook_id=None,
+            job_id=_eid("job"),
+            base_revision=_rev(),
+            synthesis_policy_version="1.0.0",
+            prompt_versions={"synthesis": "1.0.0"},
+            backend_calls=[],
+            candidates_resolved=10,
+            augmentor_calls=2,
+            created_at=_now(),
+        )
+        assert m.candidates_resolved == 10
+        assert m.augmentor_calls == 2

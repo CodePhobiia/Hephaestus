@@ -102,3 +102,56 @@ class TestActorRef:
     def test_system_actor(self):
         actor = ActorRef.system()
         assert actor.actor_type == ActorType.SYSTEM
+
+
+from hephaestus.forgebase.domain.values import EvidenceSegmentRef
+from hephaestus.forgebase.domain.enums import (
+    CandidateKind, CandidateStatus, DirtyTargetKind, CompilePhase,
+)
+
+
+class TestEvidenceSegmentRef:
+    def test_create(self):
+        ref = EvidenceSegmentRef(
+            source_id=EntityId("source_01HXYZ12345678901234ABCDEF"),
+            source_version=Version(1),
+            segment_start=100,
+            segment_end=350,
+            section_key="3.2",
+            preview_text="The SEI layer forms during initial cycling...",
+        )
+        assert ref.segment_start == 100
+        assert ref.segment_end == 350
+        assert ref.section_key == "3.2"
+
+    def test_length(self):
+        ref = EvidenceSegmentRef(
+            source_id=EntityId("source_01HXYZ12345678901234ABCDEF"),
+            source_version=Version(1),
+            segment_start=0,
+            segment_end=200,
+            section_key=None,
+            preview_text="Preview",
+        )
+        assert ref.length == 200
+
+
+class TestNewEnums:
+    def test_candidate_kind_values(self):
+        assert CandidateKind.CONCEPT == "concept"
+        assert CandidateKind.ENTITY == "entity"
+        assert CandidateKind.MECHANISM == "mechanism"
+        assert CandidateKind.TERM == "term"
+
+    def test_candidate_status_values(self):
+        assert CandidateStatus.ACTIVE == "active"
+        assert CandidateStatus.SUPERSEDED == "superseded"
+        assert CandidateStatus.PROMOTED == "promoted"
+
+    def test_dirty_target_kind_values(self):
+        assert DirtyTargetKind.CONCEPT == "concept"
+        assert DirtyTargetKind.SOURCE_INDEX == "source_index"
+
+    def test_compile_phase_values(self):
+        assert CompilePhase.TIER1_EXTRACTION == "tier1_extraction"
+        assert CompilePhase.TIER2_SYNTHESIZE == "tier2_synthesize"

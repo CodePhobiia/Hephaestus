@@ -127,3 +127,19 @@ class ActorRef:
     @classmethod
     def system(cls) -> Self:
         return cls(actor_type=ActorType.SYSTEM, actor_id="system")
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceSegmentRef:
+    """Stable reference into a normalized source artifact."""
+
+    source_id: EntityId
+    source_version: Version
+    segment_start: int
+    segment_end: int
+    section_key: str | None
+    preview_text: str
+
+    @property
+    def length(self) -> int:
+        return self.segment_end - self.segment_start
