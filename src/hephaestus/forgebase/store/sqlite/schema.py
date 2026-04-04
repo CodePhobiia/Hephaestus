@@ -353,6 +353,118 @@ CREATE TABLE IF NOT EXISTS fb_event_deliveries (
     PRIMARY KEY (event_id, consumer_name)
 );
 CREATE INDEX IF NOT EXISTS idx_fb_deliveries_pending ON fb_event_deliveries (consumer_name, status, next_attempt_at);
+
+-- Concept candidates
+CREATE TABLE IF NOT EXISTS fb_concept_candidates (
+    candidate_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    workbook_id TEXT,
+    source_id TEXT NOT NULL,
+    source_version INTEGER NOT NULL,
+    source_compile_job_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+    aliases TEXT NOT NULL DEFAULT '[]',
+    candidate_kind TEXT NOT NULL,
+    confidence REAL NOT NULL,
+    salience REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    resolved_page_id TEXT,
+    compiler_policy_version TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_candidates_vault ON fb_concept_candidates (vault_id, status);
+CREATE INDEX IF NOT EXISTS idx_fb_candidates_source ON fb_concept_candidates (source_id, source_version);
+CREATE INDEX IF NOT EXISTS idx_fb_candidates_name ON fb_concept_candidates (vault_id, normalized_name);
+
+-- Concept candidate evidence
+CREATE TABLE IF NOT EXISTS fb_candidate_evidence (
+    evidence_id TEXT PRIMARY KEY,
+    candidate_id TEXT NOT NULL,
+    seg_source_id TEXT NOT NULL,
+    seg_source_version INTEGER NOT NULL,
+    seg_start INTEGER NOT NULL,
+    seg_end INTEGER NOT NULL,
+    seg_section_key TEXT,
+    seg_preview_text TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_cand_evidence ON fb_candidate_evidence (candidate_id);
+
+-- Source compile manifests
+CREATE TABLE IF NOT EXISTS fb_source_compile_manifests (
+    manifest_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    workbook_id TEXT,
+    source_id TEXT NOT NULL,
+    source_version INTEGER NOT NULL,
+    job_id TEXT NOT NULL,
+    compiler_policy_version TEXT NOT NULL,
+    prompt_versions TEXT NOT NULL DEFAULT '{}',
+    backend_calls TEXT NOT NULL DEFAULT '[]',
+    claim_count INTEGER NOT NULL DEFAULT 0,
+    concept_count INTEGER NOT NULL DEFAULT 0,
+    relationship_count INTEGER NOT NULL DEFAULT 0,
+    source_content_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_src_manifest ON fb_source_compile_manifests (source_id, source_version);
+
+-- Vault synthesis manifests
+CREATE TABLE IF NOT EXISTS fb_vault_synthesis_manifests (
+    manifest_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    workbook_id TEXT,
+    job_id TEXT NOT NULL,
+    base_revision TEXT NOT NULL,
+    synthesis_policy_version TEXT NOT NULL,
+    prompt_versions TEXT NOT NULL DEFAULT '{}',
+    backend_calls TEXT NOT NULL DEFAULT '[]',
+    candidates_resolved INTEGER NOT NULL DEFAULT 0,
+    augmentor_calls INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+-- Synthesis manifest join tables
+CREATE TABLE IF NOT EXISTS fb_synthesis_source_manifests (
+    synthesis_manifest_id TEXT NOT NULL,
+    source_manifest_id TEXT NOT NULL,
+    PRIMARY KEY (synthesis_manifest_id, source_manifest_id)
+);
+CREATE TABLE IF NOT EXISTS fb_synthesis_pages_created (
+    synthesis_manifest_id TEXT NOT NULL,
+    page_id TEXT NOT NULL,
+    PRIMARY KEY (synthesis_manifest_id, page_id)
+);
+CREATE TABLE IF NOT EXISTS fb_synthesis_pages_updated (
+    synthesis_manifest_id TEXT NOT NULL,
+    page_id TEXT NOT NULL,
+    PRIMARY KEY (synthesis_manifest_id, page_id)
+);
+CREATE TABLE IF NOT EXISTS fb_synthesis_dirty_consumed (
+    synthesis_manifest_id TEXT NOT NULL,
+    marker_id TEXT NOT NULL,
+    PRIMARY KEY (synthesis_manifest_id, marker_id)
+);
+
+-- Synthesis dirty markers (upsert target)
+CREATE TABLE IF NOT EXISTS fb_synthesis_dirty_markers (
+    marker_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    workbook_id TEXT,
+    target_kind TEXT NOT NULL,
+    target_key TEXT NOT NULL,
+    first_dirtied_at TEXT NOT NULL,
+    last_dirtied_at TEXT NOT NULL,
+    times_dirtied INTEGER NOT NULL DEFAULT 1,
+    last_dirtied_by_source TEXT NOT NULL,
+    last_dirtied_by_job TEXT NOT NULL,
+    consumed_by_job TEXT,
+    consumed_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_dirty_unique ON fb_synthesis_dirty_markers (vault_id, COALESCE(workbook_id, ''), target_kind, target_key);
+CREATE INDEX IF NOT EXISTS idx_fb_dirty_unconsumed ON fb_synthesis_dirty_markers (vault_id, consumed_by_job) WHERE consumed_by_job IS NULL;
 """
 
 

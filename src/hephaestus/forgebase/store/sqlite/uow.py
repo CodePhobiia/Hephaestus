@@ -7,7 +7,11 @@ from hephaestus.forgebase.domain.event_types import Clock, EventFactory
 from hephaestus.forgebase.repository.content_store import StagedContentStore
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
 from hephaestus.forgebase.service.id_generator import IdGenerator
+from hephaestus.forgebase.store.sqlite.candidate_evidence_repo import SqliteCandidateEvidenceRepository
 from hephaestus.forgebase.store.sqlite.claim_derivation_repo import SqliteClaimDerivationRepository
+from hephaestus.forgebase.store.sqlite.compile_manifest_repo import SqliteCompileManifestRepository
+from hephaestus.forgebase.store.sqlite.concept_candidate_repo import SqliteConceptCandidateRepository
+from hephaestus.forgebase.store.sqlite.dirty_marker_repo import SqliteDirtyMarkerRepository
 from hephaestus.forgebase.store.sqlite.claim_repo import SqliteClaimRepository
 from hephaestus.forgebase.store.sqlite.claim_support_repo import SqliteClaimSupportRepository
 from hephaestus.forgebase.store.sqlite.event_repo import SqliteEventRepository
@@ -59,6 +63,10 @@ class SqliteUnitOfWork(AbstractUnitOfWork):
         self.findings = SqliteFindingRepository(db)
         self.run_refs = SqliteRunRefRepository(db)
         self.run_artifacts = SqliteRunArtifactRepository(db)
+        self.concept_candidates = SqliteConceptCandidateRepository(db)
+        self.candidate_evidence = SqliteCandidateEvidenceRepository(db)
+        self.compile_manifests = SqliteCompileManifestRepository(db)
+        self.dirty_markers = SqliteDirtyMarkerRepository(db)
 
     async def begin(self) -> None:
         await self._db.execute("BEGIN")
