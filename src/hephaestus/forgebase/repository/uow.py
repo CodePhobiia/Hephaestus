@@ -13,14 +13,18 @@ from hephaestus.forgebase.repository.content_store import StagedContentStore
 from hephaestus.forgebase.repository.finding_repo import FindingRepository
 from hephaestus.forgebase.repository.job_repo import JobRepository
 from hephaestus.forgebase.repository.link_repo import LinkRepository
+from hephaestus.forgebase.repository.lint_report_repo import LintReportRepository
 from hephaestus.forgebase.repository.merge_conflict_repo import MergeConflictRepository
 from hephaestus.forgebase.repository.merge_proposal_repo import MergeProposalRepository
 from hephaestus.forgebase.repository.page_repo import PageRepository
+from hephaestus.forgebase.repository.repair_batch_repo import RepairBatchRepository
+from hephaestus.forgebase.repository.research_packet_repo import ResearchPacketRepository
 from hephaestus.forgebase.repository.run_artifact_repo import KnowledgeRunArtifactRepository
 from hephaestus.forgebase.repository.candidate_evidence_repo import CandidateEvidenceRepository
 from hephaestus.forgebase.repository.compile_manifest_repo import CompileManifestRepository
 from hephaestus.forgebase.repository.concept_candidate_repo import ConceptCandidateRepository
 from hephaestus.forgebase.repository.dirty_marker_repo import DirtyMarkerRepository
+from hephaestus.forgebase.repository.invention_meta_repo import InventionPageMetaRepository
 from hephaestus.forgebase.repository.run_ref_repo import KnowledgeRunRefRepository
 from hephaestus.forgebase.repository.source_repo import SourceRepository
 from hephaestus.forgebase.repository.vault_repo import VaultRepository
@@ -44,12 +48,16 @@ class AbstractUnitOfWork(ABC):
     merge_conflicts: MergeConflictRepository
     jobs: JobRepository
     findings: FindingRepository
+    research_packets: ResearchPacketRepository
+    repair_batches: RepairBatchRepository
+    lint_reports: LintReportRepository
     run_refs: KnowledgeRunRefRepository
     run_artifacts: KnowledgeRunArtifactRepository
     concept_candidates: ConceptCandidateRepository
     candidate_evidence: CandidateEvidenceRepository
     compile_manifests: CompileManifestRepository
     dirty_markers: DirtyMarkerRepository
+    invention_meta: InventionPageMetaRepository
     content: StagedContentStore
 
     # Infrastructure — injected

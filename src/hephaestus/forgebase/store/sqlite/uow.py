@@ -12,15 +12,19 @@ from hephaestus.forgebase.store.sqlite.claim_derivation_repo import SqliteClaimD
 from hephaestus.forgebase.store.sqlite.compile_manifest_repo import SqliteCompileManifestRepository
 from hephaestus.forgebase.store.sqlite.concept_candidate_repo import SqliteConceptCandidateRepository
 from hephaestus.forgebase.store.sqlite.dirty_marker_repo import SqliteDirtyMarkerRepository
+from hephaestus.forgebase.store.sqlite.invention_meta_repo import SqliteInventionPageMetaRepository
 from hephaestus.forgebase.store.sqlite.claim_repo import SqliteClaimRepository
 from hephaestus.forgebase.store.sqlite.claim_support_repo import SqliteClaimSupportRepository
 from hephaestus.forgebase.store.sqlite.event_repo import SqliteEventRepository
 from hephaestus.forgebase.store.sqlite.finding_repo import SqliteFindingRepository
 from hephaestus.forgebase.store.sqlite.job_repo import SqliteJobRepository
 from hephaestus.forgebase.store.sqlite.link_repo import SqliteLinkRepository
+from hephaestus.forgebase.store.sqlite.lint_report_repo import SqliteLintReportRepository
 from hephaestus.forgebase.store.sqlite.merge_conflict_repo import SqliteMergeConflictRepository
 from hephaestus.forgebase.store.sqlite.merge_proposal_repo import SqliteMergeProposalRepository
 from hephaestus.forgebase.store.sqlite.page_repo import SqlitePageRepository
+from hephaestus.forgebase.store.sqlite.repair_batch_repo import SqliteRepairBatchRepository
+from hephaestus.forgebase.store.sqlite.research_packet_repo import SqliteResearchPacketRepository
 from hephaestus.forgebase.store.sqlite.run_artifact_repo import SqliteRunArtifactRepository
 from hephaestus.forgebase.store.sqlite.run_ref_repo import SqliteRunRefRepository
 from hephaestus.forgebase.store.sqlite.source_repo import SqliteSourceRepository
@@ -61,12 +65,16 @@ class SqliteUnitOfWork(AbstractUnitOfWork):
         self.merge_conflicts = SqliteMergeConflictRepository(db)
         self.jobs = SqliteJobRepository(db)
         self.findings = SqliteFindingRepository(db)
+        self.research_packets = SqliteResearchPacketRepository(db)
+        self.repair_batches = SqliteRepairBatchRepository(db)
+        self.lint_reports = SqliteLintReportRepository(db)
         self.run_refs = SqliteRunRefRepository(db)
         self.run_artifacts = SqliteRunArtifactRepository(db)
         self.concept_candidates = SqliteConceptCandidateRepository(db)
         self.candidate_evidence = SqliteCandidateEvidenceRepository(db)
         self.compile_manifests = SqliteCompileManifestRepository(db)
         self.dirty_markers = SqliteDirtyMarkerRepository(db)
+        self.invention_meta = SqliteInventionPageMetaRepository(db)
 
     async def begin(self) -> None:
         await self._db.execute("BEGIN")

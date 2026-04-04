@@ -292,8 +292,99 @@ CREATE TABLE IF NOT EXISTS fb_lint_findings (
     description TEXT NOT NULL,
     suggested_action TEXT,
     status TEXT NOT NULL DEFAULT 'open',
-    resolved_at TEXT
+    resolved_at TEXT,
+    finding_fingerprint TEXT,
+    remediation_status TEXT NOT NULL DEFAULT 'open',
+    disposition TEXT NOT NULL DEFAULT 'active',
+    remediation_route TEXT,
+    route_source TEXT,
+    detector_version TEXT,
+    confidence REAL NOT NULL DEFAULT 1.0,
+    affected_entity_ids TEXT NOT NULL DEFAULT '[]',
+    research_job_id TEXT,
+    repair_workbook_id TEXT,
+    repair_batch_id TEXT,
+    verification_job_id TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_fb_findings_vault_fingerprint ON fb_lint_findings (vault_id, finding_fingerprint);
+CREATE INDEX IF NOT EXISTS idx_fb_findings_vault_disposition ON fb_lint_findings (vault_id, disposition);
+CREATE INDEX IF NOT EXISTS idx_fb_findings_vault_remediation ON fb_lint_findings (vault_id, remediation_status);
+
+-- Repair batches
+CREATE TABLE IF NOT EXISTS fb_repair_batches (
+    batch_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    batch_fingerprint TEXT NOT NULL,
+    batch_strategy TEXT NOT NULL,
+    batch_reason TEXT NOT NULL,
+    finding_ids TEXT NOT NULL DEFAULT '[]',
+    policy_version TEXT NOT NULL,
+    workbook_id TEXT,
+    created_by_job_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_repair_batches_vault ON fb_repair_batches (vault_id);
+CREATE INDEX IF NOT EXISTS idx_fb_repair_batches_fp ON fb_repair_batches (vault_id, batch_fingerprint);
+
+-- Research packets
+CREATE TABLE IF NOT EXISTS fb_research_packets (
+    packet_id TEXT PRIMARY KEY,
+    finding_id TEXT NOT NULL,
+    vault_id TEXT NOT NULL,
+    augmentor_kind TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_research_packets_finding ON fb_research_packets (finding_id);
+
+CREATE TABLE IF NOT EXISTS fb_research_packet_sources (
+    id TEXT PRIMARY KEY,
+    packet_id TEXT NOT NULL,
+    url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL DEFAULT '',
+    relevance REAL NOT NULL DEFAULT 0.0,
+    trust_tier TEXT NOT NULL DEFAULT 'standard'
+);
+CREATE INDEX IF NOT EXISTS idx_fb_rp_sources_packet ON fb_research_packet_sources (packet_id);
+
+CREATE TABLE IF NOT EXISTS fb_research_packet_ingest_jobs (
+    packet_id TEXT NOT NULL,
+    ingest_job_id TEXT NOT NULL,
+    PRIMARY KEY (packet_id, ingest_job_id)
+);
+
+CREATE TABLE IF NOT EXISTS fb_research_packet_contradiction_results (
+    packet_id TEXT PRIMARY KEY,
+    summary TEXT NOT NULL,
+    resolution TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0.0,
+    supporting_evidence TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS fb_research_packet_freshness_results (
+    packet_id TEXT PRIMARY KEY,
+    is_stale INTEGER NOT NULL DEFAULT 0,
+    reason TEXT NOT NULL DEFAULT '',
+    newer_evidence TEXT NOT NULL DEFAULT '[]'
+);
+
+-- Lint reports
+CREATE TABLE IF NOT EXISTS fb_lint_reports (
+    report_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    workbook_id TEXT,
+    job_id TEXT NOT NULL,
+    finding_count INTEGER NOT NULL DEFAULT 0,
+    findings_by_category TEXT NOT NULL DEFAULT '{}',
+    findings_by_severity TEXT NOT NULL DEFAULT '{}',
+    debt_score REAL NOT NULL DEFAULT 0.0,
+    debt_policy_version TEXT NOT NULL,
+    raw_counts TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_lint_reports_vault ON fb_lint_reports (vault_id);
+CREATE INDEX IF NOT EXISTS idx_fb_lint_reports_job ON fb_lint_reports (job_id);
 
 -- Run integration
 CREATE TABLE IF NOT EXISTS fb_run_refs (
@@ -447,6 +538,30 @@ CREATE TABLE IF NOT EXISTS fb_synthesis_dirty_consumed (
     marker_id TEXT NOT NULL,
     PRIMARY KEY (synthesis_manifest_id, marker_id)
 );
+
+-- Invention page metadata
+CREATE TABLE IF NOT EXISTS fb_invention_page_meta (
+    page_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    invention_state TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    run_type TEXT NOT NULL,
+    models_used TEXT NOT NULL DEFAULT '[]',
+    novelty_score REAL,
+    fidelity_score REAL,
+    domain_distance REAL,
+    source_domain TEXT,
+    target_domain TEXT,
+    pantheon_verdict TEXT,
+    pantheon_outcome_tier TEXT,
+    pantheon_consensus INTEGER,
+    objection_count_open INTEGER NOT NULL DEFAULT 0,
+    objection_count_resolved INTEGER NOT NULL DEFAULT 0,
+    total_cost_usd REAL NOT NULL DEFAULT 0.0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_invention_meta_vault_state ON fb_invention_page_meta (vault_id, invention_state);
 
 -- Synthesis dirty markers (upsert target)
 CREATE TABLE IF NOT EXISTS fb_synthesis_dirty_markers (
