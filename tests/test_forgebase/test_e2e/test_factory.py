@@ -25,6 +25,9 @@ async def test_create_forgebase_default():
     assert fb.lint is not None
     assert fb.run_integration is not None
     assert fb.bridge is not None
+    assert fb.source_compiler is not None
+    assert fb.vault_synthesizer is not None
+    assert fb.normalization is not None
     assert fb.dispatcher is not None
     assert fb.fanout is not None
     assert fb.uow_factory is not None

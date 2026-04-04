@@ -2,16 +2,22 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 import aiosqlite
 
+from hephaestus.forgebase.compiler.backend import CompilerBackend
+from hephaestus.forgebase.compiler.backends.mock_backend import MockCompilerBackend
+from hephaestus.forgebase.compiler.tier1 import SourceCompiler
+from hephaestus.forgebase.compiler.tier2 import VaultSynthesizer
 from hephaestus.forgebase.domain.event_types import Clock, WallClock
 from hephaestus.forgebase.domain.values import ActorRef
 from hephaestus.forgebase.events.consumers import ConsumerRegistry
 from hephaestus.forgebase.events.dispatcher import EventDispatcher
 from hephaestus.forgebase.events.fanout import PostCommitFanout
+from hephaestus.forgebase.ingestion.normalization import NormalizationPipeline
 from hephaestus.forgebase.integration.bridge import (
     DefaultForgeBaseBridge,
     ForgeBaseIntegrationBridge,
@@ -46,6 +52,7 @@ class ForgeBaseConfig:
     sqlite_path: str = ""         # path to SQLite database (empty = in-memory)
     default_actor: ActorRef = field(default_factory=ActorRef.system)
     consumer_names: list[str] = field(default_factory=list)
+    compiler_backend: str = "mock"  # "mock" or "anthropic"
 
 
 class ForgeBase:
@@ -65,6 +72,9 @@ class ForgeBase:
         lint_service: LintService,
         run_integration_service: RunIntegrationService,
         bridge: ForgeBaseIntegrationBridge,
+        source_compiler: SourceCompiler,
+        vault_synthesizer: VaultSynthesizer,
+        normalization: NormalizationPipeline,
         dispatcher: EventDispatcher | None = None,
         fanout: PostCommitFanout | None = None,
     ) -> None:
@@ -80,6 +90,9 @@ class ForgeBase:
         self.lint = lint_service
         self.run_integration = run_integration_service
         self.bridge = bridge
+        self.source_compiler = source_compiler
+        self.vault_synthesizer = vault_synthesizer
+        self.normalization = normalization
         self.dispatcher = dispatcher
         self.fanout = fanout
 
@@ -169,6 +182,32 @@ async def create_forgebase(
         research_adapter=research_adapter,
     )
 
+    # --- Compiler infrastructure ---
+    normalization = NormalizationPipeline()
+
+    compiler_backend: CompilerBackend
+    if cfg.compiler_backend == "anthropic" or (
+        cfg.compiler_backend == "auto"
+        and os.environ.get("ANTHROPIC_API_KEY")
+    ):
+        from hephaestus.forgebase.compiler.backends.anthropic_backend import (
+            AnthropicCompilerBackend,
+        )
+        compiler_backend = AnthropicCompilerBackend()
+    else:
+        compiler_backend = MockCompilerBackend()
+
+    source_compiler = SourceCompiler(
+        uow_factory=uow_factory,
+        backend=compiler_backend,
+        default_actor=actor,
+    )
+    vault_synthesizer = VaultSynthesizer(
+        uow_factory=uow_factory,
+        backend=compiler_backend,
+        default_actor=actor,
+    )
+
     # --- Event infrastructure ---
     dispatcher = EventDispatcher(db=db, consumers=consumer_registry)
     fanout = PostCommitFanout()
@@ -186,6 +225,9 @@ async def create_forgebase(
         lint_service=lint_svc,
         run_integration_service=run_int_svc,
         bridge=bridge,
+        source_compiler=source_compiler,
+        vault_synthesizer=vault_synthesizer,
+        normalization=normalization,
         dispatcher=dispatcher,
         fanout=fanout,
     )
