@@ -216,6 +216,13 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     help="Number of benchmark cases to generate when --benchmark-corpus is used.",
 )
 @click.option(
+    "--agentic/--no-agentic",
+    "use_agentic",
+    default=True,
+    show_default=True,
+    help="Enable agentic mode: agents get tools to explore the codebase and extended thinking.",
+)
+@click.option(
     "--olympus/--no-olympus",
     "use_olympus",
     default=True,
@@ -269,6 +276,7 @@ def cli(
     exploration_mode: str,
     pressure_translate: bool,
     pressure_search_mode: str,
+    use_agentic: bool,
     use_olympus: bool,
 ) -> None:
     """Main CLI entry point."""
@@ -501,6 +509,7 @@ def cli(
                     pantheon_hermes_model=pantheon_hermes_model,
                     pantheon_apollo_model=pantheon_apollo_model,
                     use_olympus=use_olympus,
+                    use_agentic=use_agentic,
                 )
             )
     except KeyboardInterrupt:
@@ -553,6 +562,7 @@ async def _run_genesis(
     pantheon_hermes_model: str | None = None,
     pantheon_apollo_model: str | None = None,
     use_olympus: bool = True,
+    use_agentic: bool = True,
 ) -> None:
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
@@ -587,6 +597,7 @@ async def _run_genesis(
         pantheon_apollo_model=pantheon_apollo_model,
     )
     config.olympus_enabled = use_olympus
+    config.agentic_mode = use_agentic
 
     # Initialize ForgeBase if transliminality is enabled
     _fb = None

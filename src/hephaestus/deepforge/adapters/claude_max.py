@@ -62,6 +62,7 @@ CLAUDE_MAX_MODELS: dict[str, ModelConfig] = {
             ModelCapability.PREFILL,
             ModelCapability.STREAMING,
             ModelCapability.FUNCTION_CALLING,
+            ModelCapability.EXTENDED_THINKING,
         },
     ),
     "claude-opus-4-6": ModelConfig(
@@ -75,6 +76,7 @@ CLAUDE_MAX_MODELS: dict[str, ModelConfig] = {
             ModelCapability.PREFILL,
             ModelCapability.STREAMING,
             ModelCapability.FUNCTION_CALLING,
+            ModelCapability.EXTENDED_THINKING,
         },
     ),
     "claude-haiku-4-5": ModelConfig(
@@ -306,22 +308,51 @@ class ClaudeMaxAdapter(BaseAdapter):
 
         Parameters mirror :meth:`generate`, except *messages* is a fully formed
         Anthropic conversation history and *tools* is the native tool schema.
+
+        Supports extended thinking via ``thinking`` kwarg::
+
+            await adapter.generate_with_tools(
+                messages, tools=tools,
+                thinking={"type": "enabled", "budget_tokens": 16000},
+            )
+
+        When thinking is enabled, temperature is forced to 1.0 per Anthropic
+        API requirements.
         """
         self._reset_cancel()
 
         t_start = time.monotonic()
 
-        response = await self._with_retry(
-            lambda: self._client.messages.create(
-                model=self.model_name,
-                system=self._build_system(system),
-                messages=messages,
-                tools=tools or [],
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=False,
-                **kwargs,
+        # Extended thinking requires temperature=1 and higher max_tokens
+        thinking = kwargs.pop("thinking", None)
+        create_kwargs: dict[str, Any] = {
+            "model": self.model_name,
+            "system": self._build_system(system),
+            "messages": messages,
+            "tools": tools or [],
+            "stream": False,
+            **kwargs,
+        }
+
+        if thinking and thinking.get("type") == "enabled":
+            budget = thinking.get("budget_tokens", 16_000)
+            create_kwargs["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": budget,
+            }
+            # Anthropic requires temperature=1 for thinking
+            create_kwargs["temperature"] = 1.0
+            # max_tokens must be >= budget + output
+            create_kwargs["max_tokens"] = max(max_tokens, budget + 4096)
+            self._logger.info(
+                "Extended thinking enabled | budget=%d tokens", budget
             )
+        else:
+            create_kwargs["temperature"] = temperature
+            create_kwargs["max_tokens"] = max_tokens
+
+        response = await self._with_retry(
+            lambda: self._client.messages.create(**create_kwargs)
         )
         elapsed = time.monotonic() - t_start
 

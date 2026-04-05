@@ -56,6 +56,7 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_PANTHEON_APOLLO_MODEL": "pantheon_apollo_model",
     "HEPHAESTUS_TRANSLIMINALITY_ENABLED": "transliminality_enabled",
     "HEPHAESTUS_OLYMPUS_ENABLED": "olympus_enabled",
+    "HEPHAESTUS_AGENTIC_MODE": "agentic_mode",
 }
 
 _INT_FIELDS = {"depth", "candidates", "pantheon_max_rounds", "pantheon_max_survivors_to_council"}
@@ -71,6 +72,7 @@ _BOOL_FIELDS = {
     "pantheon_allow_fail_closed",
     "transliminality_enabled",
     "olympus_enabled",
+    "agentic_mode",
 }
 
 _VALIDATORS: dict[str, tuple[str, tuple[str, ...]]] = {

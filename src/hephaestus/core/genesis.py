@@ -300,6 +300,11 @@ class GenesisConfig:
     olympus_enabled: bool = True
     olympus_max_chars: int = 12000
 
+    # Agentic mode — tool-augmented agents with deep reasoning
+    agentic_mode: bool = True
+    agentic_thinking_budget: int = 16_000
+    agentic_max_tool_rounds: int = 15
+
     # Transliminality Engine (Layer 2)
     transliminality_enabled: bool = True
 
@@ -2519,6 +2524,54 @@ class Genesis:
                     temperature=0.3,
                 ),
             )
+
+        # ── Agentic upgrade: wrap key harnesses with tool-use + thinking ──
+        if cfg.agentic_mode:
+            try:
+                from hephaestus.deepforge.agentic import AgenticHarness, AgenticConfig
+
+                cwd = Path.cwd()
+                # Only upgrade if we're in a repo
+                is_repo = (cwd / ".git").exists() or any(
+                    (cwd / m).exists()
+                    for m in ("pyproject.toml", "package.json", "Cargo.toml", "go.mod")
+                )
+                if is_repo:
+                    agentic_cfg = AgenticConfig(
+                        workspace_root=cwd,
+                        enable_extended_thinking=True,
+                        thinking_budget_tokens=cfg.agentic_thinking_budget,
+                        max_tool_rounds=cfg.agentic_max_tool_rounds,
+                    )
+                    # Upgrade the stages that benefit most from repo awareness:
+                    # decompose, search, translate, attack, defend
+                    for stage_name in ("decompose", "search", "translate", "attack", "defend"):
+                        if stage_name in harnesses:
+                            standard = harnesses[stage_name]
+                            harnesses[stage_name] = AgenticHarness(
+                                adapter=standard.adapter,
+                                harness_config=standard.config,
+                                agentic_config=agentic_cfg,
+                            )
+                    # Pantheon agents too
+                    for stage_name in ("pantheon_athena", "pantheon_hermes", "pantheon_apollo"):
+                        if stage_name in harnesses:
+                            standard = harnesses[stage_name]
+                            harnesses[stage_name] = AgenticHarness(
+                                adapter=standard.adapter,
+                                harness_config=standard.config,
+                                agentic_config=agentic_cfg,
+                            )
+                    logger.info(
+                        "Agentic mode: upgraded harnesses with tool-use + extended thinking | "
+                        "workspace=%s thinking_budget=%d",
+                        cwd.name,
+                        cfg.agentic_thinking_budget,
+                    )
+                else:
+                    logger.info("Agentic mode: not in a repo, using standard harnesses")
+            except Exception as exc:
+                logger.warning("Agentic mode failed, falling back to standard: %s", exc)
 
         return harnesses
 
