@@ -2183,6 +2183,10 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
             pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
             transliminality_enabled=getattr(cfg, "transliminality_enabled", False),
+            olympus_enabled=getattr(cfg, "olympus_enabled", True),
+            agentic_mode=getattr(cfg, "agentic_mode", True),
+            agentic_thinking_budget=getattr(cfg, "agentic_thinking_budget", 16_000),
+            agentic_max_tool_rounds=getattr(cfg, "agentic_max_tool_rounds", 15),
         )
 
     if selected_model in {"opus", "gpt5", "codex", "both"}:
@@ -2225,6 +2229,10 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
             pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
             transliminality_enabled=getattr(cfg, "transliminality_enabled", False),
+            olympus_enabled=getattr(cfg, "olympus_enabled", True),
+            agentic_mode=getattr(cfg, "agentic_mode", True),
+            agentic_thinking_budget=getattr(cfg, "agentic_thinking_budget", 16_000),
+            agentic_max_tool_rounds=getattr(cfg, "agentic_max_tool_rounds", 15),
         )
 
     return GenesisConfig(
@@ -2262,6 +2270,10 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
         pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
         transliminality_enabled=getattr(cfg, "transliminality_enabled", False),
+            olympus_enabled=getattr(cfg, "olympus_enabled", True),
+            agentic_mode=getattr(cfg, "agentic_mode", True),
+            agentic_thinking_budget=getattr(cfg, "agentic_thinking_budget", 16_000),
+            agentic_max_tool_rounds=getattr(cfg, "agentic_max_tool_rounds", 15),
     )
 
 
