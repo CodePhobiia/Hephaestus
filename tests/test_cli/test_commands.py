@@ -230,6 +230,9 @@ EXPECTED_COMMANDS = {
     "usage", "cost", "refine", "alternatives", "deeper", "domain",
     "trace", "candidates", "model", "backend", "intensity", "mode",
     "context", "export", "save", "load", "todo", "plan",
+    # ForgeBase
+    "vault", "ask", "fuse", "ingest", "fb-lint", "fb-compile",
+    "workbook", "fb-export",
 }
 
 
@@ -271,7 +274,7 @@ class TestDefaultRegistry:
 
     def test_categories_are_known(self):
         reg = default_registry()
-        known = {"session", "invention", "config", "context", "export", "workspace"}
+        known = {"session", "invention", "config", "context", "export", "workspace", "forgebase"}
         for cmd in reg.list_commands():
             assert cmd.category in known, f"{cmd.name} has unknown category {cmd.category!r}"
 
