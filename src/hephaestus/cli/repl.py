@@ -162,6 +162,11 @@ class SessionState:
     workspace_root: Any = field(default=None)  # Path if workspace mode active
     workspace_context: Any = field(default=None)  # WorkspaceContext
 
+    # ForgeBase session state
+    forgebase: Any = field(default=None)          # ForgeBase instance (lazy)
+    current_vault_id: Any = field(default=None)   # EntityId | None
+    current_workbook_id: Any = field(default=None)  # EntityId | None
+
     @property
     def current(self) -> InventionEntry | None:
         if 0 <= self.current_idx < len(self.inventions):
@@ -254,6 +259,12 @@ def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
     """Return a short readiness label and hint for the configured backend."""
     backend = config.backend
     selected_model = str(getattr(config, "default_model", "") or "")
+    if backend == "agent-sdk":
+        ready = _detect_agent_sdk_available()
+        return (
+            "ready" if ready else "not ready",
+            "Claude Agent SDK + Claude CLI detected." if ready else "Install: pip install claude-agent-sdk",
+        )
     if backend == "claude-max":
         ready = _detect_claude_max_available()
         return (
@@ -307,6 +318,12 @@ def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
     return "not ready", "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or switch to /backend claude-max or /backend codex-cli."
 
 
+def _detect_agent_sdk_available() -> bool:
+    from hephaestus.cli.config import _detect_agent_sdk
+
+    return _detect_agent_sdk()
+
+
 def _detect_claude_max_available() -> bool:
     from hephaestus.cli.config import _detect_claude_max
 
@@ -350,7 +367,7 @@ HELP_TEXT = """\
   [cyan]/save[/] [name]       Save the current invention now
   [cyan]/compare[/]           Compare recent inventions side by side
   [cyan]/model[/] [name]      Show or switch the active model for interactive runs
-  [cyan]/backend[/] [name]    Show or switch backend (claude-max, claude-cli, api, openrouter)
+  [cyan]/backend[/] [name]    Show or switch backend (agent-sdk, claude-max, claude-cli, api, openrouter)
   [cyan]/usage[/]             Session runs, tokens, and cost summary
   [cyan]/cost[/]              Cost breakdown for the current invention
   [cyan]/clear[/]             Clear current context and prompt state
@@ -380,6 +397,16 @@ HELP_TEXT = """\
 [bold yellow]Creativity Controls[/]
   [cyan]/intensity[/] [level]    STANDARD, AGGRESSIVE, or MAXIMUM
   [cyan]/mode[/] [mode]          MECHANISM, FRAMEWORK, NARRATIVE, SYSTEM, PROTOCOL, TAXONOMY, or INTERFACE
+
+[bold yellow]ForgeBase[/]
+  [cyan]/vault[/] [sub]           Manage vaults: create, list, use, info, compile, lint
+  [cyan]/ask[/] <query>           Query within current vault context
+  [cyan]/fuse[/] <id1> <id2>     Cross-vault fusion
+  [cyan]/ingest[/] <path_or_url> Ingest source into current vault
+  [cyan]/fb-lint[/]              Lint current vault
+  [cyan]/fb-compile[/]           Compile current vault
+  [cyan]/workbook[/] [sub]       Manage workbooks: open, list, diff, merge, abandon
+  [cyan]/fb-export[/] [format]   Export current vault (markdown or obsidian)
 """
 
 VALID_EXPORT_FORMATS = ("markdown", "json", "text", "pdf")
@@ -1822,6 +1849,9 @@ ALL_COMMANDS = [
     "/save", "/load", "/history", "/compare",
     "/intensity", "/mode",
     "/todo", "/plan",
+    # ForgeBase
+    "/vault", "/ask", "/fuse", "/ingest",
+    "/fb-lint", "/fb-compile", "/workbook", "/fb-export",
 ]
 
 
@@ -1907,7 +1937,42 @@ COMMANDS: dict[str, Any] = {
     "ws": _cmd_ws,
     "workspace": _cmd_ws,
     "invent": _cmd_invent,
+    # ForgeBase commands (lazy-imported handlers)
+    "vault": None,  # set below
+    "ask": None,
+    "fuse": None,
+    "ingest": None,
+    "fb-lint": None,
+    "fb-compile": None,
+    "workbook": None,
+    "fb-export": None,
 }
+
+# Wire ForgeBase handlers — lazy import to avoid pulling ForgeBase at REPL startup
+def _init_forgebase_handlers() -> None:
+    from hephaestus.cli.forgebase_commands import (
+        _cmd_ask,
+        _cmd_compile,
+        _cmd_fb_export,
+        _cmd_fuse,
+        _cmd_ingest,
+        _cmd_lint,
+        _cmd_vault,
+        _cmd_workbook,
+    )
+    COMMANDS["vault"] = _cmd_vault
+    COMMANDS["ask"] = _cmd_ask
+    COMMANDS["fuse"] = _cmd_fuse
+    COMMANDS["ingest"] = _cmd_ingest
+    COMMANDS["fb-lint"] = _cmd_lint
+    COMMANDS["fb-compile"] = _cmd_compile
+    COMMANDS["workbook"] = _cmd_workbook
+    COMMANDS["fb-export"] = _cmd_fb_export
+    # Aliases
+    COMMANDS["v"] = _cmd_vault
+    COMMANDS["wb"] = _cmd_workbook
+
+_init_forgebase_handlers()
 
 # Canonical command registry (shared with commands.py)
 _registry = default_registry()
@@ -1943,6 +2008,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             use_claude_max=(backend == "claude-max"),
             use_claude_cli=(backend == "claude-cli"),
             use_codex_cli=(backend == "codex-cli"),
+            use_agent_sdk=(backend == "agent-sdk"),
             num_candidates=cfg.candidates,
             use_interference_in_translate=True,
             divergence_intensity=getattr(cfg, "divergence_intensity", "STANDARD"),
