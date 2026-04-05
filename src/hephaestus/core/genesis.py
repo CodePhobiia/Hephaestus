@@ -257,6 +257,7 @@ class GenesisConfig:
     run_prior_art: bool = True
     use_perplexity_research: bool = True
     use_branchgenome_v1: bool = False
+    branchgenome_rejection_ledger_path: str | None = None
     use_adaptive_lens_engine: bool = True
     allow_lens_bundle_fallback: bool = True
     enable_derived_lens_composites: bool = True
