@@ -1,13 +1,14 @@
 """
 Olympus — Stage 0 repo-awareness engine for Hephaestus.
 
-When Hephaestus is invoked from within a repository, Olympus automatically
-builds a rich context map that connects the problem statement to the actual
-codebase.  The result is persisted as ``.hephaestus/OLYMPUS.md`` and injected
-into every downstream agent (decomposer, Pantheon council, translators, verifiers).
+Olympus doesn't scan-and-paste. It *explores*. When invoked, the Hephaestus
+agent gets tools (read_file, list_directory, grep_search, search_files) and
+walks the codebase itself — following imports, reading files it finds
+interesting, building understanding organically. Then it writes OLYMPUS.md
+from genuine comprehension.
 
-This is what turns Hephaestus from a "fancy brainstormer" into a repo-grounded
-invention engine.
+OLYMPUS.md is the AGENTS.md / CLAUDE.md of Hephaestus. Every downstream
+agent reads it before doing anything.
 """
 
 from __future__ import annotations
@@ -29,12 +30,6 @@ logger = logging.getLogger(__name__)
 OLYMPUS_FILENAME = "OLYMPUS.md"
 _CACHE_DIR = ".hephaestus"
 _FINGERPRINT_FILE = "olympus_fingerprint.json"
-
-# Max chars for key file content sampling
-_KEY_FILE_SAMPLE_CHARS = 4_000
-# Max total chars for all sampled files
-_TOTAL_SAMPLE_BUDGET = 30_000
-# Max chars for the final OLYMPUS.md
 _OLYMPUS_MAX_CHARS = 12_000
 
 
@@ -61,6 +56,8 @@ class OlympusContext:
     constraints_from_code: list[str] = field(default_factory=list)
     architecture_summary: str = ""
     elapsed_seconds: float = 0.0
+    tool_calls: int = 0
+    exploration_rounds: int = 0
 
     def to_prompt_injection(self, max_chars: int = _OLYMPUS_MAX_CHARS) -> str:
         """Format for injection into any agent's system prompt."""
@@ -72,67 +69,74 @@ class OlympusContext:
 
 
 # ---------------------------------------------------------------------------
-# Prompt for the LLM synthesis step
+# System prompt for the Olympus agent
 # ---------------------------------------------------------------------------
 
-_OLYMPUS_SYSTEM_PROMPT = """\
-You are OLYMPUS, the repo-awareness engine for Hephaestus (an AI invention system).
+_OLYMPUS_SYSTEM = """\
+You are OLYMPUS, the repo-awareness engine for Hephaestus.
 
-Your job: given a repo dossier (structure, components, dependencies, hotspots) \
-and the user's problem statement, produce a concise OLYMPUS.md that connects the \
-problem to the codebase.
+You have tools to explore this repository. USE THEM. Do not guess.
+Read files. List directories. Search for patterns. Follow imports.
+Build real understanding.
 
-You must:
-1. Identify which components/files/modules are DIRECTLY relevant to the problem
-2. Summarize what the codebase currently does about this problem (existing approach)
-3. Identify architectural constraints the code imposes on any solution
-4. Note what has already been tried (from git history/hotspots if visible)
-5. Flag any code-level assumptions that a novel solution must respect or break
+Your job: explore this codebase and produce OLYMPUS.md — a document that
+maps the user's problem to the actual code. This document will be read by
+every downstream agent (decomposers, searchers, translators, verifiers).
 
-You must NOT:
-- Propose solutions (that's the invention engine's job)
-- Be generic — every statement must reference specific files, modules, or patterns
-- Exceed the output budget (aim for 2000-4000 words)
+## How to explore
 
-Output format: Markdown. Use headers, bullet points, code references with backticks.
+1. Start by listing the root directory to understand the project layout
+2. Read README.md and any config files (pyproject.toml, etc.)
+3. Identify the core source directories
+4. Read the key files — entry points, main modules, the files that matter
+5. Follow imports when you see something relevant to the problem
+6. Search for patterns related to the problem (grep for keywords)
+7. Build a mental map of how the codebase relates to the problem
 
-Structure your output as:
-# OLYMPUS — Repo Context for Hephaestus
+## What to write
+
+After exploring, output a markdown document with this structure:
+
+# OLYMPUS — Repo Context for [repo name]
 
 ## Repo Overview
-<1-3 sentences: what this codebase is>
+<2-4 sentences: what this codebase is and does>
 
 ## Problem ↔ Codebase Mapping
-<Which components/files are relevant and why>
+<Which components/files are directly relevant to the problem and why>
 
 ## Current Approach
-<How the codebase currently handles this problem area>
+<How the codebase currently handles the problem area — cite specific files, \
+functions, classes, line numbers>
 
 ## Architectural Constraints
-<What the code structure requires/forbids for any solution>
+<What the code structure requires or forbids for any solution>
 
 ## Key Files to Study
 <Ranked list of files an inventor must understand, with 1-line descriptions>
 
-## Hotspots & History
-<What's been changing recently, what's been tried>
+## Hotspots & Patterns
+<What's interesting, what's complex, what's fragile>
 
 ## Assumptions a Novel Solution Must Navigate
 <Code-level assumptions, API contracts, data flow constraints>
+
+## Rules
+
+- EVERY claim must reference actual files, functions, or patterns you read
+- Do NOT make generic software observations
+- Do NOT propose solutions — that's the invention engine's job
+- Be specific to THIS repo and THIS problem
+- If you're unsure about something, read the file instead of guessing
 """
 
-_OLYMPUS_USER_PROMPT = """\
+_OLYMPUS_USER = """\
 PROBLEM STATEMENT:
 {problem}
 
-REPO DOSSIER:
-{dossier}
-
-KEY FILE SAMPLES:
-{file_samples}
-
-Produce the OLYMPUS.md. Be specific to THIS repo and THIS problem. \
-Every claim must reference actual files, modules, or patterns from the dossier/samples.
+Explore this repository and produce OLYMPUS.md. Start by listing the \
+root directory, then read key files, then search for patterns related \
+to the problem. Take your time — deep understanding matters more than speed.
 """
 
 
@@ -147,8 +151,10 @@ async def build_olympus(
     *,
     force_rebuild: bool = False,
     persist: bool = True,
+    max_tool_rounds: int = 20,
+    thinking_budget: int = 16_000,
 ) -> OlympusContext | None:
-    """Build the Stage 0 Olympus context for a repo + problem.
+    """Build the Stage 0 Olympus context by having the agent explore the repo.
 
     Parameters
     ----------
@@ -157,11 +163,15 @@ async def build_olympus(
     root:
         Path to the repo root.
     adapter:
-        LLM adapter (must support ``generate`` or ``forge``).
+        LLM adapter (must support ``generate_with_tools``).
     force_rebuild:
         Skip cache and always regenerate.
     persist:
         Write OLYMPUS.md to disk.
+    max_tool_rounds:
+        Max exploration rounds for the agent.
+    thinking_budget:
+        Extended thinking token budget.
 
     Returns
     -------
@@ -174,22 +184,8 @@ async def build_olympus(
         logger.info("Olympus: not a repo at %s, skipping", root)
         return None
 
-    # ── Step 2: Build repo dossier ───────────────────────────────────────
-    try:
-        from hephaestus.workspace.context import WorkspaceContext
-
-        ws_context = WorkspaceContext.from_directory(root, budget_chars=_TOTAL_SAMPLE_BUDGET)
-        dossier = ws_context.repo_dossier
-    except Exception as exc:
-        logger.warning("Olympus: workspace scan failed: %s", exc)
-        return None
-
-    if dossier is None:
-        logger.warning("Olympus: no repo dossier produced for %s", root)
-        return None
-
-    # ── Step 3: Check cache ──────────────────────────────────────────────
-    fingerprint = _compute_olympus_fingerprint(problem, dossier.fingerprint)
+    # ── Step 2: Check cache ──────────────────────────────────────────────
+    fingerprint = _compute_fingerprint(problem, root)
     cache_dir = root / _CACHE_DIR
     olympus_path = cache_dir / OLYMPUS_FILENAME
     fingerprint_path = cache_dir / _FINGERPRINT_FILE
@@ -201,45 +197,99 @@ async def build_olympus(
                 logger.info("Olympus: cache hit, loading existing OLYMPUS.md")
                 olympus_md = olympus_path.read_text(encoding="utf-8")
                 return OlympusContext(
-                    repo_name=dossier.repo_name,
+                    repo_name=root.name,
                     root=str(root),
                     problem=problem,
                     generated_at=cached_fp.get("generated_at", ""),
                     fingerprint=fingerprint,
                     olympus_md=olympus_md,
-                    components_mapped=dossier.component_count,
-                    relevant_files=dossier.key_artifacts[:10],
                     elapsed_seconds=0.0,
                 )
         except (OSError, json.JSONDecodeError, KeyError):
             pass  # Cache miss, rebuild
 
-    # ── Step 4: Sample key files ─────────────────────────────────────────
-    file_samples = _sample_key_files(root, dossier, ws_context, budget=_TOTAL_SAMPLE_BUDGET)
+    # ── Step 3: Agentic exploration ──────────────────────────────────────
+    from hephaestus.deepforge.agentic import RepoToolExecutor, AGENTIC_TOOLS
+    from hephaestus.deepforge.adapters.base import ModelCapability
 
-    # ── Step 5: LLM synthesis ────────────────────────────────────────────
-    dossier_text = dossier.to_prompt_text(max_chars=8_000)
-    user_prompt = _OLYMPUS_USER_PROMPT.format(
-        problem=problem,
-        dossier=dossier_text,
-        file_samples=file_samples,
-    )
+    executor = RepoToolExecutor(root)
+    tools = [
+        {"name": t["name"], "description": t["description"], "input_schema": t["input_schema"]}
+        for t in AGENTIC_TOOLS
+    ]
 
-    logger.info("Olympus: synthesizing repo context via LLM (%d chars input)", len(user_prompt))
+    user_prompt = _OLYMPUS_USER.format(problem=problem)
+    messages: list[dict[str, Any]] = [
+        {"role": "user", "content": user_prompt},
+    ]
 
-    try:
-        olympus_md = await _call_adapter(adapter, _OLYMPUS_SYSTEM_PROMPT, user_prompt)
-    except Exception as exc:
-        logger.error("Olympus: LLM synthesis failed: %s", exc)
-        return None
+    # Extended thinking if supported
+    extra_kwargs: dict[str, Any] = {}
+    if hasattr(adapter, "config") and adapter.config.supports(ModelCapability.EXTENDED_THINKING):
+        extra_kwargs["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": thinking_budget,
+        }
+        logger.info("Olympus: extended thinking enabled | budget=%d", thinking_budget)
+
+    total_tool_calls = 0
+    rounds = 0
+    olympus_md = ""
+
+    logger.info("Olympus: starting agentic exploration of %s", root.name)
+
+    for round_idx in range(max_tool_rounds):
+        rounds = round_idx + 1
+
+        try:
+            gen = await adapter.generate_with_tools(
+                messages,
+                system=_OLYMPUS_SYSTEM,
+                tools=tools,
+                max_tokens=32_000,
+                temperature=1.0,
+                **extra_kwargs,
+            )
+        except Exception as exc:
+            logger.warning("Olympus: API call failed on round %d: %s", rounds, exc)
+            break
+
+        # No tool calls → agent is done exploring, has produced output
+        if not gen.tool_calls:
+            olympus_md = gen.text
+            logger.info("Olympus: exploration complete | round=%d tool_calls=%d", rounds, total_tool_calls)
+            break
+
+        # Append assistant message
+        messages.append({"role": "assistant", "content": gen.content_blocks})
+
+        # Execute tool calls
+        tool_results: list[dict[str, Any]] = []
+        for tc in gen.tool_calls:
+            total_tool_calls += 1
+            result_text = executor.execute(tc.name, tc.input)
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": tc.id,
+                "content": result_text[:15000],  # Cap individual results
+            })
+            logger.debug("Olympus tool: %s(%s) → %d chars", tc.name, tc.input.get("path", tc.input.get("query", "")), len(result_text))
+
+        messages.append({"role": "user", "content": tool_results})
+
+        # Capture partial text
+        if gen.text:
+            olympus_md = gen.text
+    else:
+        logger.warning("Olympus: hit max exploration rounds (%d)", max_tool_rounds)
 
     if not olympus_md or len(olympus_md.strip()) < 100:
-        logger.warning("Olympus: LLM returned empty or trivial output")
+        logger.warning("Olympus: agent produced empty or trivial output after %d rounds", rounds)
         return None
 
     elapsed = time.monotonic() - t_start
 
-    # ── Step 6: Persist ──────────────────────────────────────────────────
+    # ── Step 4: Persist ──────────────────────────────────────────────────
     if persist:
         try:
             cache_dir.mkdir(parents=True, exist_ok=True)
@@ -250,23 +300,27 @@ async def build_olympus(
                     "problem": problem[:200],
                     "generated_at": _now_iso(),
                     "elapsed_seconds": round(elapsed, 2),
+                    "tool_calls": total_tool_calls,
+                    "exploration_rounds": rounds,
                 }, indent=2),
                 encoding="utf-8",
             )
-            logger.info("Olympus: wrote %s (%d chars)", olympus_path, len(olympus_md))
+            logger.info(
+                "Olympus: wrote %s (%d chars, %d tool calls, %d rounds, %.1fs)",
+                olympus_path, len(olympus_md), total_tool_calls, rounds, elapsed,
+            )
         except OSError as exc:
             logger.warning("Olympus: failed to persist: %s", exc)
 
-    # ── Build result ─────────────────────────────────────────────────────
     return OlympusContext(
-        repo_name=dossier.repo_name,
+        repo_name=root.name,
         root=str(root),
         problem=problem,
         generated_at=_now_iso(),
         fingerprint=fingerprint,
         olympus_md=olympus_md,
-        components_mapped=dossier.component_count,
-        relevant_files=dossier.key_artifacts[:10],
+        tool_calls=total_tool_calls,
+        exploration_rounds=rounds,
         elapsed_seconds=elapsed,
     )
 
@@ -279,140 +333,31 @@ def _is_repo(root: Path) -> bool:
     """Check if root is a git repo or has a recognizable project structure."""
     if (root / ".git").exists():
         return True
-    # Also detect non-git project roots
     for marker in ("pyproject.toml", "package.json", "Cargo.toml", "go.mod", "pom.xml"):
         if (root / marker).exists():
             return True
     return False
 
 
-def _compute_olympus_fingerprint(problem: str, repo_fingerprint: str) -> str:
-    """Fingerprint = hash(problem + repo state). Changes when either changes."""
+def _compute_fingerprint(problem: str, root: Path) -> str:
+    """Fingerprint = hash(problem + git HEAD). Changes when either changes."""
+    import subprocess
+
     digest = hashlib.sha256()
     digest.update(problem.encode("utf-8"))
-    digest.update(repo_fingerprint.encode("utf-8"))
+
+    # Use git HEAD as repo state signal
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root, capture_output=True, text=True, timeout=5, check=False,
+        )
+        if result.returncode == 0:
+            digest.update(result.stdout.strip().encode("utf-8"))
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        pass
+
     return digest.hexdigest()[:24]
-
-
-def _sample_key_files(
-    root: Path,
-    dossier: Any,
-    ws_context: Any,
-    *,
-    budget: int = _TOTAL_SAMPLE_BUDGET,
-) -> str:
-    """Sample the most important files from the repo for LLM context.
-
-    Prioritizes:
-    1. Key files from dossier components (sorted by line count)
-    2. Entry points
-    3. Hotspot files
-    """
-    sampled: list[str] = []
-    chars_used = 0
-    seen_paths: set[str] = set()
-
-    # Gather candidate paths in priority order
-    candidate_paths: list[str] = []
-
-    # From components — key files first
-    if dossier.components:
-        for component in dossier.components:
-            for kf in component.key_files:
-                if kf not in seen_paths:
-                    candidate_paths.append(kf)
-                    seen_paths.add(kf)
-
-    # Key artifacts
-    for artifact in dossier.key_artifacts:
-        if artifact not in seen_paths and artifact.endswith((".py", ".rs", ".ts", ".go", ".js")):
-            candidate_paths.append(artifact)
-            seen_paths.add(artifact)
-
-    # Hotspots
-    for hotspot in dossier.hotspots:
-        if hotspot.path not in seen_paths and _is_code_file(hotspot.path):
-            candidate_paths.append(hotspot.path)
-            seen_paths.add(hotspot.path)
-
-    # Sample files up to budget
-    for rel_path in candidate_paths:
-        if chars_used >= budget:
-            break
-        full_path = root / rel_path
-        if not full_path.is_file():
-            continue
-        try:
-            content = full_path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-
-        # Truncate individual files
-        if len(content) > _KEY_FILE_SAMPLE_CHARS:
-            content = content[:_KEY_FILE_SAMPLE_CHARS] + "\n... [truncated]"
-
-        remaining = budget - chars_used
-        if len(content) > remaining:
-            content = content[:remaining] + "\n... [truncated]"
-
-        sampled.append(f"--- {rel_path} ---\n{content}\n")
-        chars_used += len(content) + len(rel_path) + 10
-
-    if not sampled:
-        return "(No code files sampled — non-code repo or scan failed)"
-
-    return "\n".join(sampled)
-
-
-def _is_code_file(path: str) -> bool:
-    """Check if a path looks like a code file."""
-    code_exts = {
-        ".py", ".rs", ".go", ".ts", ".tsx", ".js", ".jsx",
-        ".java", ".kt", ".scala", ".c", ".cpp", ".h", ".hpp",
-        ".rb", ".php", ".swift", ".cs",
-    }
-    return Path(path).suffix.lower() in code_exts
-
-
-async def _call_adapter(adapter: Any, system: str, user: str) -> str:
-    """Call the LLM adapter to generate Olympus content.
-
-    Supports multiple adapter interfaces:
-    - forge(prompt, system=...) — DeepForgeHarness
-    - generate(prompt, system_prompt=...) — raw adapters
-    """
-    # Try forge first (harness interface — returns ForgeResult with .output)
-    if hasattr(adapter, "forge"):
-        result = await adapter.forge(user, system=system)
-        if isinstance(result, str):
-            return result
-        # DeepForgeHarness returns ForgeResult with .output
-        # AgenticHarness also returns ForgeResult
-        if hasattr(result, "output"):
-            return result.output
-        if hasattr(result, "text"):
-            return result.text
-        return str(result)
-
-    # Try generate (raw adapter interface)
-    if hasattr(adapter, "generate"):
-        result = await adapter.generate(user, system_prompt=system)
-        if isinstance(result, str):
-            return result
-        if hasattr(result, "output"):
-            return result.output
-        if hasattr(result, "text"):
-            return result.text
-        return str(result)
-
-    # Try __call__ as last resort
-    if callable(adapter):
-        result = await adapter(user, system=system)
-        if isinstance(result, str):
-            return result
-        return str(result)
-
-    raise TypeError(f"Olympus: adapter {type(adapter).__name__} has no generate/forge method")
 
 
 def _now_iso() -> str:

@@ -809,20 +809,25 @@ class Genesis:
 
                     cwd = Path.cwd()
                     logger.info("Stage 0: Olympus — building repo context for %s", cwd.name)
+                    # Olympus drives its own tool loop — it needs the raw
+                    # adapter with generate_with_tools, not the harness.
+                    olympus_adapter = self._harnesses["decompose"].adapter
                     olympus_ctx = await build_olympus(
                         problem=problem,
                         root=cwd,
-                        adapter=self._harnesses["decompose"],
+                        adapter=olympus_adapter,
+                        max_tool_rounds=self._config.agentic_max_tool_rounds,
+                        thinking_budget=self._config.agentic_thinking_budget,
                     )
                     if olympus_ctx is not None:
                         olympus_injection = olympus_ctx.to_prompt_injection(
                             max_chars=self._config.olympus_max_chars,
                         )
                         logger.info(
-                            "Olympus context built | repo=%s components=%d files=%d chars=%d (%.1fs)",
+                            "Olympus context built | repo=%s tool_calls=%d rounds=%d chars=%d (%.1fs)",
                             olympus_ctx.repo_name,
-                            olympus_ctx.components_mapped,
-                            len(olympus_ctx.relevant_files),
+                            olympus_ctx.tool_calls,
+                            olympus_ctx.exploration_rounds,
                             len(olympus_injection),
                             olympus_ctx.elapsed_seconds,
                         )
