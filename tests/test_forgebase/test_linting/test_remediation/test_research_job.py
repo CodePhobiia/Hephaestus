@@ -1,7 +1,7 @@
 """Tests for FindingResearchJob — research orchestration for findings."""
+
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -9,12 +9,10 @@ import pytest
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
     FindingSeverity,
-    FindingStatus,
     RemediationStatus,
     ResearchOutcome,
 )
 from hephaestus.forgebase.domain.models import ResearchPacket
-from hephaestus.forgebase.domain.values import ActorRef, EntityId
 from hephaestus.forgebase.linting.remediation.research_job import FindingResearchJob
 from hephaestus.forgebase.research.augmentor import (
     ContradictionResolution,
@@ -25,10 +23,10 @@ from hephaestus.forgebase.research.perplexity_augmentor import NoOpAugmentor
 from hephaestus.forgebase.service.lint_service import LintService
 from hephaestus.forgebase.service.vault_service import VaultService
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _setup_vault_and_finding(
     uow_factory,
@@ -106,14 +104,16 @@ class TestResearchSourceGapFinding:
 
         # Use a mock augmentor to verify find_supporting_evidence is called
         mock_augmentor = AsyncMock(spec=NoOpAugmentor)
-        mock_augmentor.find_supporting_evidence = AsyncMock(return_value=[
-            DiscoveredSource(
-                url="https://example.com/paper",
-                title="Relevant Paper",
-                summary="Fills the gap",
-                relevance=0.8,
-            ),
-        ])
+        mock_augmentor.find_supporting_evidence = AsyncMock(
+            return_value=[
+                DiscoveredSource(
+                    url="https://example.com/paper",
+                    title="Relevant Paper",
+                    summary="Fills the gap",
+                    relevance=0.8,
+                ),
+            ]
+        )
 
         job = FindingResearchJob(
             uow_factory=uow_factory,
@@ -138,7 +138,10 @@ class TestOutcomeClassification:
         outcome = FindingResearchJob._classify_outcome(
             discovered_sources=[
                 DiscoveredSource(
-                    url="", title="A", summary="", relevance=0.9,
+                    url="",
+                    title="A",
+                    summary="",
+                    relevance=0.9,
                 ),
             ],
             contradiction_result=None,
@@ -150,7 +153,10 @@ class TestOutcomeClassification:
         outcome = FindingResearchJob._classify_outcome(
             discovered_sources=[
                 DiscoveredSource(
-                    url="", title="A", summary="", relevance=0.3,
+                    url="",
+                    title="A",
+                    summary="",
+                    relevance=0.3,
                 ),
             ],
             contradiction_result=None,

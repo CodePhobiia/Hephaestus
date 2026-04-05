@@ -1,4 +1,5 @@
 """Tests for domain event types, EventFactory, Clock, and IdGenerator."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -8,12 +9,11 @@ import pytest
 from hephaestus.forgebase.domain.enums import ActorType
 from hephaestus.forgebase.domain.event_types import (
     EVENT_TAXONOMY,
-    Clock,
     EventFactory,
     FixedClock,
 )
-from hephaestus.forgebase.domain.values import ActorRef, EntityId, Version
-from hephaestus.forgebase.service.id_generator import IdGenerator, DeterministicIdGenerator
+from hephaestus.forgebase.domain.values import ActorRef, Version
+from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
 
 
 class TestEventTaxonomy:

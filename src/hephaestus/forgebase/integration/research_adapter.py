@@ -8,12 +8,14 @@ compilation job as follow-on work (if a CompileService is available).
 Research outputs become Flow A eligible only after ingest + Tier 1/Tier 2
 processing.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from hephaestus.forgebase.domain.enums import EntityKind, SourceFormat
 from hephaestus.forgebase.domain.values import EntityId
@@ -120,9 +122,7 @@ class ResearchAdapter:
 
                 # Schedule durable Tier 1 compilation as follow-on work
                 if self._compile_svc is not None:
-                    compile_idem_key = (
-                        f"{run_id}:research:compile:{name}:{content_hash}"
-                    )
+                    compile_idem_key = f"{run_id}:research:compile:{name}:{content_hash}"
                     job = await self._compile_svc.schedule_compile(
                         vault_id=vault_id,
                         config={
@@ -148,9 +148,7 @@ class ResearchAdapter:
             await self._update_sync_status(ref.ref_id, "failed")
             raise
 
-    async def _update_sync_status(
-        self, ref_id: EntityId, status: str
-    ) -> None:
+    async def _update_sync_status(self, ref_id: EntityId, status: str) -> None:
         """Update sync_status on the KnowledgeRunRef via a fresh UoW."""
         try:
             uow = self._uow_factory()
@@ -159,7 +157,9 @@ class ResearchAdapter:
                 await uow.commit()
         except Exception:
             logger.exception(
-                "Failed to update sync_status to %r for ref_id=%s", status, ref_id,
+                "Failed to update sync_status to %r for ref_id=%s",
+                status,
+                ref_id,
             )
 
     async def _update_sync_metadata(
@@ -181,14 +181,13 @@ class ResearchAdapter:
                 # between the research run and its compilation jobs is durable.
                 for job_id_str in follow_on_job_ids:
                     job_id = EntityId(job_id_str)
-                    idem_key = f"{str(ref_id)}:followon:{job_id_str}"
                     # Use the run_artifacts repo directly since we're already
                     # inside a UoW — no need to go through the service layer.
                     from hephaestus.forgebase.domain.models import KnowledgeRunArtifact
+
                     existing = await uow.run_artifacts.list_by_ref(ref_id)
                     already_exists = any(
-                        a.entity_id == job_id and a.role == "follow_on_compile"
-                        for a in existing
+                        a.entity_id == job_id and a.role == "follow_on_compile" for a in existing
                     )
                     if not already_exists:
                         artifact = KnowledgeRunArtifact(
@@ -201,15 +200,14 @@ class ResearchAdapter:
                 await uow.commit()
         except Exception:
             logger.exception(
-                "Failed to update sync metadata for ref_id=%s", ref_id,
+                "Failed to update sync metadata for ref_id=%s",
+                ref_id,
             )
             # Fall back to simple status update
             await self._update_sync_status(ref_id, status)
 
 
-def _extract_research_item(
-    artifact: Any, index: int
-) -> tuple[str, Any, str | None]:
+def _extract_research_item(artifact: Any, index: int) -> tuple[str, Any, str | None]:
     """Extract (name, content, url) from a single research artifact.
 
     Supports:

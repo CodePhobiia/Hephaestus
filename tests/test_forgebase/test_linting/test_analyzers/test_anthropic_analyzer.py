@@ -1,4 +1,5 @@
 """Tests for AnthropicLintAnalyzer — mocked, no real API calls."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -79,9 +80,7 @@ class TestAnthropicLintAnalyzer:
         mock_client.messages.create = AsyncMock(
             side_effect=[
                 _mock_response("not json at all"),
-                _mock_response(
-                    '{"is_gap": false, "severity": "minor", "explanation": "OK"}'
-                ),
+                _mock_response('{"is_gap": false, "severity": "minor", "explanation": "OK"}'),
             ]
         )
         analyzer._client = mock_client
@@ -94,9 +93,7 @@ class TestAnthropicLintAnalyzer:
         """All attempts return invalid JSON => RuntimeError."""
         analyzer = AnthropicLintAnalyzer(api_key="test-key", max_retries=1)
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(
-            return_value=_mock_response("bad json")
-        )
+        mock_client.messages.create = AsyncMock(return_value=_mock_response("bad json"))
         analyzer._client = mock_client
 
         with pytest.raises(RuntimeError, match="failed after"):
@@ -117,9 +114,7 @@ class TestAnthropicLintAnalyzer:
         )
         analyzer._client = mock_client
 
-        results = await analyzer.detect_contradictions(
-            [("A", "B"), ("C", "D"), ("E", "F")]
-        )
+        results = await analyzer.detect_contradictions([("A", "B"), ("C", "D"), ("E", "F")])
         assert len(results) == 3
         # First result from LLM
         assert results[0].is_contradictory is False
@@ -170,9 +165,7 @@ class TestAnthropicLintAnalyzer:
         """Non-JSON errors (e.g., API errors) are re-raised on the final attempt."""
         analyzer = AnthropicLintAnalyzer(api_key="test-key", max_retries=0)
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(
-            side_effect=ConnectionError("network down")
-        )
+        mock_client.messages.create = AsyncMock(side_effect=ConnectionError("network down"))
         analyzer._client = mock_client
 
         with pytest.raises(ConnectionError, match="network down"):
@@ -182,9 +175,7 @@ class TestAnthropicLintAnalyzer:
         """LLM response has missing fields => defaults are used."""
         analyzer = AnthropicLintAnalyzer(api_key="test-key")
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(
-            return_value=_mock_response('{"results": [{}]}')
-        )
+        mock_client.messages.create = AsyncMock(return_value=_mock_response('{"results": [{}]}'))
         analyzer._client = mock_client
 
         results = await analyzer.detect_contradictions([("A", "B")])
@@ -197,9 +188,7 @@ class TestAnthropicLintAnalyzer:
         """Source gap response with missing fields => defaults used."""
         analyzer = AnthropicLintAnalyzer(api_key="test-key")
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(
-            return_value=_mock_response("{}")
-        )
+        mock_client.messages.create = AsyncMock(return_value=_mock_response("{}"))
         analyzer._client = mock_client
 
         result = await analyzer.assess_source_gaps("concept", 1, ["c"])
@@ -211,9 +200,7 @@ class TestAnthropicLintAnalyzer:
         """Resolvability response with missing fields => defaults used."""
         analyzer = AnthropicLintAnalyzer(api_key="test-key")
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(
-            return_value=_mock_response("{}")
-        )
+        mock_client.messages.create = AsyncMock(return_value=_mock_response("{}"))
         analyzer._client = mock_client
 
         result = await analyzer.check_resolvable_by_search("claim", ["support"])

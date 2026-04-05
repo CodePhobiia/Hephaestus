@@ -22,15 +22,13 @@ to construct the structural prohibitions passed to subsequent rounds.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
-from sentence_transformers import SentenceTransformer
+if TYPE_CHECKING:
+    import numpy as np
 
 from hephaestus.deepforge.adapters.base import BaseAdapter, StreamChunk
 from hephaestus.deepforge.exceptions import (
@@ -38,6 +36,16 @@ from hephaestus.deepforge.exceptions import (
     GenerationKilled,
     PrunerError,
 )
+
+
+def _lazy_np() -> Any:
+    import numpy as np  # noqa: F811
+    return np
+
+
+def _lazy_st(model_name: str) -> Any:
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(model_name)
 
 logger = logging.getLogger(__name__)
 
@@ -190,14 +198,14 @@ class ConvergencePruner:
         embed_model_name: str = _DEFAULT_EMBED_MODEL,
         check_interval: int = _CHECK_INTERVAL_CHUNKS,
         min_chars_before_check: int = _MIN_CHARS_BEFORE_CHECK,
-        embed_model: SentenceTransformer | None = None,
+        embed_model: Any | None = None,
     ) -> None:
         self._patterns: list[ConvergencePattern] = patterns or []
         self._threshold = similarity_threshold
         self._embed_model_name = embed_model_name
         self._check_interval = check_interval
         self._min_chars = min_chars_before_check
-        self._embed_model: SentenceTransformer | None = embed_model
+        self._embed_model: Any | None = embed_model
         self._session = PrunerSession()
 
         logger.debug(
@@ -210,11 +218,11 @@ class ConvergencePruner:
     # Embedding model (lazy-loaded)
     # ------------------------------------------------------------------
 
-    def _get_embed_model(self) -> SentenceTransformer:
+    def _get_embed_model(self) -> Any:
         """Lazy-load the sentence-transformer model."""
         if self._embed_model is None:
             logger.info("Loading embedding model %s …", self._embed_model_name)
-            self._embed_model = SentenceTransformer(self._embed_model_name)
+            self._embed_model = _lazy_st(self._embed_model_name)
         return self._embed_model
 
     def _embed(self, text: str) -> np.ndarray:
@@ -331,7 +339,7 @@ class ConvergencePruner:
         best_pattern: ConvergencePattern | None = None
 
         for pattern in self._patterns:
-            sim = float(np.dot(text_emb, pattern.embedding))
+            sim = float(_lazy_np().dot(text_emb, pattern.embedding))
             if sim > best_sim:
                 best_sim = sim
                 best_pattern = pattern
@@ -401,9 +409,7 @@ class ConvergencePruner:
                     and chunk.accumulated != last_check_text
                 ):
                     last_check_text = chunk.accumulated
-                    is_converged, similarity, pattern = self.check_convergence(
-                        chunk.accumulated
-                    )
+                    is_converged, similarity, pattern = self.check_convergence(chunk.accumulated)
 
                     if is_converged and pattern is not None:
                         # Signal adapter to stop generating

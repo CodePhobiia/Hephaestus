@@ -87,9 +87,14 @@ class ResearchArtifactStore:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                record.artifact_id, record.run_id, record.artifact_type,
-                record.source_url, record.content, record.trust_tier,
-                record.citation_quality, record.created_at,
+                record.artifact_id,
+                record.run_id,
+                record.artifact_type,
+                record.source_url,
+                record.content,
+                record.trust_tier,
+                record.citation_quality,
+                record.created_at,
                 json.dumps(record.metadata),
             ),
         )

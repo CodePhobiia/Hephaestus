@@ -1,7 +1,8 @@
 """Tests for SQLite job and finding repositories."""
+
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -13,9 +14,8 @@ from hephaestus.forgebase.domain.enums import (
     JobStatus,
 )
 from hephaestus.forgebase.domain.models import Job, LintFinding
-from hephaestus.forgebase.domain.values import EntityId
-from hephaestus.forgebase.store.sqlite.job_repo import SqliteJobRepository
 from hephaestus.forgebase.store.sqlite.finding_repo import SqliteFindingRepository
+from hephaestus.forgebase.store.sqlite.job_repo import SqliteJobRepository
 
 
 def _make_job(id_gen, clock, actor, **overrides) -> Job:
@@ -79,7 +79,9 @@ class TestSqliteJobRepository:
         now = clock.now()
 
         job = _make_job(
-            id_gen, clock, actor,
+            id_gen,
+            clock,
+            actor,
             workbook_id=wb_id,
             idempotency_key="idem-full",
             next_attempt_at=now,

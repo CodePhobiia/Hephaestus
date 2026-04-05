@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from hephaestus.providers.base import ProviderCapability, ProviderStatus
+from hephaestus.providers.base import ProviderStatus
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,9 @@ def startup_report(registry: Any) -> str:
         }.get(provider.status, "?")
 
         caps = ", ".join(c.value for c in provider.capabilities)
-        line = f"  {status_icon} {provider.name:<20} [{provider.status.value}]  capabilities: {caps}"
+        line = (
+            f"  {status_icon} {provider.name:<20} [{provider.status.value}]  capabilities: {caps}"
+        )
         lines.append(line)
 
         if provider.status == ProviderStatus.AVAILABLE:

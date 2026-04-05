@@ -52,7 +52,7 @@ class AthenaCanon:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "AthenaCanon | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> AthenaCanon | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -94,7 +94,7 @@ class HermesDossier:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "HermesDossier | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> HermesDossier | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -104,7 +104,9 @@ class HermesDossier:
             user_operator_constraints=list(data.get("user_operator_constraints", []) or []),
             adoption_risks=list(data.get("adoption_risks", []) or []),
             monetization_vectors=list(data.get("monetization_vectors", []) or []),
-            implementation_leverage_points=list(data.get("implementation_leverage_points", []) or []),
+            implementation_leverage_points=list(
+                data.get("implementation_leverage_points", []) or []
+            ),
             reasons=list(data.get("reasons", []) or []),
             confidence=float(data.get("confidence", 0.0) or 0.0),
         )
@@ -134,7 +136,7 @@ class ApolloAudit:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "ApolloAudit | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> ApolloAudit | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -200,7 +202,7 @@ class PantheonObjection:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonObjection | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonObjection | None:
         if not isinstance(data, dict):
             return None
         statement = str(data.get("statement", data.get("claim_text", "")) or "")
@@ -213,7 +215,9 @@ class PantheonObjection:
             or statement
         )
         return cls(
-            objection_id=str(data.get("objection_id", data.get("issue_id", data.get("id", ""))) or ""),
+            objection_id=str(
+                data.get("objection_id", data.get("issue_id", data.get("id", ""))) or ""
+            ),
             candidate_id=str(data.get("candidate_id", "") or ""),
             agent=str(data.get("agent", "") or ""),
             issue_type=str(data.get("issue_type", "STRUCTURAL") or "STRUCTURAL").upper(),
@@ -229,19 +233,19 @@ class PantheonObjection:
             status=str(data.get("status", "OPEN") or "OPEN").upper(),
             opened_round=int(data.get("opened_round", 0) or 0),
             last_seen_round=int(data.get("last_seen_round", 0) or 0),
-            last_updated_round=int(data.get("last_updated_round", data.get("last_seen_round", 0)) or 0),
+            last_updated_round=int(
+                data.get("last_updated_round", data.get("last_seen_round", 0)) or 0
+            ),
             resolved_round=(
-                int(data.get("resolved_round"))
-                if data.get("resolved_round") is not None
-                else None
+                int(data.get("resolved_round")) if data.get("resolved_round") is not None else None
             ),
             waived_round=(
-                int(data.get("waived_round"))
-                if data.get("waived_round") is not None
-                else None
+                int(data.get("waived_round")) if data.get("waived_round") is not None else None
             ),
             opened_stage=str(data.get("opened_stage", "council") or "council"),
-            last_stage=str(data.get("last_stage", data.get("opened_stage", "council")) or "council"),
+            last_stage=str(
+                data.get("last_stage", data.get("opened_stage", "council")) or "council"
+            ),
         )
 
 
@@ -273,7 +277,7 @@ class PantheonVote:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonVote | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonVote | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -318,7 +322,7 @@ class PantheonScreening:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonScreening | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonScreening | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -361,7 +365,7 @@ class PantheonReforgeRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonReforgeRecord | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonReforgeRecord | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -415,15 +419,12 @@ class PantheonRound:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonRound | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonRound | None:
         if not isinstance(data, dict):
             return None
         votes = [
             vote
-            for vote in (
-                PantheonVote.from_dict(item)
-                for item in data.get("votes", []) or []
-            )
+            for vote in (PantheonVote.from_dict(item) for item in data.get("votes", []) or [])
             if vote is not None
         ]
         return cls(
@@ -472,10 +473,14 @@ class PantheonAccounting:
         self.total_duration_seconds += float(duration_seconds or 0.0)
         self.agent_call_counts[agent] = self.agent_call_counts.get(agent, 0) + 1
         self.agent_cost_usd[agent] = self.agent_cost_usd.get(agent, 0.0) + float(cost_usd or 0.0)
-        self.agent_input_tokens[agent] = self.agent_input_tokens.get(agent, 0) + int(input_tokens or 0)
-        self.agent_output_tokens[agent] = self.agent_output_tokens.get(agent, 0) + int(output_tokens or 0)
-        self.agent_duration_seconds[agent] = (
-            self.agent_duration_seconds.get(agent, 0.0) + float(duration_seconds or 0.0)
+        self.agent_input_tokens[agent] = self.agent_input_tokens.get(agent, 0) + int(
+            input_tokens or 0
+        )
+        self.agent_output_tokens[agent] = self.agent_output_tokens.get(agent, 0) + int(
+            output_tokens or 0
+        )
+        self.agent_duration_seconds[agent] = self.agent_duration_seconds.get(agent, 0.0) + float(
+            duration_seconds or 0.0
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -492,7 +497,7 @@ class PantheonAccounting:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonAccounting":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonAccounting:
         if not isinstance(data, dict):
             return cls()
         return cls(
@@ -548,8 +553,12 @@ class PantheonState:
             "resolution_mode": self.resolution_mode,
             "canon": self.canon.to_dict() if self.canon is not None else None,
             "dossier": self.dossier.to_dict() if self.dossier is not None else None,
-            "initial_structure": dict(self.initial_structure) if isinstance(self.initial_structure, dict) else None,
-            "pipeline_structure": dict(self.pipeline_structure) if isinstance(self.pipeline_structure, dict) else None,
+            "initial_structure": dict(self.initial_structure)
+            if isinstance(self.initial_structure, dict)
+            else None,
+            "pipeline_structure": dict(self.pipeline_structure)
+            if isinstance(self.pipeline_structure, dict)
+            else None,
             "screenings": [screening.to_dict() for screening in self.screenings],
             "survivor_candidate_ids": list(self.survivor_candidate_ids),
             "audits": [audit.to_dict() for audit in self.audits],
@@ -578,44 +587,38 @@ class PantheonState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "PantheonState | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> PantheonState | None:
         if not isinstance(data, dict):
             return None
         screenings = [
             screening
             for screening in (
-                PantheonScreening.from_dict(item)
-                for item in data.get("screenings", []) or []
+                PantheonScreening.from_dict(item) for item in data.get("screenings", []) or []
             )
             if screening is not None
         ]
         audits = [
             audit
-            for audit in (
-                ApolloAudit.from_dict(item)
-                for item in data.get("audits", []) or []
-            )
+            for audit in (ApolloAudit.from_dict(item) for item in data.get("audits", []) or [])
             if audit is not None
         ]
         rounds = [
             round_
-            for round_ in (
-                PantheonRound.from_dict(item)
-                for item in data.get("rounds", []) or []
-            )
+            for round_ in (PantheonRound.from_dict(item) for item in data.get("rounds", []) or [])
             if round_ is not None
         ]
         objection_ledger = [
             objection
             for objection in (
-                PantheonObjection.from_dict(item)
-                for item in data.get("objection_ledger", []) or []
+                PantheonObjection.from_dict(item) for item in data.get("objection_ledger", []) or []
             )
             if objection is not None
         ]
         return cls(
             mode=str(data.get("mode", "inactive") or "inactive"),
-            resolution_mode=str(data.get("resolution_mode", "TASK_SENSITIVE") or "TASK_SENSITIVE").upper(),
+            resolution_mode=str(
+                data.get("resolution_mode", "TASK_SENSITIVE") or "TASK_SENSITIVE"
+            ).upper(),
             canon=AthenaCanon.from_dict(data.get("canon")),
             dossier=HermesDossier.from_dict(data.get("dossier")),
             initial_structure=(
@@ -645,9 +648,7 @@ class PantheonState:
             outcome_tier=str(data.get("outcome_tier", "PENDING") or "PENDING"),
             caveats=list(data.get("caveats", []) or []),
             failure_reason=(
-                str(data.get("failure_reason"))
-                if data.get("failure_reason") is not None
-                else None
+                str(data.get("failure_reason")) if data.get("failure_reason") is not None else None
             ),
             unresolved_vetoes=list(data.get("unresolved_vetoes", []) or []),
             debate_invoked=bool(data.get("debate_invoked", False)),
@@ -656,7 +657,9 @@ class PantheonState:
                 if data.get("debate_skip_reason") is not None
                 else None
             ),
-            independent_disagreement_rate=float(data.get("independent_disagreement_rate", 0.0) or 0.0),
+            independent_disagreement_rate=float(
+                data.get("independent_disagreement_rate", 0.0) or 0.0
+            ),
             issue_count_opened=int(data.get("issue_count_opened", 0) or 0),
             issue_count_discharged=int(data.get("issue_count_discharged", 0) or 0),
             novelty_drift=float(data.get("novelty_drift", 0.0) or 0.0),

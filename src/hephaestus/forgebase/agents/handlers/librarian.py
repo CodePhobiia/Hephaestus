@@ -4,14 +4,14 @@ Runs structural lint detectors (DUPLICATE_PAGE, ORPHANED_PAGE,
 BROKEN_REFERENCE) and proposes structural repairs via the
 RepairWorkbookJob. All work happens on the task's workbook branch.
 """
+
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.contracts.agent import AgentTask, TaskStatus
 from hephaestus.forgebase.domain.enums import FindingCategory
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase
@@ -19,11 +19,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # The categories the librarian is interested in
-LIBRARIAN_CATEGORIES: frozenset[str] = frozenset({
-    FindingCategory.DUPLICATE_PAGE.value,
-    FindingCategory.ORPHANED_PAGE.value,
-    FindingCategory.BROKEN_REFERENCE.value,
-})
+LIBRARIAN_CATEGORIES: frozenset[str] = frozenset(
+    {
+        FindingCategory.DUPLICATE_PAGE.value,
+        FindingCategory.ORPHANED_PAGE.value,
+        FindingCategory.BROKEN_REFERENCE.value,
+    }
+)
 
 
 async def execute_librarian(forgebase: ForgeBase, task: AgentTask) -> AgentTask:

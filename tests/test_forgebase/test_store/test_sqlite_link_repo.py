@@ -1,11 +1,12 @@
 """Tests for SQLite link repository."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import LinkKind
 from hephaestus.forgebase.domain.models import Link, LinkVersion
-from hephaestus.forgebase.domain.values import EntityId, Version
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.store.sqlite.link_repo import SqliteLinkRepository
 
 
@@ -54,14 +55,20 @@ class TestSqliteLinkRepository:
         vault_id = id_gen.vault_id()
 
         link = Link(
-            link_id=link_id, vault_id=vault_id, kind=LinkKind.BACKLINK,
+            link_id=link_id,
+            vault_id=vault_id,
+            kind=LinkKind.BACKLINK,
             created_at=clock.now(),
         )
         v1 = LinkVersion(
-            link_id=link_id, version=Version(1),
-            source_entity=id_gen.page_id(), target_entity=id_gen.page_id(),
-            label=None, weight=1.0,
-            created_at=clock.now(), created_by=actor,
+            link_id=link_id,
+            version=Version(1),
+            source_entity=id_gen.page_id(),
+            target_entity=id_gen.page_id(),
+            label=None,
+            weight=1.0,
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create(link, v1)
         await sqlite_db.commit()
@@ -84,23 +91,33 @@ class TestSqliteLinkRepository:
         tgt = id_gen.page_id()
 
         link = Link(
-            link_id=link_id, vault_id=vault_id, kind=LinkKind.PAGE_TO_PAGE,
+            link_id=link_id,
+            vault_id=vault_id,
+            kind=LinkKind.PAGE_TO_PAGE,
             created_at=clock.now(),
         )
         v1 = LinkVersion(
-            link_id=link_id, version=Version(1),
-            source_entity=src, target_entity=tgt,
-            label="original", weight=0.5,
-            created_at=clock.now(), created_by=actor,
+            link_id=link_id,
+            version=Version(1),
+            source_entity=src,
+            target_entity=tgt,
+            label="original",
+            weight=0.5,
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create(link, v1)
 
         clock.tick(10)
         v2 = LinkVersion(
-            link_id=link_id, version=Version(2),
-            source_entity=src, target_entity=tgt,
-            label="updated", weight=0.9,
-            created_at=clock.now(), created_by=actor,
+            link_id=link_id,
+            version=Version(2),
+            source_entity=src,
+            target_entity=tgt,
+            label="updated",
+            weight=0.9,
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create_version(v2)
         await sqlite_db.commit()
@@ -132,13 +149,31 @@ class TestSqliteLinkRepository:
         lid1 = id_gen.link_id()
         await repo.create(
             Link(link_id=lid1, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid1, version=Version(1), source_entity=entity_a, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid1,
+                version=Version(1),
+                source_entity=entity_a,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         # Link C -> A
         lid2 = id_gen.link_id()
         await repo.create(
             Link(link_id=lid2, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid2, version=Version(1), source_entity=entity_c, target_entity=entity_a, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid2,
+                version=Version(1),
+                source_entity=entity_c,
+                target_entity=entity_a,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         await sqlite_db.commit()
 
@@ -158,13 +193,36 @@ class TestSqliteLinkRepository:
         lid1 = id_gen.link_id()
         await repo.create(
             Link(link_id=lid1, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid1, version=Version(1), source_entity=entity_a, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid1,
+                version=Version(1),
+                source_entity=entity_a,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         # Link C -> B
         lid2 = id_gen.link_id()
         await repo.create(
-            Link(link_id=lid2, vault_id=vault_id, kind=LinkKind.RELATED_CONCEPT, created_at=clock.now()),
-            LinkVersion(link_id=lid2, version=Version(1), source_entity=entity_c, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            Link(
+                link_id=lid2,
+                vault_id=vault_id,
+                kind=LinkKind.RELATED_CONCEPT,
+                created_at=clock.now(),
+            ),
+            LinkVersion(
+                link_id=lid2,
+                version=Version(1),
+                source_entity=entity_c,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         await sqlite_db.commit()
 
@@ -183,13 +241,31 @@ class TestSqliteLinkRepository:
         lid1 = id_gen.link_id()
         await repo.create(
             Link(link_id=lid1, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid1, version=Version(1), source_entity=entity_a, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid1,
+                version=Version(1),
+                source_entity=entity_a,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         # Link C -> A
         lid2 = id_gen.link_id()
         await repo.create(
             Link(link_id=lid2, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid2, version=Version(1), source_entity=entity_c, target_entity=entity_a, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid2,
+                version=Version(1),
+                source_entity=entity_c,
+                target_entity=entity_a,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         await sqlite_db.commit()
 
@@ -207,13 +283,36 @@ class TestSqliteLinkRepository:
         lid1 = id_gen.link_id()
         await repo.create(
             Link(link_id=lid1, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid1, version=Version(1), source_entity=entity_a, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid1,
+                version=Version(1),
+                source_entity=entity_a,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         # Related concept A -> B
         lid2 = id_gen.link_id()
         await repo.create(
-            Link(link_id=lid2, vault_id=vault_id, kind=LinkKind.RELATED_CONCEPT, created_at=clock.now()),
-            LinkVersion(link_id=lid2, version=Version(1), source_entity=entity_a, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            Link(
+                link_id=lid2,
+                vault_id=vault_id,
+                kind=LinkKind.RELATED_CONCEPT,
+                created_at=clock.now(),
+            ),
+            LinkVersion(
+                link_id=lid2,
+                version=Version(1),
+                source_entity=entity_a,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         await sqlite_db.commit()
 
@@ -234,11 +333,29 @@ class TestSqliteLinkRepository:
         lid = id_gen.link_id()
         await repo.create(
             Link(link_id=lid, vault_id=vault_id, kind=LinkKind.BACKLINK, created_at=clock.now()),
-            LinkVersion(link_id=lid, version=Version(1), source_entity=entity_a, target_entity=entity_b, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid,
+                version=Version(1),
+                source_entity=entity_a,
+                target_entity=entity_b,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         clock.tick(5)
         await repo.create_version(
-            LinkVersion(link_id=lid, version=Version(2), source_entity=entity_a, target_entity=entity_c, label=None, weight=1.0, created_at=clock.now(), created_by=actor),
+            LinkVersion(
+                link_id=lid,
+                version=Version(2),
+                source_entity=entity_a,
+                target_entity=entity_c,
+                label=None,
+                weight=1.0,
+                created_at=clock.now(),
+                created_by=actor,
+            ),
         )
         await sqlite_db.commit()
 

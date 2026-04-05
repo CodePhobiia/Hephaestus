@@ -8,12 +8,14 @@ for the epistemic feedback loop.
 The ingester accepts ``state: Any`` to avoid importing Pantheon types and
 creating circular dependencies.  It is resilient to missing/partial fields.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from hephaestus.forgebase.domain.enums import (
     ClaimStatus,
@@ -50,10 +52,7 @@ _VERDICT_TO_STATE: dict[str, InventionEpistemicState] = {
 
 def _extract_canon(state: Any) -> dict | None:
     """Extract AthenaCanon from Pantheon state."""
-    if isinstance(state, dict):
-        canon = state.get("canon")
-    else:
-        canon = getattr(state, "canon", None)
+    canon = state.get("canon") if isinstance(state, dict) else getattr(state, "canon", None)
     if canon is None:
         return None
     if isinstance(canon, dict):
@@ -68,10 +67,7 @@ def _extract_canon(state: Any) -> dict | None:
 
 def _extract_dossier(state: Any) -> dict | None:
     """Extract HermesDossier from Pantheon state."""
-    if isinstance(state, dict):
-        dossier = state.get("dossier")
-    else:
-        dossier = getattr(state, "dossier", None)
+    dossier = state.get("dossier") if isinstance(state, dict) else getattr(state, "dossier", None)
     if dossier is None:
         return None
     if isinstance(dossier, dict):
@@ -106,10 +102,7 @@ def _extract_objections(state: Any) -> list[dict]:
 
     Each objection is normalized to a dict with ``statement``, ``status``, ``severity``.
     """
-    if isinstance(state, dict):
-        raw = state.get("objection_ledger")
-    else:
-        raw = getattr(state, "objection_ledger", None)
+    raw = state.get("objection_ledger") if isinstance(state, dict) else getattr(state, "objection_ledger", None)
 
     if not isinstance(raw, list):
         return []
@@ -117,17 +110,21 @@ def _extract_objections(state: Any) -> list[dict]:
     result: list[dict] = []
     for obj in raw:
         if isinstance(obj, dict):
-            result.append({
-                "statement": obj.get("statement", ""),
-                "status": obj.get("status", "UNKNOWN"),
-                "severity": obj.get("severity", "UNKNOWN"),
-            })
+            result.append(
+                {
+                    "statement": obj.get("statement", ""),
+                    "status": obj.get("status", "UNKNOWN"),
+                    "severity": obj.get("severity", "UNKNOWN"),
+                }
+            )
         else:
-            result.append({
-                "statement": getattr(obj, "statement", str(obj)),
-                "status": getattr(obj, "status", "UNKNOWN"),
-                "severity": getattr(obj, "severity", "UNKNOWN"),
-            })
+            result.append(
+                {
+                    "statement": getattr(obj, "statement", str(obj)),
+                    "status": getattr(obj, "status", "UNKNOWN"),
+                    "severity": getattr(obj, "severity", "UNKNOWN"),
+                }
+            )
     return result
 
 
@@ -217,11 +214,13 @@ class PantheonIngester:
             # If no invention page, create a transient page to hold canon claims
             if claim_page_id is None:
                 claim_page_id = await self._ensure_pantheon_claims_page(
-                    vault_id, run_id, workbook_id,
+                    vault_id,
+                    run_id,
+                    workbook_id,
                 )
 
             # 2. Ingest AthenaCanon
-            constraint_claim_ids = await self._ingest_canon(
+            _ = await self._ingest_canon(
                 vault_id=vault_id,
                 run_id=run_id,
                 ref_id=ref.ref_id,
@@ -340,7 +339,9 @@ class PantheonIngester:
                 constraint_claim_ids.append(claim.claim_id)
 
                 # Record artifact
-                idem_key = f"{run_id}:canon:constraint:{_content_hash(str(constraint_text).encode())}"
+                idem_key = (
+                    f"{run_id}:canon:constraint:{_content_hash(str(constraint_text).encode())}"
+                )
                 await self._run_svc.record_artifact(
                     ref_id=ref_id,
                     entity_kind=EntityKind.CLAIM,
@@ -544,9 +545,7 @@ class PantheonIngester:
     # Internal: sync status
     # ------------------------------------------------------------------
 
-    async def _update_sync_status(
-        self, ref_id: EntityId, status: str
-    ) -> None:
+    async def _update_sync_status(self, ref_id: EntityId, status: str) -> None:
         """Update sync_status on the KnowledgeRunRef via a fresh UoW."""
         try:
             uow = self._uow_factory()
@@ -555,5 +554,7 @@ class PantheonIngester:
                 await uow.commit()
         except Exception:
             logger.exception(
-                "Failed to update sync_status to %r for ref_id=%s", status, ref_id,
+                "Failed to update sync_status to %r for ref_id=%s",
+                status,
+                ref_id,
             )

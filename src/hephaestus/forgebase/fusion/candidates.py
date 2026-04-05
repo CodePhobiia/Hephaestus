@@ -10,13 +10,13 @@ Generates bridge candidates by:
 7. Diversified selection by type allocation + similarity bands
 8. Building BridgeCandidates with provenance
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
-
-import numpy as np
+from typing import TYPE_CHECKING, Any
 
 from hephaestus.forgebase.domain.enums import (
     BridgeCandidateKind,
@@ -31,10 +31,18 @@ from hephaestus.forgebase.fusion.policy import FusionPolicy
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
 from hephaestus.forgebase.service.id_generator import IdGenerator
 
+if TYPE_CHECKING:
+    import numpy as np
+
+
+def _lazy_np() -> Any:
+    import numpy as np  # noqa: F811
+    return np
 
 # ---------------------------------------------------------------------------
 # Internal entity representation
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _VaultEntity:
@@ -85,6 +93,7 @@ _EXPLORATORY_EXCLUDED_STATUSES: set[ClaimStatus] = {
 # Step 1-2: Entity extraction
 # ---------------------------------------------------------------------------
 
+
 async def _extract_entities(
     uow: AbstractUnitOfWork,
     vault_id: EntityId,
@@ -122,14 +131,16 @@ async def _extract_entities(
         if head.summary:
             text = f"{head.title}: {head.summary}"
 
-        entities.append(_VaultEntity(
-            entity_id=page.page_id,
-            version=head.version,
-            text=text,
-            kind=kind,
-            claim_refs=[],
-            source_refs=[],
-        ))
+        entities.append(
+            _VaultEntity(
+                entity_id=page.page_id,
+                version=head.version,
+                text=text,
+                kind=kind,
+                claim_refs=[],
+                source_refs=[],
+            )
+        )
 
     # --- Claims ---
     for page in pages:
@@ -140,21 +151,23 @@ async def _extract_entities(
                 continue
 
             # Epistemic filter
-            if fusion_mode == FusionMode.STRICT:
-                if head.status not in _STRICT_CLAIM_STATUSES:
-                    continue
-            elif fusion_mode == FusionMode.EXPLORATORY:
-                if head.status in _EXPLORATORY_EXCLUDED_STATUSES:
-                    continue
+            skip = (
+                (fusion_mode == FusionMode.STRICT and head.status not in _STRICT_CLAIM_STATUSES)
+                or (fusion_mode == FusionMode.EXPLORATORY and head.status in _EXPLORATORY_EXCLUDED_STATUSES)
+            )
+            if skip:
+                continue
 
-            entities.append(_VaultEntity(
-                entity_id=claim.claim_id,
-                version=head.version,
-                text=head.statement,
-                kind=BridgeCandidateKind.CLAIM_CLUSTER,
-                claim_refs=[claim.claim_id],
-                source_refs=[],
-            ))
+            entities.append(
+                _VaultEntity(
+                    entity_id=claim.claim_id,
+                    version=head.version,
+                    text=head.statement,
+                    kind=BridgeCandidateKind.CLAIM_CLUSTER,
+                    claim_refs=[claim.claim_id],
+                    source_refs=[],
+                )
+            )
 
     return entities
 
@@ -162,6 +175,7 @@ async def _extract_entities(
 # ---------------------------------------------------------------------------
 # Step 4-5: Embeddings + cross-vault cosine similarity
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _SimilarityPair:
@@ -202,12 +216,8 @@ async def _compute_cross_similarity(
     )
 
     # Convert to numpy matrices (each row is a normalised float32 vector)
-    left_mat = np.array(
-        [np.frombuffer(e, dtype=np.float32) for e in left_embeddings]
-    )
-    right_mat = np.array(
-        [np.frombuffer(e, dtype=np.float32) for e in right_embeddings]
-    )
+    left_mat = _lazy_np().array([_lazy_np().frombuffer(e, dtype=_lazy_np().float32) for e in left_embeddings])
+    right_mat = _lazy_np().array([_lazy_np().frombuffer(e, dtype=_lazy_np().float32) for e in right_embeddings])
 
     # Cosine similarity matrix (dot product of normalised vectors)
     sim_matrix = left_mat @ right_mat.T
@@ -222,7 +232,7 @@ async def _compute_cross_similarity(
             Version(1),
             problem,
         )
-        problem_emb = np.frombuffer(problem_emb_bytes, dtype=np.float32)
+        problem_emb = _lazy_np().frombuffer(problem_emb_bytes, dtype=_lazy_np().float32)
         left_prob_sim = left_mat @ problem_emb
         right_prob_sim = right_mat @ problem_emb
 
@@ -235,12 +245,14 @@ async def _compute_cross_similarity(
             prob_rel: float | None = None
             if left_prob_sim is not None and right_prob_sim is not None:
                 prob_rel = float((left_prob_sim[i] + right_prob_sim[j]) / 2.0)
-            results.append(_SimilarityPair(
-                left_idx=i,
-                right_idx=j,
-                similarity=sim,
-                problem_relevance=prob_rel,
-            ))
+            results.append(
+                _SimilarityPair(
+                    left_idx=i,
+                    right_idx=j,
+                    similarity=sim,
+                    problem_relevance=prob_rel,
+                )
+            )
 
     return results
 
@@ -248,6 +260,7 @@ async def _compute_cross_similarity(
 # ---------------------------------------------------------------------------
 # Step 7: Diversified selection
 # ---------------------------------------------------------------------------
+
 
 def _kind_to_bucket(kind: BridgeCandidateKind) -> str:
     """Map a BridgeCandidateKind to an allocation bucket name."""
@@ -276,10 +289,7 @@ def _diversified_select(
     5. Fill remaining budget from top-scoring pairs regardless of bucket
     """
     # Filter by threshold
-    filtered = [
-        p for p in all_pairs
-        if p.similarity >= policy.min_similarity_threshold
-    ]
+    filtered = [p for p in all_pairs if p.similarity >= policy.min_similarity_threshold]
     if not filtered:
         return []
 
@@ -345,6 +355,7 @@ def _diversified_select(
 # Step 8: Build BridgeCandidates
 # ---------------------------------------------------------------------------
 
+
 def _get_vault_head_revision_id(vault_id: EntityId) -> VaultRevisionId:
     """Create a placeholder VaultRevisionId referencing the vault's head.
 
@@ -358,6 +369,7 @@ def _get_vault_head_revision_id(vault_id: EntityId) -> VaultRevisionId:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 async def generate_bridge_candidates(
     uow: AbstractUnitOfWork,

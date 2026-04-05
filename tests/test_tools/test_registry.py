@@ -28,6 +28,7 @@ def _make_tool(name: str, category: str = "safe") -> ToolDefinition:
 # ToolDefinition
 # ---------------------------------------------------------------------------
 
+
 class TestToolDefinition:
     def test_defaults(self):
         td = ToolDefinition(name="t", description="d", input_schema={})
@@ -43,6 +44,7 @@ class TestToolDefinition:
 # ToolProfile
 # ---------------------------------------------------------------------------
 
+
 class TestToolProfile:
     def test_defaults(self):
         tp = ToolProfile(name="custom")
@@ -56,6 +58,7 @@ class TestToolProfile:
 # ---------------------------------------------------------------------------
 # ToolRegistry
 # ---------------------------------------------------------------------------
+
 
 class TestRegistryBasics:
     def test_register_and_get(self):
@@ -79,7 +82,10 @@ class TestRegistryBasics:
         reg.register(_make_tool("x"))
         new = _make_tool("x")
         new = ToolDefinition(
-            name="x", description="updated", input_schema={}, handler=_dummy_handler,
+            name="x",
+            description="updated",
+            input_schema={},
+            handler=_dummy_handler,
         )
         reg.register(new)
         assert reg.get("x").description == "updated"
@@ -129,11 +135,13 @@ class TestRegistryProfiles:
 class TestApiSchema:
     def test_to_api_schema_format(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="my_tool",
-            description="Does stuff",
-            input_schema={"type": "object", "properties": {"q": {"type": "string"}}},
-        ))
+        reg.register(
+            ToolDefinition(
+                name="my_tool",
+                description="Does stuff",
+                input_schema={"type": "object", "properties": {"q": {"type": "string"}}},
+            )
+        )
         schema = reg.to_api_schema()
         assert len(schema) == 1
         assert schema[0]["name"] == "my_tool"

@@ -1,9 +1,10 @@
 """Tests for conflict detection predicates."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.domain.conflicts import (
-    detect_entity_conflict,
     ConflictCheckResult,
+    detect_entity_conflict,
 )
 from hephaestus.forgebase.domain.values import Version
 

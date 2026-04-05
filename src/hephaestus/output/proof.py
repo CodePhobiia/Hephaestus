@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -220,7 +220,7 @@ class NoveltyProof:
     formal_statement: str = ""
     caveats: list[str] = field(default_factory=list)
     generated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        default_factory=lambda: datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -344,7 +344,7 @@ class NoveltyProofGenerator:
 
         # Compute novelty score if not provided
         if novelty_score is None:
-            novelty_score = structural_fidelity * (domain_distance ** self._alpha)
+            novelty_score = structural_fidelity * (domain_distance**self._alpha)
             novelty_score = min(1.0, novelty_score)
 
         # Build sub-analyses
@@ -536,10 +536,14 @@ class NoveltyProofGenerator:
             candidates = []
             if patents:
                 p = patents[0]
-                candidates.append(f"Patent: {getattr(p, 'title', 'N/A')} ({getattr(p, 'patent_id', '')})")
+                candidates.append(
+                    f"Patent: {getattr(p, 'title', 'N/A')} ({getattr(p, 'patent_id', '')})"
+                )
             if papers:
                 p = papers[0]
-                candidates.append(f"Paper: {getattr(p, 'title', 'N/A')} ({getattr(p, 'year', 'N/A')})")
+                candidates.append(
+                    f"Paper: {getattr(p, 'title', 'N/A')} ({getattr(p, 'year', 'N/A')})"
+                )
             closest = "; ".join(candidates[:2])
 
         return PriorArtAnalysis(
@@ -592,10 +596,7 @@ class NoveltyProofGenerator:
         ):
             return "HIGH"
 
-        if (
-            domain_distance >= _MEDIUM_CONFIDENCE_DISTANCE
-            and structural_fidelity >= 0.5
-        ):
+        if domain_distance >= _MEDIUM_CONFIDENCE_DISTANCE and structural_fidelity >= 0.5:
             return "MEDIUM"
 
         return "LOW"
@@ -662,11 +663,11 @@ class NoveltyProofGenerator:
             "",
             "CLAIM",
             "-----",
-            f"This invention proposes a novel solution to the following problem:",
-            f'  \u201c{problem}\u201d',
+            "This invention proposes a novel solution to the following problem:",
+            f"  \u201c{problem}\u201d",
             "",
             f"The invention '{invention_name}' is claimed to be structurally novel",
-            f"on the following grounds:",
+            "on the following grounds:",
             "",
             "GROUND 1: STRUCTURAL MAPPING UNIQUENESS",
             "-" * 40,

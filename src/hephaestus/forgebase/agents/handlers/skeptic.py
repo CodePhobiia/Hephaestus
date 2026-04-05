@@ -4,14 +4,14 @@ Runs targeted lint detectors focused on CONTRADICTORY_CLAIM,
 UNSUPPORTED_CLAIM, and SOURCE_GAP finding categories.
 All work happens on the task's workbook branch.
 """
+
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.contracts.agent import AgentTask, TaskStatus
 from hephaestus.forgebase.domain.enums import FindingCategory
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase
@@ -19,11 +19,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # The categories the skeptic is interested in
-SKEPTIC_CATEGORIES: frozenset[str] = frozenset({
-    FindingCategory.CONTRADICTORY_CLAIM.value,
-    FindingCategory.UNSUPPORTED_CLAIM.value,
-    FindingCategory.SOURCE_GAP.value,
-})
+SKEPTIC_CATEGORIES: frozenset[str] = frozenset(
+    {
+        FindingCategory.CONTRADICTORY_CLAIM.value,
+        FindingCategory.UNSUPPORTED_CLAIM.value,
+        FindingCategory.SOURCE_GAP.value,
+    }
+)
 
 
 async def execute_skeptic(forgebase: ForgeBase, task: AgentTask) -> AgentTask:

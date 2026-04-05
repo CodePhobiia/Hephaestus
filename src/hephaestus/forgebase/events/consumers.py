@@ -1,4 +1,5 @@
 """Consumer registry for durable event delivery."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -38,9 +39,7 @@ class ConsumerRegistry:
     def register(self, consumer: EventConsumer) -> None:
         """Register a consumer. Raises ``ValueError`` on duplicate name."""
         if consumer.name in self._consumers:
-            raise ValueError(
-                f"Consumer already registered: {consumer.name!r}"
-            )
+            raise ValueError(f"Consumer already registered: {consumer.name!r}")
         self._consumers[consumer.name] = consumer
 
     def get(self, name: str) -> EventConsumer | None:

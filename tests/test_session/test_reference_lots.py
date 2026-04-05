@@ -109,21 +109,27 @@ def test_bind_reference_lot_appends() -> None:
 
 
 def test_evaluate_lot_floor_pass() -> None:
-    lot = ReferenceLot(lot_id=1, kind="permission", subject_key="read", acquired_op=1, floor={"allowed": "1"})
+    lot = ReferenceLot(
+        lot_id=1, kind="permission", subject_key="read", acquired_op=1, floor={"allowed": "1"}
+    )
     ev = evaluate_lot(lot, {"allowed": "1"})
     assert ev.ok
     assert ev.score >= 0
 
 
 def test_evaluate_lot_floor_fail() -> None:
-    lot = ReferenceLot(lot_id=1, kind="permission", subject_key="read", acquired_op=1, floor={"allowed": "1"})
+    lot = ReferenceLot(
+        lot_id=1, kind="permission", subject_key="read", acquired_op=1, floor={"allowed": "1"}
+    )
     ev = evaluate_lot(lot, {"allowed": "0"})
     assert not ev.ok
     assert any("floor regression" in r for r in ev.reasons)
 
 
 def test_evaluate_lot_exact_fail() -> None:
-    lot = ReferenceLot(lot_id=1, kind="workspace", subject_key="repo", acquired_op=1, exact={"root": "/a"})
+    lot = ReferenceLot(
+        lot_id=1, kind="workspace", subject_key="repo", acquired_op=1, exact={"root": "/a"}
+    )
     ev = evaluate_lot(lot, {"root": "/b"})
     assert not ev.ok
     assert any("exact mismatch" in r for r in ev.reasons)
@@ -131,7 +137,14 @@ def test_evaluate_lot_exact_fail() -> None:
 
 def test_resume_gate_invalidates_dependents() -> None:
     lots: list[ReferenceLot] = []
-    bind_reference_lot(lots, kind="permission", subject_key="write_file", op_id=10, floor={"allowed": "1"}, dependents=[10, 11])
+    bind_reference_lot(
+        lots,
+        kind="permission",
+        subject_key="write_file",
+        op_id=10,
+        floor={"allowed": "1"},
+        dependents=[10, 11],
+    )
     report = evaluate_resume_gate(lots, lambda _lot: {"allowed": "0"})
     assert report.invalid_ops == [10, 11]
     assert not report.passed
@@ -139,7 +152,9 @@ def test_resume_gate_invalidates_dependents() -> None:
 
 def test_resume_gate_passes() -> None:
     lots: list[ReferenceLot] = []
-    bind_reference_lot(lots, kind="tool", subject_key="read_file", op_id=2, floor={"available": "1"})
+    bind_reference_lot(
+        lots, kind="tool", subject_key="read_file", op_id=2, floor={"available": "1"}
+    )
     report = evaluate_resume_gate(lots, lambda _lot: {"available": "1"})
     assert report.passed
     assert report.invalid_ops == []
@@ -164,7 +179,9 @@ def test_default_probe_factory() -> None:
         active_tools={"read_file"},
         permission_checker=lambda name: name == "read_file",
     )
-    assert probe(ReferenceLot(1, "workspace", "repo", 0, exact={"root": "/repo"})) == {"root": "/repo"}
+    assert probe(ReferenceLot(1, "workspace", "repo", 0, exact={"root": "/repo"})) == {
+        "root": "/repo"
+    }
     assert probe(ReferenceLot(2, "tool", "read_file", 0)) == {"available": "1"}
     assert probe(ReferenceLot(3, "permission", "read_file", 0)) == {"allowed": "1"}
 

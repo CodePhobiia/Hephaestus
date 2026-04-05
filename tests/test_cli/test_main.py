@@ -7,10 +7,8 @@ All Genesis pipeline calls are mocked — no real API calls.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -23,7 +21,6 @@ from hephaestus.cli.main import cli, scan_cmd, workspace_cmd
 from hephaestus.lenses.state import LensBundleMember, LensBundleProof, LensEngineState
 from hephaestus.research.perplexity import BenchmarkCase, BenchmarkCorpus
 from hephaestus.session.deliberation import DeliberationGraph
-
 
 # ---------------------------------------------------------------------------
 # Mock data factories
@@ -242,13 +239,11 @@ def _make_workspace_dir(tmp_path: Path) -> Path:
     (package / "__init__.py").write_text("", encoding="utf-8")
     (package / "cli" / "__init__.py").write_text("", encoding="utf-8")
     (package / "cli" / "main.py").write_text(
-        "def main() -> None:\n"
-        "    return None\n",
+        "def main() -> None:\n    return None\n",
         encoding="utf-8",
     )
     (tmp_path / "tests" / "test_main.py").write_text(
-        "def test_smoke() -> None:\n"
-        "    assert True\n",
+        "def test_smoke() -> None:\n    assert True\n",
         encoding="utf-8",
     )
     (tmp_path / "README.md").write_text("# Demo\n", encoding="utf-8")
@@ -326,34 +321,58 @@ async def _make_stream(stages: list[tuple[str, str, Any]]) -> AsyncIterator[Any]
 
 def _make_successful_stream(report: Any) -> Any:
     """Build a mock invent_stream that yields a successful pipeline run."""
+
     async def _stream(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
-        async for update in _make_stream([
-            ("STARTING", "Starting Genesis pipeline...", None),
-            ("DECOMPOSING", "Stage 1/5: Extracting abstract structural form...", None),
-            ("DECOMPOSED", "Decomposed: [distributed_systems] Robust signal propagation", report.structure),
-            ("SEARCHING", "Stage 2/5: Searching 10 domains...", None),
-            ("SEARCHED", "Found 8 cross-domain candidates", report.all_candidates),
-            ("SCORING", "Stage 3/5: Scoring 8 candidates...", None),
-            ("SCORED", "Scored 5 candidates. Top: Immune System (score=0.910)", report.scored_candidates),
-            ("TRANSLATING", "Stage 4/5: Translating top 3 candidates...", None),
-            ("TRANSLATED", "Translated 1 inventions. Top: Immune Trust Protocol", report.translations),
-            ("VERIFYING", "Stage 5/5: Adversarial novelty verification...", None),
-            ("VERIFIED", "Verified 3 inventions. Top novelty: 0.91", report.verified_inventions),
-            ("COMPLETE", report.summary(), report),
-        ]):
+        async for update in _make_stream(
+            [
+                ("STARTING", "Starting Genesis pipeline...", None),
+                ("DECOMPOSING", "Stage 1/5: Extracting abstract structural form...", None),
+                (
+                    "DECOMPOSED",
+                    "Decomposed: [distributed_systems] Robust signal propagation",
+                    report.structure,
+                ),
+                ("SEARCHING", "Stage 2/5: Searching 10 domains...", None),
+                ("SEARCHED", "Found 8 cross-domain candidates", report.all_candidates),
+                ("SCORING", "Stage 3/5: Scoring 8 candidates...", None),
+                (
+                    "SCORED",
+                    "Scored 5 candidates. Top: Immune System (score=0.910)",
+                    report.scored_candidates,
+                ),
+                ("TRANSLATING", "Stage 4/5: Translating top 3 candidates...", None),
+                (
+                    "TRANSLATED",
+                    "Translated 1 inventions. Top: Immune Trust Protocol",
+                    report.translations,
+                ),
+                ("VERIFYING", "Stage 5/5: Adversarial novelty verification...", None),
+                (
+                    "VERIFIED",
+                    "Verified 3 inventions. Top novelty: 0.91",
+                    report.verified_inventions,
+                ),
+                ("COMPLETE", report.summary(), report),
+            ]
+        ):
             yield update
 
     return _stream
 
 
-def _make_failed_stream(stage: str = "DECOMPOSED", msg: str = "Decomposition failed: parse error") -> Any:
+def _make_failed_stream(
+    stage: str = "DECOMPOSED", msg: str = "Decomposition failed: parse error"
+) -> Any:
     """Build a mock invent_stream that yields a failed pipeline run."""
+
     async def _stream(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
-        async for update in _make_stream([
-            ("STARTING", "Starting Genesis pipeline...", None),
-            ("DECOMPOSING", "Stage 1/5: Decomposing...", None),
-            ("FAILED", msg, None),
-        ]):
+        async for update in _make_stream(
+            [
+                ("STARTING", "Starting Genesis pipeline...", None),
+                ("DECOMPOSING", "Stage 1/5: Decomposing...", None),
+                ("FAILED", msg, None),
+            ]
+        ):
             yield update
 
     return _stream
@@ -405,6 +424,7 @@ class TestHelpVersion:
 
     def test_version_flag(self, runner: CliRunner) -> None:
         from hephaestus import __version__
+
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert __version__ in result.output
@@ -477,8 +497,6 @@ class TestSuccessfulInvocation:
         # Quiet mode should print minimal output
         output_lines = [l for l in result.output.strip().split("\n") if l.strip()]
         assert len(output_lines) <= 5  # minimal output
-
-
 
     @patch("hephaestus.core.genesis.Genesis")
     def test_model_opus(self, MockGenesis: MagicMock, runner: CliRunner) -> None:
@@ -558,7 +576,9 @@ class TestSuccessfulInvocation:
         assert result.exit_code == 0
 
     @patch("hephaestus.core.genesis.Genesis")
-    def test_output_file_json(self, MockGenesis: MagicMock, runner: CliRunner, tmp_path: Any) -> None:
+    def test_output_file_json(
+        self, MockGenesis: MagicMock, runner: CliRunner, tmp_path: Any
+    ) -> None:
         report = _make_invention_report()
         instance = MockGenesis.return_value
         instance.invent_stream = _make_successful_stream(report)
@@ -569,7 +589,9 @@ class TestSuccessfulInvocation:
         assert output_file.exists()
 
     @patch("hephaestus.core.genesis.Genesis")
-    def test_output_file_markdown(self, MockGenesis: MagicMock, runner: CliRunner, tmp_path: Any) -> None:
+    def test_output_file_markdown(
+        self, MockGenesis: MagicMock, runner: CliRunner, tmp_path: Any
+    ) -> None:
         report = _make_invention_report()
         instance = MockGenesis.return_value
         instance.invent_stream = _make_successful_stream(report)
@@ -593,7 +615,9 @@ class TestSuccessfulInvocation:
             cases=[BenchmarkCase(problem="Handle failover")],
         )
 
-        with patch("hephaestus.research.BenchmarkCorpusBuilder.build", new=AsyncMock(return_value=corpus)):
+        with patch(
+            "hephaestus.research.BenchmarkCorpusBuilder.build", new=AsyncMock(return_value=corpus)
+        ):
             result = runner.invoke(
                 cli,
                 ["--benchmark-corpus", "distributed systems", "--format", "json"],
@@ -616,7 +640,9 @@ class TestSuccessfulInvocation:
         )
         output_file = tmp_path / "benchmark.md"
 
-        with patch("hephaestus.research.BenchmarkCorpusBuilder.build", new=AsyncMock(return_value=corpus)):
+        with patch(
+            "hephaestus.research.BenchmarkCorpusBuilder.build", new=AsyncMock(return_value=corpus)
+        ):
             result = runner.invoke(
                 cli,
                 ["--benchmark-corpus", "distributed systems", "--output", str(output_file)],
@@ -636,14 +662,14 @@ class TestErrorHandling:
     @patch("hephaestus.core.genesis.Genesis")
     def test_pipeline_failure(self, MockGenesis: MagicMock, runner: CliRunner) -> None:
         instance = MockGenesis.return_value
-        instance.invent_stream = _make_failed_stream("FAILED", "Decomposition failed: JSON parse error")
+        instance.invent_stream = _make_failed_stream(
+            "FAILED", "Decomposition failed: JSON parse error"
+        )
 
         result = runner.invoke(cli, ["test problem"])
         assert result.exit_code == 1
         # Should show user-friendly error, not stack trace
         assert "Traceback" not in result.output
-
-
 
     def test_invalid_model(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--model", "invalid-model", "test problem"])
@@ -781,6 +807,7 @@ class TestInterruptHandling:
     @patch("hephaestus.core.genesis.Genesis")
     def test_keyboard_interrupt(self, MockGenesis: MagicMock, runner: CliRunner) -> None:
         """KeyboardInterrupt should be handled gracefully without a Python traceback."""
+
         async def _interrupt_stream(*args: Any, **kwargs: Any):
             raise KeyboardInterrupt()
             yield  # make it a generator
@@ -803,7 +830,9 @@ class TestDisplay:
     def test_print_banner(self) -> None:
         """Smoke test for banner rendering."""
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_banner
 
         console = Console(file=StringIO(), highlight=False)
@@ -812,7 +841,9 @@ class TestDisplay:
     def test_print_invention_report(self) -> None:
         """Smoke test for full invention report rendering."""
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_invention_report
 
         report = _make_invention_report()
@@ -824,7 +855,9 @@ class TestDisplay:
 
     def test_print_invention_report_with_lens_engine(self) -> None:
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_invention_report
 
         report = _make_invention_report()
@@ -837,7 +870,9 @@ class TestDisplay:
 
     def test_print_invention_report_with_pantheon(self) -> None:
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_invention_report
 
         report = _make_invention_report()
@@ -854,7 +889,9 @@ class TestDisplay:
     def test_print_cost_table(self) -> None:
         """Smoke test for cost table rendering."""
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_cost_table
 
         report = _make_invention_report()
@@ -866,7 +903,9 @@ class TestDisplay:
     def test_print_trace(self) -> None:
         """Smoke test for trace rendering."""
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_trace
 
         report = _make_invention_report()
@@ -876,7 +915,9 @@ class TestDisplay:
     def test_print_error(self) -> None:
         """Smoke test for error rendering."""
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_error
 
         console = Console(file=StringIO(), highlight=False)
@@ -887,7 +928,9 @@ class TestDisplay:
     def test_print_quiet_result(self) -> None:
         """Smoke test for quiet result rendering."""
         from io import StringIO
+
         from rich.console import Console
+
         from hephaestus.cli.display import print_quiet_result
 
         report = _make_invention_report()
@@ -949,11 +992,13 @@ class TestSDKClient:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus.from_env()
         assert heph.model == "both"
 
     def test_constructor_with_keys(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(
             anthropic_key="sk-ant-test",
             openai_key="sk-test",
@@ -966,16 +1011,19 @@ class TestSDKClient:
 
     def test_constructor_opus_only(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(anthropic_key="sk-ant-test", model="opus")
         assert heph.model == "opus"
 
     def test_constructor_gpt5_only(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(openai_key="sk-test", model="gpt5")
         assert heph.model == "gpt5"
 
     def test_missing_key_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.sdk.client import Hephaestus, ConfigurationError
+        from hephaestus.sdk.client import ConfigurationError, Hephaestus
+
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
@@ -984,6 +1032,7 @@ class TestSDKClient:
 
     def test_estimate_cost(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test")
         estimate = heph.estimate_cost("a distributed systems problem")
 
@@ -997,6 +1046,7 @@ class TestSDKClient:
 
     def test_estimate_cost_longer_problem(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test")
 
         short = heph.estimate_cost("short problem")
@@ -1008,6 +1058,7 @@ class TestSDKClient:
     def test_list_lenses(self) -> None:
         """list_lenses should return a list of metadata dicts."""
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test")
 
         # May raise if lens library doesn't exist, but should not crash badly
@@ -1019,10 +1070,15 @@ class TestSDKClient:
                 assert "name" in lenses[0]
         except Exception as exc:
             # Library might not exist in test env — that's ok
-            assert "lens" in str(exc).lower() or "directory" in str(exc).lower() or "not found" in str(exc).lower()
+            assert (
+                "lens" in str(exc).lower()
+                or "directory" in str(exc).lower()
+                or "not found" in str(exc).lower()
+            )
 
     def test_get_lens_not_found(self) -> None:
         from hephaestus.sdk.client import Hephaestus, HephaestusError
+
         heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test")
 
         with pytest.raises(HephaestusError):
@@ -1031,12 +1087,14 @@ class TestSDKClient:
     @pytest.mark.asyncio
     async def test_context_manager(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         async with Hephaestus.from_env() as heph:
             assert heph is not None
             assert heph.model == "both"
 
     def test_repr(self) -> None:
         from hephaestus.sdk.client import Hephaestus
+
         heph = Hephaestus(anthropic_key="sk-ant-test", openai_key="sk-test", candidates=6)
         r = repr(heph)
         assert "Hephaestus" in r
@@ -1061,8 +1119,8 @@ class TestSDKClient:
     @pytest.mark.asyncio
     async def test_invent_stream_success(self) -> None:
         """Test invent_stream() yields updates correctly."""
-        from hephaestus.sdk.client import Hephaestus
         from hephaestus.core.genesis import PipelineStage
+        from hephaestus.sdk.client import Hephaestus
 
         report = _make_invention_report()
 
@@ -1097,12 +1155,16 @@ class TestWorkspaceSurfaces:
         assert roots == ["src/demo"]
         assert isinstance(payload["repo_dossier"]["components"], list)
 
-    def test_workspace_cmd_passes_workspace_root(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workspace_cmd_passes_workspace_root(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         runner = CliRunner()
         repo = _make_workspace_dir(tmp_path)
         captured: dict[str, Any] = {}
 
-        def _fake_run_interactive(console: Any, model: str, layered_config: Any = None, workspace_root: Any = None) -> None:
+        def _fake_run_interactive(
+            console: Any, model: str, layered_config: Any = None, workspace_root: Any = None
+        ) -> None:
             captured["model"] = model
             captured["workspace_root"] = workspace_root
 

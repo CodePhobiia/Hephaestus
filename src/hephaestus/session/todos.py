@@ -19,7 +19,7 @@ import json
 import logging
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -59,8 +59,8 @@ class TodoItem:
     id: str
     title: str
     status: str = PENDING
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     notes: str = ""
 
 
@@ -85,7 +85,7 @@ class TodoList:
         raise KeyError(f"No todo item with id {item_id!r}")
 
     def _touch(self, item: TodoItem) -> None:
-        item.updated_at = datetime.now(timezone.utc)
+        item.updated_at = datetime.now(UTC)
 
     # ── public API ──────────────────────────────────────────────────
 
@@ -109,9 +109,7 @@ class TodoList:
         """
         item = self._find(item_id)
         if item.status in _TERMINAL_STATUSES:
-            raise ValueError(
-                f"Cannot start item {item_id!r} with status {item.status!r}"
-            )
+            raise ValueError(f"Cannot start item {item_id!r} with status {item.status!r}")
         # auto-pause the current active item
         active = self.get_active()
         if active is not None and active.id != item_id:
@@ -127,9 +125,7 @@ class TodoList:
         """Mark *item_id* as ``completed``."""
         item = self._find(item_id)
         if item.status in _TERMINAL_STATUSES:
-            raise ValueError(
-                f"Cannot complete item {item_id!r} with status {item.status!r}"
-            )
+            raise ValueError(f"Cannot complete item {item_id!r} with status {item.status!r}")
         item.status = COMPLETED
         self._touch(item)
         logger.debug("completed todo %s", item_id)
@@ -138,9 +134,7 @@ class TodoList:
         """Mark *item_id* as ``cancelled``."""
         item = self._find(item_id)
         if item.status in _TERMINAL_STATUSES:
-            raise ValueError(
-                f"Cannot cancel item {item_id!r} with status {item.status!r}"
-            )
+            raise ValueError(f"Cannot cancel item {item_id!r} with status {item.status!r}")
         item.status = CANCELLED
         self._touch(item)
         logger.debug("cancelled todo %s", item_id)

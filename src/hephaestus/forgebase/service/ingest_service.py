@@ -1,7 +1,9 @@
 """IngestService — source ingestion and normalization."""
+
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from hephaestus.forgebase.domain.enums import SourceFormat, SourceStatus, SourceTrustTier
 from hephaestus.forgebase.domain.models import (
@@ -34,7 +36,7 @@ class IngestService:
         self,
         vault_id: EntityId,
         raw_content: bytes,
-        format: SourceFormat,
+        format: SourceFormat, # noqa: A002
         metadata: dict[str, Any] | None = None,
         workbook_id: EntityId | None = None,
         idempotency_key: str = "",
@@ -101,7 +103,9 @@ class IngestService:
                 )
             else:
                 await uow.vaults.set_canonical_source_head(
-                    vault_id, source_id, 1,
+                    vault_id,
+                    source_id,
+                    1,
                 )
 
             # 4. Emit event
@@ -201,7 +205,9 @@ class IngestService:
                 )
             else:
                 await uow.vaults.set_canonical_source_head(
-                    source.vault_id, source_id, new_version_num.number,
+                    source.vault_id,
+                    source_id,
+                    new_version_num.number,
                 )
 
             # 4. Emit event

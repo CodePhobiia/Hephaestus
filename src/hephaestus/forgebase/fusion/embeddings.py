@@ -4,10 +4,12 @@ Stores embeddings keyed by (entity_id, version). Recomputes only when
 entity version changes. Uses sentence-transformers (all-MiniLM-L6-v2)
 with lazy loading to avoid heavy imports at module level.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 
 from hephaestus.forgebase.domain.values import EntityId, Version
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
@@ -93,7 +95,10 @@ class EmbeddingIndex:
 
             embedding_blob = self._compute_embedding(text)
             await uow.embedding_cache.put(
-                eid_str, ver_int, embedding_blob, self._now_iso(),
+                eid_str,
+                ver_int,
+                embedding_blob,
+                self._now_iso(),
             )
             await uow.commit()
             return embedding_blob

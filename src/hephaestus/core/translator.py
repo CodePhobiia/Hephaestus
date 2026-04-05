@@ -28,7 +28,6 @@ Usage::
 from __future__ import annotations
 
 import json
-from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
@@ -36,9 +35,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hephaestus.core.decomposer import ProblemStructure
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.core.scorer import ScoredCandidate
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace, HarnessConfig
-from hephaestus.deepforge.interference import InjectionStrategy, Lens
+from hephaestus.deepforge.interference import InjectionStrategy
 from hephaestus.deepforge.interference import Lens as ForgeLens
 from hephaestus.lenses.bundles import BundleComposer
 from hephaestus.lenses.cells import build_reference_state
@@ -64,7 +64,7 @@ similar stimuli, with the modification encoding both the stimulus signature
 and the response pathway."
 
 SELF-CHECK FOR PHASE 1: After writing the abstract mechanism, ask:
-"Is this just [parallel execution / caching / retry / queuing / 
+"Is this just [parallel execution / caching / retry / queuing /
 load balancing / pub-sub / observer pattern / state machine]?"
 If yes, STOP. These are elementary engineering patterns. Cross-domain
 transfer should find mechanisms that are NOT in the standard engineering
@@ -80,7 +80,7 @@ describe a novel architecture without mentioning the source domain, the transfer
 is decorative and you must set mechanism_is_decorative to true.
 
 CONCRETENESS REQUIREMENTS FOR PHASE 2:
-- Name specific data structures (not "a data structure" but "a ring buffer of 
+- Name specific data structures (not "a data structure" but "a ring buffer of
   size 2^k indexed by hash(request_id) mod k")
 - Include specific parameters with reasonable default values
 - Write actual pseudocode with function signatures, not prose descriptions
@@ -444,7 +444,7 @@ class SolutionTranslator:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         translations: list[Translation] = []
-        for candidate, result in zip(candidates, results):
+        for candidate, result in zip(candidates, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning(
                     "Translation failed for %s: %s",
@@ -515,7 +515,9 @@ class SolutionTranslator:
 
         available_lens_ids = tuple(pending.keys())
         missing_lens_ids = tuple(
-            lens_id for lens_id in getattr(bundle_proof, "active_lens_ids", ()) if lens_id not in set(available_lens_ids)
+            lens_id
+            for lens_id in getattr(bundle_proof, "active_lens_ids", ())
+            if lens_id not in set(available_lens_ids)
         )
         active_bundle = bundle_proof
         if missing_lens_ids:
@@ -532,8 +534,10 @@ class SolutionTranslator:
         current_reference_state = build_reference_state(structure)
         if active_bundle is not None:
             continuous = (
-                getattr(active_bundle, "reference_signature", "") == current_reference_state.reference_signature
-                and getattr(active_bundle, "research_signature", "") == current_reference_state.research_signature
+                getattr(active_bundle, "reference_signature", "")
+                == current_reference_state.reference_signature
+                and getattr(active_bundle, "research_signature", "")
+                == current_reference_state.research_signature
             )
             if not continuous:
                 runtime.recomposition_events.append(
@@ -574,13 +578,15 @@ class SolutionTranslator:
                 )
             except TranslationError as exc:
                 invalidated.add(lens_id)
-                runtime.recomposition_events.append({
-                    "original_bundle_id": getattr(active_bundle, "bundle_id", ""),
-                    "invalidated_lens_ids": [lens_id],
-                    "reason": f"Translation error: {exc}",
-                    "new_bundle": None,
-                    "fallback_required": True,
-                })
+                runtime.recomposition_events.append(
+                    {
+                        "original_bundle_id": getattr(active_bundle, "bundle_id", ""),
+                        "invalidated_lens_ids": [lens_id],
+                        "reason": f"Translation error: {exc}",
+                        "new_bundle": None,
+                        "fallback_required": True,
+                    }
+                )
                 active_bundle = None
                 break
             guard = evaluate_handoff_guards(
@@ -633,7 +639,11 @@ class SolutionTranslator:
             for candidate in all_candidates
             if candidate.lens_id not in invalidated and candidate.lens_id not in translated_lens_ids
         ]
-        if self._allow_bundle_fallback and (not translations or active_bundle is None) and fallback_candidates:
+        if (
+            self._allow_bundle_fallback
+            and (not translations or active_bundle is None)
+            and fallback_candidates
+        ):
             runtime.fallback_used = True
             for candidate in fallback_candidates[: self._top_n]:
                 if candidate.lens_id in invalidated:
@@ -687,19 +697,19 @@ class SolutionTranslator:
         config = HarnessConfig(
             lenses=[forge_lens],
             use_interference=True,
-            use_pruner=False,   # Pruner not needed for translation
+            use_pruner=False,  # Pruner not needed for translation
             use_pressure=self._harness.config.use_pressure,
             max_pressure_rounds=self._harness.config.max_pressure_rounds,
             injection_strategy=InjectionStrategy.FULL,
             max_tokens=16000,
-            temperature=0.7,    # Higher temperature for creative translation
+            temperature=0.7,  # Higher temperature for creative translation
         )
 
         constraints_text = "\n".join(f"• {c}" for c in structure.constraints[:6])
         axioms_text = "\n".join(f"• {a}" for a in lens.axioms[:5])
 
         # Build banned baselines section if available
-        banned = getattr(self, '_banned_baselines', None) or []
+        banned = getattr(self, "_banned_baselines", None) or []
         if banned:
             banned_text = "\nBANNED BASELINES — these obvious approaches are NOT acceptable:\n"
             banned_text += "\n".join(f"- {b}" for b in banned[:5])
@@ -714,15 +724,22 @@ class SolutionTranslator:
                 f"- [{commitment.kind.value}] {commitment.statement}"
                 for commitment in branch.commitments[:8]
             )
-            recovery_lines = "\n".join(
-                (
-                    f"- [{operator.kind.value}] trigger: {operator.trigger}; "
-                    f"intervention: {operator.intervention}; preserve: {operator.preservation_goal}"
+            recovery_lines = (
+                "\n".join(
+                    (
+                        f"- [{operator.kind.value}] trigger: {operator.trigger}; "
+                        f"intervention: {operator.intervention}; preserve: {operator.preservation_goal}"
+                    )
+                    for operator in branch.recovery_operators[:4]
                 )
-                for operator in branch.recovery_operators[:4]
-            ) or "- none"
-            open_questions = "\n".join(f"- {question}" for question in branch.open_questions[:4]) or "- none"
-            rejected_patterns = "\n".join(f"- {pattern}" for pattern in branch.rejected_patterns[:4]) or "- none"
+                or "- none"
+            )
+            open_questions = (
+                "\n".join(f"- {question}" for question in branch.open_questions[:4]) or "- none"
+            )
+            rejected_patterns = (
+                "\n".join(f"- {pattern}" for pattern in branch.rejected_patterns[:4]) or "- none"
+            )
             branch_commitments_section = (
                 "\nPARTIAL BRANCH COMMITMENTS:\n"
                 "Treat these as the currently accepted structural commitments for this branch.\n"
@@ -737,7 +754,9 @@ class SolutionTranslator:
                 "You must preserve the recovery operators concretely and describe how the resulting architecture keeps future non-obvious options open rather than collapsing into the closest known pattern.\n"
             )
 
-        active_bundle_proof = None if force_singleton else (bundle_proof or getattr(candidate, "bundle_proof", None))
+        active_bundle_proof = (
+            None if force_singleton else (bundle_proof or getattr(candidate, "bundle_proof", None))
+        )
         bundle_proof_section = self._bundle_proof_section(
             candidate,
             bundle_proof=active_bundle_proof,
@@ -772,7 +791,9 @@ class SolutionTranslator:
             config=config,
         )
 
-        translate_system = self._system_override if self._system_override is not None else _TRANSLATE_SYSTEM
+        translate_system = (
+            self._system_override if self._system_override is not None else _TRANSLATE_SYSTEM
+        )
         result = await interference_harness.forge(
             prompt,
             system=translate_system,
@@ -782,7 +803,9 @@ class SolutionTranslator:
 
         parsed_raw = result.output
         if config.use_pressure:
-            parsed_raw = await self._deterministic_schema_pass(parsed_raw, system_override=translate_system)
+            parsed_raw = await self._deterministic_schema_pass(
+                parsed_raw, system_override=translate_system
+            )
 
         parsed = self.parse_translation(parsed_raw)
         translation = self._build_translation(
@@ -845,7 +868,7 @@ class SolutionTranslator:
         translation.guard_results = list(source_translation.guard_results)
         translation.guard_failed = source_translation.guard_failed
         translation.recomposition_events = list(source_translation.recomposition_events)
-        setattr(translation, "pantheon_reforge_metadata", parsed.get("pantheon_reforge", {}))
+        translation.pantheon_reforge_metadata = parsed.get("pantheon_reforge", {})
         return translation
 
     @staticmethod
@@ -856,8 +879,14 @@ class SolutionTranslator:
     ) -> str:
         if bundle_proof is None:
             return ""
-        conditions = getattr(bundle_proof, "conditional_requirements", {}).get(candidate.lens_id, ())
-        critical = "yes" if candidate.lens_id in set(getattr(bundle_proof, "critical_lens_ids", ())) else "no"
+        conditions = getattr(bundle_proof, "conditional_requirements", {}).get(
+            candidate.lens_id, ()
+        )
+        critical = (
+            "yes"
+            if candidate.lens_id in set(getattr(bundle_proof, "critical_lens_ids", ()))
+            else "no"
+        )
         return (
             "\nACTIVE LENS BUNDLE PROOF:\n"
             f"- bundle_id: {getattr(bundle_proof, 'bundle_id', '')}\n"
@@ -878,7 +907,9 @@ class SolutionTranslator:
     ) -> str:
         if previous_translation is None:
             return ""
-        constraint_lines = "\n".join(f"- {constraint}" for constraint in structure.constraints[:4]) or "- none"
+        constraint_lines = (
+            "\n".join(f"- {constraint}" for constraint in structure.constraints[:4]) or "- none"
+        )
         return (
             "\nPREVIOUS BUNDLE HANDOFF CONTEXT:\n"
             f"- previous_invention: {previous_translation.invention_name}\n"
@@ -917,7 +948,9 @@ class SolutionTranslator:
         """Public wrapper for translation JSON parsing."""
         return self._parse_translation(raw)
 
-    async def _deterministic_schema_pass(self, raw_forge_output: str, system_override: str | None = None) -> str:
+    async def _deterministic_schema_pass(
+        self, raw_forge_output: str, system_override: str | None = None
+    ) -> str:
         """Run a deterministic two-pass extraction on raw forge output to ensure JSON schema adherence."""
         prompt = (
             "Extract the following raw invention into the required JSON schema.\n"
@@ -927,10 +960,7 @@ class SolutionTranslator:
         )
         sys_prompt = system_override if system_override is not None else _TRANSLATE_SYSTEM
         result = await self._harness.adapter.generate(
-            prompt,
-            system=sys_prompt,
-            max_tokens=16000,
-            temperature=0.0
+            prompt, system=sys_prompt, max_tokens=16000, temperature=0.0
         )
         return result.text
 
@@ -986,7 +1016,9 @@ class SolutionTranslator:
             recovery_commitments = [recovery_commitments]
         elif not isinstance(recovery_commitments, list):
             recovery_commitments = []
-        recovery_commitments = [str(commitment) for commitment in recovery_commitments if commitment]
+        recovery_commitments = [
+            str(commitment) for commitment in recovery_commitments if commitment
+        ]
 
         future_option_preservation = parsed.get("future_option_preservation", "")
         if not isinstance(future_option_preservation, str):
@@ -1023,7 +1055,9 @@ class SolutionTranslator:
             trace=trace,
             bundle_proof=bundle_proof,
             bundle_lineage=None if force_singleton else getattr(candidate, "bundle_lineage", None),
-            selection_mode="singleton_fallback" if force_singleton else str(getattr(candidate, "selection_mode", "singleton")),
+            selection_mode="singleton_fallback"
+            if force_singleton
+            else str(getattr(candidate, "selection_mode", "singleton")),
             bundle_role="" if force_singleton else str(getattr(candidate, "bundle_role", "")),
             reference_signature=reference_state.reference_signature,
             research_signature=reference_state.research_signature,
@@ -1056,9 +1090,21 @@ class SolutionTranslator:
 
         # Require critical fields — fail if the JSON parsed but is
         # substantively empty (no invention name AND no architecture)
-        has_name = bool(data.get("invention_name", "").strip()) if isinstance(data.get("invention_name"), str) else bool(data.get("invention_name"))
-        has_arch = bool(data.get("architecture", "").strip()) if isinstance(data.get("architecture"), str) else bool(data.get("architecture"))
-        has_phase2 = bool(data.get("phase2_target_architecture", "").strip()) if isinstance(data.get("phase2_target_architecture"), str) else bool(data.get("phase2_target_architecture"))
+        has_name = (
+            bool(data.get("invention_name", "").strip())
+            if isinstance(data.get("invention_name"), str)
+            else bool(data.get("invention_name"))
+        )
+        has_arch = (
+            bool(data.get("architecture", "").strip())
+            if isinstance(data.get("architecture"), str)
+            else bool(data.get("architecture"))
+        )
+        has_phase2 = (
+            bool(data.get("phase2_target_architecture", "").strip())
+            if isinstance(data.get("phase2_target_architecture"), str)
+            else bool(data.get("phase2_target_architecture"))
+        )
         if not has_name and not has_arch and not has_phase2:
             raise TranslationError(
                 "Model returned JSON but with no substantive content "

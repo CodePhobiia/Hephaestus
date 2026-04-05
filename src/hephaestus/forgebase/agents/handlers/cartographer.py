@@ -4,15 +4,15 @@ Creates RELATED_CONCEPT links, backlinks, and source indexes
 by querying existing pages and finding relationships between them.
 All work happens on the task's workbook branch.
 """
+
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.contracts.agent import AgentTask, TaskStatus
 from hephaestus.forgebase.domain.enums import LinkKind, PageType
 from hephaestus.forgebase.domain.values import EntityId
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase
@@ -67,7 +67,7 @@ async def execute_cartographer(forgebase: ForgeBase, task: AgentTask) -> AgentTa
         # Create RELATED_CONCEPT links between concept pages
         links_created = 0
         for i, (page_a_id, _key_a) in enumerate(concept_pages):
-            for page_b_id, _key_b in concept_pages[i + 1:]:
+            for page_b_id, _key_b in concept_pages[i + 1 :]:
                 pair = (str(page_a_id), str(page_b_id))
                 if pair in existing_link_pairs:
                     continue

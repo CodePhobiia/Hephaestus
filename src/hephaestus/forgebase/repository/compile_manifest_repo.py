@@ -1,4 +1,5 @@
 """Repository contract for compile manifests (source + vault synthesis)."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

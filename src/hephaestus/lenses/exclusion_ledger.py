@@ -125,7 +125,10 @@ class AdaptiveExclusionLedger:
         if not target:
             return 0.0
         values = [
-            (event.step, event.weight * (len(target & set(event.novelty_axes)) / max(1, len(target))))
+            (
+                event.step,
+                event.weight * (len(target & set(event.novelty_axes)) / max(1, len(target))),
+            )
             for event in self._events
             if target & set(event.novelty_axes) and event.event_type == "selected"
         ]
@@ -246,7 +249,9 @@ class AdaptiveExclusionLedger:
         reasons: Iterable[str] = (),
     ) -> LedgerEvent:
         if proof_token:
-            self.block_proof(proof_token, ", ".join(reason for reason in reasons if reason) or "blocked")
+            self.block_proof(
+                proof_token, ", ".join(reason for reason in reasons if reason) or "blocked"
+            )
         return self.register(
             event_type="blocked",
             lens_ids=lens_ids,
@@ -263,7 +268,9 @@ class AdaptiveExclusionLedger:
         novelty_penalty = 0.0
         if novelty_axes:
             capped_axes = novelty_axes[:4]
-            novelty_penalty = sum(self._novelty_record(axis).penalty() for axis in capped_axes) / min(
+            novelty_penalty = sum(
+                self._novelty_record(axis).penalty() for axis in capped_axes
+            ) / min(
                 len(capped_axes),
                 4,
             )
@@ -324,10 +331,14 @@ class AdaptiveExclusionLedger:
                 novelty_record = self._novelty_record(axis)
                 if accepted:
                     novelty_record.acceptances += 1
-                    novelty_record.novelty_saturation = max(0.0, novelty_record.novelty_saturation - 0.03)
+                    novelty_record.novelty_saturation = max(
+                        0.0, novelty_record.novelty_saturation - 0.03
+                    )
                 if getattr(cell, "lens_id", "") in invalidated:
                     novelty_record.invalidations += 1
-                    novelty_record.novelty_saturation = min(1.0, novelty_record.novelty_saturation + 0.10)
+                    novelty_record.novelty_saturation = min(
+                        1.0, novelty_record.novelty_saturation + 0.10
+                    )
         self.register(
             event_type=outcome,
             lens_ids=lens_ids,
@@ -410,8 +421,7 @@ class AdaptiveExclusionLedger:
         )
         ledger._step = int(data.get("step", 0))
         ledger._events = [
-            LedgerEvent.from_dict(item)
-            for item in list(data.get("events", []) or [])
+            LedgerEvent.from_dict(item) for item in list(data.get("events", []) or [])
         ]
         ledger._blocked_proofs = {
             str(key): str(value)

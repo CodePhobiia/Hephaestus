@@ -1,0 +1,77 @@
+<h2>ForgeBase: Subsystem Decomposition</h2>
+<p class="subtitle">This spec describes 8+ independent subsystems. Each needs its own design &rarr; plan &rarr; build cycle.<br>Which sub-project should we design first?</p>
+
+<div style="margin: 24px 0; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+  <h3 style="margin-top:0; color: #9ca3af;">Dependency Map</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 2.2; color: #d1d5db; padding: 8px;">
+    <div style="text-align:center; margin-bottom: 8px;">
+      <span style="background:#1e3a5f; padding:6px 14px; border-radius:6px; color:#60a5fa; font-weight:600; border: 1px solid #2563eb;">P1: Storage &amp; Data Model</span>
+    </div>
+    <div style="text-align:center; color:#4b5563;">&darr;&darr;&darr;</div>
+    <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin: 4px 0;">
+      <span style="background:#1a3329; padding:6px 14px; border-radius:6px; color:#6ee7b7; border: 1px solid #059669;">P2: Ingestion Pipeline</span>
+      <span style="background:#1a3329; padding:6px 14px; border-radius:6px; color:#6ee7b7; border: 1px solid #059669;">P3: Knowledge Compiler</span>
+    </div>
+    <div style="text-align:center; color:#4b5563;">&darr;&darr;&darr;</div>
+    <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin: 4px 0;">
+      <span style="background:#362617; padding:6px 14px; border-radius:6px; color:#fdba74; border: 1px solid #d97706;">P4: Provenance &amp; Linting</span>
+      <span style="background:#362617; padding:6px 14px; border-radius:6px; color:#fdba74; border: 1px solid #d97706;">P5: Research Mode</span>
+    </div>
+    <div style="text-align:center; color:#4b5563;">&darr;&darr;&darr;</div>
+    <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin: 4px 0;">
+      <span style="background:#3b1c3b; padding:6px 14px; border-radius:6px; color:#f0abfc; border: 1px solid #a855f7;">P6: Genesis/DeepForge Integration</span>
+      <span style="background:#3b1c3b; padding:6px 14px; border-radius:6px; color:#f0abfc; border: 1px solid #a855f7;">P7: Multi-Agent Teams</span>
+    </div>
+    <div style="text-align:center; color:#4b5563;">&darr;&darr;&darr;</div>
+    <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin: 4px 0;">
+      <span style="background:#3b1c1c; padding:6px 14px; border-radius:6px; color:#fca5a5; border: 1px solid #dc2626;">P8: CLI &amp; API Surface</span>
+      <span style="background:#3b1c1c; padding:6px 14px; border-radius:6px; color:#fca5a5; border: 1px solid #dc2626;">P9: Web UI</span>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Start with P1: Storage & Data Model</h3>
+      <p>Vault, Source, Page, Claim, Link, Workbook — the core schema everything builds on. Extends existing RunStore (Postgres) and ResearchArtifactStore (SQLite). Defines the data contracts before anything else touches them.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Foundation-first, no rework</li><li>Can validate schema with tests before building on top</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Abstract until ingestion/compilation exist</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Start with P1+P2 together: Storage + Ingestion</h3>
+      <p>Design the data model AND the ingestion pipeline as one unit. This way the schema is immediately exercised by real data flowing through it — PDFs, URLs, markdown, prior run artifacts.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Schema validated by real use immediately</li><li>Ingestion extends existing PerplexityClient + ingestion.py</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Larger first spec, but both are well-bounded</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Start with a vertical slice: Storage + Ingestion + Basic Compilation</h3>
+      <p>Design a minimal end-to-end path: create vault, ingest sources, compile basic concept/source pages. Proves the architecture works before going wide. Defers provenance, linting, agent teams, and Genesis integration.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Usable artifact after first sub-project</li><li>Validates the full data flow early</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Largest first spec — 3 subsystems</li><li>Risk of premature compilation design</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Different decomposition or ordering</h3>
+      <p>You see a better way to slice this. Tell me in the terminal.</p>
+    </div>
+  </div>
+</div>

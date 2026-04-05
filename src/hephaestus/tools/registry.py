@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
@@ -97,8 +98,9 @@ class ToolRegistry:
         self._active_profile: str | None = None
 
     def register(self, tool: ToolDefinition) -> None:
-        """Add a tool to the registry. The handler is automatically wrapped in the ToolInvocation ABI if it isn't already."""
+        """Add a tool to the registry, wrapping the handler in ToolInvocation ABI."""
         from hephaestus.tools.invocation import ToolInvocation
+
         if tool.handler is not None and not isinstance(tool.handler, ToolInvocation):
             tool.handler = ToolInvocation(name=tool.name, handler=tool.handler)
         self._tools[tool.name] = tool
@@ -126,8 +128,7 @@ class ToolRegistry:
         """Restrict visible tools to those in the named profile."""
         if profile_name not in BUILTIN_PROFILES:
             raise ValueError(
-                f"Unknown profile '{profile_name}'. "
-                f"Available: {sorted(BUILTIN_PROFILES)}"
+                f"Unknown profile '{profile_name}'. Available: {sorted(BUILTIN_PROFILES)}"
             )
         self._active_profile = profile_name
 

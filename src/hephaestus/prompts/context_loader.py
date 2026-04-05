@@ -210,7 +210,7 @@ def assemble_context(
 
     # --- instruction text (lowest priority) -------------------------------
     inst_parts: list[str] = []
-    for inst in (instructions or []):
+    for inst in instructions or []:
         inst_parts.append(inst.content)
         if inst.source not in sources:
             sources.append(inst.source)

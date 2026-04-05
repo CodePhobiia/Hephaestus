@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import sys
-import contextvars
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -14,9 +14,7 @@ from uuid import uuid4
 correlation_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "correlation_id", default=""
 )
-run_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "run_id", default=""
-)
+run_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("run_id", default="")
 
 
 def set_correlation_id(cid: str | None = None) -> str:
@@ -105,10 +103,12 @@ def configure_logging(
     if json_output:
         handler.setFormatter(StructuredJSONFormatter())
     else:
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
-            datefmt="%Y-%m-%dT%H:%M:%S",
-        ))
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
+                datefmt="%Y-%m-%dT%H:%M:%S",
+            )
+        )
 
     root.addHandler(handler)
 

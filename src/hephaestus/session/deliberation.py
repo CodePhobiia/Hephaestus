@@ -5,11 +5,11 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-_UTC = timezone.utc
+_UTC = UTC
 
 
 def _now() -> str:
@@ -64,7 +64,7 @@ class RuntimeAccountingSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "RuntimeAccountingSnapshot":
+    def from_dict(cls, data: dict[str, Any] | None) -> RuntimeAccountingSnapshot:
         if not isinstance(data, dict):
             return cls()
         return cls(
@@ -126,7 +126,9 @@ class RuntimeAccounting:
 
         if model:
             model_key = str(model)
-            self.model_call_counts[model_key] = self.model_call_counts.get(model_key, 0) + int(calls or 0)
+            self.model_call_counts[model_key] = self.model_call_counts.get(model_key, 0) + int(
+                calls or 0
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -144,7 +146,7 @@ class RuntimeAccounting:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "RuntimeAccounting":
+    def from_dict(cls, data: dict[str, Any] | None) -> RuntimeAccounting:
         if not isinstance(data, dict):
             return cls()
         return cls(
@@ -195,20 +197,20 @@ class RuntimeBudgetPolicy:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "RuntimeBudgetPolicy | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> RuntimeBudgetPolicy | None:
         if not isinstance(data, dict):
             return None
         return cls(
-            policy_id=str(data.get("policy_id", f"bp-{uuid4().hex[:12]}") or f"bp-{uuid4().hex[:12]}"),
+            policy_id=str(
+                data.get("policy_id", f"bp-{uuid4().hex[:12]}") or f"bp-{uuid4().hex[:12]}"
+            ),
             profile=str(data.get("profile", "balanced") or "balanced"),
             translation_frontier=int(data.get("translation_frontier", 0) or 0),
             verification_depth=str(data.get("verification_depth", "standard") or "standard"),
             pantheon_enabled=bool(data.get("pantheon_enabled", False)),
             prior_art_enabled=bool(data.get("prior_art_enabled", True)),
             hard_cap_usd=(
-                float(data.get("hard_cap_usd"))
-                if data.get("hard_cap_usd") is not None
-                else None
+                float(data.get("hard_cap_usd")) if data.get("hard_cap_usd") is not None else None
             ),
             reason=str(data.get("reason", "") or ""),
             notes=list(data.get("notes", []) or []),
@@ -243,7 +245,7 @@ class RuntimeRouteDecision:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "RuntimeRouteDecision | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> RuntimeRouteDecision | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -279,7 +281,7 @@ class StageEvent:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "StageEvent | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> StageEvent | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -325,7 +327,7 @@ class DeliberationEvidence:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "DeliberationEvidence | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> DeliberationEvidence | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -376,7 +378,7 @@ class DeliberationClaim:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "DeliberationClaim | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> DeliberationClaim | None:
         if not isinstance(data, dict):
             return None
         confidence = data.get("confidence")
@@ -435,7 +437,7 @@ class DeliberationObjection:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "DeliberationObjection | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> DeliberationObjection | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -487,7 +489,7 @@ class VerifierCheck:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "VerifierCheck | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> VerifierCheck | None:
         if not isinstance(data, dict):
             return None
         score = data.get("score")
@@ -545,7 +547,7 @@ class CandidateStateCard:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "CandidateStateCard | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> CandidateStateCard | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -603,7 +605,9 @@ class DeliberationGraph:
             "plan": list(self.plan),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "budget_policy": self.budget_policy.to_dict() if self.budget_policy is not None else None,
+            "budget_policy": self.budget_policy.to_dict()
+            if self.budget_policy is not None
+            else None,
             "accounting": self.accounting.to_dict(),
             "stage_events": [event.to_dict() for event in self.stage_events],
             "routing_history": [item.to_dict() for item in self.routing_history],
@@ -618,7 +622,7 @@ class DeliberationGraph:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> "DeliberationGraph | None":
+    def from_dict(cls, data: dict[str, Any] | None) -> DeliberationGraph | None:
         if not isinstance(data, dict):
             return None
         return cls(
@@ -634,8 +638,7 @@ class DeliberationGraph:
             stage_events=[
                 item
                 for item in (
-                    StageEvent.from_dict(entry)
-                    for entry in data.get("stage_events", []) or []
+                    StageEvent.from_dict(entry) for entry in data.get("stage_events", []) or []
                 )
                 if item is not None
             ],
@@ -658,8 +661,7 @@ class DeliberationGraph:
             claims=[
                 item
                 for item in (
-                    DeliberationClaim.from_dict(entry)
-                    for entry in data.get("claims", []) or []
+                    DeliberationClaim.from_dict(entry) for entry in data.get("claims", []) or []
                 )
                 if item is not None
             ],
@@ -734,7 +736,9 @@ class DeliberationGraph:
         metadata: dict[str, Any] | None = None,
     ) -> RuntimeRouteDecision:
         decision = RuntimeRouteDecision(
-            decision_id=_stable_id("route", stage, selected_route, reason, len(self.routing_history)),
+            decision_id=_stable_id(
+                "route", stage, selected_route, reason, len(self.routing_history)
+            ),
             stage=str(stage),
             selected_route=str(selected_route),
             reason=str(reason),
@@ -940,7 +944,10 @@ class DeliberationGraph:
         )
         self.objections.append(objection)
         for claim in self.claims:
-            if claim.claim_id in objection.claim_refs and objection.objection_id not in claim.objection_refs:
+            if (
+                claim.claim_id in objection.claim_refs
+                and objection.objection_id not in claim.objection_refs
+            ):
                 claim.objection_refs.append(objection.objection_id)
         self.touch()
         self.refresh_candidate(candidate_id)
@@ -977,20 +984,18 @@ class DeliberationGraph:
         return check
 
     def refresh_candidate(self, candidate_id: str) -> CandidateStateCard | None:
-        candidate = next((item for item in self.candidates if item.candidate_id == candidate_id), None)
+        candidate = next(
+            (item for item in self.candidates if item.candidate_id == candidate_id), None
+        )
         if candidate is None:
             return None
 
         claim_ids = [claim.claim_id for claim in self.claims if claim.candidate_id == candidate_id]
         claim_count = len(claim_ids)
         supported_count = sum(
-            1
-            for claim in self.claims
-            if claim.candidate_id == candidate_id and claim.evidence_refs
+            1 for claim in self.claims if claim.candidate_id == candidate_id and claim.evidence_refs
         )
-        candidate.evidence_coverage = (
-            supported_count / claim_count if claim_count else 0.0
-        )
+        candidate.evidence_coverage = supported_count / claim_count if claim_count else 0.0
         candidate.unresolved_objections = sum(
             1
             for objection in self.objections

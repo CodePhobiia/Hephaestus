@@ -29,29 +29,29 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import numpy as np
-    from sentence_transformers import SentenceTransformer
+    pass
 
 
 def _get_numpy() -> Any:
     """Lazy import for numpy."""
     import numpy as np
+
     return np
 
 
 def _get_sentence_transformer(model_name: str) -> Any:
     """Lazy import and instantiation for SentenceTransformer."""
     from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(model_name)
 
-from hephaestus.deepforge.adapters.base import BaseAdapter, GenerationResult
-from hephaestus.deepforge.exceptions import (
+
+from hephaestus.deepforge.adapters.base import BaseAdapter, GenerationResult  # noqa: E402
+from hephaestus.deepforge.exceptions import (  # noqa: E402
     ConfigurationError,
-    GenerationKilled,
-    PressureError,
 )
 
 logger = logging.getLogger(__name__)
@@ -287,7 +287,9 @@ class AntiTrainingPressure:
                 blocked=blocked,
             )
 
-            logger.info("Pressure round %d: generating with %d blocked paths …", round_idx, len(blocked))
+            logger.info(
+                "Pressure round %d: generating with %d blocked paths …", round_idx, len(blocked)
+            )
 
             result = await self._adapter.generate(
                 prompt,
@@ -338,14 +340,10 @@ class AntiTrainingPressure:
             self._max_rounds,
         )
 
-        # Use the most structurally distant output as the best we have
-        if trace.rounds_completed > 1:
-            # final output is the last round's result
-            trace.success = False
-        else:
-            trace.final_output = default_result.text
-
-        trace.blocked_paths = blocked
+        # Return best-effort output: last blocked path's text, or the mirror default.
+        trace.success = False
+        trace.final_output = blocked[-1].text if blocked else default_result.text
+        trace.blocked_paths = list(blocked)
         return trace
 
     # ------------------------------------------------------------------
@@ -357,14 +355,10 @@ class AntiTrainingPressure:
         if self._embed_model is None:
             logger.info("Loading embedding model %s …", self._embed_model_name)
             self._embed_model = _get_sentence_transformer(self._embed_model_name)
-        vec = self._embed_model.encode(
-            text, normalize_embeddings=True, show_progress_bar=False
-        )
+        vec = self._embed_model.encode(text, normalize_embeddings=True, show_progress_bar=False)
         return vec
 
-    def _min_structural_distance(
-        self, embedding: Any, blocked: list[BlockedPath]
-    ) -> float:
+    def _min_structural_distance(self, embedding: Any, blocked: list[BlockedPath]) -> float:
         """
         Compute the minimum cosine distance from *embedding* to all *blocked* paths.
 
@@ -378,9 +372,7 @@ class AntiTrainingPressure:
         max_sim = max(similarities)
         return 1.0 - max_sim
 
-    def verify_structural_incompatibility(
-        self, text_a: str, text_b: str
-    ) -> tuple[bool, float]:
+    def verify_structural_incompatibility(self, text_a: str, text_b: str) -> tuple[bool, float]:
         """
         Verify that *text_a* and *text_b* are structurally incompatible.
 
@@ -455,9 +447,7 @@ class AntiTrainingPressure:
                 summary += "…"
             lines.append(f"  BLOCKED PATH {i} ({path.reason}):")
             lines.append(f"    '{summary}'")
-            lines.append(
-                f"    → Any response that follows this structural pattern is FORBIDDEN."
-            )
+            lines.append("    → Any response that follows this structural pattern is FORBIDDEN.")
             lines.append("")
 
         lines.append(

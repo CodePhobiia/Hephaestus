@@ -1,4 +1,5 @@
 """Domain event schemas, taxonomy, EventFactory, and Clock."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -9,75 +10,77 @@ from hephaestus.forgebase.domain.models import DomainEvent
 from hephaestus.forgebase.domain.values import ActorRef, EntityId, Version
 
 # Complete event taxonomy — every valid event_type
-EVENT_TAXONOMY: frozenset[str] = frozenset({
-    # Source lifecycle
-    "source.ingested",
-    "source.normalization_requested",
-    "source.normalized",
-    "source.ingest_failed",
-    # Compilation lifecycle
-    "compile.requested",
-    "page.version_created",
-    "page.deleted",
-    "claim.version_created",
-    "link.version_created",
-    "link.deleted",
-    "compile.completed",
-    "compile.failed",
-    # Provenance lifecycle
-    "claim.support_added",
-    "claim.support_removed",
-    "claim.status_changed",
-    "claim.invalidated",
-    "claim.freshness_changed",
-    "claim.derivation_added",
-    # Workbook lifecycle
-    "workbook.created",
-    "workbook.updated",
-    "merge.proposed",
-    "merge.conflict_detected",
-    "workbook.merged",
-    "workbook.abandoned",
-    # Lint lifecycle
-    "lint.requested",
-    "lint.finding_opened",
-    "lint.finding_resolved",
-    "lint.completed",
-    # Remediation lifecycle
-    "finding.triaged",
-    "finding.route_assigned",
-    "finding.research_requested",
-    "finding.research_completed",
-    "finding.repair_requested",
-    "research.packet_created",
-    "repair.batch_created",
-    "repair.workbook_created",
-    "repair.workbook_merged",
-    "repair.workbook_abandoned",
-    "finding.verification_requested",
-    "finding.resolved",
-    "finding.reopened",
-    "finding.false_positive",
-    "finding.wont_fix",
-    "finding.abandoned",
-    # Run / integration lifecycle
-    "artifact.attached",
-    "research.output_committed",
-    "invention.output_committed",
-    "pantheon.verdict_recorded",
-    # Invention lifecycle
-    "invention.page_created",
-    "invention.state_updated",
-    "invention.claims_extracted",
-    "invention.promoted",
-    # Pantheon ingestion lifecycle
-    "pantheon.canon_ingested",
-    "pantheon.dossier_ingested",
-    "pantheon.objections_ingested",
-    # Vault lifecycle
-    "vault.created",
-    "vault.config_updated",
-})
+EVENT_TAXONOMY: frozenset[str] = frozenset(
+    {
+        # Source lifecycle
+        "source.ingested",
+        "source.normalization_requested",
+        "source.normalized",
+        "source.ingest_failed",
+        # Compilation lifecycle
+        "compile.requested",
+        "page.version_created",
+        "page.deleted",
+        "claim.version_created",
+        "link.version_created",
+        "link.deleted",
+        "compile.completed",
+        "compile.failed",
+        # Provenance lifecycle
+        "claim.support_added",
+        "claim.support_removed",
+        "claim.status_changed",
+        "claim.invalidated",
+        "claim.freshness_changed",
+        "claim.derivation_added",
+        # Workbook lifecycle
+        "workbook.created",
+        "workbook.updated",
+        "merge.proposed",
+        "merge.conflict_detected",
+        "workbook.merged",
+        "workbook.abandoned",
+        # Lint lifecycle
+        "lint.requested",
+        "lint.finding_opened",
+        "lint.finding_resolved",
+        "lint.completed",
+        # Remediation lifecycle
+        "finding.triaged",
+        "finding.route_assigned",
+        "finding.research_requested",
+        "finding.research_completed",
+        "finding.repair_requested",
+        "research.packet_created",
+        "repair.batch_created",
+        "repair.workbook_created",
+        "repair.workbook_merged",
+        "repair.workbook_abandoned",
+        "finding.verification_requested",
+        "finding.resolved",
+        "finding.reopened",
+        "finding.false_positive",
+        "finding.wont_fix",
+        "finding.abandoned",
+        # Run / integration lifecycle
+        "artifact.attached",
+        "research.output_committed",
+        "invention.output_committed",
+        "pantheon.verdict_recorded",
+        # Invention lifecycle
+        "invention.page_created",
+        "invention.state_updated",
+        "invention.claims_extracted",
+        "invention.promoted",
+        # Pantheon ingestion lifecycle
+        "pantheon.canon_ingested",
+        "pantheon.dossier_ingested",
+        "pantheon.objections_ingested",
+        # Vault lifecycle
+        "vault.created",
+        "vault.config_updated",
+    }
+)
 
 
 class Clock(ABC):

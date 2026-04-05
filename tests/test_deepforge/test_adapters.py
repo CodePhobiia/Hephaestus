@@ -6,13 +6,13 @@ All API calls are mocked — no real credentials required.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from hephaestus.deepforge.adapters.anthropic import ANTHROPIC_MODELS, AnthropicAdapter
 from hephaestus.deepforge.adapters.base import (
     BaseAdapter,
     GenerationResult,
@@ -20,16 +20,13 @@ from hephaestus.deepforge.adapters.base import (
     ModelConfig,
     StreamChunk,
 )
-from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter, ANTHROPIC_MODELS
-from hephaestus.deepforge.adapters.openai import OpenAIAdapter, OPENAI_MODELS
+from hephaestus.deepforge.adapters.openai import OPENAI_MODELS, OpenAIAdapter
 from hephaestus.deepforge.exceptions import (
-    AdapterError,
     AuthenticationError,
     GenerationKilled,
     ModelNotFoundError,
     RateLimitError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -248,7 +245,7 @@ class TestAnthropicAdapter:
 
         # Build a proper async context manager (not an awaitable)
         class _MockStreamCtx:
-            async def __aenter__(self) -> "_MockStreamCtx":
+            async def __aenter__(self) -> _MockStreamCtx:
                 return self
 
             async def __aexit__(self, *args: Any) -> None:
@@ -300,7 +297,7 @@ class TestAnthropicAdapter:
         mock_final.stop_reason = "end_turn"
 
         class _MockStreamCtx:
-            async def __aenter__(self) -> "_MockStreamCtx":
+            async def __aenter__(self) -> _MockStreamCtx:
                 return self
 
             async def __aexit__(self, *args: Any) -> None:
@@ -330,9 +327,8 @@ class TestAnthropicAdapter:
             side_effect=anthropic_sdk.RateLimitError(
                 message="Rate limited", response=MagicMock(), body={}
             ),
-        ):
-            with pytest.raises(RateLimitError):
-                await adapter.generate("hi")
+        ), pytest.raises(RateLimitError):
+            await adapter.generate("hi")
 
     @pytest.mark.asyncio
     async def test_auth_error_raises_correct_exception(self) -> None:
@@ -346,9 +342,8 @@ class TestAnthropicAdapter:
             side_effect=anthropic_sdk.AuthenticationError(
                 message="Unauthorized", response=MagicMock(), body={}
             ),
-        ):
-            with pytest.raises(AuthenticationError):
-                await adapter.generate("hi")
+        ), pytest.raises(AuthenticationError):
+            await adapter.generate("hi")
 
 
 # ---------------------------------------------------------------------------
@@ -485,13 +480,12 @@ class TestOpenAIAdapter:
             adapter._client.chat.completions,
             "create",
             new=AsyncMock(return_value=_infinite_chunks()),
-        ):
-            with pytest.raises(GenerationKilled):
-                async for chunk in adapter.generate_stream("Long text"):
-                    chunks_received.append(chunk)
-                    # Cancel mid-stream after a few chunks
-                    if len(chunks_received) >= 3:
-                        adapter.cancel_stream()
+        ), pytest.raises(GenerationKilled):
+            async for chunk in adapter.generate_stream("Long text"):
+                chunks_received.append(chunk)
+                # Cancel mid-stream after a few chunks
+                if len(chunks_received) >= 3:
+                    adapter.cancel_stream()
 
     @pytest.mark.asyncio
     async def test_generate_structured(self) -> None:
@@ -533,6 +527,5 @@ class TestOpenAIAdapter:
                     body={},
                 )
             ),
-        ):
-            with pytest.raises(RateLimitError):
-                await adapter.generate("hi")
+        ), pytest.raises(RateLimitError):
+            await adapter.generate("hi")

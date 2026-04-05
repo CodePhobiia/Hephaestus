@@ -1,4 +1,5 @@
 """Shared fixtures for remediation job tests."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,6 +31,7 @@ def content_store() -> InMemoryContentStore:
 @pytest.fixture
 def uow_factory(sqlite_db, content_store, clock, id_gen):
     """Factory that returns a fresh SqliteUnitOfWork each time."""
+
     def _factory() -> SqliteUnitOfWork:
         return SqliteUnitOfWork(
             db=sqlite_db,
@@ -37,4 +39,5 @@ def uow_factory(sqlite_db, content_store, clock, id_gen):
             clock=clock,
             id_generator=id_gen,
         )
+
     return _factory

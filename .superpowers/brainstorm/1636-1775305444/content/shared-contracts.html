@@ -1,0 +1,96 @@
+<h2>Sub-project 5: Shared Interface Contracts</h2>
+<p class="subtitle">These contracts survive all 4 sub-projects (5a-5d). Define once, use everywhere.</p>
+
+<div class="section">
+  <h3>Cross-Cutting Contracts</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <div style="background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; border-left: 3px solid #60a5fa;">
+      <div style="color:#60a5fa; font-weight:600; font-size:14px;">Fusion</div>
+      <div style="font-family: monospace; font-size: 12px; color: #d1d5db; margin-top: 8px; line-height: 1.6;">
+        FusionRequest<br>
+        &nbsp;&nbsp;vault_ids: list[EntityId]<br>
+        &nbsp;&nbsp;problem: str | None<br>
+        &nbsp;&nbsp;fusion_mode: str<br>
+        &nbsp;&nbsp;policy: FusionPolicy<br>
+        <br>
+        FusionResult<br>
+        &nbsp;&nbsp;fused_baseline: PriorArtBaselinePack<br>
+        &nbsp;&nbsp;fused_context: DomainContextPack<br>
+        &nbsp;&nbsp;fused_dossier: ConstraintDossierPack<br>
+        &nbsp;&nbsp;bridge_concepts: list[BridgeConcept]<br>
+        &nbsp;&nbsp;analogical_maps: list[AnalogicalMap]<br>
+        &nbsp;&nbsp;fusion_manifest: FusionManifest
+      </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; border-left: 3px solid #6ee7b7;">
+      <div style="color:#6ee7b7; font-weight:600; font-size:14px;">Vault Query / Context</div>
+      <div style="font-family: monospace; font-size: 12px; color: #d1d5db; margin-top: 8px; line-height: 1.6;">
+        VaultQuery<br>
+        &nbsp;&nbsp;vault_id: EntityId<br>
+        &nbsp;&nbsp;workbook_id: EntityId | None<br>
+        &nbsp;&nbsp;query: str<br>
+        &nbsp;&nbsp;scope: QueryScope<br>
+        <br>
+        QueryResult<br>
+        &nbsp;&nbsp;answer: str<br>
+        &nbsp;&nbsp;supporting_claims: list[ClaimRef]<br>
+        &nbsp;&nbsp;sources_used: list[SourceRef]<br>
+        &nbsp;&nbsp;confidence: float<br>
+        &nbsp;&nbsp;evidence_gaps: list[str]
+      </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; border-left: 3px solid #fdba74;">
+      <div style="color:#fdba74; font-weight:600; font-size:14px;">Agent Task / Run</div>
+      <div style="font-family: monospace; font-size: 12px; color: #d1d5db; margin-top: 8px; line-height: 1.6;">
+        AgentTask<br>
+        &nbsp;&nbsp;task_id: EntityId<br>
+        &nbsp;&nbsp;role: AgentRole<br>
+        &nbsp;&nbsp;vault_id: EntityId<br>
+        &nbsp;&nbsp;workbook_id: EntityId<br>
+        &nbsp;&nbsp;objective: str<br>
+        &nbsp;&nbsp;constraints: list[str]<br>
+        <br>
+        AgentRun<br>
+        &nbsp;&nbsp;run_id: EntityId<br>
+        &nbsp;&nbsp;tasks: list[AgentTask]<br>
+        &nbsp;&nbsp;artifacts: list[EntityId]<br>
+        &nbsp;&nbsp;trace: AgentTrace
+      </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; border-left: 3px solid #f0abfc;">
+      <div style="color:#f0abfc; font-weight:600; font-size:14px;">CLI / Web Read Models</div>
+      <div style="font-family: monospace; font-size: 12px; color: #d1d5db; margin-top: 8px; line-height: 1.6;">
+        VaultSummary<br>
+        &nbsp;&nbsp;vault_id, name, health_score<br>
+        &nbsp;&nbsp;page_count, claim_count<br>
+        &nbsp;&nbsp;source_count, finding_count<br>
+        <br>
+        WorkbookDiffView<br>
+        &nbsp;&nbsp;added, modified, deleted<br>
+        &nbsp;&nbsp;conflict_count<br>
+        <br>
+        LintReportView<br>
+        &nbsp;&nbsp;debt_score, findings_summary<br>
+        &nbsp;&nbsp;category_breakdown
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>Dependency Spine</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 2.2; color: #d1d5db; text-align: center;">
+    <span style="background:#1e3a5f; padding:8px 18px; border-radius:6px; color:#60a5fa; font-weight:600; border: 1px solid #2563eb;">5a: Cross-Vault Fusion</span>
+    <br><span style="color:#4b5563;">&darr;</span><br>
+    <span style="background:#1a3329; padding:8px 18px; border-radius:6px; color:#6ee7b7; font-weight:600; border: 1px solid #059669;">5b: CLI / REPL Surface</span>
+    <br><span style="color:#4b5563;">&darr;</span><br>
+    <span style="background:#362617; padding:8px 18px; border-radius:6px; color:#fdba74; font-weight:600; border: 1px solid #d97706;">5c: Multi-Agent Teams</span>
+    <br><span style="color:#4b5563;">&darr;</span><br>
+    <span style="background:#3b1c3b; padding:8px 18px; border-radius:6px; color:#f0abfc; font-weight:600; border: 1px solid #a855f7;">5d: Web UI</span>
+  </div>
+</div>

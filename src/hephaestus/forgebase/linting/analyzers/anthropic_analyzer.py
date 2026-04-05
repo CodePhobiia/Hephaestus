@@ -11,6 +11,7 @@ lint subsystem:
 The class lazily initialises an ``AsyncAnthropic`` client and includes
 automatic retry with JSON repair prompts when parsing fails.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,11 +55,10 @@ class AnthropicLintAnalyzer(LintAnalyzer):
 
             try:
                 import anthropic
-            except ImportError:
+            except ImportError as err:
                 raise RuntimeError(
-                    "anthropic SDK not installed. "
-                    "Install it with: pip install anthropic"
-                )
+                    "anthropic SDK not installed. Install it with: pip install anthropic"
+                ) from err
 
             key = self._api_key or os.environ.get("ANTHROPIC_API_KEY", "")
             if not key:
@@ -85,14 +85,7 @@ class AnthropicLintAnalyzer(LintAnalyzer):
 
         for attempt in range(1 + self._max_retries):
             try:
-                if attempt == 0:
-                    prompt = user
-                else:
-                    prompt = (
-                        f"{user}\n\n"
-                        f"Previous JSON error: {last_error}. "
-                        f"Return valid JSON."
-                    )
+                prompt = user if attempt == 0 else f"{user}\n\nPrevious JSON error: {last_error}. Return valid JSON."
 
                 response = await client.messages.create(
                     model=self._model,
@@ -127,9 +120,7 @@ class AnthropicLintAnalyzer(LintAnalyzer):
                     raise
                 continue
 
-        raise RuntimeError(
-            f"LLM call failed after {1 + self._max_retries} attempts: {last_error}"
-        )
+        raise RuntimeError(f"LLM call failed after {1 + self._max_retries} attempts: {last_error}")
 
     # ------------------------------------------------------------------
     # JSON extraction helper
@@ -172,8 +163,7 @@ class AnthropicLintAnalyzer(LintAnalyzer):
         )
 
         pairs_text = "\n".join(
-            f'Pair {i + 1}: A: "{a}" vs B: "{b}"'
-            for i, (a, b) in enumerate(claim_pairs)
+            f'Pair {i + 1}: A: "{a}" vs B: "{b}"' for i, (a, b) in enumerate(claim_pairs)
         )
 
         user = (

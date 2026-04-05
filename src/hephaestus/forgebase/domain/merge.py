@@ -1,4 +1,5 @@
 """Merge rules and version reconciliation logic."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

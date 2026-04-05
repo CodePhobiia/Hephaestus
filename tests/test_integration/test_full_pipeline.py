@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -37,7 +37,9 @@ class TestGenesisIntegration:
             domain="biology",
             subdomain="immunology",
             axioms=["Memory persists."],
-            structural_patterns=[StructuralPattern("allocation", "Allocate resources", ["allocation"])],
+            structural_patterns=[
+                StructuralPattern("allocation", "Allocate resources", ["allocation"])
+            ],
             injection_prompt="You are reasoning as Immune System.",
         )
         lens_score = LensScore(
@@ -63,6 +65,7 @@ class TestGenesisIntegration:
     @pytest.fixture
     def mock_scorer(self):
         from hephaestus.core.scorer import ScoredCandidate
+
         scored = MagicMock(spec=ScoredCandidate)
         scored.structural_fidelity = 0.82
         scored.domain_distance = 0.85
@@ -84,7 +87,8 @@ class TestGenesisIntegration:
 
     @pytest.fixture
     def mock_translator(self):
-        from hephaestus.core.translator import Translation, ElementMapping
+        from hephaestus.core.translator import ElementMapping, Translation
+
         translation = MagicMock(spec=Translation)
         translation.invention_name = "Immune-Memory Scheduler"
         translation.source_domain = "Immune System"
@@ -124,6 +128,7 @@ class TestGenesisIntegration:
     def test_config_creation(self):
         """GenesisConfig can be created with minimal args."""
         from hephaestus.core.genesis import GenesisConfig
+
         config = GenesisConfig(
             anthropic_api_key="test-key",
             openai_api_key="test-key",
@@ -134,6 +139,7 @@ class TestGenesisIntegration:
     def test_genesis_creation(self):
         """Genesis can be instantiated from config."""
         from hephaestus.core.genesis import Genesis, GenesisConfig
+
         config = GenesisConfig(
             anthropic_api_key="test-key",
             openai_api_key="test-key",
@@ -144,6 +150,7 @@ class TestGenesisIntegration:
     def test_pipeline_stages_enum(self):
         """PipelineStage has all expected stages."""
         from hephaestus.core.genesis import PipelineStage
+
         stages = [s.name for s in PipelineStage]
         assert "DECOMPOSING" in stages
         assert "SEARCHING" in stages
@@ -155,7 +162,7 @@ class TestGenesisIntegration:
 
     def test_output_formatter_roundtrip(self):
         """InventionReport can be formatted to all output types."""
-        from hephaestus.output.formatter import InventionReport, OutputFormat, OutputFormatter
+        from hephaestus.output.formatter import InventionReport, OutputFormatter
 
         report = InventionReport(
             problem="Load balancer for traffic spikes",

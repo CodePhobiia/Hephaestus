@@ -1,4 +1,5 @@
 """Tests for AnthropicFusionAnalyzer -- mocked, no real API calls."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,6 @@ from hephaestus.forgebase.fusion.analyzer import FusionAnalyzer
 from hephaestus.forgebase.fusion.analyzers.anthropic_analyzer import (
     AnthropicFusionAnalyzer,
 )
-
 from tests.test_forgebase.test_fusion.conftest import make_bridge_candidate
 
 
@@ -27,61 +27,65 @@ def _mock_response(text: str) -> MagicMock:
 
 def _strong_analogy_json(candidate_id: str, map_id: str = "amap_00000000000000000000000099") -> str:
     """Build a JSON response representing a STRONG analogy."""
-    return json.dumps({
-        "analyses": [
-            {
-                "candidate_id": candidate_id,
-                "verdict": "strong_analogy",
-                "bridge_concept": "Layered transport through constrained channels",
-                "mapped_components": [
-                    {
-                        "left_component": "cathode layer",
-                        "right_component": "distribution tier",
-                        "mapping_confidence": 0.85,
+    return json.dumps(
+        {
+            "analyses": [
+                {
+                    "candidate_id": candidate_id,
+                    "verdict": "strong_analogy",
+                    "bridge_concept": "Layered transport through constrained channels",
+                    "mapped_components": [
+                        {
+                            "left_component": "cathode layer",
+                            "right_component": "distribution tier",
+                            "mapping_confidence": 0.85,
+                        },
+                    ],
+                    "mapped_constraints": [
+                        {
+                            "left_constraint": "charge rate < 4C",
+                            "right_constraint": "throughput < 10k/hr",
+                            "preserved": True,
+                        },
+                    ],
+                    "analogy_breaks": [
+                        {
+                            "description": "Scale differs by 6 orders",
+                            "severity": "medium",
+                            "category": "scale_difference",
+                        },
+                    ],
+                    "confidence": 0.82,
+                    "transfer": {
+                        "mechanism": "Apply hub-spoke to ion transport",
+                        "rationale": "Both exhibit layered flow",
+                        "caveats": ["Scale mismatch"],
+                        "caveat_categories": ["scale"],
                     },
-                ],
-                "mapped_constraints": [
-                    {
-                        "left_constraint": "charge rate < 4C",
-                        "right_constraint": "throughput < 10k/hr",
-                        "preserved": True,
-                    },
-                ],
-                "analogy_breaks": [
-                    {
-                        "description": "Scale differs by 6 orders",
-                        "severity": "medium",
-                        "category": "scale_difference",
-                    },
-                ],
-                "confidence": 0.82,
-                "transfer": {
-                    "mechanism": "Apply hub-spoke to ion transport",
-                    "rationale": "Both exhibit layered flow",
-                    "caveats": ["Scale mismatch"],
-                    "caveat_categories": ["scale"],
                 },
-            },
-        ],
-    })
+            ],
+        }
+    )
 
 
 def _no_analogy_json(candidate_id: str) -> str:
     """Build a JSON response representing NO_ANALOGY."""
-    return json.dumps({
-        "analyses": [
-            {
-                "candidate_id": candidate_id,
-                "verdict": "no_analogy",
-                "bridge_concept": "No structural similarity detected",
-                "mapped_components": [],
-                "mapped_constraints": [],
-                "analogy_breaks": [],
-                "confidence": 0.15,
-                "transfer": None,
-            },
-        ],
-    })
+    return json.dumps(
+        {
+            "analyses": [
+                {
+                    "candidate_id": candidate_id,
+                    "verdict": "no_analogy",
+                    "bridge_concept": "No structural similarity detected",
+                    "mapped_components": [],
+                    "mapped_constraints": [],
+                    "analogy_breaks": [],
+                    "confidence": 0.15,
+                    "transfer": None,
+                },
+            ],
+        }
+    )
 
 
 class TestAnthropicFusionAnalyzerContract:
@@ -99,12 +103,18 @@ class TestParsesStrongAnalogy:
     """LLM returns a STRONG analogy response -> parsed correctly."""
 
     async def test_parses_strong_analogy_response(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.75,
         )
 
@@ -116,7 +126,9 @@ class TestParsesStrongAnalogy:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -151,12 +163,18 @@ class TestParsesNoAnalogy:
     """LLM returns NO_ANALOGY -> parsed correctly, no transfer."""
 
     async def test_parses_no_analogy_response(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.2,
         )
 
@@ -168,7 +186,9 @@ class TestParsesNoAnalogy:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -182,14 +202,22 @@ class TestRepairOnJsonError:
     """First response is bad JSON; second attempt succeeds."""
 
     async def test_repair_on_json_error(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(
-            api_key="test-key", id_gen=id_gen, max_retries=2,
+            api_key="test-key",
+            id_gen=id_gen,
+            max_retries=2,
         )
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.6,
         )
 
@@ -204,7 +232,9 @@ class TestRepairOnJsonError:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -217,14 +247,22 @@ class TestRaisesAfterMaxRetries:
     """All attempts return bad JSON -> RuntimeError."""
 
     async def test_raises_after_max_retries(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(
-            api_key="test-key", id_gen=id_gen, max_retries=1,
+            api_key="test-key",
+            id_gen=id_gen,
+            max_retries=1,
         )
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.6,
         )
 
@@ -236,7 +274,9 @@ class TestRaisesAfterMaxRetries:
 
         with pytest.raises(RuntimeError, match="failed after"):
             await analyzer.analyze_candidates(
-                [candidate], left_context, right_context,
+                [candidate],
+                left_context,
+                right_context,
             )
 
 
@@ -244,14 +284,19 @@ class TestHandlesEmptyCandidates:
     """Empty candidates -> empty results, no LLM call."""
 
     async def test_handles_empty_candidates(
-        self, id_gen, left_context, right_context,
+        self,
+        id_gen,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         mock_client = AsyncMock()
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [], left_context, right_context,
+            [],
+            left_context,
+            right_context,
         )
 
         assert maps == []
@@ -267,12 +312,18 @@ class TestProblemAffectsAnalysis:
     """Problem string is included in the prompt."""
 
     async def test_problem_affects_analysis(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.7,
             problem_relevance=0.9,
         )
@@ -285,7 +336,9 @@ class TestProblemAffectsAnalysis:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
             problem="Improve battery longevity",
         )
 
@@ -302,12 +355,18 @@ class TestCodeBlockHandling:
     """LLM wraps JSON in markdown code fences -> still parsed."""
 
     async def test_handles_code_block_response(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.5,
         )
 
@@ -321,7 +380,9 @@ class TestCodeBlockHandling:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -332,12 +393,18 @@ class TestProvenancePreservation:
     """Provenance refs from candidates are preserved in maps."""
 
     async def test_preserves_page_and_claim_refs(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.7,
         )
 
@@ -349,7 +416,9 @@ class TestProvenancePreservation:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         amap = maps[0]
@@ -364,14 +433,22 @@ class TestNonJsonErrorReraised:
     """Non-JSON errors (e.g. API errors) re-raised on final attempt."""
 
     async def test_non_json_error_reraised(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(
-            api_key="test-key", id_gen=id_gen, max_retries=0,
+            api_key="test-key",
+            id_gen=id_gen,
+            max_retries=0,
         )
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.6,
         )
 
@@ -383,7 +460,9 @@ class TestNonJsonErrorReraised:
 
         with pytest.raises(ConnectionError, match="network down"):
             await analyzer.analyze_candidates(
-                [candidate], left_context, right_context,
+                [candidate],
+                left_context,
+                right_context,
             )
 
 
@@ -391,29 +470,37 @@ class TestDefaultVerdictFallback:
     """Unknown verdict string from LLM -> defaults to NO_ANALOGY."""
 
     async def test_unknown_verdict_defaults_to_no_analogy(
-        self, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         analyzer = AnthropicFusionAnalyzer(api_key="test-key", id_gen=id_gen)
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.5,
         )
 
-        response_text = json.dumps({
-            "analyses": [
-                {
-                    "candidate_id": str(candidate.candidate_id),
-                    "verdict": "something_unknown",
-                    "bridge_concept": "Unknown",
-                    "mapped_components": [],
-                    "mapped_constraints": [],
-                    "analogy_breaks": [],
-                    "confidence": 0.3,
-                    "transfer": None,
-                },
-            ],
-        })
+        response_text = json.dumps(
+            {
+                "analyses": [
+                    {
+                        "candidate_id": str(candidate.candidate_id),
+                        "verdict": "something_unknown",
+                        "bridge_concept": "Unknown",
+                        "mapped_components": [],
+                        "mapped_constraints": [],
+                        "analogy_breaks": [],
+                        "confidence": 0.3,
+                        "transfer": None,
+                    },
+                ],
+            }
+        )
 
         mock_client = AsyncMock()
         mock_client.messages.create = AsyncMock(
@@ -422,7 +509,9 @@ class TestDefaultVerdictFallback:
         analyzer._client = mock_client
 
         maps, transfers, record = await analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1

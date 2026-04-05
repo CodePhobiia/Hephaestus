@@ -5,6 +5,7 @@ to inspect vault state without coupling to repository internals.
 Uses lazy caching: the first call loads data, subsequent calls return
 the cached result.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -22,9 +23,9 @@ from hephaestus.forgebase.domain.models import (
     ClaimSupport,
     ClaimVersion,
     ConceptCandidate,
-    LintFinding,
     Link,
     LinkVersion,
+    LintFinding,
     Page,
     PageVersion,
     Source,
@@ -52,10 +53,13 @@ class VaultLintState:
         self._workbook_id = workbook_id
         # Lazy caches (None = not yet loaded)
         self._pages_cache: list[tuple[Page, PageVersion]] | None = None
-        self._claims_cache: dict[
-            EntityId,
-            tuple[ClaimVersion, list[ClaimSupport], list[ClaimDerivation]],
-        ] | None = None
+        self._claims_cache: (
+            dict[
+                EntityId,
+                tuple[ClaimVersion, list[ClaimSupport], list[ClaimDerivation]],
+            ]
+            | None
+        ) = None
         self._links_cache: list[tuple[Link, LinkVersion]] | None = None
         self._sources_cache: list[tuple[Source, SourceVersion]] | None = None
         self._candidates_cache: list[ConceptCandidate] | None = None
@@ -198,9 +202,7 @@ class VaultLintState:
                     result.append((claim, cv))
         return result
 
-    async def candidates_promotion_worthy(
-        self, policy: SynthesisPolicy
-    ) -> list[ConceptCandidate]:
+    async def candidates_promotion_worthy(self, policy: SynthesisPolicy) -> list[ConceptCandidate]:
         """Active candidates that cross promotion thresholds with no resolved page."""
         all_candidates = await self.candidates()
         # Group active candidates by normalized_name

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TrustTier:
     """Trust tier constants."""
+
     AUTHORITATIVE = "AUTHORITATIVE"
     STANDARD = "STANDARD"
     LOW = "LOW"
@@ -21,11 +22,20 @@ class TrustTier:
 
 # Domain patterns mapped to trust tiers
 _AUTHORITATIVE_DOMAINS = {
-    "arxiv.org", "doi.org", "pubmed.ncbi.nlm.nih.gov",
-    "scholar.google.com", "ieeexplore.ieee.org", "dl.acm.org",
-    "nature.com", "science.org", "pnas.org",
-    "github.com", "gitlab.com",
-    "docs.python.org", "pytorch.org", "tensorflow.org",
+    "arxiv.org",
+    "doi.org",
+    "pubmed.ncbi.nlm.nih.gov",
+    "scholar.google.com",
+    "ieeexplore.ieee.org",
+    "dl.acm.org",
+    "nature.com",
+    "science.org",
+    "pnas.org",
+    "github.com",
+    "gitlab.com",
+    "docs.python.org",
+    "pytorch.org",
+    "tensorflow.org",
 }
 
 _LOW_TRUST_PATTERNS = [
@@ -42,6 +52,7 @@ _UNTRUSTED_PATTERNS = [
 @dataclass
 class TrustScore:
     """Trust assessment for a single source."""
+
     url: str
     domain: str = ""
     tier: str = TrustTier.STANDARD
@@ -83,7 +94,7 @@ class SourceTrustModel:
     ) -> TrustScore:
         """Score a citation URL and return a TrustScore."""
         parsed = urlparse(url)
-        domain = parsed.netloc.lower().lstrip("www.")
+        domain = parsed.netloc.lower().removeprefix("www.")
 
         tier = self._classify_domain(domain, url)
         has_title = bool(title and title.strip())
@@ -140,7 +151,12 @@ class SourceTrustModel:
         min_tier: str = TrustTier.LOW,
     ) -> list[TrustScore]:
         """Filter scores by minimum trust tier."""
-        tier_order = [TrustTier.UNTRUSTED, TrustTier.LOW, TrustTier.STANDARD, TrustTier.AUTHORITATIVE]
+        tier_order = [
+            TrustTier.UNTRUSTED,
+            TrustTier.LOW,
+            TrustTier.STANDARD,
+            TrustTier.AUTHORITATIVE,
+        ]
         min_idx = tier_order.index(min_tier) if min_tier in tier_order else 0
         return [s for s in scores if tier_order.index(s.tier) >= min_idx]
 

@@ -1,9 +1,10 @@
 """Tests for ForgeBase workbook API endpoints."""
+
 from __future__ import annotations
 
 import pytest
 
-from hephaestus.forgebase.domain.enums import ClaimStatus, PageType, SupportType
+from hephaestus.forgebase.domain.enums import PageType
 
 
 @pytest.fixture

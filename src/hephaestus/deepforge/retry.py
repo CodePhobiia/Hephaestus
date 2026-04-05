@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,15 @@ _RETRYABLE_STRINGS = ("rate limit", "429", "timeout", "connection", "503", "502"
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     max_retries: int = 3
     base_delay: float = 1.0
     max_delay: float = 30.0
     exponential_base: float = 2.0
     retryable_exceptions: tuple[type[Exception], ...] = (
-        ConnectionError, TimeoutError, OSError,
+        ConnectionError,
+        TimeoutError,
+        OSError,
     )
 
 
@@ -65,12 +69,15 @@ async def with_retry(
             if attempt >= cfg.max_retries or not is_retryable(exc, cfg):
                 raise
             delay = min(
-                cfg.base_delay * (cfg.exponential_base ** attempt),
+                cfg.base_delay * (cfg.exponential_base**attempt),
                 cfg.max_delay,
             )
             logger.warning(
                 "Attempt %d/%d failed (%s), retrying in %.1fs",
-                attempt + 1, cfg.max_retries + 1, exc, delay,
+                attempt + 1,
+                cfg.max_retries + 1,
+                exc,
+                delay,
             )
             await asyncio.sleep(delay)
 
@@ -84,8 +91,8 @@ async def with_timeout(
     """Wrap a coroutine with a timeout."""
     try:
         return await asyncio.wait_for(coro, timeout=timeout_seconds)
-    except asyncio.TimeoutError:
-        raise TimeoutError(f"Operation timed out after {timeout_seconds}s")
+    except TimeoutError as err:
+        raise TimeoutError(f"Operation timed out after {timeout_seconds}s") from err
 
 
 __all__ = ["RetryConfig", "is_retryable", "with_retry", "with_timeout"]

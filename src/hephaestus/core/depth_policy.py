@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -32,16 +31,86 @@ class StageBudget:
 # Standard mode policy table (depth 1–10)
 # ---------------------------------------------------------------------------
 _STANDARD_TABLE: dict[int, StageBudget] = {
-    1:  StageBudget(search_candidates=5,  search_branching_loops=1, translate_pressure_rounds=0, translate_permutations=1, recomposition_ceiling=1, fallback_retries=0),
-    2:  StageBudget(search_candidates=6,  search_branching_loops=1, translate_pressure_rounds=0, translate_permutations=1, recomposition_ceiling=1, fallback_retries=1),
-    3:  StageBudget(search_candidates=7,  search_branching_loops=1, translate_pressure_rounds=0, translate_permutations=2, recomposition_ceiling=2, fallback_retries=1),
-    4:  StageBudget(search_candidates=8,  search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=2, recomposition_ceiling=2, fallback_retries=1),
-    5:  StageBudget(search_candidates=9,  search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=3, recomposition_ceiling=3, fallback_retries=1),
-    6:  StageBudget(search_candidates=10, search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    7:  StageBudget(search_candidates=11, search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    8:  StageBudget(search_candidates=12, search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    9:  StageBudget(search_candidates=14, search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    10: StageBudget(search_candidates=16, search_branching_loops=2, translate_pressure_rounds=0, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
+    1: StageBudget(
+        search_candidates=5,
+        search_branching_loops=1,
+        translate_pressure_rounds=0,
+        translate_permutations=1,
+        recomposition_ceiling=1,
+        fallback_retries=0,
+    ),
+    2: StageBudget(
+        search_candidates=6,
+        search_branching_loops=1,
+        translate_pressure_rounds=0,
+        translate_permutations=1,
+        recomposition_ceiling=1,
+        fallback_retries=1,
+    ),
+    3: StageBudget(
+        search_candidates=7,
+        search_branching_loops=1,
+        translate_pressure_rounds=0,
+        translate_permutations=2,
+        recomposition_ceiling=2,
+        fallback_retries=1,
+    ),
+    4: StageBudget(
+        search_candidates=8,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=2,
+        recomposition_ceiling=2,
+        fallback_retries=1,
+    ),
+    5: StageBudget(
+        search_candidates=9,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=1,
+    ),
+    6: StageBudget(
+        search_candidates=10,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    7: StageBudget(
+        search_candidates=11,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    8: StageBudget(
+        search_candidates=12,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    9: StageBudget(
+        search_candidates=14,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    10: StageBudget(
+        search_candidates=16,
+        search_branching_loops=2,
+        translate_pressure_rounds=0,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
 }
 
 # ---------------------------------------------------------------------------
@@ -50,16 +119,86 @@ _STANDARD_TABLE: dict[int, StageBudget] = {
 # but pressure is OFF for Decompose, Score, and Verify (Phase 1 doctrine).
 # ---------------------------------------------------------------------------
 _FORGE_TABLE: dict[int, StageBudget] = {
-    1:  StageBudget(search_candidates=5,  search_branching_loops=1, translate_pressure_rounds=1, translate_permutations=1, recomposition_ceiling=1, fallback_retries=1),
-    2:  StageBudget(search_candidates=6,  search_branching_loops=1, translate_pressure_rounds=2, translate_permutations=2, recomposition_ceiling=2, fallback_retries=1),
-    3:  StageBudget(search_candidates=8,  search_branching_loops=1, translate_pressure_rounds=3, translate_permutations=2, recomposition_ceiling=2, fallback_retries=1),
-    4:  StageBudget(search_candidates=9,  search_branching_loops=2, translate_pressure_rounds=3, translate_permutations=2, recomposition_ceiling=2, fallback_retries=1),
-    5:  StageBudget(search_candidates=10, search_branching_loops=2, translate_pressure_rounds=4, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    6:  StageBudget(search_candidates=11, search_branching_loops=2, translate_pressure_rounds=5, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    7:  StageBudget(search_candidates=12, search_branching_loops=2, translate_pressure_rounds=5, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    8:  StageBudget(search_candidates=14, search_branching_loops=2, translate_pressure_rounds=6, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    9:  StageBudget(search_candidates=15, search_branching_loops=2, translate_pressure_rounds=7, translate_permutations=3, recomposition_ceiling=3, fallback_retries=2),
-    10: StageBudget(search_candidates=16, search_branching_loops=2, translate_pressure_rounds=8, translate_permutations=3, recomposition_ceiling=3, fallback_retries=3),
+    1: StageBudget(
+        search_candidates=5,
+        search_branching_loops=1,
+        translate_pressure_rounds=1,
+        translate_permutations=1,
+        recomposition_ceiling=1,
+        fallback_retries=1,
+    ),
+    2: StageBudget(
+        search_candidates=6,
+        search_branching_loops=1,
+        translate_pressure_rounds=2,
+        translate_permutations=2,
+        recomposition_ceiling=2,
+        fallback_retries=1,
+    ),
+    3: StageBudget(
+        search_candidates=8,
+        search_branching_loops=1,
+        translate_pressure_rounds=3,
+        translate_permutations=2,
+        recomposition_ceiling=2,
+        fallback_retries=1,
+    ),
+    4: StageBudget(
+        search_candidates=9,
+        search_branching_loops=2,
+        translate_pressure_rounds=3,
+        translate_permutations=2,
+        recomposition_ceiling=2,
+        fallback_retries=1,
+    ),
+    5: StageBudget(
+        search_candidates=10,
+        search_branching_loops=2,
+        translate_pressure_rounds=4,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    6: StageBudget(
+        search_candidates=11,
+        search_branching_loops=2,
+        translate_pressure_rounds=5,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    7: StageBudget(
+        search_candidates=12,
+        search_branching_loops=2,
+        translate_pressure_rounds=5,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    8: StageBudget(
+        search_candidates=14,
+        search_branching_loops=2,
+        translate_pressure_rounds=6,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    9: StageBudget(
+        search_candidates=15,
+        search_branching_loops=2,
+        translate_pressure_rounds=7,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=2,
+    ),
+    10: StageBudget(
+        search_candidates=16,
+        search_branching_loops=2,
+        translate_pressure_rounds=8,
+        translate_permutations=3,
+        recomposition_ceiling=3,
+        fallback_retries=3,
+    ),
 }
 
 

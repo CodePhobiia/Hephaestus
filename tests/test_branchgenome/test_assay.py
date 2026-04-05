@@ -4,9 +4,9 @@ from hephaestus.branchgenome import (
     BranchGenome,
     Commitment,
     CommitmentKind,
-    RejectionLedger,
     RecoveryOperator,
     RecoveryOperatorKind,
+    RejectionLedger,
     assay_branch,
     render_partial_prompt,
     strategy_for_mode,
@@ -35,7 +35,9 @@ def _make_candidate() -> ScoredCandidate:
         domain="biology",
         subdomain="immune",
         axioms=["Memory persists after success."],
-        structural_patterns=[StructuralPattern("allocation", "Allocate with memory", ["allocation"])],
+        structural_patterns=[
+            StructuralPattern("allocation", "Allocate with memory", ["allocation"])
+        ],
         injection_prompt="Reason biologically.",
     )
     lens_score = LensScore(

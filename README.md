@@ -21,7 +21,7 @@ heph "I need a load balancer that handles unpredictable traffic spikes"
 
 ## What is Hephaestus?
 
-Hephaestus takes hard engineering problems — the kind where the obvious approaches have already been tried — and searches for solutions in places no engineer would think to look. Instead of asking an LLM to "be creative" (which produces the same well-worn answers everyone else gets), Hephaestus decomposes your problem into its abstract mathematical shape and then scans 160+ knowledge domains — from ant colony foraging to thermodynamics to music theory — for solved problems that share that exact structure.
+Hephaestus takes hard engineering problems — the kind where the obvious approaches have already been tried — and searches for solutions in places no engineer would think to look. Instead of asking an LLM to "be creative" (which produces the same well-worn answers everyone else gets), Hephaestus decomposes your problem into its abstract mathematical shape and then scans 164 knowledge domains — from ant colony foraging to thermodynamics to music theory — for solved problems that share that exact structure.
 
 When it finds a structural match in a distant field, it doesn't hand you a metaphor. It builds a concrete, element-by-element translation: what each component in the source domain maps to in yours, how the mechanism works, implementation pseudocode, and where the analogy breaks down. The further the source domain is from your problem, the higher the novelty — and Hephaestus rewards distance with a superlinear scoring function that penalizes adjacent-domain matches and amplifies cross-disciplinary ones.
 
@@ -115,7 +115,7 @@ These surfaces appear in session JSON (`lens_engine_state`), invention-report JS
 │ DECOMPOSE│──▶│  SEARCH  │──▶│  SCORE   │──▶│TRANSLATE │──▶│  VERIFY  │
 └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
     │               │               │               │               │
- Extract         Scan 160+      Rank by        Build the       Adversarial
+ Extract         Scan 164      Rank by        Build the       Adversarial
  abstract       domain lenses   fidelity ×     structural      attack,
  structural     for matching    distance^1.5   bridge via      prior art
  form           shapes                         DeepForge       check, proof
@@ -127,7 +127,7 @@ These surfaces appear in session JSON (`lens_engine_state`), invention-report JS
 | Stage | What it does |
 |-------|-------------|
 | **Decompose** | Strips domain-specific language to extract the abstract mathematical shape of your problem |
-| **Search** | Queries 160+ curated domain lenses for solved problems with a matching structural signature |
+| **Search** | Queries 164 curated domain lenses for solved problems with a matching structural signature |
 | **Score** | Ranks candidates by `fidelity × distance^1.5` — distant domains are superlinearly rewarded |
 | **Translate** | Builds a concrete element-by-element mapping via the DeepForge harness with cognitive interference active |
 | **Verify** | Cross-model adversarial verification: one model attacks the mapping, another defends. Prior art check and novelty proof |
@@ -162,7 +162,7 @@ Control how far from consensus the engine pushes, with `--intensity`:
 
 ### Core Capabilities
 
-- **160+ domain lenses** — curated axiom sets spanning biology, physics, mathematics, economics, military strategy, arts, agriculture, psychology, engineering, earth sciences, linguistics, and mythology
+- **164 domain lenses** — curated axiom sets spanning biology, physics, mathematics, economics, military strategy, arts, agriculture, psychology, engineering, earth sciences, linguistics, and mythology
 - **DeepForge harness** — cognitive interference injection, convergence pruning, and anti-training pressure to prevent predictable output
 - **Session management** — typed transcripts, session persistence, and compaction with continuation summaries that preserve invention state
 - **Adaptive lens-engine state** — bundle proofs, lineage, fold states, guards, invalidations, recomposition history, and composites
@@ -324,7 +324,7 @@ src/hephaestus/
 ├── deepforge/          # DeepForge harness — anti-consensus engine
 │   ├── harness.py      #   Interference injection, pruning, pressure
 │   └── adapters/       #   Anthropic, OpenAI, OpenRouter, Claude Max, Claude CLI
-├── lenses/             # Domain lens library (160+ YAML axiom sets)
+├── lenses/             # Domain lens library (164 YAML axiom sets)
 │   ├── loader.py       #   Lens discovery and validation
 │   ├── state.py        #   Adaptive Bundle-Proof state, lineage, invalidation, composites
 │   └── library/        #   Individual lens files by domain
@@ -370,13 +370,13 @@ src/hephaestus/
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - API keys for Anthropic and/or OpenAI (for integration tests)
 
 ### Setup
 
 ```bash
-git clone https://github.com/theyab/hephaestus.git
+git clone https://github.com/CodePhobiia/hephaestus.git
 cd hephaestus
 pip install -e ".[dev]"
 ```

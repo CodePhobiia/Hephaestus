@@ -7,6 +7,7 @@ Provides structured Rich output for:
 - Compile progress feedback
 - Workbook diff display
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,9 +17,8 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
-from hephaestus.cli.display import AMBER, CYAN, CYAN_BOLD, DIM, GOLD, GREEN, RED
+from hephaestus.cli.display import AMBER, DIM, EMBER, GREEN, RED, WHITE_HOT
 
 # ---------------------------------------------------------------------------
 # Vault info
@@ -40,20 +40,22 @@ def render_vault_info(
     table.add_column("Key", style=DIM, no_wrap=True)
     table.add_column("Value", style="white")
 
-    table.add_row("Vault ID", f"[{CYAN}]{vault.vault_id}[/]")
-    table.add_row("Name", f"[{CYAN_BOLD}]{vault.name}[/]")
+    table.add_row("Vault ID", f"[{EMBER}]{vault.vault_id}[/]")
+    table.add_row("Name", f"[{WHITE_HOT}]{vault.name}[/]")
     table.add_row("Description", vault.description or "[dim]none[/]")
     table.add_row("Head Revision", f"[{DIM}]{vault.head_revision_id}[/]")
     table.add_row(
         "Created",
-        vault.created_at.strftime("%Y-%m-%d %H:%M:%S") if isinstance(vault.created_at, datetime) else str(vault.created_at),
+        vault.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        if isinstance(vault.created_at, datetime)
+        else str(vault.created_at),
     )
     table.add_section()
-    table.add_row("Pages", f"[{CYAN}]{page_count}[/]")
-    table.add_row("Claims", f"[{CYAN}]{claim_count}[/]")
-    table.add_row("Sources", f"[{CYAN}]{source_count}[/]")
-    table.add_row("Links", f"[{CYAN}]{link_count}[/]")
-    table.add_row("Workbooks", f"[{CYAN}]{workbook_count}[/]")
+    table.add_row("Pages", f"[{EMBER}]{page_count}[/]")
+    table.add_row("Claims", f"[{EMBER}]{claim_count}[/]")
+    table.add_row("Sources", f"[{EMBER}]{source_count}[/]")
+    table.add_row("Links", f"[{EMBER}]{link_count}[/]")
+    table.add_row("Workbooks", f"[{EMBER}]{workbook_count}[/]")
 
     console.print()
     console.print(Panel(table, title=f"[bold yellow]Vault: {vault.name}[/]", border_style="yellow"))
@@ -73,7 +75,7 @@ def render_vault_list(console: Console, vaults: list[Any]) -> None:
         padding=(0, 2),
     )
     table.add_column("ID", style=DIM, no_wrap=True, max_width=30)
-    table.add_column("Name", style=CYAN_BOLD)
+    table.add_column("Name", style=WHITE_HOT)
     table.add_column("Description", style="white", max_width=40)
     table.add_column("Created", style=DIM)
 
@@ -107,7 +109,7 @@ def render_lint_report(console: Console, report: Any) -> None:
     # Summary line
     debt_color = GREEN if report.debt_score < 10 else (AMBER if report.debt_score < 50 else RED)
     console.print(
-        f"  Lint complete: [{CYAN}]{report.finding_count}[/] findings, "
+        f"  Lint complete: [{EMBER}]{report.finding_count}[/] findings, "
         f"debt score [{debt_color}]{report.debt_score:.1f}[/]"
     )
 
@@ -142,7 +144,9 @@ def render_lint_report(console: Console, report: Any) -> None:
         severity_order = ["critical", "error", "warning", "info"]
         for sev in severity_order:
             if sev in report.findings_by_severity:
-                color = RED if sev in ("critical", "error") else (AMBER if sev == "warning" else DIM)
+                color = (
+                    RED if sev in ("critical", "error") else (AMBER if sev == "warning" else DIM)
+                )
                 sev_table.add_row(f"[{color}]{sev}[/]", str(report.findings_by_severity[sev]))
 
         # Add any remaining severities not in the predefined order
@@ -170,9 +174,9 @@ def render_fusion_result(console: Console, result: Any) -> None:
     n_bridges = len(result.bridge_concepts)
     n_transfers = len(result.transfer_opportunities)
     console.print(
-        f"  Fusion complete: [{CYAN}]{n_vaults}[/] vaults, "
-        f"[{CYAN}]{n_bridges}[/] bridge concepts, "
-        f"[{CYAN}]{n_transfers}[/] transfer opportunities"
+        f"  Fusion complete: [{EMBER}]{n_vaults}[/] vaults, "
+        f"[{EMBER}]{n_bridges}[/] bridge concepts, "
+        f"[{EMBER}]{n_transfers}[/] transfer opportunities"
     )
 
     # Bridge concepts table
@@ -183,7 +187,7 @@ def render_fusion_result(console: Console, result: Any) -> None:
             border_style="yellow",
             padding=(0, 2),
         )
-        bridge_table.add_column("Bridge", style=CYAN_BOLD, max_width=30)
+        bridge_table.add_column("Bridge", style=WHITE_HOT, max_width=30)
         bridge_table.add_column("Left Structure", style="white", max_width=25)
         bridge_table.add_column("Right Structure", style="white", max_width=25)
         bridge_table.add_column("Confidence", justify="right", style=AMBER)
@@ -208,7 +212,7 @@ def render_fusion_result(console: Console, result: Any) -> None:
             border_style="yellow",
             padding=(0, 2),
         )
-        xfer_table.add_column("Mechanism", style=CYAN_BOLD, max_width=30)
+        xfer_table.add_column("Mechanism", style=WHITE_HOT, max_width=30)
         xfer_table.add_column("Rationale", style="white", max_width=40)
         xfer_table.add_column("Confidence", justify="right", style=AMBER)
         xfer_table.add_column("Caveats", justify="right", style=DIM)
@@ -237,7 +241,7 @@ def render_fusion_result(console: Console, result: Any) -> None:
         pair_table.add_column("Left Vault", style=DIM, max_width=20)
         pair_table.add_column("Right Vault", style=DIM, max_width=20)
         pair_table.add_column("Candidates", justify="right", style="white")
-        pair_table.add_column("Maps", justify="right", style=CYAN)
+        pair_table.add_column("Maps", justify="right", style=EMBER)
         pair_table.add_column("Transfers", justify="right", style=GREEN)
 
         for pr in result.pair_results:
@@ -268,18 +272,18 @@ def render_compile_result(console: Console, manifest: Any) -> None:
         # SourceCompileManifest (Tier 1)
         console.print(f"  [{GREEN}]Compilation complete[/] (source: {manifest.source_id})")
         if hasattr(manifest, "claim_count"):
-            console.print(f"  Claims extracted: [{CYAN}]{manifest.claim_count}[/]")
+            console.print(f"  Claims extracted: [{EMBER}]{manifest.claim_count}[/]")
         if hasattr(manifest, "concept_count"):
-            console.print(f"  Concepts found: [{CYAN}]{manifest.concept_count}[/]")
+            console.print(f"  Concepts found: [{EMBER}]{manifest.concept_count}[/]")
     else:
         # VaultSynthesisManifest (Tier 2)
         console.print(f"  [{GREEN}]Vault synthesis complete[/]")
         if hasattr(manifest, "pages_created"):
-            console.print(f"  Pages created: [{CYAN}]{manifest.pages_created}[/]")
+            console.print(f"  Pages created: [{EMBER}]{manifest.pages_created}[/]")
         if hasattr(manifest, "claims_created"):
-            console.print(f"  Claims synthesized: [{CYAN}]{manifest.claims_created}[/]")
+            console.print(f"  Claims synthesized: [{EMBER}]{manifest.claims_created}[/]")
         if hasattr(manifest, "open_questions"):
-            console.print(f"  Open questions: [{CYAN}]{len(manifest.open_questions)}[/]")
+            console.print(f"  Open questions: [{EMBER}]{len(manifest.open_questions)}[/]")
 
     console.print()
 
@@ -302,13 +306,17 @@ def render_workbook_list(console: Console, workbooks: list[Any]) -> None:
         padding=(0, 2),
     )
     table.add_column("ID", style=DIM, no_wrap=True, max_width=30)
-    table.add_column("Name", style=CYAN_BOLD)
+    table.add_column("Name", style=WHITE_HOT)
     table.add_column("Purpose", style="white")
     table.add_column("Status", style=AMBER)
     table.add_column("Created", style=DIM)
 
     for wb in workbooks:
-        status_color = GREEN if str(wb.status) == "open" or str(getattr(wb.status, "value", wb.status)) == "open" else DIM
+        status_color = (
+            GREEN
+            if str(wb.status) == "open" or str(getattr(wb.status, "value", wb.status)) == "open"
+            else DIM
+        )
         status_val = getattr(wb.status, "value", str(wb.status))
         purpose_val = getattr(wb.purpose, "value", str(wb.purpose))
         created = (
@@ -337,10 +345,12 @@ def render_ingest_result(
     """Render source ingestion result."""
     console.print()
     console.print(f"  [{GREEN}]Source ingested[/]")
-    console.print(f"  Source ID: [{CYAN}]{source.source_id}[/]")
-    console.print(f"  Title: [{CYAN}]{version.title or '(untitled)'}[/]")
-    console.print(f"  Format: [{CYAN}]{getattr(source.format, 'value', source.format)}[/]")
-    console.print(f"  Trust tier: [{CYAN}]{getattr(version.trust_tier, 'value', version.trust_tier)}[/]")
+    console.print(f"  Source ID: [{EMBER}]{source.source_id}[/]")
+    console.print(f"  Title: [{EMBER}]{version.title or '(untitled)'}[/]")
+    console.print(f"  Format: [{EMBER}]{getattr(source.format, 'value', source.format)}[/]")
+    console.print(
+        f"  Trust tier: [{EMBER}]{getattr(version.trust_tier, 'value', version.trust_tier)}[/]"
+    )
     console.print()
 
 
@@ -351,4 +361,6 @@ def render_ingest_result(
 
 def render_export_success(console: Console, path: str, format_name: str) -> None:
     """Render export success message."""
-    console.print(f"  [{GREEN}]Exported[/] vault as [{CYAN}]{format_name}[/] to [{CYAN}]{path}[/]\n")
+    console.print(
+        f"  [{GREEN}]Exported[/] vault as [{EMBER}]{format_name}[/] to [{EMBER}]{path}[/]\n"
+    )

@@ -1,4 +1,5 @@
 """Tests for ContradictoryClaimDetector."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -14,13 +15,13 @@ from hephaestus.forgebase.domain.enums import (
     SourceTrustTier,
     SupportType,
 )
+from hephaestus.forgebase.domain.event_types import FixedClock
 from hephaestus.forgebase.domain.models import (
     Claim,
     ClaimVersion,
     LintFinding,
 )
-from hephaestus.forgebase.domain.values import ActorRef, EntityId, Version
-from hephaestus.forgebase.domain.event_types import FixedClock
+from hephaestus.forgebase.domain.values import ActorRef, Version
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.linting.analyzers.mock_analyzer import MockLintAnalyzer
 from hephaestus.forgebase.linting.detectors.contradictory_claim import (
@@ -28,7 +29,6 @@ from hephaestus.forgebase.linting.detectors.contradictory_claim import (
 )
 from hephaestus.forgebase.linting.state import VaultLintState
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -121,12 +121,20 @@ async def test_detects_contradictory_claims(env):
         target_page = pages[0]
 
         cid_a, cv_a = await _create_claim(
-            uow, vault.vault_id, target_page.page_id,
-            "SEI layer is stable during cycling", clock, id_gen,
+            uow,
+            vault.vault_id,
+            target_page.page_id,
+            "SEI layer is stable during cycling",
+            clock,
+            id_gen,
         )
         cid_b, cv_b = await _create_claim(
-            uow, vault.vault_id, target_page.page_id,
-            "SEI layer is not stable during cycling", clock, id_gen,
+            uow,
+            vault.vault_id,
+            target_page.page_id,
+            "SEI layer is not stable during cycling",
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -137,9 +145,7 @@ async def test_detects_contradictory_claims(env):
         findings = await detector.detect(state)
 
         # Should detect the contradiction (mock uses "not" keyword heuristic)
-        contra_findings = [
-            f for f in findings if f.category == FindingCategory.CONTRADICTORY_CLAIM
-        ]
+        contra_findings = [f for f in findings if f.category == FindingCategory.CONTRADICTORY_CLAIM]
         assert len(contra_findings) >= 1
 
         # At least one finding should involve our two claims
@@ -164,12 +170,20 @@ async def test_no_contradiction_for_consistent_claims(env):
         target_page = pages[0]
 
         cid_a, _ = await _create_claim(
-            uow, vault.vault_id, target_page.page_id,
-            "SEI layer degrades during cycling", clock, id_gen,
+            uow,
+            vault.vault_id,
+            target_page.page_id,
+            "SEI layer degrades during cycling",
+            clock,
+            id_gen,
         )
         cid_b, _ = await _create_claim(
-            uow, vault.vault_id, target_page.page_id,
-            "SEI layer shows capacity fade", clock, id_gen,
+            uow,
+            vault.vault_id,
+            target_page.page_id,
+            "SEI layer shows capacity fade",
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -181,7 +195,8 @@ async def test_no_contradiction_for_consistent_claims(env):
 
         # Neither claim has "not", so mock analyzer should not flag them
         our_findings = [
-            f for f in findings
+            f
+            for f in findings
             if f.category == FindingCategory.CONTRADICTORY_CLAIM
             and str(cid_a) in {str(e) for e in f.affected_entity_ids}
             and str(cid_b) in {str(e) for e in f.affected_entity_ids}
@@ -226,8 +241,12 @@ async def test_single_claim_page_no_findings(env):
         )
         await uow.pages.create(solo_page, solo_pv)
         await _create_claim(
-            uow, vault.vault_id, page_id,
-            "Only claim on this page", clock, id_gen,
+            uow,
+            vault.vault_id,
+            page_id,
+            "Only claim on this page",
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -239,7 +258,8 @@ async def test_single_claim_page_no_findings(env):
 
         # No findings should reference the solo page's claim
         solo_findings = [
-            f for f in findings
+            f
+            for f in findings
             if f.category == FindingCategory.CONTRADICTORY_CLAIM
             and any(str(e) == str(page_id) for e in f.affected_entity_ids)
         ]
@@ -259,12 +279,20 @@ async def test_is_resolved_when_claim_removed(env):
         pages = await uow.pages.list_by_vault(vault.vault_id)
         target_page = pages[0]
         cid_a, _ = await _create_claim(
-            uow, vault.vault_id, target_page.page_id,
-            "Temperature is high", clock, id_gen,
+            uow,
+            vault.vault_id,
+            target_page.page_id,
+            "Temperature is high",
+            clock,
+            id_gen,
         )
         cid_b, _ = await _create_claim(
-            uow, vault.vault_id, target_page.page_id,
-            "Temperature is not high", clock, id_gen,
+            uow,
+            vault.vault_id,
+            target_page.page_id,
+            "Temperature is not high",
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -274,10 +302,7 @@ async def test_is_resolved_when_claim_removed(env):
         state = VaultLintState(uow2, vault.vault_id)
         detector = ContradictoryClaimDetector(analyzer=MockLintAnalyzer())
         findings = await detector.detect(state)
-        assert any(
-            f.category == FindingCategory.CONTRADICTORY_CLAIM
-            for f in findings
-        )
+        assert any(f.category == FindingCategory.CONTRADICTORY_CLAIM for f in findings)
         await uow2.rollback()
 
     # Create a fake original finding with both claim IDs

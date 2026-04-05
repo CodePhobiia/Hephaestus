@@ -38,15 +38,14 @@ def compute_reference_signature(
 
     if isinstance(reference_context, Mapping):
         payload = {
-            str(key): reference_context[key]
-            for key in sorted(reference_context.keys(), key=str)
+            str(key): reference_context[key] for key in sorted(reference_context.keys(), key=str)
         }
         return _hash_text(_stable_json(payload), prefix="ref")
 
     payload = []
     for lot in reference_context:
         if hasattr(lot, "to_dict"):
-            payload.append(lot.to_dict())  # type: ignore[call-arg]
+            payload.append(lot.to_dict())
         else:
             payload.append(str(lot))
     return _hash_text(_stable_json(payload), prefix="ref")
@@ -152,8 +151,7 @@ class LensLineage:
             loader_revision=int(data.get("loader_revision", 0)),
             derivation=str(data.get("derivation", "")),
             parent_sources=tuple(
-                LineageSource.from_dict(item)
-                for item in list(data.get("parent_sources", []) or [])
+                LineageSource.from_dict(item) for item in list(data.get("parent_sources", []) or [])
             ),
             reference_digest=str(data.get("reference_digest", "")),
             reference_keys=tuple(str(item) for item in list(data.get("reference_keys", []) or [])),
@@ -164,9 +162,7 @@ class LensLineage:
                 str(item) for item in list(data.get("created_from_bundle", []) or [])
             ),
             stale=bool(data.get("stale", False)),
-            stale_reasons=tuple(
-                str(item) for item in list(data.get("stale_reasons", []) or [])
-            ),
+            stale_reasons=tuple(str(item) for item in list(data.get("stale_reasons", []) or [])),
             lineage_id=str(data.get("lineage_id", "")),
             bundle_id=str(data["bundle_id"]) if data.get("bundle_id") is not None else None,
             lens_ids=tuple(str(item) for item in list(data.get("lens_ids", []) or [])),
@@ -188,20 +184,21 @@ class LensLineage:
 
     def is_continuous(self, reference_state: Any) -> bool:
         expected_reference = self.reference_signature or self.reference_digest
-        if expected_reference and expected_reference != getattr(reference_state, "reference_signature", ""):
-            return False
-        if (
-            self.research_signature
-            and self.research_signature != getattr(reference_state, "research_signature", "")
+        if expected_reference and expected_reference != getattr(
+            reference_state, "reference_signature", ""
         ):
             return False
-        if self.branch_signature and getattr(reference_state, "branch_signature", ""):
-            if self.branch_signature != getattr(reference_state, "branch_signature", ""):
-                return False
-        return True
+        if self.research_signature and self.research_signature != getattr(
+            reference_state, "research_signature", ""
+        ):
+            return False
+        ref_branch = getattr(reference_state, "branch_signature", "")
+        return not (self.branch_signature and ref_branch and self.branch_signature != ref_branch)
 
     def mark_stale(self, *reasons: str) -> LensLineage:
-        unique = tuple(dict.fromkeys([*self.stale_reasons, *[reason for reason in reasons if reason]]))
+        unique = tuple(
+            dict.fromkeys([*self.stale_reasons, *[reason for reason in reasons if reason]])
+        )
         return LensLineage(
             lens_id=self.lens_id,
             source_kind=self.source_kind,
@@ -491,7 +488,9 @@ def lineage_from_bundle_proof(bundle_proof: Any) -> LensLineage:
             or getattr(bundle_proof, "member_lens_ids", ())
         )
     )
-    derived_fingerprint64 = getattr(getattr(bundle_proof, "derived_card", None), "fingerprint64", None)
+    derived_fingerprint64 = getattr(
+        getattr(bundle_proof, "derived_card", None), "fingerprint64", None
+    )
     payload = {
         "bundle_id": getattr(bundle_proof, "bundle_id", ""),
         "lens_ids": lens_ids,
@@ -514,7 +513,9 @@ def lineage_from_bundle_proof(bundle_proof: Any) -> LensLineage:
         reference_digest=str(payload["reference_signature"]),
         created_from_bundle=lens_ids,
         stale=bool(getattr(bundle_proof, "stale", False)),
-        stale_reasons=tuple(str(item) for item in getattr(bundle_proof, "invalidation_reasons", ()) or ()),
+        stale_reasons=tuple(
+            str(item) for item in getattr(bundle_proof, "invalidation_reasons", ()) or ()
+        ),
         lineage_id=proof_token,
         bundle_id=bundle_id or None,
         lens_ids=lens_ids,
@@ -522,7 +523,9 @@ def lineage_from_bundle_proof(bundle_proof: Any) -> LensLineage:
         reference_signature=str(payload["reference_signature"]),
         research_signature=str(payload["research_signature"]),
         branch_signature=str(payload["branch_signature"]),
-        derived_fingerprint64=int(derived_fingerprint64) if derived_fingerprint64 is not None else None,
+        derived_fingerprint64=int(derived_fingerprint64)
+        if derived_fingerprint64 is not None
+        else None,
         invalidation_count=int(getattr(bundle_proof, "recomposition_count", 0)),
         invalidation_reasons=tuple(
             str(item) for item in getattr(bundle_proof, "invalidation_reasons", ()) or ()

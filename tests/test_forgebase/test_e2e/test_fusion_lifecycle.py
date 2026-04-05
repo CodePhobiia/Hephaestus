@@ -11,6 +11,7 @@ Exercises all 9 minimum flows from the spec:
 8. Poisoning guard: CONTESTED not in fused baseline
 9. Problem-aware: fusion with problem vs without both succeed
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -30,7 +31,6 @@ from hephaestus.forgebase.domain.models import Claim, ClaimVersion
 from hephaestus.forgebase.domain.values import ActorRef, Version
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Vault content
@@ -54,6 +54,7 @@ LOGISTICS_CONTENT = (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _setup_compiled_vault(fb, name, description, content, clock):
     """Ingest, normalize, compile, and synthesize a vault."""
@@ -93,6 +94,7 @@ async def _setup_compiled_vault(fb, name, description, content, clock):
 # The definitive E2E test
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_fusion_lifecycle():
     """Exercise all 9 minimum flows from the spec."""
@@ -110,16 +112,22 @@ async def test_full_fusion_lifecycle():
         # Setup: Create vault A (battery materials) and compile
         # =================================================================
         vault_a = await _setup_compiled_vault(
-            fb, "battery-materials", "Na-ion research",
-            BATTERY_CONTENT, clock,
+            fb,
+            "battery-materials",
+            "Na-ion research",
+            BATTERY_CONTENT,
+            clock,
         )
 
         # =================================================================
         # Setup: Create vault B (logistics optimization) and compile
         # =================================================================
         vault_b = await _setup_compiled_vault(
-            fb, "logistics-optimization", "Supply chain",
-            LOGISTICS_CONTENT, clock,
+            fb,
+            "logistics-optimization",
+            "Supply chain",
+            LOGISTICS_CONTENT,
+            clock,
         )
 
         # =================================================================
@@ -165,9 +173,7 @@ async def test_full_fusion_lifecycle():
         # =================================================================
         uow = fb.uow_factory()
         async with uow:
-            runs = await uow.fusion_runs.list_by_vaults(
-                [vault_a.vault_id, vault_b.vault_id]
-            )
+            runs = await uow.fusion_runs.list_by_vaults([vault_a.vault_id, vault_b.vault_id])
             await uow.rollback()
 
         assert len(runs) > 0, "Expected at least one FusionRun to be persisted"
@@ -224,7 +230,9 @@ async def test_full_fusion_lifecycle():
             )
             await uow2.claims.create(claim, cv)
             await uow2.vaults.set_canonical_claim_head(
-                vault_a.vault_id, contested_claim_id, 1,
+                vault_a.vault_id,
+                contested_claim_id,
+                1,
             )
             await uow2.commit()
 
@@ -270,8 +278,7 @@ async def test_full_fusion_lifecycle():
         # We expect fusion.completed events (one per fuse call that succeeded)
         completed_count = sum(1 for et in event_types if et == "fusion.completed")
         assert completed_count >= 3, (
-            f"Expected at least 3 fusion.completed events, got {completed_count}: "
-            f"{event_types}"
+            f"Expected at least 3 fusion.completed events, got {completed_count}: {event_types}"
         )
 
     finally:

@@ -1,10 +1,11 @@
 """Tests for ClaimService."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import ClaimStatus, PageType, SupportType
-from hephaestus.forgebase.domain.values import EntityId, Version
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.service.claim_service import ClaimService
 from hephaestus.forgebase.service.exceptions import ConflictError
 from hephaestus.forgebase.service.page_service import PageService
@@ -262,7 +263,9 @@ class TestClaimService:
         wb_id = id_gen.workbook_id()
         source_id = id_gen.source_id()
         support = await svc.add_support(
-            claim.claim_id, source_id, workbook_id=wb_id,
+            claim.claim_id,
+            source_id,
+            workbook_id=wb_id,
         )
 
         cursor = await sqlite_db.execute(
@@ -368,14 +371,20 @@ class TestClaimService:
         svc = ClaimService(uow_factory=uow_factory, default_actor=actor)
 
         c1, _ = await svc.create_claim(
-            vault_id=vault.vault_id, page_id=page.page_id,
-            statement="P", status=ClaimStatus.SUPPORTED,
-            support_type=SupportType.DIRECT, confidence=1.0,
+            vault_id=vault.vault_id,
+            page_id=page.page_id,
+            statement="P",
+            status=ClaimStatus.SUPPORTED,
+            support_type=SupportType.DIRECT,
+            confidence=1.0,
         )
         c2, _ = await svc.create_claim(
-            vault_id=vault.vault_id, page_id=page.page_id,
-            statement="C", status=ClaimStatus.INFERRED,
-            support_type=SupportType.INHERITED, confidence=0.7,
+            vault_id=vault.vault_id,
+            page_id=page.page_id,
+            statement="C",
+            status=ClaimStatus.INFERRED,
+            support_type=SupportType.INHERITED,
+            confidence=0.7,
         )
 
         await svc.add_derivation(c2.claim_id, c1.claim_id, "generalizes")
@@ -392,18 +401,27 @@ class TestClaimService:
         wb_id = id_gen.workbook_id()
 
         c1, _ = await svc.create_claim(
-            vault_id=vault.vault_id, page_id=page.page_id,
-            statement="P", status=ClaimStatus.SUPPORTED,
-            support_type=SupportType.DIRECT, confidence=1.0,
+            vault_id=vault.vault_id,
+            page_id=page.page_id,
+            statement="P",
+            status=ClaimStatus.SUPPORTED,
+            support_type=SupportType.DIRECT,
+            confidence=1.0,
         )
         c2, _ = await svc.create_claim(
-            vault_id=vault.vault_id, page_id=page.page_id,
-            statement="C", status=ClaimStatus.INFERRED,
-            support_type=SupportType.INHERITED, confidence=0.7,
+            vault_id=vault.vault_id,
+            page_id=page.page_id,
+            statement="C",
+            status=ClaimStatus.INFERRED,
+            support_type=SupportType.INHERITED,
+            confidence=0.7,
         )
 
         derivation = await svc.add_derivation(
-            c2.claim_id, c1.claim_id, "refines", workbook_id=wb_id,
+            c2.claim_id,
+            c1.claim_id,
+            "refines",
+            workbook_id=wb_id,
         )
 
         cursor = await sqlite_db.execute(
@@ -444,9 +462,12 @@ class TestClaimService:
         svc = ClaimService(uow_factory=uow_factory, default_actor=actor)
 
         claim, _ = await svc.create_claim(
-            vault_id=vault.vault_id, page_id=page.page_id,
-            statement="X", status=ClaimStatus.SUPPORTED,
-            support_type=SupportType.DIRECT, confidence=1.0,
+            vault_id=vault.vault_id,
+            page_id=page.page_id,
+            statement="X",
+            status=ClaimStatus.SUPPORTED,
+            support_type=SupportType.DIRECT,
+            confidence=1.0,
         )
 
         await svc.invalidate_claim(claim.claim_id, "reason")
@@ -462,9 +483,12 @@ class TestClaimService:
         svc = ClaimService(uow_factory=uow_factory, default_actor=actor)
 
         claim, _ = await svc.create_claim(
-            vault_id=vault.vault_id, page_id=page.page_id,
-            statement="X", status=ClaimStatus.SUPPORTED,
-            support_type=SupportType.DIRECT, confidence=1.0,
+            vault_id=vault.vault_id,
+            page_id=page.page_id,
+            statement="X",
+            status=ClaimStatus.SUPPORTED,
+            support_type=SupportType.DIRECT,
+            confidence=1.0,
         )
 
         await svc.invalidate_claim(claim.claim_id, "outdated")

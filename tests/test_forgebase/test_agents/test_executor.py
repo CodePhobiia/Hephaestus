@@ -1,4 +1,5 @@
 """Tests for AgentExecutor — routing and lifecycle."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -48,7 +49,9 @@ async def test_executor_sets_completed_timestamp(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_MAINTENANCE,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_MAINTENANCE,
     )
 
     task = AgentTask(
@@ -77,7 +80,9 @@ async def test_executor_reporter_creates_artifact(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_MAINTENANCE,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_MAINTENANCE,
     )
 
     task = AgentTask(
@@ -106,7 +111,9 @@ async def test_executor_scout_with_noop_augmentor(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_RESEARCH,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_RESEARCH,
     )
 
     task = AgentTask(
@@ -136,7 +143,9 @@ async def test_executor_skeptic_runs_lint(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_QUALITY,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_QUALITY,
     )
 
     task = AgentTask(
@@ -166,7 +175,9 @@ async def test_executor_librarian_runs_lint(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_QUALITY,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_QUALITY,
     )
 
     task = AgentTask(
@@ -195,7 +206,9 @@ async def test_executor_cartographer_on_empty_vault(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_MAINTENANCE,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_MAINTENANCE,
     )
 
     task = AgentTask(
@@ -225,7 +238,9 @@ async def test_executor_compiler_on_empty_vault(id_gen, clock):
     from hephaestus.forgebase.domain.enums import BranchPurpose
 
     wb = await fb.branches.create_workbook(
-        vault.vault_id, "test-wb", BranchPurpose.AGENT_MAINTENANCE,
+        vault.vault_id,
+        "test-wb",
+        BranchPurpose.AGENT_MAINTENANCE,
     )
 
     task = AgentTask(

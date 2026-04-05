@@ -1,4 +1,5 @@
 """Tests for SQLite compile manifest repository."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -18,7 +19,9 @@ def _now() -> datetime:
     return datetime(2026, 4, 3, 12, 0, 0, tzinfo=UTC)
 
 
-def _source_manifest(id_gen, vault_id: EntityId, source_id: EntityId | None = None) -> SourceCompileManifest:
+def _source_manifest(
+    id_gen, vault_id: EntityId, source_id: EntityId | None = None
+) -> SourceCompileManifest:
     return SourceCompileManifest(
         manifest_id=id_gen.generate("mfst"),
         vault_id=vault_id,

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any, AsyncIterator, Callable, Awaitable
+from typing import Any
 
 from hephaestus.execution.models import (
     ExecutionClass,
@@ -39,14 +40,18 @@ class RunOrchestrator:
     def __init__(self, store: RunStore, config: OrchestratorConfig | None = None) -> None:
         self._store = store
         self._config = config or OrchestratorConfig()
+        self._semaphore_limits: dict[ExecutionClass, int] = {
+            ExecutionClass.INTERACTIVE: self._config.max_concurrent_interactive,
+            ExecutionClass.DEEP: self._config.max_concurrent_deep,
+            ExecutionClass.RESEARCH: self._config.max_concurrent_research,
+        }
         self._semaphores: dict[ExecutionClass, asyncio.Semaphore] = {
-            ExecutionClass.INTERACTIVE: asyncio.Semaphore(self._config.max_concurrent_interactive),
-            ExecutionClass.DEEP: asyncio.Semaphore(self._config.max_concurrent_deep),
-            ExecutionClass.RESEARCH: asyncio.Semaphore(self._config.max_concurrent_research),
+            ec: asyncio.Semaphore(limit) for ec, limit in self._semaphore_limits.items()
         }
         self._active_runs: dict[str, asyncio.Task[Any]] = {}
         self._cancel_events: dict[str, asyncio.Event] = {}
         self._cleanup_task: asyncio.Task[Any] | None = None
+        self._dispatcher_task: asyncio.Task[Any] | None = None
 
     async def start(self) -> None:
         """Initialize the store and start background cleanup."""
@@ -54,21 +59,31 @@ class RunOrchestrator:
         self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
         logger.info("RunOrchestrator started")
 
+    async def start_dispatcher(
+        self, pipeline_fn: Callable[[RunRecord, asyncio.Event], Awaitable[str | None]]
+    ) -> None:
+        """Start the background poll-and-dispatch loop."""
+        if self._dispatcher_task is not None:
+            return
+        self._dispatcher_task = asyncio.create_task(self._dispatcher_loop(pipeline_fn))
+        logger.info("RunOrchestrator dispatcher started")
+
     async def stop(self) -> None:
         """Graceful shutdown."""
         if self._cleanup_task:
             self._cleanup_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
+
+        if self._dispatcher_task:
+            self._dispatcher_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._dispatcher_task
 
         for run_id, task in list(self._active_runs.items()):
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
-            except (asyncio.CancelledError, Exception):
-                pass
             await self._store.fail(run_id, error="Orchestrator shutdown", stage="shutdown")
 
         await self._store.close()
@@ -97,7 +112,9 @@ class RunOrchestrator:
             return existing
 
         # Queue depth check
-        queued = await self._store.list_runs(status=RunStatus.QUEUED, limit=self._config.max_queue_depth + 1)
+        queued = await self._store.list_runs(
+            status=RunStatus.QUEUED, limit=self._config.max_queue_depth + 1
+        )
         if len(queued) >= self._config.max_queue_depth:
             raise ValueError(f"Queue full ({self._config.max_queue_depth} pending runs)")
 
@@ -140,6 +157,10 @@ class RunOrchestrator:
         self._cancel_events[run_id] = cancel_event
         sem = self._semaphores[record.execution_class]
 
+        current = asyncio.current_task()
+        if current is not None:
+            self._active_runs.setdefault(run_id, current)
+
         try:
             async with sem:
                 await self._store.update_stage(run_id, "STARTING")
@@ -152,7 +173,7 @@ class RunOrchestrator:
                         await self._store.cancel(run_id)
                     else:
                         await self._store.complete(run_id, result_ref=result_ref)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     await self._store.fail(
                         run_id,
                         error=f"Execution timed out after {record.execution_class.timeout_seconds}s",
@@ -161,7 +182,9 @@ class RunOrchestrator:
                 except asyncio.CancelledError:
                     await self._store.cancel(run_id)
                 except Exception as exc:
-                    await self._store.fail(run_id, error=str(exc), stage=record.current_stage or "unknown")
+                    await self._store.fail(
+                        run_id, error=str(exc), stage=record.current_stage or "unknown"
+                    )
                     logger.exception("Run %s failed", run_id)
         finally:
             self._cancel_events.pop(run_id, None)
@@ -198,10 +221,9 @@ class RunOrchestrator:
             "active_tasks": len(self._active_runs),
             "semaphores": {
                 ec.value: {
-                    "max": self._semaphores[ec]._value + len([
-                        r for r in running if r.execution_class == ec
-                    ]),
-                    "available": self._semaphores[ec]._value,
+                    "max": self._semaphore_limits[ec],
+                    "available": self._semaphore_limits[ec]
+                    - len([r for r in running if r.execution_class == ec]),
                 }
                 for ec in ExecutionClass
             },
@@ -219,6 +241,26 @@ class RunOrchestrator:
                 break
             except Exception:
                 logger.exception("Error in periodic cleanup")
+
+    async def _dispatcher_loop(
+        self, pipeline_fn: Callable[[RunRecord, asyncio.Event], Awaitable[str | None]]
+    ) -> None:
+        """Continuously pulls queued runs and dispatches them."""
+        while True:
+            try:
+                queued = await self._store.list_runs(status=RunStatus.QUEUED, limit=10)
+                for record in queued:
+                    if record.run_id not in self._active_runs:
+                        # Dispatch in a background task
+                        task = asyncio.create_task(self.execute(record.run_id, pipeline_fn))
+                        self._active_runs[record.run_id] = task
+
+                await asyncio.sleep(1.0)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Error in dispatcher loop")
+                await asyncio.sleep(5.0)
 
 
 __all__ = [

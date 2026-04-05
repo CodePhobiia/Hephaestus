@@ -1,4 +1,5 @@
 """SQLite implementation of JobRepository."""
+
 from __future__ import annotations
 
 import json
@@ -106,12 +107,22 @@ class SqliteJobRepository(JobRepository):
             priority=row["priority"],
             attempt_count=row["attempt_count"],
             max_attempts=row["max_attempts"],
-            next_attempt_at=datetime.fromisoformat(row["next_attempt_at"]) if row["next_attempt_at"] else None,
-            leased_until=datetime.fromisoformat(row["leased_until"]) if row["leased_until"] else None,
-            heartbeat_at=datetime.fromisoformat(row["heartbeat_at"]) if row["heartbeat_at"] else None,
+            next_attempt_at=datetime.fromisoformat(row["next_attempt_at"])
+            if row["next_attempt_at"]
+            else None,
+            leased_until=datetime.fromisoformat(row["leased_until"])
+            if row["leased_until"]
+            else None,
+            heartbeat_at=datetime.fromisoformat(row["heartbeat_at"])
+            if row["heartbeat_at"]
+            else None,
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            completed_at=datetime.fromisoformat(row["completed_at"])
+            if row["completed_at"]
+            else None,
             error=row["error"],
-            created_by=ActorRef(actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]),
+            created_by=ActorRef(
+                actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]
+            ),
             created_by_run=EntityId(row["created_by_run"]) if row["created_by_run"] else None,
         )

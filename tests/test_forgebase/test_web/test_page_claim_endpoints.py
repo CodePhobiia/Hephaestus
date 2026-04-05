@@ -1,4 +1,5 @@
 """Tests for ForgeBase page and claim API endpoints."""
+
 from __future__ import annotations
 
 import pytest
@@ -89,9 +90,7 @@ async def test_get_page_detail(client, vault_with_pages):
     """GET /api/forgebase/vaults/{id}/pages/{pid} returns full page detail."""
     vault_id, page1, _, claim1, claim2 = vault_with_pages
 
-    resp = await client.get(
-        f"/api/forgebase/vaults/{vault_id}/pages/{page1.page_id}"
-    )
+    resp = await client.get(f"/api/forgebase/vaults/{vault_id}/pages/{page1.page_id}")
     assert resp.status_code == 200
     data = resp.json()
     assert data["page_id"] == str(page1.page_id)

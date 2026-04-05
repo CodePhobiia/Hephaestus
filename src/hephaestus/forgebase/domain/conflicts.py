@@ -1,12 +1,13 @@
 """Conflict detection predicates for branch merge."""
+
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from hephaestus.forgebase.domain.values import Version
 
 
-class ConflictCheckResult(str, Enum):
+class ConflictCheckResult(StrEnum):
     CLEAN = "clean"
     CONFLICTED = "conflicted"
     NO_BRANCH_CHANGE = "no_branch_change"

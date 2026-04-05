@@ -4,11 +4,13 @@ The adapter accepts ``report: Any`` to avoid importing Genesis types and
 creating circular dependencies.  It is resilient to missing fields on
 the report object.
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from hephaestus.forgebase.domain.enums import EntityKind, SourceFormat
 from hephaestus.forgebase.domain.values import EntityId
@@ -106,9 +108,7 @@ class GenesisAdapter:
             await self._update_sync_status(ref.ref_id, "failed")
             raise
 
-    async def _update_sync_status(
-        self, ref_id: EntityId, status: str
-    ) -> None:
+    async def _update_sync_status(self, ref_id: EntityId, status: str) -> None:
         """Update sync_status on the KnowledgeRunRef via a fresh UoW."""
         try:
             uow = self._uow_factory()
@@ -117,7 +117,9 @@ class GenesisAdapter:
                 await uow.commit()
         except Exception:
             logger.exception(
-                "Failed to update sync_status to %r for ref_id=%s", status, ref_id,
+                "Failed to update sync_status to %r for ref_id=%s",
+                status,
+                ref_id,
             )
 
 
@@ -149,9 +151,7 @@ def _extract_artifacts(report: Any) -> list[tuple[str, Any]]:
         return artifacts
 
     # Object-style report
-    raw_arts = getattr(report, "artifacts", None) or getattr(
-        report, "research_artifacts", None
-    )
+    raw_arts = getattr(report, "artifacts", None) or getattr(report, "research_artifacts", None)
     if raw_arts and isinstance(raw_arts, list):
         for item in raw_arts:
             name = getattr(item, "name", "unnamed")

@@ -55,12 +55,18 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiosqlite
-import numpy as np
+
+if TYPE_CHECKING:
+    import numpy as np
+
+def _lazy_np():
+    import numpy as np
+    return np
 
 logger = logging.getLogger(__name__)
 
@@ -70,20 +76,20 @@ _DT_FMT = "%Y-%m-%d %H:%M:%S"
 
 def _now() -> str:
     """Return current UTC time as a SQLite-compatible string."""
-    return datetime.now(timezone.utc).strftime(_DT_FMT)
+    return datetime.now(UTC).strftime(_DT_FMT)
 
 
 def _embed_to_blob(embedding: np.ndarray) -> bytes:
     """Serialise a numpy float32 array to bytes for SQLite BLOB storage."""
     buf = io.BytesIO()
-    np.save(buf, embedding.astype(np.float32))
+    _lazy_np().save(buf, embedding.astype(_lazy_np().float32))
     return buf.getvalue()
 
 
 def _blob_to_embed(blob: bytes) -> np.ndarray:
     """Deserialise a BLOB back to a numpy float32 array."""
     buf = io.BytesIO(blob)
-    return np.load(buf).astype(np.float32)
+    return _lazy_np().load(buf).astype(_lazy_np().float32)
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +243,7 @@ class ConvergenceDatabase:
             self._conn = None
             logger.debug("Disconnected from convergence database")
 
-    async def __aenter__(self) -> "ConvergenceDatabase":
+    async def __aenter__(self) -> ConvergenceDatabase:
         await self.connect()
         return self
 
@@ -512,13 +518,13 @@ class ConvergenceDatabase:
         if not records:
             return []
 
-        query = query_embedding.astype(np.float32)
-        query = query / (np.linalg.norm(query) + 1e-10)
+        query = query_embedding.astype(_lazy_np().float32)
+        query = query / (_lazy_np().linalg.norm(query) + 1e-10)
 
         # Stack all embeddings into a matrix for batch cosine similarity
-        matrix = np.stack([r.pattern_embedding for r in records], axis=0)
+        matrix = _lazy_np().stack([r.pattern_embedding for r in records], axis=0)
         # Normalise rows (should already be normalised but be safe)
-        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        norms = _lazy_np().linalg.norm(matrix, axis=1, keepdims=True)
         matrix = matrix / (norms + 1e-10)
 
         similarities = matrix @ query  # (N,) cosine similarities
@@ -592,7 +598,7 @@ class ConvergenceDatabase:
     async def import_from_json(
         self,
         input_path: str | Path,
-        embeddings: dict[int, np.ndarray] | None = None,
+        embeddings: dict[int, _lazy_np().ndarray] | None = None,
     ) -> int:
         """
         Import patterns from a JSON file (e.g. exported via :meth:`export_to_json`).
@@ -613,10 +619,8 @@ class ConvergenceDatabase:
         int
             Number of patterns imported.
         """
-        data: list[dict[str, Any]] = json.loads(
-            Path(input_path).read_text(encoding="utf-8")
-        )
-        placeholder_emb = np.zeros(384, dtype=np.float32)
+        data: list[dict[str, Any]] = json.loads(Path(input_path).read_text(encoding="utf-8"))
+        placeholder_emb = _lazy_np().zeros(384, dtype=_lazy_np().float32)
 
         imported = 0
         for item in data:
@@ -661,7 +665,7 @@ class ConvergenceDatabase:
             logger.warning("No patterns to export")
             return 0
 
-        texts = np.array(
+        texts = _lazy_np().array(
             [
                 json.dumps(
                     {
@@ -677,11 +681,11 @@ class ConvergenceDatabase:
             ],
             dtype=object,
         )
-        embeddings = np.stack([r.pattern_embedding for r in records], axis=0)
+        embeddings = _lazy_np().stack([r.pattern_embedding for r in records], axis=0)
 
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(str(output_path), texts=texts, embeddings=embeddings)
+        _lazy_np().savez_compressed(str(output_path), texts=texts, embeddings=embeddings)
         logger.info("Exported full archive with %d patterns to %s", len(records), output_path)
         return len(records)
 
@@ -699,7 +703,7 @@ class ConvergenceDatabase:
         int
             Number of patterns imported.
         """
-        data = np.load(str(input_path), allow_pickle=True)
+        data = _lazy_np().load(str(input_path), allow_pickle=True)
         texts = data["texts"]
         embeddings = data["embeddings"]
 
@@ -709,7 +713,7 @@ class ConvergenceDatabase:
             await self.add_pattern(
                 problem_class=meta["problem_class"],
                 pattern_text=meta["pattern_text"],
-                embedding=emb.astype(np.float32),
+                embedding=emb.astype(_lazy_np().float32),
                 frequency=meta.get("frequency", 1),
                 source_model=meta.get("source_model", ""),
                 blocked_count=meta.get("blocked_count", 0),

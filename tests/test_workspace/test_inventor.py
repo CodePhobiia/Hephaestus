@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+from unittest.mock import MagicMock
 
 from hephaestus.workspace.inventor import (
     IdentifiedProblem,
     WorkspaceInvention,
     WorkspaceInventionReport,
     WorkspaceInventor,
-    _parse_problems,
     _generate_impl_hint,
+    _parse_problems,
 )
 
 
@@ -60,11 +58,11 @@ class TestWorkspaceInventionReport:
 
 class TestParseProblem:
     def test_valid_json(self):
-        text = '''Here are the problems:
+        text = """Here are the problems:
 [
   {"problem": "No caching layer", "category": "performance", "severity": "high", "context": "DB calls on every request"},
   {"problem": "No rate limiting", "category": "security", "severity": "medium", "context": "API is open"}
-]'''
+]"""
         problems = _parse_problems(text)
         assert len(problems) == 2
         assert problems[0].problem == "No caching layer"
@@ -114,13 +112,17 @@ class TestWorkspaceInventor:
             problems_found=2,
             inventions_attempted=2,
             inventions_succeeded=1,
-            research_dossier=type("Dossier", (), {
-                "summary": "Comparable tools all use queue-backed workers.",
-                "comparable_tools": ["Tool A"],
-                "architecture_patterns": ["queue-backed workers"],
-                "differentiation_opportunities": ["better grounding"],
-                "implementation_risks": ["prompt drift"],
-            })(),
+            research_dossier=type(
+                "Dossier",
+                (),
+                {
+                    "summary": "Comparable tools all use queue-backed workers.",
+                    "comparable_tools": ["Tool A"],
+                    "architecture_patterns": ["queue-backed workers"],
+                    "differentiation_opportunities": ["better grounding"],
+                    "implementation_risks": ["prompt drift"],
+                },
+            )(),
             inventions=[
                 WorkspaceInvention(
                     problem=IdentifiedProblem("Slow queries", "performance", "high", ""),

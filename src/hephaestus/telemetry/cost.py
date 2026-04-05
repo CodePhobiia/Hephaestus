@@ -28,7 +28,7 @@ class BudgetPolicy:
         }
 
 
-class BudgetViolation(Exception):
+class BudgetViolation(Exception): # noqa: N818
     """Raised when a budget limit would be exceeded."""
 
     def __init__(self, message: str, *, limit_type: str, current: float, limit: float) -> None:
@@ -98,7 +98,8 @@ class CostGovernor:
         global_hourly = await self._run_store.aggregate_cost(since=now - timedelta(hours=1))
         if global_hourly >= self._policy.max_global_per_hour_usd:
             raise BudgetViolation(
-                f"Global hourly spend limit exceeded: ${global_hourly:.2f} >= ${self._policy.max_global_per_hour_usd:.2f}",
+                f"Global hourly spend limit exceeded: "
+                f"${global_hourly:.2f} >= ${self._policy.max_global_per_hour_usd:.2f}",
                 limit_type="global_hourly",
                 current=global_hourly,
                 limit=self._policy.max_global_per_hour_usd,

@@ -36,11 +36,15 @@ class TestHephaestusResearchClient:
             result = await client.build_benchmark_corpus("distributed systems", count=1)
 
         assert result.topic == "distributed systems"
-        fake_client.build_benchmark_corpus.assert_awaited_once_with(topic="distributed systems", count=1)
+        fake_client.build_benchmark_corpus.assert_awaited_once_with(
+            topic="distributed systems", count=1
+        )
         fake_client.close.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_build_benchmark_corpus_requires_research(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_build_benchmark_corpus_requires_research(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         monkeypatch.setenv("PERPLEXITY_API_KEY", "pplx-test")
 

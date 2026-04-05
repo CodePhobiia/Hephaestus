@@ -181,7 +181,7 @@ class InventionReport:
     translation: str
     architecture: str
     where_analogy_breaks: str
-    prior_art_report: Any | None = None    # PriorArtReport
+    prior_art_report: Any | None = None  # PriorArtReport
     baseline_dossier: Any | None = None
     external_grounding_report: Any | None = None
     implementation_risk_review: Any | None = None
@@ -189,7 +189,7 @@ class InventionReport:
     pantheon_state: Any | None = None
     pantheon_runtime: Any | None = None
     deliberation_graph: Any | None = None
-    novelty_proof: Any | None = None       # NoveltyProof
+    novelty_proof: Any | None = None  # NoveltyProof
     alternatives: list[AlternativeInvention] = field(default_factory=list)
     cost_usd: float = 0.0
     cost_breakdown: Any | None = None
@@ -222,7 +222,7 @@ class OutputFormatter:
     def _safe_int(value: Any) -> int:
         try:
             return int(value or 0)
-        except Exception:
+        except (TypeError, ValueError):
             return 0
 
     def format(self, report: InventionReport, fmt: OutputFormat = OutputFormat.MARKDOWN) -> str:
@@ -355,7 +355,9 @@ class OutputFormatter:
             "",
         ]
         if report.prior_art_report is not None:
-            summary = _as_text(getattr(report.prior_art_report, "summary", ""), "Prior art summary not available.")
+            summary = _as_text(
+                getattr(report.prior_art_report, "summary", ""), "Prior art summary not available."
+            )
             status = getattr(report.prior_art_report, "novelty_status", "UNKNOWN")
             lines.append(f"  {summary}")
             lines.append("")
@@ -553,7 +555,9 @@ class OutputFormatter:
                 "prior_art": _prior_art_to_dict(report.prior_art_report),
                 "state_of_the_art": _research_obj_to_dict(report.baseline_dossier),
                 "external_grounding": _research_obj_to_dict(report.external_grounding_report),
-                "implementation_risk_review": _research_obj_to_dict(report.implementation_risk_review),
+                "implementation_risk_review": _research_obj_to_dict(
+                    report.implementation_risk_review
+                ),
                 "lens_engine": _lens_engine_to_dict(report.lens_engine_state),
                 "pantheon": _research_obj_to_dict(report.pantheon_state),
                 "pantheon_runtime": _research_obj_to_dict(report.pantheon_runtime),
@@ -603,7 +607,12 @@ class OutputFormatter:
 
         if report.baseline_dossier is not None:
             lines.append("STATE OF THE ART RECON:")
-            lines.append(_indent_block(getattr(report.baseline_dossier, "summary", ""), fallback="No external reconnaissance summary available."))
+            lines.append(
+                _indent_block(
+                    getattr(report.baseline_dossier, "summary", ""),
+                    fallback="No external reconnaissance summary available.",
+                )
+            )
             avoid = getattr(report.baseline_dossier, "keywords_to_avoid", [])
             if avoid:
                 lines.append("  Conventional mechanisms to avoid:")
@@ -642,7 +651,9 @@ class OutputFormatter:
         lines.append("PRIOR ART CHECK:")
         if report.prior_art_report is not None:
             status = getattr(report.prior_art_report, "novelty_status", "UNKNOWN")
-            summary = _as_text(getattr(report.prior_art_report, "summary", ""), "Prior art summary not available.")
+            summary = _as_text(
+                getattr(report.prior_art_report, "summary", ""), "Prior art summary not available."
+            )
             lines.append(f"  Status: {status}")
             lines.append(_indent_block(summary, fallback="Prior art summary not available."))
         else:
@@ -651,7 +662,12 @@ class OutputFormatter:
 
         if report.external_grounding_report is not None:
             lines.append("EXTERNAL GROUNDING:")
-            lines.append(_indent_block(getattr(report.external_grounding_report, "summary", ""), fallback="No external grounding summary available."))
+            lines.append(
+                _indent_block(
+                    getattr(report.external_grounding_report, "summary", ""),
+                    fallback="No external grounding summary available.",
+                )
+            )
             for heading, key in [
                 ("Closest related work", "closest_related_work"),
                 ("Adjacent fields", "adjacent_fields"),
@@ -667,7 +683,12 @@ class OutputFormatter:
 
         if report.implementation_risk_review is not None:
             lines.append("IMPLEMENTATION RISK REVIEW:")
-            lines.append(_indent_block(getattr(report.implementation_risk_review, "summary", ""), fallback="No grounded risk review available."))
+            lines.append(
+                _indent_block(
+                    getattr(report.implementation_risk_review, "summary", ""),
+                    fallback="No grounded risk review available.",
+                )
+            )
             for heading, key in [
                 ("Major risks", "major_risks"),
                 ("Operational constraints", "operational_constraints"),
@@ -747,7 +768,9 @@ class OutputFormatter:
             f"Depth: {report.depth}  Time: {time_str}",
         ]
         if report.cost_breakdown is not None:
-            lines.append(f"Stage Costs: {_cost_breakdown_text(report.cost_breakdown, markdown=False)}")
+            lines.append(
+                f"Stage Costs: {_cost_breakdown_text(report.cost_breakdown, markdown=False)}"
+            )
         lines += [
             "=" * 60,
         ]
@@ -919,9 +942,7 @@ def _json_safe(value: Any) -> Any:
         return {str(k): _json_safe(v) for k, v in value.items()}
     if isinstance(value, Mock):
         return {
-            str(k): _json_safe(v)
-            for k, v in value.__dict__.items()
-            if not str(k).startswith("_")
+            str(k): _json_safe(v) for k, v in value.__dict__.items() if not str(k).startswith("_")
         }
     if hasattr(value, "__dict__"):
         return {str(k): _json_safe(v) for k, v in value.__dict__.items()}
@@ -933,7 +954,7 @@ def _proof_to_dict(proof: Any | None) -> dict[str, Any] | None:
     if proof is None:
         return None
     if hasattr(proof, "to_dict"):
-        return proof.to_dict()  # type: ignore[return-value]
+        return proof.to_dict()
     return {"novelty_score": getattr(proof, "novelty_score", 0.0)}
 
 
@@ -941,7 +962,7 @@ def _lens_engine_to_dict(state: Any | None) -> dict[str, Any] | None:
     if state is None:
         return None
     if hasattr(state, "to_dict"):
-        return state.to_dict()  # type: ignore[return-value]
+        return state.to_dict()
     return _json_safe(state)
 
 
@@ -967,13 +988,9 @@ def _lens_engine_markdown_lines(state: Any) -> list[str]:
             f"(v{composite.version}) from {', '.join(f'`{member}`' for member in composite.component_lens_ids)}"
         )
     for guard in getattr(state, "guards", [])[:5]:
-        lines.append(
-            f"  - Guard `{guard.kind}`: **{guard.status.upper()}** — {guard.summary}"
-        )
+        lines.append(f"  - Guard `{guard.kind}`: **{guard.status.upper()}** — {guard.summary}")
     for item in getattr(state, "pending_invalidations", [])[:5]:
-        lines.append(
-            f"  - Invalidation `{item.target_kind}` `{item.target_id}`: {item.summary}"
-        )
+        lines.append(f"  - Invalidation `{item.target_kind}` `{item.target_id}`: {item.summary}")
     for item in getattr(state, "recompositions", [])[-3:]:
         lines.append(f"  - Recomposition `{item.status}`: {item.summary}")
     return lines
@@ -987,9 +1004,7 @@ def _lens_engine_plain_lines(state: Any) -> list[str]:
             f"  Active bundle: {active_bundle.bundle_id} "
             f"({active_bundle.bundle_kind}, {active_bundle.proof_status})"
         )
-        lines.append(
-            f"  Members: {', '.join(active_bundle.member_ids)}"
-        )
+        lines.append(f"  Members: {', '.join(active_bundle.member_ids)}")
         lines.append(
             f"  Cohesion: {active_bundle.cohesion_score:.2f}  "
             f"Higher-order support: {active_bundle.higher_order_score:.2f}"
@@ -1033,7 +1048,9 @@ def _pantheon_markdown_lines(state: Any) -> list[str]:
         lines.append(f"  - Athena canon: {_as_text(_lookup(canon, 'structural_form', ''), 'n/a')}")
     dossier = _lookup(state, "dossier", None)
     if dossier is not None:
-        lines.append(f"  - Hermes dossier: {_as_text(_lookup(dossier, 'repo_reality_summary', ''), 'n/a')}")
+        lines.append(
+            f"  - Hermes dossier: {_as_text(_lookup(dossier, 'repo_reality_summary', ''), 'n/a')}"
+        )
     winning_candidate_id = _lookup(state, "winning_candidate_id", None)
     if winning_candidate_id:
         lines.append(f"  - Winning candidate: `{winning_candidate_id}`")
@@ -1060,9 +1077,15 @@ def _pantheon_markdown_lines(state: Any) -> list[str]:
             f"tier=`{_as_text(_lookup(round_, 'outcome_tier', ''), 'PENDING')}`"
         )
     if objection_ledger:
-        open_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "OPEN")
-        resolved_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "RESOLVED")
-        waived_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "WAIVED")
+        open_count = sum(
+            1 for objection in objection_ledger if _lookup(objection, "status", "") == "OPEN"
+        )
+        resolved_count = sum(
+            1 for objection in objection_ledger if _lookup(objection, "status", "") == "RESOLVED"
+        )
+        waived_count = sum(
+            1 for objection in objection_ledger if _lookup(objection, "status", "") == "WAIVED"
+        )
         lines.append(
             f"  - Objection ledger: open=`{open_count}` resolved=`{resolved_count}` waived=`{waived_count}`"
         )
@@ -1102,7 +1125,9 @@ def _pantheon_plain_lines(state: Any) -> list[str]:
         lines.append(f"  Athena canon: {_as_text(_lookup(canon, 'structural_form', ''), 'n/a')}")
     dossier = _lookup(state, "dossier", None)
     if dossier is not None:
-        lines.append(f"  Hermes dossier: {_as_text(_lookup(dossier, 'repo_reality_summary', ''), 'n/a')}")
+        lines.append(
+            f"  Hermes dossier: {_as_text(_lookup(dossier, 'repo_reality_summary', ''), 'n/a')}"
+        )
     winning_candidate_id = _lookup(state, "winning_candidate_id", None)
     if winning_candidate_id:
         lines.append(f"  Winning candidate: {winning_candidate_id}")
@@ -1127,10 +1152,18 @@ def _pantheon_plain_lines(state: Any) -> list[str]:
             f"tier={_as_text(_lookup(round_, 'outcome_tier', ''), 'PENDING')}"
         )
     if objection_ledger:
-        open_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "OPEN")
-        resolved_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "RESOLVED")
-        waived_count = sum(1 for objection in objection_ledger if _lookup(objection, "status", "") == "WAIVED")
-        lines.append(f"  Objection ledger: open={open_count} resolved={resolved_count} waived={waived_count}")
+        open_count = sum(
+            1 for objection in objection_ledger if _lookup(objection, "status", "") == "OPEN"
+        )
+        resolved_count = sum(
+            1 for objection in objection_ledger if _lookup(objection, "status", "") == "RESOLVED"
+        )
+        waived_count = sum(
+            1 for objection in objection_ledger if _lookup(objection, "status", "") == "WAIVED"
+        )
+        lines.append(
+            f"  Objection ledger: open={open_count} resolved={resolved_count} waived={waived_count}"
+        )
         for objection in objection_ledger[:4]:
             lines.append(
                 f"  {_lookup(objection, 'objection_id', '')} "

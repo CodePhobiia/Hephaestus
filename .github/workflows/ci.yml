@@ -56,7 +56,7 @@ jobs:
           python-version: ${{ env.PYTHON_DEFAULT }}
       - run: pip install pip-audit
       - run: pip install -e ".[dev,web]"
-      - run: pip-audit --strict --desc on 2>&1 || true
+      - run: pip-audit --strict --desc on
 
   test:
     name: Tests (Python ${{ matrix.python-version }})

@@ -1,9 +1,6 @@
 """Tests for finding batching — grouping, strategies, and fingerprinting."""
+
 from __future__ import annotations
-
-from datetime import datetime
-
-import pytest
 
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
@@ -17,10 +14,10 @@ from hephaestus.forgebase.linting.remediation.batcher import (
     batch_findings,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _eid(prefix: str, suffix: str) -> EntityId:
     """Build an EntityId with a deterministic 26-char ULID-like string."""
@@ -57,6 +54,7 @@ def _finding(
 # ---------------------------------------------------------------------------
 # batch_findings tests
 # ---------------------------------------------------------------------------
+
 
 class TestBatchFindings:
     def test_empty_findings_returns_empty(self) -> None:
@@ -162,7 +160,10 @@ class TestBatchFindings:
 
     def test_batch_fingerprint_stable_raw(self) -> None:
         """_batch_fingerprint is deterministic for the same inputs."""
-        ids = [_eid("find", "f1f1f1f1f1f1f1f1f1f1f1f1f1"), _eid("find", "f2f2f2f2f2f2f2f2f2f2f2f2f2")]
+        ids = [
+            _eid("find", "f1f1f1f1f1f1f1f1f1f1f1f1f1"),
+            _eid("find", "f2f2f2f2f2f2f2f2f2f2f2f2f2"),
+        ]
         fp1 = _batch_fingerprint(VAULT_ID, "page:some_page", ids)
         fp2 = _batch_fingerprint(VAULT_ID, "page:some_page", ids)
         assert fp1 == fp2

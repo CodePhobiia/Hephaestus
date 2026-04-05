@@ -47,13 +47,17 @@ _DOC_FILENAMES = {
 
 _DOC_DIRS = {"docs", "doc", "design", "adr"}
 _TEST_DIRS = {"tests", "test", "spec", "specs"}
-_SKIP_CODE_ROOTS = _TEST_DIRS | _DOC_DIRS | {
-    ".hephaestus",
-    "vendor",
-    "dist",
-    "build",
-    "coverage",
-}
+_SKIP_CODE_ROOTS = (
+    _TEST_DIRS
+    | _DOC_DIRS
+    | {
+        ".hephaestus",
+        "vendor",
+        "dist",
+        "build",
+        "coverage",
+    }
+)
 _MAKE_TARGETS = {"test", "lint", "format", "typecheck", "check", "build", "run", "dev"}
 _VERSION_RE = re.compile(r"\s*[<>=!~].*$")
 
@@ -148,22 +152,13 @@ class RepoDossier:
             test_roots=list(payload.get("test_roots", []) or []),
             documentation_paths=list(payload.get("documentation_paths", []) or []),
             key_artifacts=list(payload.get("key_artifacts", []) or []),
-            commands=[
-                RepoCommandHint(**item) for item in payload.get("commands", []) or []
-            ],
-            dependencies=[
-                RepoDependency(**item) for item in payload.get("dependencies", []) or []
-            ],
-            components=[
-                RepoComponent(**item) for item in payload.get("components", []) or []
-            ],
+            commands=[RepoCommandHint(**item) for item in payload.get("commands", []) or []],
+            dependencies=[RepoDependency(**item) for item in payload.get("dependencies", []) or []],
+            components=[RepoComponent(**item) for item in payload.get("components", []) or []],
             dependency_edges=[
-                RepoDependencyEdge(**item)
-                for item in payload.get("dependency_edges", []) or []
+                RepoDependencyEdge(**item) for item in payload.get("dependency_edges", []) or []
             ],
-            hotspots=[
-                RepoHotspot(**item) for item in payload.get("hotspots", []) or []
-            ],
+            hotspots=[RepoHotspot(**item) for item in payload.get("hotspots", []) or []],
             architecture_notes=list(payload.get("architecture_notes", []) or []),
         )
 
@@ -180,8 +175,7 @@ class RepoDossier:
             lines.append(f"Subsystems: {names}{suffix}")
         if self.commands:
             lines.append(
-                "Suggested commands: "
-                + "; ".join(command.command for command in self.commands[:4])
+                "Suggested commands: " + "; ".join(command.command for command in self.commands[:4])
             )
         return lines
 
@@ -201,20 +195,18 @@ class RepoDossier:
             lines.append(f"[bold]Components[/]  {component_text}")
         if self.commands:
             lines.append(
-                "[bold]Commands[/]  "
-                + "; ".join(command.command for command in self.commands[:4])
+                "[bold]Commands[/]  " + "; ".join(command.command for command in self.commands[:4])
             )
         if self.hotspots:
             lines.append(
-                "[bold]Hotspots[/]  "
-                + ", ".join(hotspot.path for hotspot in self.hotspots[:3])
+                "[bold]Hotspots[/]  " + ", ".join(hotspot.path for hotspot in self.hotspots[:3])
             )
         return "\n".join(lines)
 
     def format_context_text(self) -> str:
         lines = [
             "[bold underline]Repo Dossier[/]",
-            f"  cache: [cyan]{self.cache_state}[/] @ {self.cache_path}",
+            f"  cache: [dark_orange]{self.cache_state}[/] @ {self.cache_path}",
             f"  generated: [dim]{self.generated_at}[/]",
         ]
 
@@ -231,7 +223,7 @@ class RepoDossier:
         if self.commands:
             for command in self.commands:
                 lines.append(
-                    f"  [cyan]{command.purpose}[/]: {command.command} [dim]({command.source})[/]"
+                    f"  [dark_orange]{command.purpose}[/]: {command.command} [dim]({command.source})[/]"
                 )
         else:
             lines.append("  [dim]No commands inferred.[/]")
@@ -241,7 +233,7 @@ class RepoDossier:
         if self.components:
             for component in self.components[:10]:
                 line = (
-                    f"  [cyan]{component.name}[/] "
+                    f"  [dark_orange]{component.name}[/] "
                     f"({component.root}) files={component.file_count} lines={component.line_count}"
                 )
                 if component.test_files:
@@ -454,11 +446,7 @@ def _load_cached_dossier(cache_path: Path) -> RepoDossier | None:
 
 def _cache_paths(root: Path) -> tuple[Path, Path]:
     git_dir = _git_dir(root)
-    cache_root = (
-        git_dir / "hephaestus"
-        if git_dir is not None
-        else root / ".hephaestus" / "cache"
-    )
+    cache_root = git_dir / "hephaestus" if git_dir is not None else root / ".hephaestus" / "cache"
     return cache_root / "repo_dossier.json", cache_root / "repo_dossier.md"
 
 
@@ -613,15 +601,11 @@ def _detect_commands(
 
     project = pyproject_data.get("project", {}) if isinstance(pyproject_data, dict) else {}
     optional_dependencies = (
-        project.get("optional-dependencies", {})
-        if isinstance(project, dict)
-        else {}
+        project.get("optional-dependencies", {}) if isinstance(project, dict) else {}
     )
     scripts = project.get("scripts", {}) if isinstance(project, dict) else {}
     dev_deps = (
-        optional_dependencies.get("dev", [])
-        if isinstance(optional_dependencies, dict)
-        else []
+        optional_dependencies.get("dev", []) if isinstance(optional_dependencies, dict) else []
     )
     project_deps = project.get("dependencies", []) if isinstance(project, dict) else []
     all_deps = [str(dep) for dep in list(project_deps) + list(dev_deps)]
@@ -652,9 +636,7 @@ def _detect_commands(
             data = {}
         for script_name in ("test", "lint", "build", "dev", "start"):
             script = (
-                (data.get("scripts") or {}).get(script_name)
-                if isinstance(data, dict)
-                else None
+                (data.get("scripts") or {}).get(script_name) if isinstance(data, dict) else None
             )
             if script:
                 add(script_name, f"npm run {script_name}", "package.json")
@@ -731,7 +713,8 @@ def _infer_components_and_edges(
     code_by_root: dict[str, list[Any]] = {}
     for code_root in code_roots:
         code_by_root[code_root] = [
-            item for item in files
+            item
+            for item in files
             if item.extension in _CODE_EXTENSIONS and _under_root(item.path, code_root)
         ]
 
@@ -994,10 +977,7 @@ def _build_architecture_notes(
             f"Tests are anchored in {', '.join(test_roots[:3])} and map to {covered} subsystem(s)."
         )
     if dependency_edges:
-        strongest = ", ".join(
-            f"{edge.source}->{edge.target}"
-            for edge in dependency_edges[:3]
-        )
+        strongest = ", ".join(f"{edge.source}->{edge.target}" for edge in dependency_edges[:3])
         notes.append(f"Strongest internal dependency edges are {strongest}.")
     if hotspots:
         notes.append(
@@ -1006,11 +986,7 @@ def _build_architecture_notes(
             + "."
         )
     if key_artifacts:
-        notes.append(
-            "Key repo artifacts include "
-            + ", ".join(key_artifacts[:5])
-            + "."
-        )
+        notes.append("Key repo artifacts include " + ", ".join(key_artifacts[:5]) + ".")
     return notes[:5]
 
 

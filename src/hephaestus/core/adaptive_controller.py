@@ -90,24 +90,31 @@ class AdaptiveExplorationController:
 
         # Rule 1: Diversity collapse
         if state.search_diversity_scores and state.avg_diversity < self._diversity_floor:
-            adjustments.append(AdaptiveAdjustment(
-                action="widen_lenses",
-                reason=f"Search diversity collapsed ({state.avg_diversity:.2f} < {self._diversity_floor:.2f})",
-                parameter="num_search_lenses",
-                old_value=state.current_candidates,
-                new_value=min(state.current_candidates + 4, 20),
-            ))
+            adjustments.append(
+                AdaptiveAdjustment(
+                    action="widen_lenses",
+                    reason=f"Search diversity collapsed ({state.avg_diversity:.2f} < {self._diversity_floor:.2f})",
+                    parameter="num_search_lenses",
+                    old_value=state.current_candidates,
+                    new_value=min(state.current_candidates + 4, 20),
+                )
+            )
             logger.info(
                 "Adaptive: diversity collapse detected (%.2f), recommending lens widening",
                 state.avg_diversity,
             )
 
         # Rule 2: Early stop on high diversity
-        if len(state.search_diversity_scores) >= 3 and state.avg_diversity > self._diversity_ceiling:
-            adjustments.append(AdaptiveAdjustment(
-                action="stop_early",
-                reason=f"Search diversity already high ({state.avg_diversity:.2f} > {self._diversity_ceiling:.2f})",
-            ))
+        if (
+            len(state.search_diversity_scores) >= 3
+            and state.avg_diversity > self._diversity_ceiling
+        ):
+            adjustments.append(
+                AdaptiveAdjustment(
+                    action="stop_early",
+                    reason=f"Search diversity already high ({state.avg_diversity:.2f} > {self._diversity_ceiling:.2f})",
+                )
+            )
             logger.info(
                 "Adaptive: high diversity (%.2f), recommending early stop",
                 state.avg_diversity,
@@ -115,13 +122,15 @@ class AdaptiveExplorationController:
 
         # Rule 3: Parse failure rate
         if state.total_parse_attempts >= 3 and state.parse_failure_rate > self._parse_threshold:
-            adjustments.append(AdaptiveAdjustment(
-                action="reduce_pressure",
-                reason=f"Parse failure rate high ({state.parse_failure_rate:.2f} > {self._parse_threshold:.2f})",
-                parameter="pressure_max_rounds",
-                old_value=None,
-                new_value=1,  # Reduce to minimum
-            ))
+            adjustments.append(
+                AdaptiveAdjustment(
+                    action="reduce_pressure",
+                    reason=f"Parse failure rate high ({state.parse_failure_rate:.2f} > {self._parse_threshold:.2f})",
+                    parameter="pressure_max_rounds",
+                    old_value=None,
+                    new_value=1,  # Reduce to minimum
+                )
+            )
             logger.warning(
                 "Adaptive: parse failure rate %.2f, recommending pressure reduction",
                 state.parse_failure_rate,
@@ -129,25 +138,29 @@ class AdaptiveExplorationController:
 
         # Rule 4: Cost governance
         if state.cost_ratio >= self._cost_critical:
-            adjustments.append(AdaptiveAdjustment(
-                action="degrade_graceful",
-                reason=f"Cost ceiling critical ({state.cost_ratio:.0%} of ${state.cost_ceiling_usd:.2f})",
-                parameter="execution_mode",
-                old_value="full",
-                new_value="minimal",
-            ))
+            adjustments.append(
+                AdaptiveAdjustment(
+                    action="degrade_graceful",
+                    reason=f"Cost ceiling critical ({state.cost_ratio:.0%} of ${state.cost_ceiling_usd:.2f})",
+                    parameter="execution_mode",
+                    old_value="full",
+                    new_value="minimal",
+                )
+            )
             logger.warning(
                 "Adaptive: cost at %.0f%% of ceiling, recommending graceful degradation",
                 state.cost_ratio * 100,
             )
         elif state.cost_ratio >= self._cost_warning:
-            adjustments.append(AdaptiveAdjustment(
-                action="reduce_pressure",
-                reason=f"Cost ceiling approaching ({state.cost_ratio:.0%} of ${state.cost_ceiling_usd:.2f})",
-                parameter="translate_permutations",
-                old_value=None,
-                new_value=1,
-            ))
+            adjustments.append(
+                AdaptiveAdjustment(
+                    action="reduce_pressure",
+                    reason=f"Cost ceiling approaching ({state.cost_ratio:.0%} of ${state.cost_ceiling_usd:.2f})",
+                    parameter="translate_permutations",
+                    old_value=None,
+                    new_value=1,
+                )
+            )
             logger.info(
                 "Adaptive: cost at %.0f%% of ceiling, recommending scope reduction",
                 state.cost_ratio * 100,
@@ -159,17 +172,13 @@ class AdaptiveExplorationController:
         """Quick check: should the search loop terminate early?"""
         if state.cost_ratio >= self._cost_critical:
             return True
-        if len(state.search_diversity_scores) >= 3 and state.avg_diversity > self._diversity_ceiling:
-            return True
-        return False
+        return bool(len(state.search_diversity_scores) >= 3 and state.avg_diversity > self._diversity_ceiling)
 
     def should_reduce_pressure(self, state: ExplorationState) -> bool:
         """Quick check: should pressure rounds be reduced?"""
         if state.parse_failure_rate > self._parse_threshold:
             return True
-        if state.cost_ratio >= self._cost_warning:
-            return True
-        return False
+        return state.cost_ratio >= self._cost_warning
 
 
 __all__ = [

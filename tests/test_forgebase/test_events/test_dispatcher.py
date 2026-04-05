@@ -1,4 +1,5 @@
 """Tests for EventDispatcher — the outbox polling delivery engine."""
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,6 @@ from hephaestus.forgebase.domain.values import EntityId, Version
 from hephaestus.forgebase.events.consumers import ConsumerRegistry, EventConsumer
 from hephaestus.forgebase.events.dispatcher import EventDispatcher
 from hephaestus.forgebase.store.sqlite.schema import initialize_schema
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -214,16 +214,12 @@ class TestEventDispatcher:
         assert row["next_attempt_at"] is not None
 
     @pytest.mark.asyncio
-    async def test_dead_letter_after_max_attempts(
-        self, sqlite_db: aiosqlite.Connection
-    ) -> None:
+    async def test_dead_letter_after_max_attempts(self, sqlite_db: aiosqlite.Connection) -> None:
         """When attempt_count reaches max_attempts, status becomes dead_letter."""
         event = _make_event()
         await _insert_event_row(sqlite_db, event)
         # Pre-set attempt_count to max_attempts - 1, so the next failure tips it over
-        await _insert_delivery_row(
-            sqlite_db, str(event.event_id), "indexer", attempt_count=4
-        )
+        await _insert_delivery_row(sqlite_db, str(event.event_id), "indexer", attempt_count=4)
         await sqlite_db.commit()
 
         registry = ConsumerRegistry()
@@ -239,9 +235,7 @@ class TestEventDispatcher:
         assert row["last_error"] == "persistent failure"
 
     @pytest.mark.asyncio
-    async def test_respects_next_attempt_at(
-        self, sqlite_db: aiosqlite.Connection
-    ) -> None:
+    async def test_respects_next_attempt_at(self, sqlite_db: aiosqlite.Connection) -> None:
         """Events with a future next_attempt_at are NOT delivered yet."""
         event = _make_event()
         await _insert_event_row(sqlite_db, event)
@@ -270,9 +264,7 @@ class TestEventDispatcher:
         assert row["status"] == "pending"
 
     @pytest.mark.asyncio
-    async def test_delivers_multiple_events_in_batch(
-        self, sqlite_db: aiosqlite.Connection
-    ) -> None:
+    async def test_delivers_multiple_events_in_batch(self, sqlite_db: aiosqlite.Connection) -> None:
         """Multiple pending deliveries are processed in a single poll."""
         e1 = _make_event("evt_00000000000000000000000001")
         e2 = _make_event("evt_00000000000000000000000002")
@@ -314,9 +306,7 @@ class TestEventDispatcher:
         assert len(consumer.received) == 3
 
     @pytest.mark.asyncio
-    async def test_unregistered_consumer_skipped(
-        self, sqlite_db: aiosqlite.Connection
-    ) -> None:
+    async def test_unregistered_consumer_skipped(self, sqlite_db: aiosqlite.Connection) -> None:
         """Deliveries for unregistered consumers are skipped (not counted as delivered)."""
         event = _make_event()
         await _insert_event_row(sqlite_db, event)
@@ -334,9 +324,7 @@ class TestEventDispatcher:
         assert row["status"] == "pending"
 
     @pytest.mark.asyncio
-    async def test_event_reconstruction_fidelity(
-        self, sqlite_db: aiosqlite.Connection
-    ) -> None:
+    async def test_event_reconstruction_fidelity(self, sqlite_db: aiosqlite.Connection) -> None:
         """The DomainEvent reconstructed from the DB matches the original."""
         original = _make_event()
         await _insert_event_row(sqlite_db, original)

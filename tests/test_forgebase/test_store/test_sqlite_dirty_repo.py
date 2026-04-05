@@ -1,4 +1,5 @@
 """Tests for SQLite dirty marker repository."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -129,7 +130,9 @@ class TestSqliteDirtyMarkerRepository:
         repo = SqliteDirtyMarkerRepository(sqlite_db)
         vault_id = id_gen.vault_id()
 
-        m = _marker(id_gen, vault_id, target_kind=DirtyTargetKind.MECHANISM, target_key="photosynthesis")
+        m = _marker(
+            id_gen, vault_id, target_kind=DirtyTargetKind.MECHANISM, target_key="photosynthesis"
+        )
         await repo.upsert(m)
         await sqlite_db.commit()
 
@@ -138,7 +141,9 @@ class TestSqliteDirtyMarkerRepository:
         assert got.marker_id == m.marker_id
 
         # Wrong kind
-        assert await repo.find_by_target(vault_id, DirtyTargetKind.CONCEPT, "photosynthesis") is None
+        assert (
+            await repo.find_by_target(vault_id, DirtyTargetKind.CONCEPT, "photosynthesis") is None
+        )
 
     async def test_consume(self, sqlite_db, id_gen):
         repo = SqliteDirtyMarkerRepository(sqlite_db)

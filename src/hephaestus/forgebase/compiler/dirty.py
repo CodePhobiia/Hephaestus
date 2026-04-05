@@ -1,8 +1,9 @@
 """Dirty marker management for the compiler."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 from hephaestus.forgebase.domain.enums import DirtyTargetKind
 from hephaestus.forgebase.domain.models import SynthesisDirtyMarker
@@ -41,9 +42,7 @@ class DirtyTracker:
         now = self._clock()
 
         # Check if marker already exists (unconsumed)
-        existing = await self._repo.find_by_target(
-            vault_id, target_kind, target_key, workbook_id
-        )
+        existing = await self._repo.find_by_target(vault_id, target_kind, target_key, workbook_id)
 
         if existing and existing.consumed_by_job is None:
             # Upsert: preserve first_dirtied_at, update the rest

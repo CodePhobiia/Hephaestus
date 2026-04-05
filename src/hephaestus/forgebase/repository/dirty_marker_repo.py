@@ -1,4 +1,5 @@
 """Repository contract for synthesis dirty markers."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

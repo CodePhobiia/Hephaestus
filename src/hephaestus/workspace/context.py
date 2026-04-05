@@ -24,14 +24,14 @@ class WorkspaceContext:
     """
 
     summary: WorkspaceSummary
-    repo_dossier: "RepoDossier | None" = None
+    repo_dossier: RepoDossier | None = None
     readme_content: str = ""
     config_contents: dict[str, str] = field(default_factory=dict)  # path -> content
     key_file_contents: dict[str, str] = field(default_factory=dict)  # path -> content
     budget_chars: int = 24_000
 
     @classmethod
-    def from_directory(cls, root: Path | str, budget_chars: int = 24_000) -> "WorkspaceContext":
+    def from_directory(cls, root: Path | str, budget_chars: int = 24_000) -> WorkspaceContext:
         """Scan a directory and build workspace context."""
         root = Path(root).resolve()
         scanner = WorkspaceScanner(root)

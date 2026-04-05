@@ -1,4 +1,5 @@
 """Tests for KnowledgeTeam orchestrator."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -9,7 +10,6 @@ from hephaestus.forgebase.agents.team import KnowledgeTeam
 from hephaestus.forgebase.contracts.agent import (
     AgentRole,
     RunStatus,
-    TaskStatus,
 )
 from hephaestus.forgebase.domain.enums import ActorType
 from hephaestus.forgebase.domain.event_types import FixedClock

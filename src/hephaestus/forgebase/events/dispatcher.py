@@ -1,7 +1,9 @@
 """Event dispatcher — polls the outbox and delivers to registered consumers."""
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 from datetime import UTC, datetime, timedelta
@@ -29,22 +31,12 @@ def _row_to_domain_event(row: aiosqlite.Row) -> DomainEvent:
         aggregate_type=row["aggregate_type"],
         aggregate_id=EntityId(row["aggregate_id"]),
         aggregate_version=(
-            Version(row["aggregate_version"])
-            if row["aggregate_version"] is not None
-            else None
+            Version(row["aggregate_version"]) if row["aggregate_version"] is not None else None
         ),
         vault_id=EntityId(row["vault_id"]),
-        workbook_id=(
-            EntityId(row["workbook_id"])
-            if row["workbook_id"] is not None
-            else None
-        ),
+        workbook_id=(EntityId(row["workbook_id"]) if row["workbook_id"] is not None else None),
         run_id=row["run_id"],
-        causation_id=(
-            EntityId(row["causation_id"])
-            if row["causation_id"] is not None
-            else None
-        ),
+        causation_id=(EntityId(row["causation_id"]) if row["causation_id"] is not None else None),
         correlation_id=row["correlation_id"],
         actor_type=ActorType(row["actor_type"]),
         actor_id=row["actor_id"],
@@ -96,10 +88,8 @@ class EventDispatcher:
         self._running = False
         if self._task is not None:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
     async def _loop(self) -> None:
@@ -154,9 +144,7 @@ class EventDispatcher:
                     "Event %s not found in fb_domain_events — marking dead letter",
                     event_id_str,
                 )
-                await self._mark_dead_letter(
-                    event_id_str, consumer_name, "event row missing"
-                )
+                await self._mark_dead_letter(event_id_str, consumer_name, "event row missing")
                 await self._db.commit()
                 continue
 
@@ -164,9 +152,7 @@ class EventDispatcher:
             try:
                 await consumer.handle(event)
             except Exception as exc:
-                await self._record_failure(
-                    event_id_str, consumer_name, attempt_count, str(exc)
-                )
+                await self._record_failure(event_id_str, consumer_name, attempt_count, str(exc))
                 await self._db.commit()
                 continue
 
@@ -191,9 +177,7 @@ class EventDispatcher:
             return None
         return _row_to_domain_event(row)
 
-    async def _mark_delivered(
-        self, event_id: str, consumer_name: str
-    ) -> None:
+    async def _mark_delivered(self, event_id: str, consumer_name: str) -> None:
         now = datetime.now(UTC).isoformat()
         await self._db.execute(
             """
@@ -216,10 +200,8 @@ class EventDispatcher:
             await self._mark_dead_letter(event_id, consumer_name, error_msg)
             return
 
-        backoff_seconds = self._backoff_base * (2 ** new_attempt)
-        next_attempt = (
-            datetime.now(UTC) + timedelta(seconds=backoff_seconds)
-        ).isoformat()
+        backoff_seconds = self._backoff_base * (2**new_attempt)
+        next_attempt = (datetime.now(UTC) + timedelta(seconds=backoff_seconds)).isoformat()
 
         await self._db.execute(
             """
@@ -232,9 +214,7 @@ class EventDispatcher:
             (new_attempt, error_msg, next_attempt, event_id, consumer_name),
         )
 
-    async def _mark_dead_letter(
-        self, event_id: str, consumer_name: str, error_msg: str
-    ) -> None:
+    async def _mark_dead_letter(self, event_id: str, consumer_name: str, error_msg: str) -> None:
         await self._db.execute(
             """
             UPDATE fb_event_deliveries

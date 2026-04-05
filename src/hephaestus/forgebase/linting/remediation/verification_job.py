@@ -1,7 +1,8 @@
 """FindingVerificationJob — verify findings after repair workbook merge."""
+
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import (
     FindingDisposition,
@@ -77,7 +78,9 @@ class FindingVerificationJob:
 
                 # 2c. Check if resolved
                 resolved = await detector.is_resolved(
-                    finding, state, new_findings,
+                    finding,
+                    state,
+                    new_findings,
                 )
                 results[finding_id] = resolved
 

@@ -16,12 +16,13 @@ Usage
 >>> from hephaestus.core.json_utils import loads_lenient
 >>> loads_lenient(text, default={}, label="scorer")
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import re
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ _HEX4 = re.compile(r"[0-9a-fA-F]{4}")
 # ---------------------------------------------------------------------------
 # Core: fix invalid backslash escapes in a raw string
 # ---------------------------------------------------------------------------
+
 
 def _fix_json_escapes(text: str) -> str:
     """Double every backslash that does *not* form a valid JSON escape.
@@ -54,12 +56,12 @@ def _fix_json_escapes(text: str) -> str:
             nxt = text[i + 1]
             if nxt == "u" and i + 5 < n and _HEX4.match(text, i + 2, i + 6):
                 # Valid \uXXXX → pass through
-                out.append(text[i: i + 6])
+                out.append(text[i : i + 6])
                 i += 6
                 continue
             elif nxt in _VALID_JSON_ESCAPES:
                 # Valid escape → pass through
-                out.append(text[i: i + 2])
+                out.append(text[i : i + 2])
                 i += 2
                 continue
             else:
@@ -143,7 +145,8 @@ def loads_lenient(
     # Total failure
     logger.warning(
         "%sFailed to parse JSON after lenient recovery (first 300 chars): %.300s",
-        tag, raw,
+        tag,
+        raw,
     )
     return default
 

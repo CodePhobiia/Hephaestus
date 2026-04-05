@@ -6,41 +6,37 @@ Provides beautiful Rich-based display components:
 - Full ⚒️ HEPHAESTUS invention report display
 - Cost summary table
 - Trace display
-- Color scheme: gold/amber headers, cyan UI, green success, red errors
+- Color scheme: see docs/DESIGN.md — forge palette (gold/amber/ember)
 """
 
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import Mock
 
 from rich import box
-from rich.columns import Columns
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-from rich.rule import Rule
-from rich.style import Style
 from rich.table import Table
 from rich.text import Text
 
 # ---------------------------------------------------------------------------
-# Color constants
+# Forge palette — see docs/DESIGN.md §2
 # ---------------------------------------------------------------------------
 
 GOLD = "bold yellow"
 AMBER = "yellow"
-CYAN = "cyan"
-CYAN_BOLD = "bold cyan"
+EMBER = "dark_orange"
+WHITE_HOT = "bold white"
 GREEN = "bold green"
 RED = "bold red"
 DIM = "dim"
 WHITE = "white"
-BLUE = "blue"
-MAGENTA = "magenta"
+STEEL = "grey70"
 
 
 def make_console(quiet: bool = False) -> Console:
@@ -104,7 +100,7 @@ class StageProgress:
         self._current_stage: int = 0
         self._live: Live | None = None
         self._progress = Progress(
-            SpinnerColumn(spinner_name="dots", style=CYAN),
+            SpinnerColumn(spinner_name="dots", style=EMBER),
             TextColumn("[progress.description]{task.description}"),
             TimeElapsedColumn(),
             console=console,
@@ -112,7 +108,7 @@ class StageProgress:
         )
         self._tasks: dict[int, Any] = {}
 
-    def __enter__(self) -> "StageProgress":
+    def __enter__(self) -> StageProgress:
         self._progress.start()
         return self
 
@@ -124,11 +120,17 @@ class StageProgress:
         self._current_stage = stage_num
         self._stage_times[stage_num] = time.monotonic()
 
-        stage_info = self.STAGES[stage_num - 1] if stage_num <= len(self.STAGES) else (stage_num, f"Stage {stage_num}", message or "")
+        stage_info = (
+            self.STAGES[stage_num - 1]
+            if stage_num <= len(self.STAGES)
+            else (stage_num, f"Stage {stage_num}", message or "")
+        )
         _, stage_name, default_msg = stage_info
         display_msg = message or default_msg
 
-        desc = f"[{CYAN_BOLD}]Stage {stage_num}/5[/] [{AMBER}]{stage_name}[/]  [dim]{display_msg}[/]"
+        desc = (
+            f"[{DIM}]Stage {stage_num}/5[/] [{AMBER}]{stage_name}[/]  [dim]{display_msg}[/]"
+        )
         task_id = self._progress.add_task(desc, total=None)
         self._tasks[stage_num] = task_id
 
@@ -138,7 +140,11 @@ class StageProgress:
             return
 
         elapsed = time.monotonic() - self._stage_times.get(stage_num, time.monotonic())
-        stage_info = self.STAGES[stage_num - 1] if stage_num <= len(self.STAGES) else (stage_num, f"Stage {stage_num}", "")
+        stage_info = (
+            self.STAGES[stage_num - 1]
+            if stage_num <= len(self.STAGES)
+            else (stage_num, f"Stage {stage_num}", "")
+        )
         _, stage_name, _ = stage_info
 
         suffix = f"  [dim]{result_msg}[/]" if result_msg else ""
@@ -146,21 +152,29 @@ class StageProgress:
             f"[{GREEN}]✓[/] [dim]Stage {stage_num}/5[/] [{AMBER}]{stage_name}[/]"
             f"  [{DIM}]{elapsed:.1f}s[/]{suffix}"
         )
-        self._progress.update(self._tasks[stage_num], description=done_desc, completed=100, total=100)
+        self._progress.update(
+            self._tasks[stage_num], description=done_desc, completed=100, total=100
+        )
 
     def fail_stage(self, stage_num: int, error_msg: str = "") -> None:
         """Mark a stage as failed with a ✗ marker."""
         if stage_num not in self._tasks:
             return
 
-        stage_info = self.STAGES[stage_num - 1] if stage_num <= len(self.STAGES) else (stage_num, f"Stage {stage_num}", "")
+        stage_info = (
+            self.STAGES[stage_num - 1]
+            if stage_num <= len(self.STAGES)
+            else (stage_num, f"Stage {stage_num}", "")
+        )
         _, stage_name, _ = stage_info
 
         fail_desc = (
             f"[{RED}]✗[/] [dim]Stage {stage_num}/5[/] [{AMBER}]{stage_name}[/]"
             f"  [{RED}]{error_msg}[/]"
         )
-        self._progress.update(self._tasks[stage_num], description=fail_desc, completed=100, total=100)
+        self._progress.update(
+            self._tasks[stage_num], description=fail_desc, completed=100, total=100
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +182,9 @@ class StageProgress:
 # ---------------------------------------------------------------------------
 
 
-def print_invention_report(console: Console, report: Any, show_trace: bool = False, show_cost: bool = True) -> None:
+def print_invention_report(
+    console: Console, report: Any, show_trace: bool = False, show_cost: bool = True
+) -> None:
     """
     Print the full ⚒️ HEPHAESTUS invention report to the console.
 
@@ -190,10 +206,10 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
 
     console.print()
     console.rule(Text("⚒️  HEPHAESTUS — Invention Report", style=GOLD), style="yellow")
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     session_id = getattr(report, "session_id", None)
-    session_str = f"  [dim]Session:[/] [{CYAN}]{session_id}[/]" if session_id else ""
-    console.print(f"  [dim]Generated:[/] [{CYAN}]{timestamp}[/]{session_str}")
+    session_str = f"  [dim]Session:[/] [{EMBER}]{session_id}[/]" if session_id else ""
+    console.print(f"  [dim]Generated:[/] [{EMBER}]{timestamp}[/]{session_str}")
     console.print()
 
     # ── Problem ──────────────────────────────────────────────────────────────
@@ -207,7 +223,7 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
         getattr(structure, "mathematical_shape", str(structure)),
     )
     if hasattr(structure, "native_domain"):
-        console.print(f"  [dim]Native domain:[/] [{CYAN}]{structure.native_domain}[/]")
+        console.print(f"  [dim]Native domain:[/] [{EMBER}]{structure.native_domain}[/]")
     console.print()
 
     # ── Invention header ─────────────────────────────────────────────────────
@@ -259,13 +275,15 @@ def print_invention_report(console: Console, report: Any, show_trace: bool = Fal
     # ── Recommended usage ────────────────────────────────────────────────
     console.rule(style="dim yellow")
     console.print(f"\n  [{GOLD}]RECOMMENDED USAGE[/]\n")
-    console.print(f"  [{CYAN}]heph --refine[/]       [dim]Iterate on this invention[/]")
+    console.print(f"  [{EMBER}]heph --refine[/]       [dim]Iterate on this invention[/]")
     novelty = getattr(top, "novelty_score", 0.0)
     if novelty < 0.7:
-        console.print(f"  [{CYAN}]heph --depth N[/]      [dim]Explore deeper (novelty {novelty:.2f} < 0.7)[/]")
+        console.print(
+            f"  [{EMBER}]heph --depth N[/]      [dim]Explore deeper (novelty {novelty:.2f} < 0.7)[/]"
+        )
     else:
-        console.print(f"  [{CYAN}]heph --depth N[/]      [dim]Explore deeper[/]")
-    console.print(f"  [{CYAN}]heph --domain X[/]     [dim]Try a different source domain[/]")
+        console.print(f"  [{EMBER}]heph --depth N[/]      [dim]Explore deeper[/]")
+    console.print(f"  [{EMBER}]heph --domain X[/]     [dim]Try a different source domain[/]")
     console.print()
 
     console.rule(style="yellow")
@@ -291,7 +309,7 @@ def _print_invention_header(console: Console, top: Any) -> None:
 
     src_text = Text()
     src_text.append("  SOURCE DOMAIN: ", style=GOLD)
-    src_text.append(top.source_domain, style=CYAN)
+    src_text.append(top.source_domain, style=EMBER)
     console.print(src_text)
 
     # Score grid
@@ -304,8 +322,10 @@ def _print_invention_header(console: Console, top: Any) -> None:
 
     score_table.add_row("  DOMAIN DISTANCE:", f"[{GREEN}]{_score_bar(dd)} {dd:.2f}[/]")
     score_table.add_row("  STRUCTURAL FIDELITY:", f"[{GREEN}]{_score_bar(sf)} {sf:.2f}[/]")
-    score_table.add_row("  NOVELTY SCORE:", f"[{GOLD}]{_score_bar(top.novelty_score)} {top.novelty_score:.2f}[/]")
-    score_table.add_row("  FEASIBILITY:", f"[{CYAN}]{top.feasibility_rating}[/]")
+    score_table.add_row(
+        "  NOVELTY SCORE:", f"[{GOLD}]{_score_bar(top.novelty_score)} {top.novelty_score:.2f}[/]"
+    )
+    score_table.add_row("  FEASIBILITY:", f"[{EMBER}]{top.feasibility_rating}[/]")
     score_table.add_row("  VERDICT:", _verdict_style(top.verdict))
 
     console.print()
@@ -351,6 +371,7 @@ def _print_translation(console: Console, top: Any) -> None:
     if arch:
         if isinstance(arch, dict):
             import json
+
             arch = json.dumps(arch, indent=2)
         elif not isinstance(arch, str):
             arch = str(arch)
@@ -366,7 +387,7 @@ def _print_translation(console: Console, top: Any) -> None:
         console.print(f"  [{GOLD}]STRUCTURAL MAPPING:[/]")
         console.print()
         map_table = Table(box=box.SIMPLE, padding=(0, 1), show_header=True)
-        map_table.add_column("Source Element", style=CYAN, no_wrap=False)
+        map_table.add_column("Source Element", style=EMBER, no_wrap=False)
         map_table.add_column("→", style=DIM, width=3)
         map_table.add_column("Target Element", style=AMBER, no_wrap=False)
         map_table.add_column("Mechanism", style=DIM, no_wrap=False)
@@ -422,7 +443,7 @@ def _print_adversarial(console: Console, top: Any) -> None:
     if top.recommended_next_steps:
         console.print(f"  [{GOLD}]RECOMMENDED NEXT STEPS:[/]")
         for step in top.recommended_next_steps:
-            console.print(f"  [{CYAN}]  ▸[/] {step}")
+            console.print(f"  [{EMBER}]  ▸[/] {step}")
         console.print()
 
 
@@ -433,17 +454,15 @@ def _print_alternative(console: Console, alt: Any, rank: int) -> None:
     novelty = getattr(alt, "novelty_score", 0.0)
     feasibility = getattr(alt, "feasibility_rating", "?")
 
-    console.print(
-        f"  [{AMBER}]{rank}.[/] [{CYAN_BOLD}]{inv_name}[/]  "
-        f"[dim](from {src_domain})[/]"
-    )
-    console.print(
-        f"     Novelty: [{GOLD}]{novelty:.2f}[/]  "
-        f"Feasibility: [{CYAN}]{feasibility}[/]"
-    )
+    console.print(f"  [{AMBER}]{rank}.[/] [{WHITE_HOT}]{inv_name}[/]  [dim](from {src_domain})[/]")
+    console.print(f"     Novelty: [{GOLD}]{novelty:.2f}[/]  Feasibility: [{EMBER}]{feasibility}[/]")
     key_insight = getattr(alt.translation, "key_insight", "") if hasattr(alt, "translation") else ""
     if key_insight:
-        console.print(f"     [dim]{key_insight[:120]}…[/]" if len(key_insight) > 120 else f"     [dim]{key_insight}[/]")
+        console.print(
+            f"     [dim]{key_insight[:120]}…[/]"
+            if len(key_insight) > 120
+            else f"     [dim]{key_insight}[/]"
+        )
     console.print()
 
 
@@ -481,7 +500,9 @@ def print_cost_table(console: Console, report: Any) -> None:
             table.add_row(name, f"${c:.4f}")
 
     table.add_section()
-    table.add_row("[bold]TOTAL[/]", f"[bold green]${_safe_number(_maybe_attr(cost, 'total', 0.0)):.4f}[/]")
+    table.add_row(
+        "[bold]TOTAL[/]", f"[bold green]${_safe_number(_maybe_attr(cost, 'total', 0.0)):.4f}[/]"
+    )
 
     console.print(table)
 
@@ -491,16 +512,14 @@ def print_cost_table(console: Console, report: Any) -> None:
     elapsed = float(getattr(report, "total_duration_seconds", 0.0))
     console.print()
     console.print(
-        f"  [dim]Models:[/] [{CYAN}]{model_str}[/]  "
-        f"[dim]Time:[/] [{CYAN}]{elapsed:.1f}s[/]"
+        f"  [dim]Models:[/] [{EMBER}]{model_str}[/]  [dim]Time:[/] [{EMBER}]{elapsed:.1f}s[/]"
     )
     pantheon_state = _maybe_attr(report, "pantheon_state", None)
     if pantheon_state is not None:
         resolution = _safe_text(_maybe_attr(pantheon_state, "resolution", "inactive"), "inactive")
         verdict = _safe_text(_maybe_attr(pantheon_state, "final_verdict", "UNKNOWN"), "UNKNOWN")
         console.print(
-            f"  [dim]Pantheon:[/] [{CYAN}]{resolution}[/]  "
-            f"[dim]Verdict:[/] [{CYAN}]{verdict}[/]"
+            f"  [dim]Pantheon:[/] [{EMBER}]{resolution}[/]  [dim]Verdict:[/] [{EMBER}]{verdict}[/]"
         )
     console.print()
 
@@ -539,7 +558,7 @@ def print_trace(console: Console, report: Any) -> None:
             console.print(f"  [{AMBER}]Interference Injections ({len(injections)}):[/]")
             for i, inj in enumerate(injections, 1):
                 lens_name = getattr(inj, "lens_name", "unknown")
-                console.print(f"  [{CYAN}]  [{i}][/] [dim]Lens:[/] {lens_name}")
+                console.print(f"  [{EMBER}]  [{i}][/] [dim]Lens:[/] {lens_name}")
             console.print()
 
         # Pressure trace
@@ -571,12 +590,14 @@ def print_error(console: Console, error: str, hint: str | None = None) -> None:
     """Print a user-friendly error message."""
     text = _safe_text(error, fallback="Something went wrong.")
     console.print()
-    console.print(Panel(
-        Text(text, style=RED),
-        title="[bold red]Error[/]",
-        border_style="red",
-        padding=(0, 2),
-    ))
+    console.print(
+        Panel(
+            Text(text, style=RED),
+            title="[bold red]Error[/]",
+            border_style="red",
+            padding=(0, 2),
+        )
+    )
     if hint:
         console.print(f"\n  [dim]Hint:[/] {hint}")
     console.print()
@@ -625,7 +646,7 @@ def _safe_number(value: Any, default: float = 0.0) -> float:
     """Best-effort numeric coercion for mixed real/test objects."""
     try:
         return float(value or 0.0)
-    except Exception:
+    except (TypeError, ValueError):
         return default
 
 
@@ -697,11 +718,24 @@ def _print_pantheon(console: Console, pantheon_state: Any, pantheon_runtime: Any
     table.add_column("Key", style=DIM, no_wrap=True)
     table.add_column("Value", style="white")
 
-    table.add_row("Resolution", _safe_text(_maybe_attr(pantheon_state, "resolution", "inactive"), "inactive"))
-    table.add_row("Resolution mode", _safe_text(_maybe_attr(pantheon_state, "resolution_mode", "TASK_SENSITIVE"), "TASK_SENSITIVE"))
-    table.add_row("Outcome tier", _safe_text(_maybe_attr(pantheon_state, "outcome_tier", "PENDING"), "PENDING"))
+    table.add_row(
+        "Resolution", _safe_text(_maybe_attr(pantheon_state, "resolution", "inactive"), "inactive")
+    )
+    table.add_row(
+        "Resolution mode",
+        _safe_text(
+            _maybe_attr(pantheon_state, "resolution_mode", "TASK_SENSITIVE"), "TASK_SENSITIVE"
+        ),
+    )
+    table.add_row(
+        "Outcome tier",
+        _safe_text(_maybe_attr(pantheon_state, "outcome_tier", "PENDING"), "PENDING"),
+    )
     table.add_row("Consensus", str(bool(_maybe_attr(pantheon_state, "consensus_achieved", False))))
-    table.add_row("Final verdict", _safe_text(_maybe_attr(pantheon_state, "final_verdict", "UNKNOWN"), "UNKNOWN"))
+    table.add_row(
+        "Final verdict",
+        _safe_text(_maybe_attr(pantheon_state, "final_verdict", "UNKNOWN"), "UNKNOWN"),
+    )
 
     winning_candidate = _maybe_attr(pantheon_state, "winning_candidate_id", None)
     if winning_candidate:

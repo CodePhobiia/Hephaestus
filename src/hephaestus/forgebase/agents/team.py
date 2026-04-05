@@ -4,10 +4,12 @@ The team creates a workbook (branch), executes agents sequentially
 so each sees the previous agent's work, then proposes a merge.
 Agents ALWAYS work on branches -- never on canonical.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.agents.executor import AgentExecutor
 from hephaestus.forgebase.contracts.agent import (
@@ -19,8 +21,6 @@ from hephaestus.forgebase.contracts.agent import (
 )
 from hephaestus.forgebase.domain.enums import BranchPurpose
 from hephaestus.forgebase.domain.values import ActorRef, EntityId
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase
@@ -213,13 +213,13 @@ class KnowledgeTeam:
                 )
             except Exception as exc:
                 logger.warning(
-                    "Run %s merge proposal failed: %s", run.run_id, exc,
+                    "Run %s merge proposal failed: %s",
+                    run.run_id,
+                    exc,
                 )
 
             # Determine overall run status
-            failed_tasks = [
-                t for t in run.tasks if t.status == TaskStatus.FAILED
-            ]
+            failed_tasks = [t for t in run.tasks if t.status == TaskStatus.FAILED]
             if len(failed_tasks) == len(run.tasks):
                 run.status = RunStatus.FAILED
             else:

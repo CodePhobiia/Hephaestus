@@ -56,9 +56,7 @@ class TestToolSchemas:
 
     def test_all_schemas_have_properties(self, registry):
         for tool in registry.list_tools():
-            assert "properties" in tool.input_schema, (
-                f"{tool.name} schema missing 'properties'"
-            )
+            assert "properties" in tool.input_schema, f"{tool.name} schema missing 'properties'"
 
     def test_required_fields_are_lists(self, registry):
         for tool in registry.list_tools():
@@ -187,7 +185,13 @@ class TestProfileCoverage:
         profile_tools = BUILTIN_PROFILES["invent"]
         overlap = profile_tools & registered
         # At least the core tools should be present
-        assert overlap >= {"read_file", "list_directory", "search_files", "grep_search", "calculator"}
+        assert overlap >= {
+            "read_file",
+            "list_directory",
+            "search_files",
+            "grep_search",
+            "calculator",
+        }
 
     def test_research_profile_tools_registered(self):
         reg = create_default_registry()

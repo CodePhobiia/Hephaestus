@@ -1,5 +1,8 @@
 """SQLite implementation of MergeProposalRepository."""
+
 from __future__ import annotations
+
+from datetime import datetime
 
 import aiosqlite
 
@@ -7,8 +10,6 @@ from hephaestus.forgebase.domain.enums import ActorType, MergeVerdict
 from hephaestus.forgebase.domain.models import MergeProposal
 from hephaestus.forgebase.domain.values import ActorRef, EntityId, VaultRevisionId
 from hephaestus.forgebase.repository.merge_proposal_repo import MergeProposalRepository
-
-from datetime import datetime
 
 
 class SqliteMergeProposalRepository(MergeProposalRepository):
@@ -58,8 +59,12 @@ class SqliteMergeProposalRepository(MergeProposalRepository):
             base_revision_id=VaultRevisionId(row["base_revision_id"]),
             target_revision_id=VaultRevisionId(row["target_revision_id"]),
             verdict=MergeVerdict(row["verdict"]),
-            resulting_revision=VaultRevisionId(row["resulting_revision"]) if row["resulting_revision"] else None,
+            resulting_revision=VaultRevisionId(row["resulting_revision"])
+            if row["resulting_revision"]
+            else None,
             proposed_at=datetime.fromisoformat(row["proposed_at"]),
             resolved_at=datetime.fromisoformat(row["resolved_at"]) if row["resolved_at"] else None,
-            proposed_by=ActorRef(actor_type=ActorType(row["proposed_by_type"]), actor_id=row["proposed_by_id"]),
+            proposed_by=ActorRef(
+                actor_type=ActorType(row["proposed_by_type"]), actor_id=row["proposed_by_id"]
+            ),
         )

@@ -6,11 +6,9 @@ All HTTP calls are mocked to avoid real network requests in tests.
 
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
 
 from hephaestus.output.prior_art import (
     PaperResult,
@@ -18,7 +16,6 @@ from hephaestus.output.prior_art import (
     PriorArtReport,
     PriorArtSearcher,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -64,13 +61,7 @@ def _make_google_patents_response(patents: list[dict]) -> dict:
                 }
             }
         )
-    return {
-        "results": {
-            "cluster": [
-                {"result": results}
-            ]
-        }
-    }
+    return {"results": {"cluster": [{"result": results}]}}
 
 
 def _mock_response(
@@ -153,7 +144,9 @@ class TestPriorArtReport:
             invention_name="I",
             perplexity_summary="Closest public work is adjacent, not identical.",
             related_work=[
-                PriorArtFinding(title="Paper A", url="https://example.com/a", relationship="ADJACENT_MECHANISM"),
+                PriorArtFinding(
+                    title="Paper A", url="https://example.com/a", relationship="ADJACENT_MECHANISM"
+                ),
             ],
         )
         assert "adjacent" in r.summary.lower()
@@ -270,9 +263,7 @@ class TestPriorArtSearcherSemanticScholar:
 
     async def test_ss_timeout(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(
-            side_effect=httpx.TimeoutException("timeout")
-        )
+        mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
 
         searcher = PriorArtSearcher(http_client=mock_client, max_retries=1)
         with patch("asyncio.sleep", new=AsyncMock()):
@@ -301,9 +292,7 @@ class TestPriorArtSearcherSemanticScholar:
 
     async def test_ss_empty_results(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, _make_ss_response([]))
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, _make_ss_response([])))
 
         searcher = PriorArtSearcher(http_client=mock_client)
         report = await searcher.search(
@@ -322,16 +311,12 @@ class TestPriorArtSearcherSemanticScholar:
         mock_client.get = AsyncMock(
             return_value=_mock_response(
                 200,
-                _make_ss_response(
-                    [_make_ss_paper(paper_id="p1", title="Test")]
-                ),
+                _make_ss_response([_make_ss_paper(paper_id="p1", title="Test")]),
             )
         )
 
         searcher = PriorArtSearcher(http_client=mock_client)
-        report = await searcher.search(
-            "query", include_patents=False, include_papers=True
-        )
+        report = await searcher.search("query", include_patents=False, include_papers=True)
         assert "Alice" in report.papers[0].authors
         assert "Bob" in report.papers[0].authors
 
@@ -342,9 +327,7 @@ class TestPriorArtSearcherGooglePatents:
         mock_client.get = AsyncMock(
             return_value=_mock_response(
                 200,
-                _make_google_patents_response(
-                    [{"id": "US9999999", "title": "Test Patent"}]
-                ),
+                _make_google_patents_response([{"id": "US9999999", "title": "Test Patent"}]),
             )
         )
 
@@ -365,18 +348,14 @@ class TestPriorArtSearcherGooglePatents:
             _mock_response(429),
             _mock_response(
                 200,
-                _make_google_patents_response(
-                    [{"id": "US1", "title": "Patent"}]
-                ),
+                _make_google_patents_response([{"id": "US1", "title": "Patent"}]),
             ),
         ]
         mock_client.get = AsyncMock(side_effect=responses)
 
         searcher = PriorArtSearcher(http_client=mock_client, max_retries=3)
         with patch("asyncio.sleep", new=AsyncMock()):
-            report = await searcher.search(
-                "q", include_patents=True, include_papers=False
-            )
+            report = await searcher.search("q", include_patents=True, include_papers=False)
 
         assert len(report.patents) == 1
 
@@ -385,23 +364,17 @@ class TestPriorArtSearcherGooglePatents:
         mock_client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
 
         searcher = PriorArtSearcher(http_client=mock_client)
-        report = await searcher.search(
-            "q", include_patents=True, include_papers=False
-        )
+        report = await searcher.search("q", include_patents=True, include_papers=False)
 
         # Perplexity may still succeed as fallback
         assert len(report.search_errors) > 0
 
     async def test_patents_empty_response(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {}))
 
         searcher = PriorArtSearcher(http_client=mock_client)
-        report = await searcher.search(
-            "q", include_patents=True, include_papers=False
-        )
+        report = await searcher.search("q", include_patents=True, include_papers=False)
 
         assert report.search_available
         assert report.patents == []
@@ -419,6 +392,7 @@ class TestPriorArtSearcherCombined:
         )
 
         call_count = [0]
+
         async def get_side_effect(url: str, **kwargs: object) -> MagicMock:
             call_count[0] += 1
             if "patents.google.com" in url:
@@ -441,9 +415,7 @@ class TestPriorArtSearcherCombined:
 
     async def test_both_fail_search_unavailable(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(
-            side_effect=httpx.ConnectError("refused")
-        )
+        mock_client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
 
         searcher = PriorArtSearcher(http_client=mock_client)
         report = await searcher.search(
@@ -482,9 +454,7 @@ class TestPriorArtSearcherCombined:
         mock_client.get = AsyncMock(side_effect=get_side_effect)
 
         searcher = PriorArtSearcher(http_client=mock_client)
-        report = await searcher.search(
-            "query", include_patents=True, include_papers=True
-        )
+        report = await searcher.search("query", include_patents=True, include_papers=True)
 
         # Papers should be found, patent error captured
         assert len([p for p in report.papers if not p.paper_id.startswith("perplexity")]) == 1

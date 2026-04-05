@@ -13,12 +13,12 @@ from hephaestus.branchgenome.models import (
     CommitmentKind,
     OperatorFamily,
 )
-from hephaestus.novelty import NoveltyVector
 from hephaestus.branchgenome.strategy import (
     BranchStrategy,
     compute_promotion_score,
     compute_survival_score,
 )
+from hephaestus.novelty import NoveltyVector
 
 _GENERIC_BASELINES = {
     "cache",
@@ -48,10 +48,11 @@ _PERTURBATIONS = (
 
 def render_partial_prompt(branch: BranchGenome, structure: Any) -> str:
     """Render a compact, deterministic prompt for perturbation checks."""
-    family_lines = [f"- {family.value}" for family in branch.recent_operator_families()] or ["- none"]
+    family_lines = [f"- {family.value}" for family in branch.recent_operator_families()] or [
+        "- none"
+    ]
     commitment_lines = [
-        f"- [{commitment.kind.value}] {commitment.statement}"
-        for commitment in branch.commitments
+        f"- [{commitment.kind.value}] {commitment.statement}" for commitment in branch.commitments
     ]
     recovery_lines = [
         (
@@ -62,7 +63,9 @@ def render_partial_prompt(branch: BranchGenome, structure: Any) -> str:
     ] or ["- none"]
     open_question_lines = [f"- {question}" for question in branch.open_questions] or ["- none"]
     rejected_lines = [f"- {pattern}" for pattern in branch.rejected_patterns] or ["- none"]
-    constraint_lines = [f"- {constraint}" for constraint in getattr(structure, "constraints", [])[:6]] or ["- none"]
+    constraint_lines = [
+        f"- {constraint}" for constraint in getattr(structure, "constraints", [])[:6]
+    ] or ["- none"]
 
     return "\n".join(
         [
@@ -126,9 +129,11 @@ def assay_branch(
     specificity = _specificity_score(base_render)
     genericity = _genericity_score(base_render, banned_patterns)
     token_cost_estimate = sum(max(1, len(rendered.split())) for rendered in rendered_variants)
-    specialization_pressure, repetition_pressure, repeated_family_streak = _operator_family_pressures(
-        branch,
-        strategy.family_pressure_window,
+    specialization_pressure, repetition_pressure, repeated_family_streak = (
+        _operator_family_pressures(
+            branch,
+            strategy.family_pressure_window,
+        )
     )
 
     future_option_preservation = _future_option_preservation_score(
@@ -284,7 +289,9 @@ def _apply_perturbation(
         source_tokens = str(getattr(candidate, "source_domain", "")).replace("—", " ").split()
         for token in source_tokens[:4]:
             if len(token) > 2:
-                text = text.replace(token, str(getattr(structure, "native_domain", "target")).replace("_", " "))
+                text = text.replace(
+                    token, str(getattr(structure, "native_domain", "target")).replace("_", " ")
+                )
         return text
     if perturbation == "constraint order shuffled":
         lines = text.splitlines()
@@ -307,8 +314,15 @@ def _apply_perturbation(
         return text
     if perturbation == "source-domain vocabulary suppressed":
         source_tokens = (
-            str(getattr(candidate, "source_domain", "")) + " " + str(getattr(candidate, "source_solution", ""))
-        ).replace("—", " ").replace("-", " ").split()
+            (
+                str(getattr(candidate, "source_domain", ""))
+                + " "
+                + str(getattr(candidate, "source_solution", ""))
+            )
+            .replace("—", " ")
+            .replace("-", " ")
+            .split()
+        )
         mutated = text
         for token in source_tokens[:8]:
             if len(token) > 3:
@@ -332,7 +346,9 @@ def _run_checks(
     baseline_overlap = _genericity_score(rendered, banned_patterns)
     distinct_from_baseline = baseline_overlap < 0.58
 
-    has_mechanism = any(commitment.kind == CommitmentKind.MECHANISM_CLAIM for commitment in branch.commitments)
+    has_mechanism = any(
+        commitment.kind == CommitmentKind.MECHANISM_CLAIM for commitment in branch.commitments
+    )
     has_binding = any(
         commitment.kind in {CommitmentKind.MAPPING_CLAIM, CommitmentKind.TARGET_BINDING}
         for commitment in branch.commitments
@@ -341,11 +357,16 @@ def _run_checks(
 
     target_phrase = str(getattr(structure, "native_domain", "")).replace("_", " ")
     candidate_words = set(
-        str(getattr(candidate, "source_domain", "")).lower().replace("—", " ").replace("-", " ").split()
+        str(getattr(candidate, "source_domain", ""))
+        .lower()
+        .replace("—", " ")
+        .replace("-", " ")
+        .split()
     )
     rendered_tokens = set(rendered.lower().split())
     target_coherent = target_phrase in rendered.lower() or any(
-        token.lower() in rendered_tokens for token in str(getattr(structure, "constraints", [""])[0]).split()
+        token.lower() in rendered_tokens
+        for token in str(getattr(structure, "constraints", [""])[0]).split()
     )
     target_coherent = target_coherent and len(rendered_tokens - candidate_words) >= 12
 
@@ -388,7 +409,9 @@ def _future_option_preservation_score(
     rejection_overlap: float,
 ) -> float:
     question_tokens = fingerprint_tokens(" ".join(branch.open_questions))
-    kind_diversity = len({commitment.kind for commitment in branch.commitments}) / max(1, len(CommitmentKind))
+    kind_diversity = len({commitment.kind for commitment in branch.commitments}) / max(
+        1, len(CommitmentKind)
+    )
     question_pressure = min(1.0, 0.30 * len(branch.open_questions) + 0.04 * len(question_tokens))
     recovery_pressure = min(1.0, 0.45 * len(branch.recovery_operators))
     anti_baseline = 1.0 - max(genericity, rejection_overlap)
@@ -441,7 +464,8 @@ def _branch_state_summary(
         " ".join(
             commitment.statement
             for commitment in branch.commitments
-            if commitment.kind in {
+            if commitment.kind
+            in {
                 CommitmentKind.MECHANISM_CLAIM,
                 CommitmentKind.MAPPING_CLAIM,
                 CommitmentKind.TARGET_BINDING,
@@ -449,7 +473,9 @@ def _branch_state_summary(
         )
     )
     all_commitment_tokens = fingerprint_tokens(branch.commitment_text())
-    mechanism_focus = len(mechanism_tokens) / len(all_commitment_tokens) if all_commitment_tokens else 0.0
+    mechanism_focus = (
+        len(mechanism_tokens) / len(all_commitment_tokens) if all_commitment_tokens else 0.0
+    )
 
     binding_text = " ".join(
         commitment.statement
@@ -502,10 +528,14 @@ def _operator_family_pressures(
     dominant_share = max(counts.values()) / len(families)
     uniform_share = 1.0 / len(families)
     specialization_pressure = (
-        0.0 if len(families) <= 1 else _clamp01((dominant_share - uniform_share) / max(1e-6, 1.0 - uniform_share))
+        0.0
+        if len(families) <= 1
+        else _clamp01((dominant_share - uniform_share) / max(1e-6, 1.0 - uniform_share))
     )
     repeated_family_streak = _max_repeated_family_streak(families)
-    repetition_pressure = 0.0 if len(families) <= 1 else _clamp01((repeated_family_streak - 1) / (len(families) - 1))
+    repetition_pressure = (
+        0.0 if len(families) <= 1 else _clamp01((repeated_family_streak - 1) / (len(families) - 1))
+    )
     return specialization_pressure, repetition_pressure, repeated_family_streak
 
 
@@ -514,7 +544,7 @@ def _max_repeated_family_streak(families: Sequence[OperatorFamily]) -> int:
         return 0
     best = 1
     current = 1
-    for previous, current_family in zip(families, families[1:]):
+    for previous, current_family in zip(families, families[1:]):  # noqa: B905
         if current_family == previous:
             current += 1
             best = max(best, current)
@@ -578,13 +608,21 @@ def _branch_family_distance(branch: BranchGenome) -> float:
 
 def _subtraction_delta(branch: BranchGenome, candidate: Any, pass_rate: float) -> float:
     verification_commitments = sum(
-        1 for commitment in branch.commitments if commitment.kind == CommitmentKind.VERIFICATION_ASSERTION
+        1
+        for commitment in branch.commitments
+        if commitment.kind == CommitmentKind.VERIFICATION_ASSERTION
     )
     operator_bonus = 0.20 * sum(
-        1 for operator in branch.recovery_operators if operator.kind.name.endswith(("PROBE", "ABLATION"))
+        1
+        for operator in branch.recovery_operators
+        if operator.kind.name.endswith(("PROBE", "ABLATION"))
     )
-    candidate_bonus = 0.20 * float(not bool(getattr(candidate, "would_engineer_reach_for_this", True)))
-    return _clamp01(0.20 * pass_rate + 0.20 * verification_commitments + operator_bonus + candidate_bonus)
+    candidate_bonus = 0.20 * float(
+        not bool(getattr(candidate, "would_engineer_reach_for_this", True))
+    )
+    return _clamp01(
+        0.20 * pass_rate + 0.20 * verification_commitments + operator_bonus + candidate_bonus
+    )
 
 
 def _critic_disagreement(branch: BranchGenome, candidate: Any) -> float:
@@ -592,7 +630,8 @@ def _critic_disagreement(branch: BranchGenome, candidate: Any) -> float:
     weak = list(getattr(candidate, "weak_mappings", []) or [])
     mapping_pressure = len(weak) / max(1, len(strong) + len(weak))
     novelty_gap = abs(
-        float(getattr(candidate, "structural_fidelity", 0.0)) - float(getattr(candidate, "mechanism_novelty", 0.0))
+        float(getattr(candidate, "structural_fidelity", 0.0))
+        - float(getattr(candidate, "mechanism_novelty", 0.0))
     )
     question_pressure = min(1.0, len(branch.open_questions) / 4.0)
     return _clamp01(0.40 * novelty_gap + 0.35 * mapping_pressure + 0.25 * question_pressure)
@@ -603,12 +642,18 @@ def _island_key(branch: BranchGenome, candidate: Any) -> str:
         return branch.island_key
     lens = getattr(candidate, "lens_used", None)
     source_family = (
-        str(getattr(lens, "domain_family", "") or getattr(lens, "domain", "") or getattr(candidate, "source_domain", ""))
+        str(
+            getattr(lens, "domain_family", "")
+            or getattr(lens, "domain", "")
+            or getattr(candidate, "source_domain", "")
+        )
         .strip()
         .replace(" ", "_")
         .lower()
     ) or "unknown"
-    lead_family = branch.operator_family_history[0].value if branch.operator_family_history else "untyped"
+    lead_family = (
+        branch.operator_family_history[0].value if branch.operator_family_history else "untyped"
+    )
     return f"{source_family}:{lead_family}"
 
 
@@ -633,12 +678,20 @@ def _retrieval_expansion_hints(
             "Retrieve structurally distant mechanisms that solve the same control problem with a less obvious organizing primitive."
         )
     if comfort_penalty >= 0.34:
-        baseline = str(getattr(candidate, "target_domain_equivalent", "") or "nearest target-domain baseline")
-        hints.append(f"Exclude {baseline} analogues and expand into domains that avoid queue/cache/retry comfort patterns.")
+        baseline = str(
+            getattr(candidate, "target_domain_equivalent", "") or "nearest target-domain baseline"
+        )
+        hints.append(
+            f"Exclude {baseline} analogues and expand into domains that avoid queue/cache/retry comfort patterns."
+        )
     if collapse_risk >= 0.48:
-        hints.append("Prefer recovery-first or failure-derived control mechanisms instead of steady-state-first analogies.")
+        hints.append(
+            "Prefer recovery-first or failure-derived control mechanisms instead of steady-state-first analogies."
+        )
     if branch.recovery_operators:
-        hints.append("Retrieve implementation-heavy exemplars that keep subtraction-test commitments load-bearing.")
+        hints.append(
+            "Retrieve implementation-heavy exemplars that keep subtraction-test commitments load-bearing."
+        )
     return tuple(dict.fromkeys(hints))
 
 

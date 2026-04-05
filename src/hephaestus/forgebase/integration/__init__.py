@@ -1,4 +1,5 @@
 """ForgeBase integration bridge — connects upstream Hephaestus systems to ForgeBase."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.integration.bridge import (

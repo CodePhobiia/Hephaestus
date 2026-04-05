@@ -1,6 +1,7 @@
 """Tests for the permission system."""
 
-from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -9,12 +10,11 @@ from hephaestus.tools.permissions import (
     PermissionPolicy,
     _tool_category,
 )
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # PermissionMode enum
 # ---------------------------------------------------------------------------
+
 
 class TestPermissionMode:
     def test_values(self):
@@ -30,9 +30,11 @@ class TestPermissionMode:
 # _tool_category helper
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def registry():
     reg = MagicMock()
+
     def get_tool(name):
         if name in ("read_file", "list_directory"):
             return SimpleNamespace(category="read")
@@ -43,6 +45,7 @@ def registry():
         if name in ("calculator", "list_inventions"):
             return SimpleNamespace(category="safe")
         return None
+
     reg.get.side_effect = get_tool
     return reg
 
@@ -69,6 +72,7 @@ class TestToolCategory:
 # PermissionPolicy
 # ---------------------------------------------------------------------------
 
+
 class TestPermissionPolicyReadOnly:
     @pytest.fixture()
     def policy(self, registry):
@@ -90,7 +94,9 @@ class TestPermissionPolicyReadOnly:
 class TestPermissionPolicyWorkspaceWrite:
     @pytest.fixture()
     def policy(self, tmp_path, registry):
-        return PermissionPolicy(PermissionMode.WORKSPACE_WRITE, workspace_root=tmp_path, registry=registry)
+        return PermissionPolicy(
+            PermissionMode.WORKSPACE_WRITE, workspace_root=tmp_path, registry=registry
+        )
 
     def test_read_allowed(self, policy):
         assert policy.check("read_file") is True

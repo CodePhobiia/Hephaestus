@@ -7,7 +7,7 @@ All LLM calls are mocked — no API keys required.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -16,9 +16,7 @@ from hephaestus.core.decomposer import (
     ProblemDecomposer,
     ProblemStructure,
 )
-from hephaestus.deepforge.adapters.base import GenerationResult
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -118,9 +116,7 @@ class TestProblemDecomposer:
         harness = _make_harness(_valid_decompose_json())
         decomposer = ProblemDecomposer(harness)
 
-        result = await decomposer.decompose(
-            "I need a fault-tolerant distributed task scheduler"
-        )
+        result = await decomposer.decompose("I need a fault-tolerant distributed task scheduler")
 
         assert isinstance(result, ProblemStructure)
         assert result.structure
@@ -174,10 +170,12 @@ class TestProblemDecomposer:
         """Should retry if model returns non-JSON, succeed on second attempt."""
         good = _valid_decompose_json()
         harness = MagicMock()
-        harness.forge = AsyncMock(side_effect=[
-            _make_forge_result("not json at all"),
-            _make_forge_result(good),
-        ])
+        harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result("not json at all"),
+                _make_forge_result(good),
+            ]
+        )
         decomposer = ProblemDecomposer(harness, max_retries=3)
 
         result = await decomposer.decompose("test problem")
@@ -202,10 +200,12 @@ class TestProblemDecomposer:
         bad_json = json.dumps({"structure": "something"})  # missing mathematical_shape
         good_json = _valid_decompose_json()
         harness = MagicMock()
-        harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(bad_json),
-            _make_forge_result(good_json),
-        ])
+        harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(bad_json),
+                _make_forge_result(good_json),
+            ]
+        )
         decomposer = ProblemDecomposer(harness, max_retries=3)
 
         result = await decomposer.decompose("test problem")
@@ -214,12 +214,14 @@ class TestProblemDecomposer:
     @pytest.mark.asyncio
     async def test_missing_constraints_defaults_to_empty_list(self):
         """If constraints are missing from JSON, defaults to []."""
-        json_text = json.dumps({
-            "structure": "abstract form",
-            "mathematical_shape": "graph flow",
-            "native_domain": "cs",
-            "confidence": 0.8,
-        })
+        json_text = json.dumps(
+            {
+                "structure": "abstract form",
+                "mathematical_shape": "graph flow",
+                "native_domain": "cs",
+                "confidence": 0.8,
+            }
+        )
         harness = _make_harness(json_text)
         decomposer = ProblemDecomposer(harness)
 
@@ -229,10 +231,12 @@ class TestProblemDecomposer:
     @pytest.mark.asyncio
     async def test_missing_native_domain_defaults(self):
         """If native_domain missing, defaults to 'general'."""
-        json_text = json.dumps({
-            "structure": "abstract form",
-            "mathematical_shape": "graph flow",
-        })
+        json_text = json.dumps(
+            {
+                "structure": "abstract form",
+                "mathematical_shape": "graph flow",
+            }
+        )
         harness = _make_harness(json_text)
         decomposer = ProblemDecomposer(harness)
 
@@ -242,7 +246,9 @@ class TestProblemDecomposer:
     @pytest.mark.asyncio
     async def test_cost_tracked(self):
         harness = _make_harness(_valid_decompose_json())
-        harness.forge = AsyncMock(return_value=_make_forge_result(_valid_decompose_json(), cost=0.025))
+        harness.forge = AsyncMock(
+            return_value=_make_forge_result(_valid_decompose_json(), cost=0.025)
+        )
         decomposer = ProblemDecomposer(harness)
 
         result = await decomposer.decompose("test")

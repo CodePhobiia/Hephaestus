@@ -81,11 +81,7 @@ def _normalize_phrase(value: str) -> str:
 
 def _keywords(text: str) -> list[str]:
     words = re.findall(r"[a-zA-Z][a-zA-Z0-9_\-]{2,}", text.lower())
-    return [
-        _normalize_token(word)
-        for word in words
-        if word not in _STOP_WORDS
-    ]
+    return [_normalize_token(word) for word in words if word not in _STOP_WORDS]
 
 
 def _uniq(items: Sequence[str]) -> list[str]:
@@ -179,12 +175,14 @@ class LensCard:
         self.reference_signature = str(self.reference_signature)
         self.confidence = [
             min(1.0, max(0.0, float(value)))
-            for value in self.confidence[: max(
-                1,
-                len(self.mechanism_signature)
-                + len(self.transfer_shape)
-                + len(self.constraints),
-            )]
+            for value in self.confidence[
+                : max(
+                    1,
+                    len(self.mechanism_signature)
+                    + len(self.transfer_shape)
+                    + len(self.constraints),
+                )
+            ]
         ]
         if not self.confidence:
             self.confidence = self._default_confidence()
@@ -230,8 +228,7 @@ class LensCard:
             "novelty_axes": list(self.novelty_axes),
             "confidence": list(self.confidence),
             "provenance": {
-                key: [ref.to_dict() for ref in refs]
-                for key, refs in self.provenance.items()
+                key: [ref.to_dict() for ref in refs] for key, refs in self.provenance.items()
             },
             "fingerprint64": self.fingerprint64,
             "version": self.version,
@@ -296,9 +293,13 @@ def compile_lens_card(
     base_ref = SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/")
     provenance = {
         "mechanism_signature": [base_ref],
-        "transfer_shape": [SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/structural_patterns")],
+        "transfer_shape": [
+            SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/structural_patterns")
+        ],
         "constraints": [SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/axioms")],
-        "evidence_atoms": [SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/axioms")],
+        "evidence_atoms": [
+            SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/axioms")
+        ],
         "novelty_axes": [SpanRef(file_id=file_id, start_line=1, end_line=9999, yaml_path="/tags")],
     }
     if parent_cards:
@@ -319,7 +320,7 @@ def compile_lens_card(
                 end_line=0,
                 yaml_path=f"/{_normalize_token(str(key))}",
             )
-            for key in reference_context.keys()
+            for key in reference_context
         ]
 
     card = LensCard(
@@ -355,11 +356,7 @@ def score_query_against_card(query_terms: set[str], card: LensCard) -> float:
     if not normalized_terms:
         return 0.0
 
-    evidence_tokens = {
-        token
-        for atom in card.evidence_atoms
-        for token in _keywords(atom)
-    }
+    evidence_tokens = {token for atom in card.evidence_atoms for token in _keywords(atom)}
     novelty_tokens = set(card.novelty_axes)
     score = 0.0
     score += 5.0 * _jaccard(normalized_terms, set(card.mechanism_signature))
@@ -448,7 +445,7 @@ def _novelty_axes(
     for parent in parent_cards:
         axes.extend(parent.novelty_axes[:3])
     if reference_context:
-        axes.extend(_normalize_token(str(key)) for key in reference_context.keys())
+        axes.extend(_normalize_token(str(key)) for key in reference_context)
     return _normalized_tokens(axes, limit=16)
 
 

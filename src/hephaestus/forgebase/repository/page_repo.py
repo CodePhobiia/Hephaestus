@@ -1,4 +1,5 @@
 """Page repository contract."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -25,7 +26,9 @@ class PageRepository(ABC):
     async def create_version(self, version: PageVersion) -> None: ...
 
     @abstractmethod
-    async def list_by_vault(self, vault_id: EntityId, *, page_type: str | None = None) -> list[Page]: ...
+    async def list_by_vault(
+        self, vault_id: EntityId, *, page_type: str | None = None
+    ) -> list[Page]: ...
 
     @abstractmethod
     async def find_by_key(self, vault_id: EntityId, page_key: str) -> Page | None: ...

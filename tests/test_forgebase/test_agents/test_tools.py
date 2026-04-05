@@ -1,4 +1,5 @@
 """Tests for ForgeBase tool definitions."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

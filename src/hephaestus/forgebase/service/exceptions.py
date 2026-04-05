@@ -1,4 +1,5 @@
 """Service-layer exceptions for ForgeBase."""
+
 from __future__ import annotations
 
 
@@ -14,8 +15,7 @@ class ConflictError(Exception):
         self.expected = expected
         self.actual = actual
         super().__init__(
-            f"Conflict on {entity_id}: expected version {expected}, "
-            f"but current head is {actual}"
+            f"Conflict on {entity_id}: expected version {expected}, but current head is {actual}"
         )
 
 
@@ -43,9 +43,7 @@ class UnresolvedConflictsError(Exception):
     def __init__(self, merge_id: str, unresolved_count: int) -> None:
         self.merge_id = merge_id
         self.unresolved_count = unresolved_count
-        super().__init__(
-            f"Merge {merge_id} has {unresolved_count} unresolved conflict(s)"
-        )
+        super().__init__(f"Merge {merge_id} has {unresolved_count} unresolved conflict(s)")
 
 
 class EntityNotFoundError(Exception):

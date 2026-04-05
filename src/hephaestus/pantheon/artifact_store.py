@@ -80,9 +80,13 @@ class CouncilArtifactStore:
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                record.artifact_id, record.run_id, record.artifact_type,
-                record.candidate_id, record.round_index,
-                json.dumps(record.content), record.created_at,
+                record.artifact_id,
+                record.run_id,
+                record.artifact_type,
+                record.candidate_id,
+                record.round_index,
+                json.dumps(record.content),
+                record.created_at,
             ),
         )
         await self._db.commit()

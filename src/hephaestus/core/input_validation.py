@@ -9,6 +9,7 @@ from dataclasses import dataclass
 @dataclass
 class ValidationResult:
     """Result of input validation."""
+
     valid: bool
     cleaned: str
     warnings: list[str]
@@ -37,10 +38,14 @@ def validate_problem(text: str) -> ValidationResult:
         return ValidationResult(valid=False, cleaned="", warnings=[], errors=["Problem is empty."])
 
     if len(cleaned) < _MIN_PROBLEM_LENGTH:
-        errors.append(f"Problem is too short ({len(cleaned)} chars). Minimum: {_MIN_PROBLEM_LENGTH}.")
+        errors.append(
+            f"Problem is too short ({len(cleaned)} chars). Minimum: {_MIN_PROBLEM_LENGTH}."
+        )
 
     if len(cleaned) > _MAX_PROBLEM_LENGTH:
-        warnings.append(f"Problem is very long ({len(cleaned)} chars). Consider trimming to key points.")
+        warnings.append(
+            f"Problem is very long ({len(cleaned)} chars). Consider trimming to key points."
+        )
         cleaned = cleaned[:_MAX_PROBLEM_LENGTH]
 
     # Check for suspicious patterns
@@ -77,10 +82,12 @@ def validate_domain_hint(domain: str) -> ValidationResult:
     if len(cleaned) > 100:
         errors.append("Domain hint is too long.")
 
-    if not re.match(r'^[a-z0-9\s_-]+$', cleaned):
+    if not re.match(r"^[a-z0-9\s_-]+$", cleaned):
         warnings.append("Domain hint contains unusual characters.")
 
-    return ValidationResult(valid=len(errors) == 0, cleaned=cleaned, warnings=warnings, errors=errors)
+    return ValidationResult(
+        valid=len(errors) == 0, cleaned=cleaned, warnings=warnings, errors=errors
+    )
 
 
 __all__ = ["ValidationResult", "validate_problem", "validate_domain_hint"]

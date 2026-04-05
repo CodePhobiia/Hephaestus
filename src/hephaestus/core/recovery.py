@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineCheckpoint:
     """Checkpoint of pipeline state for resume."""
+
     problem: str
     stage_completed: int  # 0-5 (0 = not started)
     stage_name: str
@@ -29,7 +30,7 @@ class PipelineCheckpoint:
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
     @property
     def is_complete(self) -> bool:
@@ -43,6 +44,7 @@ class PipelineCheckpoint:
 @dataclass
 class PartialResult:
     """Best available result from a partially completed pipeline."""
+
     problem: str
     stage_reached: str
     best_candidate: Any | None
@@ -145,7 +147,10 @@ def format_error_hint(error_msg: str, stage: str = "") -> str:
 
 
 __all__ = [
-    "PipelineCheckpoint", "PartialResult",
-    "extract_partial_result", "save_checkpoint", "load_checkpoint",
+    "PipelineCheckpoint",
+    "PartialResult",
+    "extract_partial_result",
+    "save_checkpoint",
+    "load_checkpoint",
     "format_error_hint",
 ]

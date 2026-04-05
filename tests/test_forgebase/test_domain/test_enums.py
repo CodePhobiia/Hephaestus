@@ -1,4 +1,5 @@
 """Tests for ForgeBase enumerations."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import (
@@ -32,13 +33,30 @@ from hephaestus.forgebase.domain.enums import (
 def test_all_enums_are_string_valued():
     """Every enum must be usable as a plain string for DB storage."""
     for enum_cls in [
-        PageType, ClaimStatus, SupportType, LinkKind, SourceFormat,
-        SourceTrustTier, SourceStatus, WorkbookStatus, JobStatus, JobKind,
-        FindingSeverity, FindingCategory, FindingStatus, MergeVerdict,
-        MergeResolution, EntityKind, ActorType,
-        RemediationStatus, RemediationRoute, RouteSource,
-        FindingDisposition, ResearchOutcome,
-        InventionEpistemicState, ProvenanceKind,
+        PageType,
+        ClaimStatus,
+        SupportType,
+        LinkKind,
+        SourceFormat,
+        SourceTrustTier,
+        SourceStatus,
+        WorkbookStatus,
+        JobStatus,
+        JobKind,
+        FindingSeverity,
+        FindingCategory,
+        FindingStatus,
+        MergeVerdict,
+        MergeResolution,
+        EntityKind,
+        ActorType,
+        RemediationStatus,
+        RemediationRoute,
+        RouteSource,
+        FindingDisposition,
+        ResearchOutcome,
+        InventionEpistemicState,
+        ProvenanceKind,
     ]:
         for member in enum_cls:
             assert isinstance(member.value, str)
@@ -51,8 +69,11 @@ def test_page_type_has_source_card():
 
 def test_claim_status_values():
     assert set(ClaimStatus) == {
-        ClaimStatus.SUPPORTED, ClaimStatus.INFERRED,
-        ClaimStatus.HYPOTHESIS, ClaimStatus.CONTESTED, ClaimStatus.STALE,
+        ClaimStatus.SUPPORTED,
+        ClaimStatus.INFERRED,
+        ClaimStatus.HYPOTHESIS,
+        ClaimStatus.CONTESTED,
+        ClaimStatus.STALE,
     }
 
 

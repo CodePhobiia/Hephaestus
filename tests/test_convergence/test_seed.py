@@ -11,11 +11,10 @@ import pytest
 
 from hephaestus.convergence.database import ConvergenceDatabase
 from hephaestus.convergence.seed import (
-    SeedDataLoader,
     _SEED_DATA,
+    SeedDataLoader,
     seed_database,
 )
-
 
 # ---------------------------------------------------------------------------
 # _SEED_DATA structure
@@ -32,6 +31,7 @@ class TestSeedData:
 
     def test_minimum_patterns_per_class(self) -> None:
         from collections import Counter
+
         counts = Counter(p.problem_class for p in _SEED_DATA)
         for cls, count in counts.items():
             assert count >= 5, f"Class {cls!r} has only {count} patterns (need ≥ 5)"
@@ -163,14 +163,13 @@ class TestSeedDataLoaderLoad:
 class TestSeedDatabaseFunction:
     async def test_seed_database_convenience(self, tmp_path: object) -> None:
         """seed_database should create a DB and seed it."""
-        import asyncio
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
         dim = 32
         mock_model = _make_mock_model(dim)
 
         with patch(
-            "hephaestus.convergence.seed.SentenceTransformer",
+            "hephaestus.convergence.seed._lazy_st",
             return_value=mock_model,
         ):
             inserted = await seed_database(":memory:", skip_existing=False)

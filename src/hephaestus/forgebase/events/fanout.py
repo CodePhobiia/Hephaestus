@@ -4,6 +4,7 @@ This is a best-effort, non-authoritative delivery mechanism.  The durable
 ``EventDispatcher`` is the source of truth — the fanout is an optimization
 for subscribers that benefit from immediate notification.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,9 +26,7 @@ class PostCommitFanout:
     def __init__(self) -> None:
         self._subscribers: list[Callable[[DomainEvent], Awaitable[None]]] = []
 
-    def subscribe(
-        self, callback: Callable[[DomainEvent], Awaitable[None]]
-    ) -> None:
+    def subscribe(self, callback: Callable[[DomainEvent], Awaitable[None]]) -> None:
         """Add a subscriber callback."""
         self._subscribers.append(callback)
 

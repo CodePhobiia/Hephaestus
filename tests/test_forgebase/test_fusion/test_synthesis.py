@@ -1,4 +1,5 @@
 """Tests for Stage 3 fusion synthesis — ranking, dedup, grouping, pack merging."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -32,7 +33,6 @@ from hephaestus.forgebase.fusion.models import (
 from hephaestus.forgebase.fusion.policy import FusionPolicy
 from hephaestus.forgebase.fusion.synthesis import synthesize_fusion_result
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -289,7 +289,11 @@ class TestSynthesizeDedupMaps:
         assert len(result.bridge_concepts) == 3
 
         # The kept one should be the highest confidence (0.9, not 0.8)
-        layered = [m for m in result.bridge_concepts if m.bridge_concept.lower().strip() == "layered transport"][0]
+        layered = [
+            m
+            for m in result.bridge_concepts
+            if m.bridge_concept.lower().strip() == "layered transport"
+        ][0]
         assert layered.confidence == 0.9
 
 
@@ -298,10 +302,7 @@ class TestSynthesizeCapsMaps:
 
     @pytest.mark.asyncio
     async def test_synthesize_caps_maps(self):
-        maps = [
-            _analogical_map(i, f"concept_{i}", confidence=1.0 - i * 0.05)
-            for i in range(1, 15)
-        ]
+        maps = [_analogical_map(i, f"concept_{i}", confidence=1.0 - i * 0.05) for i in range(1, 15)]
         pair = _pair_result(1, 2, maps, [])
 
         policy = FusionPolicy(max_analogical_maps=5)

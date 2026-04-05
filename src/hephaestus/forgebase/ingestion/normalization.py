@@ -1,4 +1,5 @@
 """Source normalization pipeline — dispatches by SourceFormat."""
+
 from __future__ import annotations
 
 import csv
@@ -21,7 +22,7 @@ class NormalizationPipeline:
     async def normalize(
         self,
         raw_content: bytes,
-        format: SourceFormat,
+        format: SourceFormat, # noqa: A002
         metadata: dict | None = None,
     ) -> bytes:
         """Convert raw source content to normalized markdown bytes.
@@ -108,7 +109,7 @@ def _normalize_json(raw: bytes) -> bytes:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         logger.warning("Failed to parse JSON for normalization: %s", exc)
-        return f"# JSON Source\n\n*Failed to parse JSON: {exc}*\n".encode("utf-8")
+        return f"# JSON Source\n\n*Failed to parse JSON: {exc}*\n".encode()
 
     lines: list[str] = ["# JSON Data", ""]
 

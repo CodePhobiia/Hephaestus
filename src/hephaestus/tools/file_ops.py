@@ -1,4 +1,5 @@
 """File operations for Hephaestus tools."""
+
 from pathlib import Path
 
 # Workspace boundary for path traversal protection
@@ -6,15 +7,48 @@ _workspace_root: Path | None = None
 
 # Directories and patterns to skip during search/grep
 _SKIP_DIRS = frozenset({".git", "__pycache__", "node_modules", ".venv", "venv", ".hg", ".svn"})
-_BINARY_EXTENSIONS = frozenset({
-    ".pyc", ".pyo", ".so", ".dll", ".dylib", ".exe", ".bin",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
-    ".woff", ".woff2", ".ttf", ".eot", ".otf",
-    ".mp3", ".mp4", ".wav", ".avi", ".mov",
-    ".db", ".sqlite", ".sqlite3",
-})
+_BINARY_EXTENSIONS = frozenset(
+    {
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dll",
+        ".dylib",
+        ".exe",
+        ".bin",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".svg",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".7z",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".otf",
+        ".mp3",
+        ".mp4",
+        ".wav",
+        ".avi",
+        ".mov",
+        ".db",
+        ".sqlite",
+        ".sqlite3",
+    }
+)
 
 
 def set_workspace_root(root: Path) -> None:
@@ -26,14 +60,16 @@ def set_workspace_root(root: Path) -> None:
 def _resolve_safe_path(path: str, workspace_root_override: Path | None = None) -> Path:
     """Resolve path and verify it's within workspace (if set)."""
     resolved = Path(path).resolve()
-    active_root = workspace_root_override if workspace_root_override is not None else _workspace_root
+    active_root = (
+        workspace_root_override if workspace_root_override is not None else _workspace_root
+    )
     if active_root is not None:
         try:
             resolved.relative_to(active_root)
-        except ValueError:
+        except ValueError as err:
             raise PermissionError(
                 f"Path traversal blocked: {path} resolves outside workspace {active_root}"
-            )
+            ) from err
     return resolved
 
 
@@ -51,7 +87,9 @@ def read_file(path: str, max_chars: int = 20_000) -> str:
         return f"Error reading file: {exc}"
 
 
-def write_file(path: str, content: str, append: bool = False, workspace_root: Path | None = None) -> str:
+def write_file(
+    path: str, content: str, append: bool = False, workspace_root: Path | None = None
+) -> str:
     """Write file with path traversal protection."""
     try:
         safe_path = _resolve_safe_path(path, workspace_root_override=workspace_root)
@@ -73,7 +111,7 @@ def list_directory(path: str, max_entries: int = 100) -> str:
         safe_path = _resolve_safe_path(path)
         if not safe_path.is_dir():
             return f"Error: Not a directory: {path}"
-        
+
         dirs = []
         files = []
         for child in safe_path.iterdir():
@@ -81,9 +119,9 @@ def list_directory(path: str, max_entries: int = 100) -> str:
                 dirs.append(f"{child.name}/")
             else:
                 files.append(child.name)
-        
+
         entries = sorted(dirs) + sorted(files)
-        
+
         if len(entries) > max_entries:
             shown = entries[:max_entries]
             return "\n".join(shown) + f"\n... ({len(entries) - max_entries} more entries)"
@@ -199,4 +237,3 @@ def grep_search(query: str, directory: str, max_results: int = 50) -> str:
         return f"No matches for '{query}' found in {directory}"
     header = f"Found {len(results)} match(es) for '{query}':"
     return header + "\n" + "\n".join(results)
-

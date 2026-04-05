@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from hephaestus.prompts.context_loader import (
     DYNAMIC_BOUNDARY,
     BudgetedContext,
@@ -16,7 +14,6 @@ from hephaestus.prompts.context_loader import (
     build_full_prompt,
     discover_instructions,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -192,7 +189,12 @@ class TestAssembleContext:
             anti_memory_hits=["abc"],
             workspace_summary="xyz",
         )
-        expected = len(ctx.instruction_text) + len(ctx.anti_memory_text) + len(ctx.pinned_context_text) + len(ctx.workspace_summary)
+        expected = (
+            len(ctx.instruction_text)
+            + len(ctx.anti_memory_text)
+            + len(ctx.pinned_context_text)
+            + len(ctx.workspace_summary)
+        )
         assert ctx.total_chars == expected
 
 
@@ -206,17 +208,24 @@ class TestBuildFullPrompt:
 
     def test_contains_boundary(self) -> None:
         ctx = BudgetedContext(
-            instruction_text="", anti_memory_text="", pinned_context_text="",
-            workspace_summary="", total_chars=0, sources=[],
+            instruction_text="",
+            anti_memory_text="",
+            pinned_context_text="",
+            workspace_summary="",
+            total_chars=0,
+            sources=[],
         )
         prompt = build_full_prompt("invent something", ctx)
         assert DYNAMIC_BOUNDARY in prompt
 
     def test_includes_instruction_section(self) -> None:
         ctx = BudgetedContext(
-            instruction_text="my instructions", anti_memory_text="",
-            pinned_context_text="", workspace_summary="",
-            total_chars=15, sources=["project"],
+            instruction_text="my instructions",
+            anti_memory_text="",
+            pinned_context_text="",
+            workspace_summary="",
+            total_chars=15,
+            sources=["project"],
         )
         prompt = build_full_prompt("invent something", ctx)
         assert "## Project Instructions" in prompt
@@ -224,9 +233,12 @@ class TestBuildFullPrompt:
 
     def test_includes_anti_memory_section(self) -> None:
         ctx = BudgetedContext(
-            instruction_text="", anti_memory_text="avoid this",
-            pinned_context_text="", workspace_summary="",
-            total_chars=10, sources=["anti_memory"],
+            instruction_text="",
+            anti_memory_text="avoid this",
+            pinned_context_text="",
+            workspace_summary="",
+            total_chars=10,
+            sources=["anti_memory"],
         )
         prompt = build_full_prompt("invent something", ctx)
         assert "## Anti-Memory Zone" in prompt
@@ -234,8 +246,12 @@ class TestBuildFullPrompt:
 
     def test_empty_context_still_has_boundary(self) -> None:
         ctx = BudgetedContext(
-            instruction_text="", anti_memory_text="", pinned_context_text="",
-            workspace_summary="", total_chars=0, sources=[],
+            instruction_text="",
+            anti_memory_text="",
+            pinned_context_text="",
+            workspace_summary="",
+            total_chars=0,
+            sources=[],
         )
         prompt = build_full_prompt("invent something", ctx)
         assert DYNAMIC_BOUNDARY in prompt
@@ -243,9 +259,12 @@ class TestBuildFullPrompt:
 
     def test_all_sections_present(self) -> None:
         ctx = BudgetedContext(
-            instruction_text="inst", anti_memory_text="anti",
-            pinned_context_text="pinned", workspace_summary="ws",
-            total_chars=100, sources=[],
+            instruction_text="inst",
+            anti_memory_text="anti",
+            pinned_context_text="pinned",
+            workspace_summary="ws",
+            total_chars=100,
+            sources=[],
         )
         prompt = build_full_prompt("invent something", ctx)
         assert "## Project Instructions" in prompt
@@ -255,11 +274,17 @@ class TestBuildFullPrompt:
 
     def test_kwargs_forwarded(self) -> None:
         ctx = BudgetedContext(
-            instruction_text="", anti_memory_text="", pinned_context_text="",
-            workspace_summary="", total_chars=0, sources=[],
+            instruction_text="",
+            anti_memory_text="",
+            pinned_context_text="",
+            workspace_summary="",
+            total_chars=0,
+            sources=[],
         )
         # Should not raise — divergence_intensity is forwarded to build_system_prompt
         prompt = build_full_prompt(
-            "invent something", ctx, divergence_intensity="AGGRESSIVE",
+            "invent something",
+            ctx,
+            divergence_intensity="AGGRESSIVE",
         )
         assert isinstance(prompt, str)

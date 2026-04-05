@@ -1,4 +1,5 @@
 """SQLite implementation of FindingRepository."""
+
 from __future__ import annotations
 
 import json
@@ -223,13 +224,19 @@ class SqliteFindingRepository(FindingRepository):
             finding_fingerprint=row["finding_fingerprint"],
             remediation_status=RemediationStatus(row["remediation_status"]),
             disposition=FindingDisposition(row["disposition"]),
-            remediation_route=RemediationRoute(row["remediation_route"]) if row["remediation_route"] else None,
+            remediation_route=RemediationRoute(row["remediation_route"])
+            if row["remediation_route"]
+            else None,
             route_source=RouteSource(row["route_source"]) if row["route_source"] else None,
             detector_version=row["detector_version"],
             confidence=row["confidence"],
             affected_entity_ids=affected_entity_ids,
             research_job_id=EntityId(row["research_job_id"]) if row["research_job_id"] else None,
-            repair_workbook_id=EntityId(row["repair_workbook_id"]) if row["repair_workbook_id"] else None,
+            repair_workbook_id=EntityId(row["repair_workbook_id"])
+            if row["repair_workbook_id"]
+            else None,
             repair_batch_id=EntityId(row["repair_batch_id"]) if row["repair_batch_id"] else None,
-            verification_job_id=EntityId(row["verification_job_id"]) if row["verification_job_id"] else None,
+            verification_job_id=EntityId(row["verification_job_id"])
+            if row["verification_job_id"]
+            else None,
         )

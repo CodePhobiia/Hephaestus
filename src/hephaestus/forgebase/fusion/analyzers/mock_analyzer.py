@@ -3,6 +3,7 @@
 Returns deterministic results based on similarity scores -- no LLM calls.
 Suitable for unit/integration tests and local development.
 """
+
 from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import AnalogyVerdict
@@ -47,8 +48,7 @@ class MockFusionAnalyzer(FusionAnalyzer):
                 amap = AnalogicalMap(
                     map_id=self._id_gen.generate("amap"),
                     bridge_concept=(
-                        f"Bridge: {candidate.left_text[:20]}"
-                        f" \u2194 {candidate.right_text[:20]}"
+                        f"Bridge: {candidate.left_text[:20]} \u2194 {candidate.right_text[:20]}"
                     ),
                     left_structure=candidate.left_text,
                     right_structure=candidate.right_text,
@@ -79,12 +79,8 @@ class MockFusionAnalyzer(FusionAnalyzer):
                         opportunity_id=self._id_gen.generate("txfr"),
                         from_vault_id=candidate.left_vault_id,
                         to_vault_id=candidate.right_vault_id,
-                        mechanism=(
-                            f"Transfer mechanism from {candidate.left_text[:30]}"
-                        ),
-                        rationale=(
-                            f"Structural similarity ({candidate.similarity_score:.2f})"
-                        ),
+                        mechanism=(f"Transfer mechanism from {candidate.left_text[:30]}"),
+                        rationale=(f"Structural similarity ({candidate.similarity_score:.2f})"),
                         caveats=["Mock caveat"],
                         caveat_categories=["feasibility"],
                         analogical_map_id=amap.map_id,
@@ -123,8 +119,7 @@ class MockFusionAnalyzer(FusionAnalyzer):
                 amap = AnalogicalMap(
                     map_id=self._id_gen.generate("amap"),
                     bridge_concept=(
-                        f"No analogy: {candidate.left_text[:20]}"
-                        f" \u2194 {candidate.right_text[:20]}"
+                        f"No analogy: {candidate.left_text[:20]} \u2194 {candidate.right_text[:20]}"
                     ),
                     left_structure=candidate.left_text,
                     right_structure=candidate.right_text,

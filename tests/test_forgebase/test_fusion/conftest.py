@@ -1,15 +1,14 @@
 """Shared fixtures for ForgeBase fusion tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
 import pytest
 
-from hephaestus.forgebase.domain.enums import BridgeCandidateKind
-from hephaestus.forgebase.domain.values import EntityId
+from hephaestus.forgebase.domain.enums import BridgeCandidateKind, ProvenanceKind
+from hephaestus.forgebase.domain.values import EntityId, VaultRevisionId
 from hephaestus.forgebase.extraction.models import DomainContextPack, PackEntry
-from hephaestus.forgebase.domain.enums import ProvenanceKind
-from hephaestus.forgebase.domain.values import VaultRevisionId
 from hephaestus.forgebase.fusion.analyzers.mock_analyzer import MockFusionAnalyzer
 from hephaestus.forgebase.fusion.models import BridgeCandidate
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator

@@ -1,4 +1,5 @@
 """SQLite implementation of SourceRepository."""
+
 from __future__ import annotations
 
 import json
@@ -49,9 +50,7 @@ class SqliteSourceRepository(SourceRepository):
             return None
         return self._row_to_source(row)
 
-    async def get_version(
-        self, source_id: EntityId, version: Version
-    ) -> SourceVersion | None:
+    async def get_version(self, source_id: EntityId, version: Version) -> SourceVersion | None:
         cursor = await self._db.execute(
             "SELECT * FROM fb_source_versions WHERE source_id = ? AND version = ?",
             (str(source_id), version.number),

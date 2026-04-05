@@ -1,4 +1,5 @@
 """Repository contract for concept candidate evidence."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

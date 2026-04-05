@@ -1,4 +1,5 @@
 """Perplexity-backed research augmentor."""
+
 from __future__ import annotations
 
 import logging
@@ -36,10 +37,10 @@ class PerplexityAugmentor(ResearchAugmentor):
                 from hephaestus.research.perplexity import PerplexityClient
 
                 self._client = PerplexityClient()
-            except ImportError:
+            except ImportError as err:
                 raise RuntimeError(
                     "PerplexityClient not available. Install hephaestus research module."
-                )
+                ) from err
         return self._client
 
     @property
@@ -68,9 +69,7 @@ class PerplexityAugmentor(ResearchAugmentor):
                 problem=f"Find evidence about: {concept}. Gaps: {'; '.join(evidence_gaps)}",
             )
             sources: list[DiscoveredSource] = []
-            for i, system in enumerate(
-                getattr(dossier, "representative_systems", [])
-            ):
+            for i, system in enumerate(getattr(dossier, "representative_systems", [])):
                 sources.append(
                     DiscoveredSource(
                         url="",
@@ -146,9 +145,7 @@ class PerplexityAugmentor(ResearchAugmentor):
             )
             return FreshnessCheck(
                 is_stale=False,
-                reason=getattr(
-                    dossier, "summary", "No freshness issues detected"
-                ),
+                reason=getattr(dossier, "summary", "No freshness issues detected"),
                 newer_evidence=getattr(dossier, "representative_systems", []),
             )
         except Exception as e:

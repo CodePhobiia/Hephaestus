@@ -1,8 +1,9 @@
 """Tests for the ResearchAugmentor ABC and implementations."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -16,7 +17,6 @@ from hephaestus.forgebase.research.perplexity_augmentor import (
     NoOpAugmentor,
     PerplexityAugmentor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Data class construction tests
@@ -40,7 +40,10 @@ class TestDiscoveredSource:
 
     def test_default_trust_tier(self):
         src = DiscoveredSource(
-            url="", title="T", summary="S", relevance=0.5,
+            url="",
+            title="T",
+            summary="S",
+            relevance=0.5,
         )
         assert src.trust_tier == "standard"
 

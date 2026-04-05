@@ -1,15 +1,16 @@
 """Agent contracts — typed models for sub-project 5c (multi-agent knowledge team)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from hephaestus.forgebase.domain.values import EntityId
 
 
-class AgentRole(str, Enum):
+class AgentRole(StrEnum):
     """Roles in the knowledge team."""
 
     SCOUT = "scout"
@@ -20,7 +21,7 @@ class AgentRole(str, Enum):
     REPORTER = "reporter"
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """Lifecycle status of an agent task."""
 
     PENDING = "pending"
@@ -29,7 +30,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     """Lifecycle status of an agent run (multi-task)."""
 
     PENDING = "pending"

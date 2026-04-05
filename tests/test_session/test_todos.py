@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -15,7 +15,6 @@ from hephaestus.session.todos import (
     TodoItem,
     TodoList,
 )
-
 
 # ── helpers ─────────────────────────────────────────────────────────
 

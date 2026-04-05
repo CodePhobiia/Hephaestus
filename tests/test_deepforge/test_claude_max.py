@@ -34,11 +34,13 @@ class TestClaudeMaxAdapterTools:
             result = await adapter.generate_with_tools(
                 messages=[{"role": "user", "content": "search for prior art"}],
                 system="Use tools.",
-                tools=[{
-                    "name": "web_search",
-                    "description": "Search the web",
-                    "input_schema": {"type": "object"},
-                }],
+                tools=[
+                    {
+                        "name": "web_search",
+                        "description": "Search the web",
+                        "input_schema": {"type": "object"},
+                    }
+                ],
             )
 
         assert result.text == "Let me research that."

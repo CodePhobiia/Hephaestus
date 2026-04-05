@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -19,10 +19,9 @@ from hephaestus.deepforge.exceptions import ConvergenceDetected, PrunerError
 from hephaestus.deepforge.pruner import (
     ConvergencePattern,
     ConvergencePruner,
-    PrunerSession,
     PruneResult,
+    PrunerSession,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -200,9 +199,7 @@ class TestConvergencePruner:
         mock_model.encode.return_value = embeddings
 
         pruner = ConvergencePruner(patterns=[], embed_model=mock_model)
-        patterns = pruner.add_patterns_from_texts(
-            ["A", "B", "C"], label="batch", source="seed"
-        )
+        patterns = pruner.add_patterns_from_texts(["A", "B", "C"], label="batch", source="seed")
         assert len(patterns) == 3
         assert pruner.pattern_count == 3
 

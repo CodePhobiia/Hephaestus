@@ -18,7 +18,13 @@ from hephaestus.research.perplexity import (
 )
 
 
-def _mock_response(payload: dict, *, status_code: int = 200, text: str = "ok", headers: dict[str, str] | None = None) -> MagicMock:
+def _mock_response(
+    payload: dict,
+    *,
+    status_code: int = 200,
+    text: str = "ok",
+    headers: dict[str, str] | None = None,
+) -> MagicMock:
     resp = MagicMock()
     resp.status_code = status_code
     resp.text = text
@@ -29,7 +35,7 @@ def _mock_response(payload: dict, *, status_code: int = 200, text: str = "ok", h
 
 class TestExtractJson:
     def test_extracts_fenced_json(self) -> None:
-        data = _extract_json("```json\n{\"summary\": \"ok\"}\n```")
+        data = _extract_json('```json\n{"summary": "ok"}\n```')
         assert data["summary"] == "ok"
 
     def test_raises_when_missing_json(self) -> None:
@@ -41,12 +47,24 @@ class TestPerplexityClient:
     @pytest.mark.asyncio
     async def test_build_baseline_dossier(self) -> None:
         client = AsyncMock()
-        client.post = AsyncMock(return_value=_mock_response({
-            "choices": [{"message": {"content": '{"summary":"Modern systems use queues","standard_approaches":["Token buckets"],"common_failure_modes":["stampedes"],"known_bottlenecks":["hot shards"],"keywords_to_avoid":["retry with backoff"],"representative_systems":["Envoy"]}'}}],
-            "citations": ["https://example.com/a"],
-        }))
+        client.post = AsyncMock(
+            return_value=_mock_response(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": '{"summary":"Modern systems use queues","standard_approaches":["Token buckets"],"common_failure_modes":["stampedes"],"known_bottlenecks":["hot shards"],"keywords_to_avoid":["retry with backoff"],"representative_systems":["Envoy"]}'
+                            }
+                        }
+                    ],
+                    "citations": ["https://example.com/a"],
+                }
+            )
+        )
         p = PerplexityClient(api_key="test", http_client=client)
-        dossier = await p.build_baseline_dossier(problem="test problem", native_domain="distributed_systems")
+        dossier = await p.build_baseline_dossier(
+            problem="test problem", native_domain="distributed_systems"
+        )
         assert isinstance(dossier, BaselineDossier)
         assert dossier.summary == "Modern systems use queues"
         assert dossier.keywords_to_avoid == ["retry with backoff"]
@@ -55,10 +73,20 @@ class TestPerplexityClient:
     @pytest.mark.asyncio
     async def test_assess_prior_art(self) -> None:
         client = AsyncMock()
-        client.post = AsyncMock(return_value=_mock_response({
-            "choices": [{"message": {"content": '{"summary":"Closest work is adjacent, not identical","overlap_verdict":"ADJACENT_MECHANISM","overlap_confidence":0.72,"findings":[{"title":"Paper A","url":"https://example.com/paper-a","relationship":"ADJACENT_MECHANISM","why_similar":"Similar control loop"}]}'}}],
-            "citations": ["https://example.com/paper-a"],
-        }))
+        client.post = AsyncMock(
+            return_value=_mock_response(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": '{"summary":"Closest work is adjacent, not identical","overlap_verdict":"ADJACENT_MECHANISM","overlap_confidence":0.72,"findings":[{"title":"Paper A","url":"https://example.com/paper-a","relationship":"ADJACENT_MECHANISM","why_similar":"Similar control loop"}]}'
+                            }
+                        }
+                    ],
+                    "citations": ["https://example.com/paper-a"],
+                }
+            )
+        )
         p = PerplexityClient(api_key="test", http_client=client)
         summary, verdict, confidence, findings, citations, _raw = await p.assess_prior_art(
             invention_name="Test Invention",
@@ -71,20 +99,42 @@ class TestPerplexityClient:
         assert citations[0].url == "https://example.com/paper-a"
 
     @pytest.mark.asyncio
-    async def test_workspace_dossier_and_benchmark_corpus(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_workspace_dossier_and_benchmark_corpus(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         client = AsyncMock()
-        client.post = AsyncMock(side_effect=[
-            _mock_response({
-                "choices": [{"message": {"content": '{"product_category":"developer-tooling","summary":"Competitive space is crowded","comparable_tools":["Tool A"],"architecture_patterns":["queue-backed workers"],"relevant_literature":["Paper X"],"differentiation_opportunities":["better grounding"],"implementation_risks":["prompt drift"]}'}}],
-                "citations": ["https://example.com/tool-a"],
-            }),
-            _mock_response({
-                "choices": [{"message": {"content": '{"summary":"Good corpus","cases":[{"problem":"Handle traffic spikes","baseline_solution":"Autoscaling + queue","common_failure_modes":["cold starts"],"evaluation_axes":["p99 latency"],"sources":["https://example.com/spikes"]}]}'}}],
-                "citations": ["https://example.com/spikes"],
-            }),
-        ])
+        client.post = AsyncMock(
+            side_effect=[
+                _mock_response(
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": '{"product_category":"developer-tooling","summary":"Competitive space is crowded","comparable_tools":["Tool A"],"architecture_patterns":["queue-backed workers"],"relevant_literature":["Paper X"],"differentiation_opportunities":["better grounding"],"implementation_risks":["prompt drift"]}'
+                                }
+                            }
+                        ],
+                        "citations": ["https://example.com/tool-a"],
+                    }
+                ),
+                _mock_response(
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": '{"summary":"Good corpus","cases":[{"problem":"Handle traffic spikes","baseline_solution":"Autoscaling + queue","common_failure_modes":["cold starts"],"evaluation_axes":["p99 latency"],"sources":["https://example.com/spikes"]}]}'
+                                }
+                            }
+                        ],
+                        "citations": ["https://example.com/spikes"],
+                    }
+                ),
+            ]
+        )
         p = PerplexityClient(api_key="test", http_client=client)
-        dossier = await p.build_workspace_dossier(workspace_name="hephaestus", workspace_context="ctx")
+        dossier = await p.build_workspace_dossier(
+            workspace_name="hephaestus", workspace_context="ctx"
+        )
         assert dossier.product_category == "developer-tooling"
         assert dossier.comparable_tools == ["Tool A"]
 
@@ -116,13 +166,23 @@ class TestPerplexityClient:
     @pytest.mark.asyncio
     async def test_retries_on_rate_limit(self, monkeypatch: pytest.MonkeyPatch) -> None:
         client = AsyncMock()
-        client.post = AsyncMock(side_effect=[
-            _mock_response({}, status_code=429, text="slow down", headers={"Retry-After": "0"}),
-            _mock_response({
-                "choices": [{"message": {"content": '{"summary":"Modern systems use queues","standard_approaches":["Token buckets"]}'}}],
-                "citations": [],
-            }),
-        ])
+        client.post = AsyncMock(
+            side_effect=[
+                _mock_response({}, status_code=429, text="slow down", headers={"Retry-After": "0"}),
+                _mock_response(
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": '{"summary":"Modern systems use queues","standard_approaches":["Token buckets"]}'
+                                }
+                            }
+                        ],
+                        "citations": [],
+                    }
+                ),
+            ]
+        )
         sleep = AsyncMock()
         monkeypatch.setattr("hephaestus.research.perplexity.asyncio.sleep", sleep)
 
@@ -136,16 +196,28 @@ class TestPerplexityClient:
     @pytest.mark.asyncio
     async def test_retries_on_malformed_model_json(self, monkeypatch: pytest.MonkeyPatch) -> None:
         client = AsyncMock()
-        client.post = AsyncMock(side_effect=[
-            _mock_response({
-                "choices": [{"message": {"content": "not json"}}],
-                "citations": [],
-            }),
-            _mock_response({
-                "choices": [{"message": {"content": '{"summary":"Good corpus","cases":[{"problem":"Handle traffic spikes"}]}'}}],
-                "citations": [],
-            }),
-        ])
+        client.post = AsyncMock(
+            side_effect=[
+                _mock_response(
+                    {
+                        "choices": [{"message": {"content": "not json"}}],
+                        "citations": [],
+                    }
+                ),
+                _mock_response(
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": '{"summary":"Good corpus","cases":[{"problem":"Handle traffic spikes"}]}'
+                                }
+                            }
+                        ],
+                        "citations": [],
+                    }
+                ),
+            ]
+        )
         sleep = AsyncMock()
         monkeypatch.setattr("hephaestus.research.perplexity.asyncio.sleep", sleep)
 
@@ -180,7 +252,9 @@ class TestPerplexityClient:
                     sources=["https://example.com/failover"],
                 )
             ],
-            citations=[ResearchCitation(url="https://example.com/failover", title="Failover Paper")],
+            citations=[
+                ResearchCitation(url="https://example.com/failover", title="Failover Paper")
+            ],
         )
 
         md = corpus.to_markdown()

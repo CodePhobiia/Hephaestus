@@ -1,12 +1,10 @@
 """Tests for SQLite UnitOfWork -- transaction atomicity."""
+
 from __future__ import annotations
 
 import pytest
 
-from hephaestus.forgebase.domain.event_types import EventFactory, FixedClock
 from hephaestus.forgebase.domain.models import Vault, VaultRevision
-from hephaestus.forgebase.domain.values import ActorRef
-from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
 from hephaestus.forgebase.store.blobs.memory import InMemoryContentStore
 from hephaestus.forgebase.store.sqlite.uow import SqliteUnitOfWork
 
@@ -20,8 +18,24 @@ class TestSqliteUoW:
         async with uow:
             vault_id = uow.id_generator.vault_id()
             rev_id = uow.id_generator.revision_id()
-            vault = Vault(vault_id=vault_id, name="test", description="", head_revision_id=rev_id, created_at=clock.now(), updated_at=clock.now(), config={})
-            revision = VaultRevision(revision_id=rev_id, vault_id=vault_id, parent_revision_id=None, created_at=clock.now(), created_by=actor, causation_event_id=None, summary="init")
+            vault = Vault(
+                vault_id=vault_id,
+                name="test",
+                description="",
+                head_revision_id=rev_id,
+                created_at=clock.now(),
+                updated_at=clock.now(),
+                config={},
+            )
+            revision = VaultRevision(
+                revision_id=rev_id,
+                vault_id=vault_id,
+                parent_revision_id=None,
+                created_at=clock.now(),
+                created_by=actor,
+                causation_event_id=None,
+                summary="init",
+            )
             await uow.vaults.create(vault, revision)
 
             event = uow.event_factory.create(
@@ -58,8 +72,24 @@ class TestSqliteUoW:
         try:
             async with uow:
                 rev_id = uow.id_generator.revision_id()
-                vault = Vault(vault_id=vault_id, name="rollback_test", description="", head_revision_id=rev_id, created_at=clock.now(), updated_at=clock.now(), config={})
-                revision = VaultRevision(revision_id=rev_id, vault_id=vault_id, parent_revision_id=None, created_at=clock.now(), created_by=actor, causation_event_id=None, summary="init")
+                vault = Vault(
+                    vault_id=vault_id,
+                    name="rollback_test",
+                    description="",
+                    head_revision_id=rev_id,
+                    created_at=clock.now(),
+                    updated_at=clock.now(),
+                    config={},
+                )
+                revision = VaultRevision(
+                    revision_id=rev_id,
+                    vault_id=vault_id,
+                    parent_revision_id=None,
+                    created_at=clock.now(),
+                    created_by=actor,
+                    causation_event_id=None,
+                    summary="init",
+                )
                 await uow.vaults.create(vault, revision)
 
                 event = uow.event_factory.create(

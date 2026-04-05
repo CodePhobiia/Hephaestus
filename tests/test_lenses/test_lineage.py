@@ -88,7 +88,9 @@ def test_composite_lineage_invalidates_when_parent_fingerprint_changes() -> None
         derivation="bundle_composite",
     )
 
-    mutated_right = _make_lens("economics_markets", domain="economics", maps_to=["auction", "allocation"])
+    mutated_right = _make_lens(
+        "economics_markets", domain="economics", maps_to=["auction", "allocation"]
+    )
     mutated_right_card = compile_lens_card(mutated_right)
     validation = validate_lineage(
         composite_lineage,

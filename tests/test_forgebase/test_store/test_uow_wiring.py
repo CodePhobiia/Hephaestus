@@ -1,4 +1,5 @@
 """Verify all repos are wired into the UoW."""
+
 from __future__ import annotations
 
 import pytest

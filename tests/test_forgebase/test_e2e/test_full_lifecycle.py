@@ -4,6 +4,7 @@ This is the integration proof for the ForgeBase Foundation Platform.
 It uses create_forgebase() with deterministic fixtures and exercises
 every major flow in sequence.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -123,8 +124,7 @@ async def test_full_forgebase_lifecycle():
             vault_id=vault_id,
             page_id=concept_page_id,
             statement=(
-                "SEI layer instability is the primary degradation "
-                "mechanism in sodium-ion anodes"
+                "SEI layer instability is the primary degradation mechanism in sodium-ion anodes"
             ),
             status=ClaimStatus.SUPPORTED,
             support_type=SupportType.DIRECT,

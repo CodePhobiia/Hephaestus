@@ -47,6 +47,7 @@ class TestWebSearch:
     @pytest.mark.asyncio
     async def test_handles_http_error(self):
         import httpx
+
         client = AsyncMock()
         client.get = AsyncMock(side_effect=httpx.HTTPError("refused"))
         client.__aenter__ = AsyncMock(return_value=client)
@@ -100,6 +101,7 @@ class TestWebFetch:
     @pytest.mark.asyncio
     async def test_handles_error(self):
         import httpx
+
         client = AsyncMock()
         client.get = AsyncMock(side_effect=httpx.HTTPError("404"))
         client.__aenter__ = AsyncMock(return_value=client)

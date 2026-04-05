@@ -3,15 +3,15 @@
 Each handler is a thin function that delegates to existing ForgeBase services.
 The executor is the single dispatch point for all agent task execution.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, UTC
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.contracts.agent import AgentRole, AgentTask, TaskStatus
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase
@@ -39,12 +39,12 @@ class AgentExecutor:
     @staticmethod
     def _build_handler_map() -> dict[AgentRole, HandlerFn]:
         """Lazily import and map role handlers."""
-        from hephaestus.forgebase.agents.handlers.scout import execute_scout
-        from hephaestus.forgebase.agents.handlers.compiler_agent import execute_compiler
         from hephaestus.forgebase.agents.handlers.cartographer import execute_cartographer
-        from hephaestus.forgebase.agents.handlers.skeptic import execute_skeptic
+        from hephaestus.forgebase.agents.handlers.compiler_agent import execute_compiler
         from hephaestus.forgebase.agents.handlers.librarian import execute_librarian
         from hephaestus.forgebase.agents.handlers.reporter import execute_reporter
+        from hephaestus.forgebase.agents.handlers.scout import execute_scout
+        from hephaestus.forgebase.agents.handlers.skeptic import execute_skeptic
 
         return {
             AgentRole.SCOUT: execute_scout,

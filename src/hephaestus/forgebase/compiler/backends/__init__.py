@@ -4,6 +4,7 @@ Available backends:
 - AnthropicCompilerBackend: Anthropic Claude-based structured extraction
 - MockCompilerBackend: Deterministic mock for testing and development
 """
+
 from __future__ import annotations
 
 from hephaestus.forgebase.compiler.backends.anthropic_backend import (

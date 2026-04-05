@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from typing import Any
@@ -21,6 +22,8 @@ from hephaestus.branchgenome.models import (
     RecoveryOperatorKind,
 )
 from hephaestus.branchgenome.strategy import BranchStrategy
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -59,7 +62,9 @@ class BranchArena:
             cell = branch.archive_cell or branch.metrics.archive_cell
             if not cell:
                 continue
-            if any((other.archive_cell or other.metrics.archive_cell) == cell for other in promoted):
+            if any(
+                (other.archive_cell or other.metrics.archive_cell) == cell for other in promoted
+            ):
                 continue
             promoted.append(branch)
             selected_ids.add(branch.branch_id)
@@ -107,7 +112,8 @@ class BranchArena:
                 stronger_sibling is not None
                 and stronger_sibling.branch_id != branch.branch_id
                 and stronger_sibling.metrics.score_promotion >= branch.metrics.score_promotion
-                and branch_similarity(branch, stronger_sibling) >= strategy.duplicate_similarity_threshold
+                and branch_similarity(branch, stronger_sibling)
+                >= strategy.duplicate_similarity_threshold
                 and (branch.archive_cell or branch.metrics.archive_cell)
                 == (stronger_sibling.archive_cell or stronger_sibling.metrics.archive_cell)
             )
@@ -118,7 +124,8 @@ class BranchArena:
             diversity_reserve = (
                 branch.metrics.quality_diversity_score >= strategy.min_quality_diversity_score
                 and bool(branch.archive_cell or branch.metrics.archive_cell)
-                and (branch.archive_cell or branch.metrics.archive_cell) not in self.positive_archive
+                and (branch.archive_cell or branch.metrics.archive_cell)
+                not in self.positive_archive
             )
             hard_prune = any(
                 (
@@ -178,38 +185,67 @@ class BranchArena:
             "branches_promoted": len(self.promoted_ids),
             "branches_pruned": len(self.pruned_ids),
             "branches_recovered": len(self.recovered_ids),
-            "avg_spread_score": sum(branch.metrics.spread_score for branch in all_branches) / len(all_branches),
-            "avg_rejection_overlap": sum(branch.metrics.rejection_overlap for branch in all_branches) / len(all_branches),
-            "avg_collapse_risk": sum(branch.metrics.collapse_risk for branch in all_branches) / len(all_branches),
-            "avg_future_option_preservation": sum(branch.metrics.future_option_preservation for branch in all_branches)
+            "avg_spread_score": sum(branch.metrics.spread_score for branch in all_branches)
             / len(all_branches),
-            "avg_genericity_penalty": sum(branch.metrics.genericity_penalty for branch in all_branches)
+            "avg_rejection_overlap": sum(
+                branch.metrics.rejection_overlap for branch in all_branches
+            )
+            / len(all_branches),
+            "avg_collapse_risk": sum(branch.metrics.collapse_risk for branch in all_branches)
+            / len(all_branches),
+            "avg_future_option_preservation": sum(
+                branch.metrics.future_option_preservation for branch in all_branches
+            )
+            / len(all_branches),
+            "avg_genericity_penalty": sum(
+                branch.metrics.genericity_penalty for branch in all_branches
+            )
             / len(all_branches),
             "avg_comfort_penalty": sum(branch.metrics.comfort_penalty for branch in all_branches)
             / len(all_branches),
-            "avg_baseline_attractor": sum(branch.state_summary.baseline_attractor for branch in all_branches)
+            "avg_baseline_attractor": sum(
+                branch.state_summary.baseline_attractor for branch in all_branches
+            )
             / len(all_branches),
-            "avg_branch_fatigue": sum(branch.state_summary.branch_fatigue for branch in all_branches)
+            "avg_branch_fatigue": sum(
+                branch.state_summary.branch_fatigue for branch in all_branches
+            )
             / len(all_branches),
-            "tokens_spent_branching": sum(branch.metrics.token_cost_estimate for branch in all_branches),
+            "tokens_spent_branching": sum(
+                branch.metrics.token_cost_estimate for branch in all_branches
+            ),
             "tokens_saved_by_pruning": sum(
-                self.branches[branch_id].metrics.token_cost_estimate for branch_id in self.pruned_ids
+                self.branches[branch_id].metrics.token_cost_estimate
+                for branch_id in self.pruned_ids
             ),
             "family_frequency": _family_frequency(all_branches),
             "positive_archive_size": len(self.positive_archive),
             "archive_cell_count": len(
-                {branch.archive_cell or branch.metrics.archive_cell for branch in all_branches if branch.archive_cell or branch.metrics.archive_cell}
+                {
+                    branch.archive_cell or branch.metrics.archive_cell
+                    for branch in all_branches
+                    if branch.archive_cell or branch.metrics.archive_cell
+                }
             ),
             "island_count": len(
-                {branch.island_key or branch.metrics.island_key for branch in all_branches if branch.island_key or branch.metrics.island_key}
+                {
+                    branch.island_key or branch.metrics.island_key
+                    for branch in all_branches
+                    if branch.island_key or branch.metrics.island_key
+                }
             ),
             "archive_cells": _archive_cell_distribution(all_branches),
             "island_elites": dict(sorted(self.island_elites.items())),
-            "avg_quality_diversity_score": sum(branch.metrics.quality_diversity_score for branch in all_branches)
+            "avg_quality_diversity_score": sum(
+                branch.metrics.quality_diversity_score for branch in all_branches
+            )
             / len(all_branches),
-            "avg_load_bearing_creativity": sum(branch.metrics.load_bearing_creativity for branch in all_branches)
+            "avg_load_bearing_creativity": sum(
+                branch.metrics.load_bearing_creativity for branch in all_branches
+            )
             / len(all_branches),
-            "avg_diversity_credit": sum(branch.metrics.diversity_credit for branch in all_branches) / len(all_branches),
+            "avg_diversity_credit": sum(branch.metrics.diversity_credit for branch in all_branches)
+            / len(all_branches),
             "retrieval_expansion_ready": sum(
                 1 for branch in all_branches if branch.metrics.retrieval_expansion_readiness >= 0.5
             ),
@@ -218,7 +254,9 @@ class BranchArena:
                 branch.branch_id: branch.metrics.repeated_family_streak for branch in all_branches
             },
             "promoted_family_patterns": _promoted_family_patterns(
-                self.branches[branch_id] for branch_id in self.promoted_ids if branch_id in self.branches
+                self.branches[branch_id]
+                for branch_id in self.promoted_ids
+                if branch_id in self.branches
             ),
             "promoted_branch_outcomes": {},
         }
@@ -249,7 +287,9 @@ class BranchArena:
                 )
             ),
             key=lambda branch: (
-                branch.metrics.comfort_penalty + branch.metrics.genericity_penalty + branch.metrics.collapse_risk,
+                branch.metrics.comfort_penalty
+                + branch.metrics.genericity_penalty
+                + branch.metrics.collapse_risk,
                 branch.metrics.future_option_preservation,
                 branch.metrics.score_survival,
             ),
@@ -301,11 +341,17 @@ class BranchArena:
                 if len(created) >= strategy.max_crossover_branches:
                     return created
                 similarity = branch_similarity(left, right)
-                if not (strategy.crossover_similarity_floor <= similarity <= strategy.crossover_similarity_ceiling):
+                if not (
+                    strategy.crossover_similarity_floor
+                    <= similarity
+                    <= strategy.crossover_similarity_ceiling
+                ):
                     continue
                 if left.source_candidate_index == right.source_candidate_index:
                     continue
-                if (left.island_key or left.metrics.island_key) == (right.island_key or right.metrics.island_key):
+                if (left.island_key or left.metrics.island_key) == (
+                    right.island_key or right.metrics.island_key
+                ):
                     continue
                 branch_id = f"{left.branch_id}+{right.branch_id}:crossover"
                 if branch_id in self.branches:
@@ -329,12 +375,20 @@ class BranchArena:
         if cell:
             incumbent_id = self.positive_archive.get(cell)
             incumbent = self.branches.get(incumbent_id) if incumbent_id is not None else None
-            if incumbent is None or branch.metrics.quality_diversity_score >= incumbent.metrics.quality_diversity_score:
+            if (
+                incumbent is None
+                or branch.metrics.quality_diversity_score
+                >= incumbent.metrics.quality_diversity_score
+            ):
                 self.positive_archive[cell] = branch.branch_id
         if island:
             incumbent_id = self.island_elites.get(island)
             incumbent = self.branches.get(incumbent_id) if incumbent_id is not None else None
-            if incumbent is None or branch.metrics.quality_diversity_score >= incumbent.metrics.quality_diversity_score:
+            if (
+                incumbent is None
+                or branch.metrics.quality_diversity_score
+                >= incumbent.metrics.quality_diversity_score
+            ):
                 self.island_elites[island] = branch.branch_id
 
 
@@ -361,7 +415,9 @@ def seed_branches_from_translation_inputs(
                 parent_id=None,
                 source_candidate_index=candidate_index,
                 stage_cursor="pre_translation",
-                commitments=_commitments_for_variant(candidate=candidate, structure=structure, variant=variant),
+                commitments=_commitments_for_variant(
+                    candidate=candidate, structure=structure, variant=variant
+                ),
                 open_questions=_open_questions_for_variant(
                     structure=structure,
                     candidate=candidate,
@@ -381,7 +437,8 @@ def seed_branches_from_translation_inputs(
 def branch_candidate_for_translation(branch: BranchGenome, candidate: Any) -> Any:
     try:
         clone = replace(candidate)
-    except Exception:
+    except Exception as exc:
+        logger.warning("dataclass replace() failed, falling back to copy: %s", exc)
         clone = copy.copy(candidate)
     clone.branch_genome = branch
     clone.branch_rank_score = branch.metrics.score_promotion or branch.metrics.score_survival
@@ -405,12 +462,18 @@ def _empty_family_frequency() -> dict[str, int]:
 
 
 def _family_frequency(branches: list[BranchGenome]) -> dict[str, int]:
-    counts = Counter(family.value for branch in branches for family in branch.operator_family_history)
+    counts = Counter(
+        family.value for branch in branches for family in branch.operator_family_history
+    )
     return {family.value: counts.get(family.value, 0) for family in OperatorFamily}
 
 
 def _archive_cell_distribution(branches: list[BranchGenome]) -> dict[str, int]:
-    counts = Counter(branch.archive_cell or branch.metrics.archive_cell for branch in branches if branch.archive_cell or branch.metrics.archive_cell)
+    counts = Counter(
+        branch.archive_cell or branch.metrics.archive_cell
+        for branch in branches
+        if branch.archive_cell or branch.metrics.archive_cell
+    )
     return dict(sorted(counts.items()))
 
 
@@ -454,7 +517,9 @@ def _seed_island_key(candidate: Any, variant: str) -> str:
     return f"{family.strip().replace(' ', '_').lower()}:{variant}"
 
 
-def _commitments_for_variant(*, candidate: Any, structure: Any, variant: str) -> tuple[Commitment, ...]:
+def _commitments_for_variant(
+    *, candidate: Any, structure: Any, variant: str
+) -> tuple[Commitment, ...]:
     constraints = list(getattr(structure, "constraints", []))
     top_constraint = constraints[0] if constraints else "respect hard operating constraints"
     source_domain = str(getattr(candidate, "source_domain", "") or "")
@@ -553,7 +618,10 @@ def _commitments_for_variant(*, candidate: Any, structure: Any, variant: str) ->
 
 
 def _open_questions_for_variant(*, structure: Any, candidate: Any, variant: str) -> tuple[str, ...]:
-    first_constraint = next(iter(getattr(structure, "constraints", []) or ["the hard constraints"]), "the hard constraints")
+    first_constraint = next(
+        iter(getattr(structure, "constraints", []) or ["the hard constraints"]),
+        "the hard constraints",
+    )
     if variant == "mechanism-pure":
         return (
             "Which target-side components preserve the foreign mechanism without renaming it into a standard pattern?",
@@ -575,11 +643,15 @@ def _open_questions_for_variant(*, structure: Any, candidate: Any, variant: str)
     )
 
 
-def _select_recovery_operators(branch: BranchGenome, strategy: BranchStrategy) -> tuple[RecoveryOperator, ...]:
+def _select_recovery_operators(
+    branch: BranchGenome, strategy: BranchStrategy
+) -> tuple[RecoveryOperator, ...]:
     existing = {operator.kind for operator in branch.recovery_operators}
     selected: list[RecoveryOperator] = []
 
-    def add_if_missing(kind: RecoveryOperatorKind, trigger: str, intervention: str, preservation_goal: str) -> None:
+    def add_if_missing(
+        kind: RecoveryOperatorKind, trigger: str, intervention: str, preservation_goal: str
+    ) -> None:
         if kind in existing or any(operator.kind == kind for operator in selected):
             return
         selected.append(
@@ -609,7 +681,10 @@ def _select_recovery_operators(branch: BranchGenome, strategy: BranchStrategy) -
             "Rewrite the architecture in target-domain-only language and prove it still differs from the obvious baseline.",
             "Preserve a measurable difference that remains after the source vocabulary is stripped out.",
         )
-    if branch.metrics.collapse_risk >= strategy.recovery_collapse_threshold or branch.metrics.spread_score < 0.55:
+    if (
+        branch.metrics.collapse_risk >= strategy.recovery_collapse_threshold
+        or branch.metrics.spread_score < 0.55
+    ):
         add_if_missing(
             RecoveryOperatorKind.ORDER_INVERSION,
             "The branch defaults to the usual construction order and collapses under perturbation.",
@@ -638,7 +713,9 @@ def _branch_with_recovery_operator(
     commitments = list(parent.commitments)
     open_questions = list(parent.open_questions)
     native_domain = str(getattr(structure, "native_domain", "")).replace("_", " ")
-    baseline = str(getattr(candidate, "target_domain_equivalent", "") or "the obvious baseline pattern")
+    baseline = str(
+        getattr(candidate, "target_domain_equivalent", "") or "the obvious baseline pattern"
+    )
 
     if operator.kind == RecoveryOperatorKind.ATTRACTOR_BREAKER:
         commitments.append(
@@ -757,11 +834,19 @@ def _crossover_branch(
 ) -> BranchGenome:
     native_domain = str(getattr(structure, "native_domain", "")).replace("_", " ")
     left_mechanism = next(
-        (commitment for commitment in left.commitments if commitment.kind == CommitmentKind.MECHANISM_CLAIM),
+        (
+            commitment
+            for commitment in left.commitments
+            if commitment.kind == CommitmentKind.MECHANISM_CLAIM
+        ),
         left.commitments[0],
     )
     right_binding = next(
-        (commitment for commitment in right.commitments if commitment.kind == CommitmentKind.TARGET_BINDING),
+        (
+            commitment
+            for commitment in right.commitments
+            if commitment.kind == CommitmentKind.TARGET_BINDING
+        ),
         right.commitments[-1],
     )
     crossover_mapping = Commitment(
@@ -815,19 +900,41 @@ def _crossover_branch(
         stage_cursor="crossover",
         commitments=commitments,
         open_questions=open_questions,
-        recovery_operators=tuple(dict.fromkeys((*left.recovery_operators, *right.recovery_operators))),
+        recovery_operators=tuple(
+            dict.fromkeys((*left.recovery_operators, *right.recovery_operators))
+        ),
         rejected_patterns=rejected_patterns,
         operator_family_history=operator_history,
         metrics=BranchMetrics(),
         state_summary=BranchStateSummary(
-            mechanism_purity=min(1.0, 0.5 * left.state_summary.mechanism_purity + 0.5 * right.state_summary.mechanism_purity),
-            baseline_attractor=max(0.0, min(left.state_summary.baseline_attractor, right.state_summary.baseline_attractor) - 0.05),
-            transfer_slack=min(1.0, 0.5 * left.state_summary.transfer_slack + 0.5 * right.state_summary.transfer_slack + 0.08),
-            branch_fatigue=min(1.0, 0.5 * left.state_summary.branch_fatigue + 0.5 * right.state_summary.branch_fatigue + 0.06),
+            mechanism_purity=min(
+                1.0,
+                0.5 * left.state_summary.mechanism_purity
+                + 0.5 * right.state_summary.mechanism_purity,
+            ),
+            baseline_attractor=max(
+                0.0,
+                min(left.state_summary.baseline_attractor, right.state_summary.baseline_attractor)
+                - 0.05,
+            ),
+            transfer_slack=min(
+                1.0,
+                0.5 * left.state_summary.transfer_slack
+                + 0.5 * right.state_summary.transfer_slack
+                + 0.08,
+            ),
+            branch_fatigue=min(
+                1.0,
+                0.5 * left.state_summary.branch_fatigue
+                + 0.5 * right.state_summary.branch_fatigue
+                + 0.06,
+            ),
         ),
         island_key=f"cross:{left.island_key or left.metrics.island_key}:{right.island_key or right.metrics.island_key}",
         crossover_parent_ids=(left.branch_id, right.branch_id),
-        retrieval_expansion_hints=tuple(dict.fromkeys((*left.retrieval_expansion_hints, *right.retrieval_expansion_hints))),
+        retrieval_expansion_hints=tuple(
+            dict.fromkeys((*left.retrieval_expansion_hints, *right.retrieval_expansion_hints))
+        ),
     )
 
 
@@ -852,7 +959,10 @@ def _drop_weakest_commitment(commitments: list[Commitment]) -> list[Commitment]:
         pool,
         key=lambda commitment: (
             len([token for token in fingerprint_tokens(commitment.statement) if len(token) > 4]),
-            0 if commitment.kind in {CommitmentKind.RESOURCE_POLICY, CommitmentKind.VERIFICATION_ASSERTION} else 1,
+            0
+            if commitment.kind
+            in {CommitmentKind.RESOURCE_POLICY, CommitmentKind.VERIFICATION_ASSERTION}
+            else 1,
         ),
     )
     return [commitment for commitment in commitments if commitment.id != weakest.id]

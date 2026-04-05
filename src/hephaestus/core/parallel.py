@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Coroutine
 from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ T = TypeVar("T")
 @dataclass
 class TimedResult:
     """A result with timing information."""
+
     value: Any
     duration_seconds: float
     index: int = 0
@@ -26,6 +28,7 @@ class TimedResult:
 @dataclass
 class ParallelConfig:
     """Configuration for parallel execution."""
+
     max_concurrent: int = 4
     timeout_per_task: float = 120.0
     fail_fast: bool = False  # stop all on first failure
@@ -82,6 +85,7 @@ async def gather_with_semaphore(
 @dataclass
 class PipelineTimer:
     """Tracks timing for each pipeline stage."""
+
     _stages: dict[str, float] = field(default_factory=dict)
     _starts: dict[str, float] = field(default_factory=dict)
 
@@ -116,6 +120,8 @@ class PipelineTimer:
 
 
 __all__ = [
-    "TimedResult", "ParallelConfig", "gather_with_semaphore",
+    "TimedResult",
+    "ParallelConfig",
+    "gather_with_semaphore",
     "PipelineTimer",
 ]

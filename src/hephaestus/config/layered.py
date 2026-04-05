@@ -21,11 +21,11 @@ import yaml
 
 from hephaestus.cli.config import (
     HEPHAESTUS_DIR,
-    HephaestusConfig,
     VALID_BACKENDS,
     VALID_INTENSITIES,
     VALID_OUTPUT_MODES,
     VALID_PANTHEON_RESOLUTION_MODES,
+    HephaestusConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ _ENV_MAP: dict[str, str] = {
     "HEPHAESTUS_PANTHEON_ATHENA_MODEL": "pantheon_athena_model",
     "HEPHAESTUS_PANTHEON_HERMES_MODEL": "pantheon_hermes_model",
     "HEPHAESTUS_PANTHEON_APOLLO_MODEL": "pantheon_apollo_model",
+    "HEPHAESTUS_TRANSLIMINALITY_ENABLED": "transliminality_enabled",
 }
 
 _INT_FIELDS = {"depth", "candidates", "pantheon_max_rounds", "pantheon_max_survivors_to_council"}
@@ -67,6 +68,7 @@ _BOOL_FIELDS = {
     "use_pantheon_mode",
     "pantheon_require_unanimity",
     "pantheon_allow_fail_closed",
+    "transliminality_enabled",
 }
 
 _VALIDATORS: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -144,7 +146,10 @@ class LayeredConfig:
         # Ignore the operator's real ~/.hephaestus/config.yaml under pytest so
         # local machine defaults do not leak into test expectations.
         user_config = self._user_config_dir / "config.yaml"
-        if not (os.environ.get("PYTEST_CURRENT_TEST") and Path(self._user_config_dir).resolve() == Path(HEPHAESTUS_DIR).resolve()):
+        if not (
+            os.environ.get("PYTEST_CURRENT_TEST")
+            and Path(self._user_config_dir).resolve() == Path(HEPHAESTUS_DIR).resolve()
+        ):
             self._apply_yaml(user_config, merged, config_fields, str(user_config))
 
         # Layer 3 & 4: project + local
@@ -212,15 +217,11 @@ class LayeredConfig:
             value = merged.get(field_name)
             if value is not None and value not in valid_values:
                 raise ConfigValidationError(
-                    f"Invalid {label}: {value!r}. "
-                    f"Must be one of: {', '.join(valid_values)}"
+                    f"Invalid {label}: {value!r}. Must be one of: {', '.join(valid_values)}"
                 )
         depth = merged.get("depth")
-        if depth is not None:
-            if not isinstance(depth, int) or depth < 1 or depth > 10:
-                raise ConfigValidationError(
-                    f"Invalid depth: {depth!r}. Must be integer 1-10."
-                )
+        if depth is not None and (not isinstance(depth, int) or depth < 1 or depth > 10):
+            raise ConfigValidationError(f"Invalid depth: {depth!r}. Must be integer 1-10.")
         candidates = merged.get("candidates")
         if candidates is not None:
             if not isinstance(candidates, int) or candidates < 1:

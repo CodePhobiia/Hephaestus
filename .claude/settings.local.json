@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(claude-api)",
+      "Bash(where claude:*)",
+      "Bash(heph --help)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m hephaestus.cli.main --help)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/technicalpickles/pickled-claude-plugins/main/plugins/dev-tools/skills/designing-clis/SKILL.md\" -o ~/.claude/skills/designing-clis/SKILL.md)",
+      "Bash(cp /tmp/ux-principles.md ~/.claude/skills/designing-clis/)",
+      "Bash(cp /tmp/visual-techniques.md ~/.claude/skills/designing-clis/)",
+      "Bash(cp /tmp/practical-patterns.md ~/.claude/skills/designing-clis/)",
+      "Bash(cp /tmp/reading-list.md ~/.claude/skills/designing-clis/)"
+    ]
+  }
+}

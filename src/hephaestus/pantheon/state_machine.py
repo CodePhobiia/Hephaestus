@@ -23,10 +23,10 @@ _VALID_OBJECTION_TRANSITIONS: set[tuple[str, str]] = {
     ("OPEN", "RESOLVED"),
     ("OPEN", "WAIVED"),
     ("OPEN", "ESCALATED"),
-    ("RESOLVED", "OPEN"),       # Re-open if regression detected
-    ("WAIVED", "OPEN"),         # Re-open if waiver withdrawn
+    ("RESOLVED", "OPEN"),  # Re-open if regression detected
+    ("WAIVED", "OPEN"),  # Re-open if waiver withdrawn
     ("ESCALATED", "RESOLVED"),  # Escalation resolved
-    ("ESCALATED", "WAIVED"),    # Escalation waived by authority
+    ("ESCALATED", "WAIVED"),  # Escalation waived by authority
 }
 
 # Valid severity escalations
@@ -110,7 +110,12 @@ class ObjectionLifecycleMachine:
 
         logger.info(
             "Objection %s: %s → %s (agent=%s round=%d reason=%s)",
-            objection_id, from_status, to_status, agent, round_index, reason,
+            objection_id,
+            from_status,
+            to_status,
+            agent,
+            round_index,
+            reason,
         )
         return record
 
@@ -153,7 +158,10 @@ class ObjectionLifecycleMachine:
 
         logger.info(
             "Objection %s severity: %s → %s (agent=%s)",
-            objection_id, from_severity, to_severity, agent,
+            objection_id,
+            from_severity,
+            to_severity,
+            agent,
         )
         return record
 
@@ -176,9 +184,9 @@ _VALID_PHASE_TRANSITIONS: set[tuple[str, str]] = {
     ("SCREEN", "INDEPENDENT_BALLOT"),
     ("INDEPENDENT_BALLOT", "COUNCIL"),
     ("COUNCIL", "REFORGE"),
-    ("COUNCIL", "FINALIZE"),     # Direct if consensus
-    ("REFORGE", "COUNCIL"),      # Loop back after reforge
-    ("REFORGE", "FINALIZE"),     # Exhaust reforge rounds → finalize
+    ("COUNCIL", "FINALIZE"),  # Direct if consensus
+    ("REFORGE", "COUNCIL"),  # Loop back after reforge
+    ("REFORGE", "FINALIZE"),  # Exhaust reforge rounds → finalize
 }
 
 
@@ -225,23 +233,26 @@ class CouncilPhaseMachine:
 
         if not force and (from_phase, to_phase) not in _VALID_PHASE_TRANSITIONS:
             raise PantheonStateError(
-                f"Invalid council phase transition: {from_phase} → {to_phase} "
-                f"(round {round_index})"
+                f"Invalid council phase transition: {from_phase} → {to_phase} (round {round_index})"
             )
 
-        self._phase_history.append({
-            "from": from_phase,
-            "to": to_phase,
-            "round": round_index,
-            "reason": reason,
-            "timestamp": datetime.now(UTC).isoformat(),
-            "forced": force,
-        })
+        self._phase_history.append(
+            {
+                "from": from_phase,
+                "to": to_phase,
+                "round": round_index,
+                "reason": reason,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "forced": force,
+            }
+        )
 
         self._current_phase = to_phase
         logger.info(
             "Council phase: %s → %s (round=%d%s)",
-            from_phase, to_phase, round_index,
+            from_phase,
+            to_phase,
+            round_index,
             " [FORCED]" if force else "",
         )
 

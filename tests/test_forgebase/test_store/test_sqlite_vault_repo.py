@@ -1,11 +1,10 @@
 """Tests for SQLite vault repository."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.models import Vault, VaultRevision
-from hephaestus.forgebase.domain.values import ActorRef, EntityId, VaultRevisionId
-from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
 from hephaestus.forgebase.store.sqlite.vault_repo import SqliteVaultRepository
 
 
@@ -53,8 +52,24 @@ class TestSqliteVaultRepository:
         for i in range(3):
             vid = id_gen.vault_id()
             rid = id_gen.revision_id()
-            vault = Vault(vault_id=vid, name=f"v{i}", description="", head_revision_id=rid, created_at=clock.now(), updated_at=clock.now(), config={})
-            rev = VaultRevision(revision_id=rid, vault_id=vid, parent_revision_id=None, created_at=clock.now(), created_by=actor, causation_event_id=None, summary="init")
+            vault = Vault(
+                vault_id=vid,
+                name=f"v{i}",
+                description="",
+                head_revision_id=rid,
+                created_at=clock.now(),
+                updated_at=clock.now(),
+                config={},
+            )
+            rev = VaultRevision(
+                revision_id=rid,
+                vault_id=vid,
+                parent_revision_id=None,
+                created_at=clock.now(),
+                created_by=actor,
+                causation_event_id=None,
+                summary="init",
+            )
             await repo.create(vault, rev)
 
         await sqlite_db.commit()
@@ -65,8 +80,24 @@ class TestSqliteVaultRepository:
         repo = SqliteVaultRepository(sqlite_db)
         vid = id_gen.vault_id()
         rid = id_gen.revision_id()
-        vault = Vault(vault_id=vid, name="test", description="", head_revision_id=rid, created_at=clock.now(), updated_at=clock.now(), config={})
-        rev = VaultRevision(revision_id=rid, vault_id=vid, parent_revision_id=None, created_at=clock.now(), created_by=actor, causation_event_id=None, summary="init")
+        vault = Vault(
+            vault_id=vid,
+            name="test",
+            description="",
+            head_revision_id=rid,
+            created_at=clock.now(),
+            updated_at=clock.now(),
+            config={},
+        )
+        rev = VaultRevision(
+            revision_id=rid,
+            vault_id=vid,
+            parent_revision_id=None,
+            created_at=clock.now(),
+            created_by=actor,
+            causation_event_id=None,
+            summary="init",
+        )
         await repo.create(vault, rev)
         await sqlite_db.commit()
 

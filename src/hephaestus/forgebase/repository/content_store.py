@@ -1,4 +1,5 @@
 """Abstract content/blob storage contract with staging semantics."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

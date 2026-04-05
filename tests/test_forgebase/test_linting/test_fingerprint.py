@@ -1,29 +1,25 @@
 """Tests for finding fingerprint computation and deduplication logic."""
+
 from __future__ import annotations
-
-from datetime import datetime
-
-import pytest
 
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
     FindingDisposition,
     FindingSeverity,
     FindingStatus,
-    RemediationStatus,
 )
+from hephaestus.forgebase.domain.models import LintFinding
 from hephaestus.forgebase.domain.values import EntityId
 from hephaestus.forgebase.linting.detectors.base import RawFinding
 from hephaestus.forgebase.linting.fingerprint import (
     compute_fingerprint,
     dedup_findings,
 )
-from hephaestus.forgebase.domain.models import LintFinding
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _eid(prefix: str, suffix: str) -> EntityId:
     """Build an EntityId with a deterministic 26-char ULID-like string."""
@@ -88,6 +84,7 @@ def _existing_finding(
 # ---------------------------------------------------------------------------
 # compute_fingerprint tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeFingerprint:
     def test_fingerprint_stable(self) -> None:
@@ -204,14 +201,20 @@ class TestComputeFingerprint:
         """Entity IDs are sorted before hashing, so order doesn't matter."""
         fp1 = compute_fingerprint(
             category="broken_reference",
-            affected_entity_ids=["link_aaaaaaaaaaaaaaaaaaaaaaaaaa", "link_bbbbbbbbbbbbbbbbbbbbbbbbbb"],
+            affected_entity_ids=[
+                "link_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "link_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+            ],
             normalized_subject="broken ref",
             workbook_id=None,
             detector_version="1.0",
         )
         fp2 = compute_fingerprint(
             category="broken_reference",
-            affected_entity_ids=["link_bbbbbbbbbbbbbbbbbbbbbbbbbb", "link_aaaaaaaaaaaaaaaaaaaaaaaaaa"],
+            affected_entity_ids=[
+                "link_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "link_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ],
             normalized_subject="broken ref",
             workbook_id=None,
             detector_version="1.0",

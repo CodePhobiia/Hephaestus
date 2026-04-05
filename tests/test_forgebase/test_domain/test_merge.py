@@ -1,13 +1,9 @@
 """Tests for merge rules and version reconciliation."""
+
 from __future__ import annotations
-
-from datetime import UTC, datetime
-
-import pytest
 
 from hephaestus.forgebase.domain.enums import EntityKind, MergeVerdict
 from hephaestus.forgebase.domain.merge import (
-    MergeAnalysis,
     MergeEntityChange,
     analyze_merge,
 )

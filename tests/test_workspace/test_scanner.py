@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from hephaestus.workspace.scanner import WorkspaceScanner, WorkspaceSummary, FileInfo, GitInfo
+from hephaestus.workspace.scanner import FileInfo, GitInfo, WorkspaceScanner
 
 
 def _make_workspace(tmp_path: Path) -> Path:
@@ -124,7 +122,6 @@ class TestGitInfo:
 
     def test_scan_hephaestus_repo(self):
         """The hephaestus repo itself should scan with git info."""
-        import os
         repo = Path(__file__).parent.parent.parent
         if (repo / ".git").exists():
             summary = WorkspaceScanner(repo).scan()
@@ -140,5 +137,7 @@ class TestFileInfo:
         assert f.extension == ".py"
 
     def test_is_config(self):
-        f = FileInfo(path="pyproject.toml", extension=".toml", size_bytes=50, line_count=5, is_config=True)
+        f = FileInfo(
+            path="pyproject.toml", extension=".toml", size_bytes=50, line_count=5, is_config=True
+        )
         assert f.is_config

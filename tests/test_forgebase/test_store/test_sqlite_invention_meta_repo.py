@@ -1,7 +1,6 @@
 """Tests for SQLite InventionPageMeta repository."""
-from __future__ import annotations
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
@@ -248,9 +247,7 @@ class TestSqliteInventionPageMetaRepository:
         await repo.create(meta2)
         await sqlite_db.commit()
 
-        results = await repo.list_by_vault(
-            vault_id, state=InventionEpistemicState.PROPOSED
-        )
+        results = await repo.list_by_vault(vault_id, state=InventionEpistemicState.PROPOSED)
         assert len(results) == 1
         assert results[0].page_id == meta1.page_id
 
@@ -287,9 +284,7 @@ class TestSqliteInventionPageMetaRepository:
         await repo.create(meta3)
         await sqlite_db.commit()
 
-        results = await repo.list_by_state(
-            vault_id, InventionEpistemicState.VERIFIED
-        )
+        results = await repo.list_by_state(vault_id, InventionEpistemicState.VERIFIED)
         assert len(results) == 2
         page_ids = {m.page_id for m in results}
         assert meta1.page_id in page_ids
@@ -308,9 +303,7 @@ class TestSqliteInventionPageMetaRepository:
         await repo.create(meta)
         await sqlite_db.commit()
 
-        results = await repo.list_by_state(
-            vault_id, InventionEpistemicState.VERIFIED
-        )
+        results = await repo.list_by_state(vault_id, InventionEpistemicState.VERIFIED)
         assert results == []
 
     async def test_consensus_none_roundtrip(self, sqlite_db, clock, id_gen):

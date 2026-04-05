@@ -14,6 +14,7 @@ Key features:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import shutil
@@ -144,17 +145,18 @@ class CodexCliAdapter(BaseAdapter):
             self._codex_bin,
             "exec",
             "--skip-git-repo-check",
-            "--sandbox", "read-only",
-            "-m", self.model_name,
+            "--sandbox",
+            "read-only",
+            "-m",
+            self.model_name,
         ]
 
-        schema_file: tempfile.NamedTemporaryFile[str] | None = None
+        schema_file_name: str | None = None
         if output_schema is not None:
-            schema_file = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
-            json.dump(output_schema, schema_file)
-            schema_file.flush()
-            schema_file.close()
-            cmd.extend(["--output-schema", schema_file.name])
+            with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as schema_file:
+                json.dump(output_schema, schema_file)
+                schema_file_name = schema_file.name
+            cmd.extend(["--output-schema", schema_file_name])
 
         cmd.append(full_prompt)
 
@@ -168,16 +170,14 @@ class CodexCliAdapter(BaseAdapter):
             stdout_bytes, stderr_bytes = await asyncio.wait_for(
                 proc.communicate(), timeout=self._timeout
             )
-        except asyncio.TimeoutError:
-            raise AdapterError(f"Codex CLI timed out after {self._timeout}s")
-        except FileNotFoundError:
-            raise AuthenticationError(f"Codex CLI binary not found at {self._codex_bin}")
+        except TimeoutError as err:
+            raise AdapterError(f"Codex CLI timed out after {self._timeout}s") from err
+        except FileNotFoundError as err:
+            raise AuthenticationError(f"Codex CLI binary not found at {self._codex_bin}") from err
         finally:
-            if schema_file is not None:
-                try:
-                    Path(schema_file.name).unlink(missing_ok=True)
-                except Exception:
-                    pass
+            if schema_file_name is not None:
+                with contextlib.suppress(Exception):
+                    Path(schema_file_name).unlink(missing_ok=True)
 
         elapsed = time.monotonic() - t_start
         stdout = stdout_bytes.decode("utf-8", errors="replace").strip()
@@ -216,7 +216,7 @@ class CodexCliAdapter(BaseAdapter):
         output_schema = kwargs.get("output_schema")
         text = await self._call_cli(full_prompt, max_tokens, output_schema=output_schema)
         if prefill and text.startswith(prefill):
-            text = text[len(prefill):]
+            text = text[len(prefill) :]
         return GenerationResult(
             text=text,
             input_tokens=0,

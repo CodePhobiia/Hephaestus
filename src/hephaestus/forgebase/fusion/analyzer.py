@@ -4,6 +4,7 @@ Dedicated contract for cross-domain fusion, separate from CompilerBackend
 and LintAnalyzer.  Different reasoning task, different prompts, different
 temperature.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

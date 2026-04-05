@@ -28,13 +28,13 @@ logger = logging.getLogger(__name__)
 class ModelCapability(Enum):
     """Capabilities that individual models may or may not support."""
 
-    PREFILL = auto()          # Inject arbitrary assistant prefix before generation
-    STREAMING = auto()        # Real-time token streaming
-    PROMPT_CACHING = auto()   # Provider-level caching of prompt segments
+    PREFILL = auto()  # Inject arbitrary assistant prefix before generation
+    STREAMING = auto()  # Real-time token streaming
+    PROMPT_CACHING = auto()  # Provider-level caching of prompt segments
     EXTENDED_THINKING = auto()  # Extended chain-of-thought / reasoning mode
     STRUCTURED_OUTPUT = auto()  # JSON schema–constrained output
-    FUNCTION_CALLING = auto()   # Tool / function calling
-    VISION = auto()           # Multi-modal image understanding
+    FUNCTION_CALLING = auto()  # Tool / function calling
+    VISION = auto()  # Multi-modal image understanding
 
 
 # ---------------------------------------------------------------------------
@@ -285,7 +285,7 @@ class BaseAdapter(abc.ABC):
         """
         # This stub keeps mypy happy; implementations must override fully.
         raise NotImplementedError  # pragma: no cover
-        yield StreamChunk(delta="", accumulated="")  # type: ignore[misc]
+        yield StreamChunk(delta="", accumulated="")
 
     # ------------------------------------------------------------------
     # Stream cancellation

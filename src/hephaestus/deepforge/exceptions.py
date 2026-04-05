@@ -8,7 +8,6 @@ while still being able to distinguish sub-types.
 
 from __future__ import annotations
 
-
 # ---------------------------------------------------------------------------
 # Base
 # ---------------------------------------------------------------------------
@@ -52,7 +51,7 @@ class APITimeoutError(AdapterError):
 # ---------------------------------------------------------------------------
 
 
-class GenerationKilled(DeepForgeError):
+class GenerationKilled(DeepForgeError): # noqa: N818
     """
     Generation was forcibly killed before completion.
 
@@ -70,7 +69,11 @@ class GenerationKilled(DeepForgeError):
         self.partial_output: str = partial_output
 
     def __str__(self) -> str:
-        snippet = self.partial_output[:120] + "…" if len(self.partial_output) > 120 else self.partial_output
+        snippet = (
+            self.partial_output[:120] + "…"
+            if len(self.partial_output) > 120
+            else self.partial_output
+        )
         return f"{self.reason} | partial: {snippet!r}"
 
 
@@ -94,8 +97,7 @@ class ConvergenceDetected(GenerationKilled):
         matched_pattern: str,
     ) -> None:
         reason = (
-            f"Convergence detected — similarity {pattern_similarity:.3f} "
-            f"to known banality pattern"
+            f"Convergence detected — similarity {pattern_similarity:.3f} to known banality pattern"
         )
         super().__init__(reason=reason, partial_output=partial_output)
         self.pattern_similarity: float = pattern_similarity

@@ -138,21 +138,20 @@ class ConversationRuntime:
             graph.record_stage(
                 "llm_generate",
                 f"Completed generation round {turn.rounds}.",
-                payload={"tool_calls": len(gen.tool_calls), "stop_reason": getattr(gen, "stop_reason", "")},
+                payload={
+                    "tool_calls": len(gen.tool_calls),
+                    "stop_reason": getattr(gen, "stop_reason", ""),
+                },
             )
 
             # No tool calls → final text response.
             if not gen.tool_calls:
                 turn.text = gen.text
-                self._messages.append(
-                    {"role": "assistant", "content": gen.content_blocks}
-                )
+                self._messages.append({"role": "assistant", "content": gen.content_blocks})
                 return turn
 
             # Append assistant message with tool_use blocks.
-            self._messages.append(
-                {"role": "assistant", "content": gen.content_blocks}
-            )
+            self._messages.append({"role": "assistant", "content": gen.content_blocks})
 
             # Execute each tool call.
             tool_results: list[dict[str, Any]] = []
@@ -279,12 +278,13 @@ class ConversationRuntime:
         # Execute.
         try:
             from hephaestus.tools.invocation import ToolContext, ToolInvocation
-            
+
             context = ToolContext(policy=self.policy)
             if isinstance(tool_def.handler, ToolInvocation):
                 output = await tool_def.handler.execute(context, **tool_input)
             else:
                 import asyncio
+
                 if asyncio.iscoroutinefunction(tool_def.handler):
                     output = await tool_def.handler(**tool_input)
                 else:

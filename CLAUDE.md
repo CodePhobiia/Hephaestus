@@ -113,15 +113,58 @@ Model backends are in `deepforge/adapters/` (Anthropic, OpenAI, OpenRouter, Clau
 
 Tests mirror source structure under `tests/test_<module>/`. All tests use `pytest-asyncio` with `asyncio_mode = "auto"`. The `conftest.py` adds `src/` to `sys.path` for direct source-tree testing. LLM calls are mocked in unit tests; `tests/test_integration/` requires real API keys.
 
+### Running Tests Without Crashing
+
+**The full test suite can consume 10+ GB of RAM.** This is caused by numpy and sentence-transformers (which pulls in PyTorch) being loaded during test collection.
+
+**Safe (lightweight) test commands:**
+
+```bash
+# Run tests for a specific module (recommended for dev)
+pytest tests/test_core/ -v --tb=short
+
+# Run tests excluding heavy embedding/convergence tests
+pytest tests/ --ignore=tests/test_convergence --ignore=tests/test_forgebase/test_fusion -v --tb=short
+
+# Run a single test file
+pytest tests/test_deepforge/test_pressure.py -v
+```
+
+**Heavy test modules** (load numpy + sentence-transformers):
+- `tests/test_convergence/` — convergence detection with real embeddings
+- `tests/test_forgebase/test_fusion/` — fusion candidate generation with numpy matrices
+- `tests/test_lenses/test_selector.py` — lens scoring with cosine distance
+
+**Never run the full suite on a machine with <16 GB RAM.** Use targeted test runs instead.
+
+### Lazy Import Pattern for Heavy Dependencies
+
+numpy and sentence-transformers are loaded lazily via `_lazy_np()` / `_lazy_st()` helper functions (NOT at module level). This keeps `import hephaestus` fast and prevents RAM bloat during test collection.
+
+When mocking in tests, patch the lazy helper, not the library:
+```python
+# CORRECT — patches the lazy factory
+with patch("hephaestus.convergence.seed._lazy_st", return_value=mock_model):
+
+# WRONG — the module-level name no longer exists
+with patch("hephaestus.convergence.seed.SentenceTransformer", ...):
+```
+
+Source files using this pattern:
+- `convergence/detector.py`, `convergence/seed.py` — `_lazy_st()` for SentenceTransformer
+- `convergence/database.py`, `core/scorer.py`, `forgebase/factory.py`, `forgebase/fusion/candidates.py`, `lenses/selector.py` — `_lazy_np()` for numpy
+- `deepforge/pressure.py`, `deepforge/pruner.py` — both `_lazy_np()` and `_lazy_st()`
+
 ## Key Patterns
 
-- **Lazy imports**: Heavy dependencies (numpy, sentence-transformers) are lazy-loaded via helper functions to keep import times fast
+- **Lazy imports**: Heavy dependencies (numpy, sentence-transformers) are lazy-loaded via `_lazy_np()` / `_lazy_st()` helper functions to prevent multi-GB imports at collection time
 - **Dataclass-heavy models**: Most data types are `@dataclass` rather than Pydantic (except web layer which uses Pydantic `BaseModel`)
 - **Async throughout**: Pipeline, adapters, tools, and orchestrator are all async. Tests use `pytest-asyncio`
 - **Build system**: Hatchling (configured in `pyproject.toml`); package lives in `src/hephaestus/`
 
 ## Code Style
 
-- Python 3.11+, ruff for linting (rules: E, F, I, N, W, UP, B, A, SIM), line length 100
-- mypy strict mode
+- Python 3.11+, ruff for linting (rules: E, F, I, N, W, UP, B, A, SIM), line length 100 (format) / 120 (lint)
+- mypy strict mode with targeted per-module overrides for LLM-interface modules (see `pyproject.toml`)
 - Type annotations required on all public APIs
+- Per-file-ignores for E501 in SQL repos, prompt templates, and CLI display files (see `pyproject.toml`)

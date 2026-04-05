@@ -1,11 +1,12 @@
 """Tests for SQLite claim repository."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import ClaimStatus, SupportType
 from hephaestus.forgebase.domain.models import Claim, ClaimVersion
-from hephaestus.forgebase.domain.values import EntityId, Version
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.store.sqlite.claim_repo import SqliteClaimRepository
 
 
@@ -56,15 +57,22 @@ class TestSqliteClaimRepository:
         page_id = id_gen.page_id()
 
         claim = Claim(
-            claim_id=claim_id, vault_id=vault_id, page_id=page_id,
+            claim_id=claim_id,
+            vault_id=vault_id,
+            page_id=page_id,
             created_at=clock.now(),
         )
         v1 = ClaimVersion(
-            claim_id=claim_id, version=Version(1),
-            statement="v1 statement", status=ClaimStatus.HYPOTHESIS,
-            support_type=SupportType.GENERATED, confidence=0.5,
-            validated_at=clock.now(), fresh_until=None,
-            created_at=clock.now(), created_by=actor,
+            claim_id=claim_id,
+            version=Version(1),
+            statement="v1 statement",
+            status=ClaimStatus.HYPOTHESIS,
+            support_type=SupportType.GENERATED,
+            confidence=0.5,
+            validated_at=clock.now(),
+            fresh_until=None,
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create(claim, v1)
         await sqlite_db.commit()
@@ -87,25 +95,37 @@ class TestSqliteClaimRepository:
         page_id = id_gen.page_id()
 
         claim = Claim(
-            claim_id=claim_id, vault_id=vault_id, page_id=page_id,
+            claim_id=claim_id,
+            vault_id=vault_id,
+            page_id=page_id,
             created_at=clock.now(),
         )
         v1 = ClaimVersion(
-            claim_id=claim_id, version=Version(1),
-            statement="original", status=ClaimStatus.HYPOTHESIS,
-            support_type=SupportType.GENERATED, confidence=0.5,
-            validated_at=clock.now(), fresh_until=None,
-            created_at=clock.now(), created_by=actor,
+            claim_id=claim_id,
+            version=Version(1),
+            statement="original",
+            status=ClaimStatus.HYPOTHESIS,
+            support_type=SupportType.GENERATED,
+            confidence=0.5,
+            validated_at=clock.now(),
+            fresh_until=None,
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create(claim, v1)
 
         clock.tick(10)
         v2 = ClaimVersion(
-            claim_id=claim_id, version=Version(2),
-            statement="updated", status=ClaimStatus.SUPPORTED,
-            support_type=SupportType.DIRECT, confidence=0.9,
-            validated_at=clock.now(), fresh_until=clock.now(),
-            created_at=clock.now(), created_by=actor,
+            claim_id=claim_id,
+            version=Version(2),
+            statement="updated",
+            status=ClaimStatus.SUPPORTED,
+            support_type=SupportType.DIRECT,
+            confidence=0.9,
+            validated_at=clock.now(),
+            fresh_until=clock.now(),
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create_version(v2)
         await sqlite_db.commit()
@@ -137,10 +157,16 @@ class TestSqliteClaimRepository:
             cid = id_gen.claim_id()
             c = Claim(claim_id=cid, vault_id=vault_id, page_id=page_id, created_at=clock.now())
             v = ClaimVersion(
-                claim_id=cid, version=Version(1), statement="s",
-                status=ClaimStatus.SUPPORTED, support_type=SupportType.DIRECT,
-                confidence=0.9, validated_at=clock.now(), fresh_until=None,
-                created_at=clock.now(), created_by=actor,
+                claim_id=cid,
+                version=Version(1),
+                statement="s",
+                status=ClaimStatus.SUPPORTED,
+                support_type=SupportType.DIRECT,
+                confidence=0.9,
+                validated_at=clock.now(),
+                fresh_until=None,
+                created_at=clock.now(),
+                created_by=actor,
             )
             await repo.create(c, v)
 
@@ -148,10 +174,16 @@ class TestSqliteClaimRepository:
         cid = id_gen.claim_id()
         c = Claim(claim_id=cid, vault_id=vault_id, page_id=other_page, created_at=clock.now())
         v = ClaimVersion(
-            claim_id=cid, version=Version(1), statement="other",
-            status=ClaimStatus.SUPPORTED, support_type=SupportType.DIRECT,
-            confidence=0.8, validated_at=clock.now(), fresh_until=None,
-            created_at=clock.now(), created_by=actor,
+            claim_id=cid,
+            version=Version(1),
+            statement="other",
+            status=ClaimStatus.SUPPORTED,
+            support_type=SupportType.DIRECT,
+            confidence=0.8,
+            validated_at=clock.now(),
+            fresh_until=None,
+            created_at=clock.now(),
+            created_by=actor,
         )
         await repo.create(c, v)
         await sqlite_db.commit()

@@ -18,6 +18,7 @@ _DEFAULT_LIBRARY = Path(__file__).parent / "library"
 @dataclass
 class LensValidationIssue:
     """A single validation issue found in a lens."""
+
     file: str
     field: str
     message: str
@@ -29,6 +30,7 @@ class LensValidationIssue:
 @dataclass
 class LensStats:
     """Aggregate statistics about the lens library."""
+
     total_lenses: int = 0
     domains: list[str] = field(default_factory=list)
     domain_counts: dict[str, int] = field(default_factory=dict)
@@ -52,17 +54,29 @@ def validate_lens(lens: Lens, source_file: str = "") -> list[LensValidationIssue
             if not axiom or not axiom.strip():
                 issues.append(LensValidationIssue(source_file, f"axioms[{i}]", "Empty axiom"))
     if not lens.structural_patterns:
-        issues.append(LensValidationIssue(source_file, "structural_patterns", "No structural patterns"))
+        issues.append(
+            LensValidationIssue(source_file, "structural_patterns", "No structural patterns")
+        )
     else:
         for i, pat in enumerate(lens.structural_patterns):
             if not pat.name or not pat.name.strip():
-                issues.append(LensValidationIssue(source_file, f"patterns[{i}].name", "Empty pattern name"))
+                issues.append(
+                    LensValidationIssue(source_file, f"patterns[{i}].name", "Empty pattern name")
+                )
             if not pat.abstract or not pat.abstract.strip():
-                issues.append(LensValidationIssue(source_file, f"patterns[{i}].abstract", "Empty pattern abstract"))
+                issues.append(
+                    LensValidationIssue(
+                        source_file, f"patterns[{i}].abstract", "Empty pattern abstract"
+                    )
+                )
             if not pat.maps_to:
-                issues.append(LensValidationIssue(source_file, f"patterns[{i}].maps_to", "No maps_to entries"))
+                issues.append(
+                    LensValidationIssue(source_file, f"patterns[{i}].maps_to", "No maps_to entries")
+                )
     if not lens.injection_prompt or not lens.injection_prompt.strip():
-        issues.append(LensValidationIssue(source_file, "injection_prompt", "Injection prompt is empty"))
+        issues.append(
+            LensValidationIssue(source_file, "injection_prompt", "Injection prompt is empty")
+        )
 
     return issues
 
@@ -159,4 +173,11 @@ def compute_lens_stats(library_dir: Path | None = None) -> LensStats:
     return stats
 
 
-__all__ = ["LensValidationIssue", "LensStats", "validate_lens", "validate_lens_file", "validate_all_lenses", "compute_lens_stats"]
+__all__ = [
+    "LensValidationIssue",
+    "LensStats",
+    "validate_lens",
+    "validate_lens_file",
+    "validate_all_lenses",
+    "compute_lens_stats",
+]

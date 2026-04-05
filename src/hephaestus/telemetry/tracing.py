@@ -32,8 +32,8 @@ def configure_tracing(
 
     try:
         from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ImportError:
         logger.info("OpenTelemetry SDK not installed — tracing disabled")
@@ -46,11 +46,14 @@ def configure_tracing(
     if otlp_endpoint:
         try:
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
             exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
             _tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
             logger.info("OTLP trace export configured: %s", otlp_endpoint)
         except ImportError:
-            logger.warning("opentelemetry-exporter-otlp-proto-grpc not installed — OTLP export disabled")
+            logger.warning(
+                "opentelemetry-exporter-otlp-proto-grpc not installed — OTLP export disabled"
+            )
 
     trace.set_tracer_provider(_tracer_provider)
     _tracer = trace.get_tracer("hephaestus")
@@ -72,6 +75,7 @@ def get_tracer() -> Any:
         # Return a no-op tracer
         try:
             from opentelemetry import trace
+
             _tracer = trace.get_tracer("hephaestus")
         except ImportError:
             _tracer = _NoOpTracer()

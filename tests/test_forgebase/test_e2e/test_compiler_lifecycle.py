@@ -4,6 +4,7 @@ Exercises all 7 minimum real flows from the spec through the
 factory-wired ForgeBase instance, proving Sub-project 2 works
 end-to-end with the mock compiler backend.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -12,7 +13,6 @@ import pytest
 
 from hephaestus.forgebase.domain.enums import (
     BranchPurpose,
-    CandidateStatus,
     ClaimStatus,
     SourceFormat,
     SourceStatus,
@@ -68,9 +68,7 @@ Only tested at room temperature.
     )
 
     # Normalize
-    normalized1 = await fb.normalization.normalize(
-        source1_content, SourceFormat.MARKDOWN
-    )
+    normalized1 = await fb.normalization.normalize(source1_content, SourceFormat.MARKDOWN)
     nsv1 = await fb.ingest.normalize_source(
         source_id=source1.source_id,
         normalized_content=normalized1,
@@ -111,9 +109,7 @@ composition depends on electrolyte choice.
         idempotency_key="test:source2",
     )
 
-    normalized2 = await fb.normalization.normalize(
-        source2_content, SourceFormat.MARKDOWN
-    )
+    normalized2 = await fb.normalization.normalize(source2_content, SourceFormat.MARKDOWN)
     nsv2 = await fb.ingest.normalize_source(
         source_id=source2.source_id,
         normalized_content=normalized2,
@@ -144,9 +140,7 @@ composition depends on electrolyte choice.
     uow = fb.uow_factory()
     async with uow:
         # Find concept pages
-        pages = await uow.pages.list_by_vault(
-            vault.vault_id, page_type="concept"
-        )
+        pages = await uow.pages.list_by_vault(vault.vault_id, page_type="concept")
         assert len(pages) > 0, "Expected at least one concept page from synthesis"
 
         # Check one concept page has synthesized claims
@@ -198,9 +192,7 @@ Some branch-only research content about SEI dynamics.
         idempotency_key="test:source3",
     )
 
-    normalized3 = await fb.normalization.normalize(
-        source3_content, SourceFormat.MARKDOWN
-    )
+    normalized3 = await fb.normalization.normalize(source3_content, SourceFormat.MARKDOWN)
     nsv3 = await fb.ingest.normalize_source(
         source_id=source3.source_id,
         normalized_content=normalized3,
@@ -222,7 +214,8 @@ Some branch-only research content about SEI dynamics.
     uow3 = fb.uow_factory()
     async with uow3:
         branch_candidates = await uow3.concept_candidates.list_active(
-            vault.vault_id, workbook.workbook_id,
+            vault.vault_id,
+            workbook.workbook_id,
         )
         for c in branch_candidates:
             assert c.workbook_id == workbook.workbook_id

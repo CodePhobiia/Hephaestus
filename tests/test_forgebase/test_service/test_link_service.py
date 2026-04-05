@@ -1,4 +1,5 @@
 """Tests for LinkService."""
+
 from __future__ import annotations
 
 import pytest
@@ -20,12 +21,18 @@ class TestLinkService:
 
         vault = await vault_svc.create_vault(name="TestVault")
         page_a, _ = await page_svc.create_page(
-            vault_id=vault.vault_id, page_key="page-a",
-            page_type=PageType.CONCEPT, title="Page A", content=b"A",
+            vault_id=vault.vault_id,
+            page_key="page-a",
+            page_type=PageType.CONCEPT,
+            title="Page A",
+            content=b"A",
         )
         page_b, _ = await page_svc.create_page(
-            vault_id=vault.vault_id, page_key="page-b",
-            page_type=PageType.CONCEPT, title="Page B", content=b"B",
+            vault_id=vault.vault_id,
+            page_key="page-b",
+            page_type=PageType.CONCEPT,
+            title="Page B",
+            content=b"B",
         )
         return vault, page_a, page_b
 

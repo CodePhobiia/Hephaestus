@@ -1,4 +1,5 @@
 """Tests for content store implementations."""
+
 from __future__ import annotations
 
 import pytest
@@ -26,7 +27,10 @@ class TestInMemoryContentStore:
     async def test_read_nonexistent_raises(self):
         store = InMemoryContentStore()
         from hephaestus.forgebase.domain.values import BlobRef, ContentHash
-        ref = BlobRef(content_hash=ContentHash(sha256="x" * 64), size_bytes=0, mime_type="text/plain")
+
+        ref = BlobRef(
+            content_hash=ContentHash(sha256="x" * 64), size_bytes=0, mime_type="text/plain"
+        )
         with pytest.raises(KeyError):
             await store.read(ref)
 

@@ -42,13 +42,34 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
+from typing import TYPE_CHECKING, Any
 
 from hephaestus.convergence.database import ConvergenceDatabase, PatternRecord
 from hephaestus.novelty import NoveltyVector
+
+if TYPE_CHECKING:
+    import numpy as np
+
+
+class _LazyNumpy:
+    """Module-level lazy proxy for numpy — avoids 100MB+ import at collection time."""
+
+    _np: Any = None
+
+    def __getattr__(self, name: str) -> Any:
+        if _LazyNumpy._np is None:
+            import numpy  # noqa: F811
+            _LazyNumpy._np = numpy
+        return getattr(_LazyNumpy._np, name)
+
+
+np = _LazyNumpy()  # type: ignore[assignment]
+
+
+def _lazy_st(model_name: str) -> Any:
+    """Lazy instantiation of SentenceTransformer."""
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(model_name)
 
 logger = logging.getLogger(__name__)
 
@@ -191,12 +212,12 @@ class ConvergenceDetector:
         *,
         similarity_threshold: float = _DEFAULT_THRESHOLD,
         embed_model_name: str = _DEFAULT_EMBED_MODEL,
-        embed_model: SentenceTransformer | None = None,
+        embed_model: Any | None = None,
     ) -> None:
         self._db = db
         self._threshold = similarity_threshold
         self._embed_model_name = embed_model_name
-        self._embed_model: SentenceTransformer | None = embed_model
+        self._embed_model: Any | None = embed_model
 
         # In-memory loaded patterns (populated by load_patterns)
         self._loaded_patterns: list[PatternRecord] = []
@@ -212,11 +233,11 @@ class ConvergenceDetector:
     # Embedding model
     # ------------------------------------------------------------------
 
-    def _get_model(self) -> SentenceTransformer:
+    def _get_model(self) -> Any:
         """Lazy-load the sentence-transformer model."""
         if self._embed_model is None:
             logger.info("Loading embedding model %s …", self._embed_model_name)
-            self._embed_model = SentenceTransformer(self._embed_model_name)
+            self._embed_model = _lazy_st(self._embed_model_name)
         return self._embed_model
 
     def _embed(self, text: str) -> np.ndarray:
@@ -374,9 +395,7 @@ class ConvergenceDetector:
 
         text_emb = self._embed(text)
 
-        pattern_matrix = np.stack(
-            [p.pattern_embedding for p in self._loaded_patterns], axis=0
-        )
+        pattern_matrix = np.stack([p.pattern_embedding for p in self._loaded_patterns], axis=0)
         similarities = pattern_matrix @ text_emb
 
         best_idx = int(np.argmax(similarities))
@@ -431,9 +450,8 @@ class ConvergenceDetector:
         -------
         DetectionResult
         """
-        if auto_load and problem_class and self._db is not None:
-            if self._loaded_class != problem_class:
-                await self.load_patterns(problem_class)
+        if auto_load and problem_class and self._db is not None and self._loaded_class != problem_class:
+            await self.load_patterns(problem_class)
 
         return self.detect_sync(text)
 
@@ -478,9 +496,8 @@ class ConvergenceDetector:
                 problem_class=problem_class or self._loaded_class,
             )
 
-        if auto_load and problem_class and self._db is not None:
-            if self._loaded_class != problem_class:
-                await self.load_patterns(problem_class)
+        if auto_load and problem_class and self._db is not None and self._loaded_class != problem_class:
+            await self.load_patterns(problem_class)
 
         if not self._loaded_patterns:
             # No patterns loaded — all candidates are non-convergent by default

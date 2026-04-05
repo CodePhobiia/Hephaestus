@@ -16,12 +16,12 @@ structurally load-bearing.
 from __future__ import annotations
 
 import json
-from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.core.translator import Translation
 from hephaestus.deepforge.harness import DeepForgeHarness
 
@@ -214,8 +214,7 @@ def check_source_domain_subtraction(translation: Translation) -> DomainLoadBeari
     reasons: list[str] = []
     if runtime_footprint:
         reasons.append(
-            "Architecture retains source-derived operators: "
-            f"{', '.join(source_hits[:3])}."
+            f"Architecture retains source-derived operators: {', '.join(source_hits[:3])}."
         )
     else:
         reasons.append(
@@ -340,13 +339,11 @@ def _check_target_domain_subtraction(translation: Translation) -> DomainLoadBear
     )
 
     target_runtime_footprint = len(target_hits) >= 2 or len(target_impl_markers) >= 3
-    concrete_target_substrate = (
-        target_specific_elements >= 2 or len(target_impl_markers) >= 3
-    )
-    over_generic = (generic_ratio >= 0.75 and len(target_impl_markers) < 2) or target_specific_elements < 2
-    is_load_bearing = (
-        target_runtime_footprint and concrete_target_substrate and not over_generic
-    )
+    concrete_target_substrate = target_specific_elements >= 2 or len(target_impl_markers) >= 3
+    over_generic = (
+        generic_ratio >= 0.75 and len(target_impl_markers) < 2
+    ) or target_specific_elements < 2
+    is_load_bearing = target_runtime_footprint and concrete_target_substrate and not over_generic
 
     reasons: list[str] = []
     if target_specific_elements >= 2:
@@ -401,21 +398,11 @@ def _build_result(
 ) -> LoadBearingCheckResult:
     passed = source_assessment.is_load_bearing and target_assessment.is_load_bearing
     if passed:
-        reasons = _unique_reasons(
-            source_assessment.reasons[:2] + target_assessment.reasons[:2]
-        )
+        reasons = _unique_reasons(source_assessment.reasons[:2] + target_assessment.reasons[:2])
     else:
         reasons = _unique_reasons(
-            (
-                source_assessment.reasons[:2]
-                if not source_assessment.is_load_bearing
-                else []
-            )
-            + (
-                target_assessment.reasons[:2]
-                if not target_assessment.is_load_bearing
-                else []
-            )
+            (source_assessment.reasons[:2] if not source_assessment.is_load_bearing else [])
+            + (target_assessment.reasons[:2] if not target_assessment.is_load_bearing else [])
         )
     return LoadBearingCheckResult(
         passed=passed,
@@ -434,15 +421,13 @@ async def _run_prompt_critique(
     system: str | None,
 ) -> dict[str, Any] | None:
     mapping_text = "\n".join(
-        (
-            f"- {mapping.source_element} -> {mapping.target_element}: "
-            f"{mapping.mechanism}"
-        )
+        (f"- {mapping.source_element} -> {mapping.target_element}: {mapping.mechanism}")
         for mapping in translation.mapping[:8]
     )
-    limitations_text = "\n".join(
-        f"- {limitation}" for limitation in translation.limitations[:5]
-    ) or "- (none listed)"
+    limitations_text = (
+        "\n".join(f"- {limitation}" for limitation in translation.limitations[:5])
+        or "- (none listed)"
+    )
     prompt = _CRITIQUE_PROMPT_TEMPLATE.format(
         invention_name=translation.invention_name,
         source_domain=translation.source_domain,

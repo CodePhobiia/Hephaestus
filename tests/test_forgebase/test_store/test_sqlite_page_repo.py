@@ -1,15 +1,14 @@
 """Tests for SQLite page repository."""
+
 from __future__ import annotations
 
 import pytest
 
-from hephaestus.forgebase.domain.enums import ActorType, PageType
+from hephaestus.forgebase.domain.enums import PageType
 from hephaestus.forgebase.domain.models import Page, PageVersion
 from hephaestus.forgebase.domain.values import (
-    ActorRef,
     BlobRef,
     ContentHash,
-    EntityId,
     Version,
 )
 from hephaestus.forgebase.store.sqlite.page_repo import SqlitePageRepository

@@ -12,7 +12,11 @@ _TOKEN_RE = re.compile(r"[a-z0-9_]+")
 
 
 def _tokenize(text: str) -> set[str]:
-    return {token for token in _TOKEN_RE.findall((text or "").lower().replace("-", "_")) if len(token) > 2}
+    return {
+        token
+        for token in _TOKEN_RE.findall((text or "").lower().replace("-", "_"))
+        if len(token) > 2
+    }
 
 
 def _coverage_ratio(subject: set[str], reference: set[str]) -> float:
@@ -114,7 +118,9 @@ def evaluate_handoff_guards(
     return HandoffGuardResult(
         bundle_id=getattr(bundle_proof, "bundle_id", None),
         current_lens_id=str(getattr(candidate, "lens_id", "")),
-        previous_lens_id=str(getattr(previous_translation, "lens_id", "")) if previous_translation is not None else None,
+        previous_lens_id=str(getattr(previous_translation, "lens_id", ""))
+        if previous_translation is not None
+        else None,
         passed=not hard_fail,
         requires_recomposition=hard_fail,
         invalidated_lens_ids=invalidated,
@@ -282,7 +288,9 @@ def _counterexample_probe(
     baseline_tokens |= _tokenize(str(getattr(candidate, "target_domain_equivalent", "") or ""))
     bundle_card = getattr(bundle_proof, "derived_card", None)
     if bundle_card is not None:
-        baseline_tokens |= _tokenize(" ".join(getattr(bundle_card, "disallowed_baselines", []) or []))
+        baseline_tokens |= _tokenize(
+            " ".join(getattr(bundle_card, "disallowed_baselines", []) or [])
+        )
 
     translation_tokens = _tokenize(
         " ".join(
@@ -297,10 +305,14 @@ def _counterexample_probe(
             )
         )
     )
-    baseline_overlap = _coverage_ratio(translation_tokens, baseline_tokens) if baseline_tokens else 0.0
+    baseline_overlap = (
+        _coverage_ratio(translation_tokens, baseline_tokens) if baseline_tokens else 0.0
+    )
     has_recovery_commitments = bool(getattr(translation, "recovery_commitments", []))
     passes = baseline_overlap <= 0.5 and (not recovery_operators or has_recovery_commitments)
-    detail = "counterexample probe found enough evidence that the architecture resists baseline collapse"
+    detail = (
+        "counterexample probe found enough evidence that the architecture resists baseline collapse"
+    )
     if not passes:
         detail = "counterexample probe indicates the bundle member collapsed into a rejected or obvious baseline"
     return GuardCheck(

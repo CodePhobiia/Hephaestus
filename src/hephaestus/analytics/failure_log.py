@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 if TYPE_CHECKING:
@@ -36,10 +37,7 @@ def _coerce_datetime(value: datetime | str | None) -> datetime | None:
     """Convert supported timestamp inputs to timezone-aware UTC datetimes."""
     if value is None:
         return None
-    if isinstance(value, str):
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    else:
-        parsed = value
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else value
 
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
@@ -245,12 +243,8 @@ class FailureRecord:
     def from_dict(cls, data: dict[str, Any]) -> FailureRecord:
         """Create a record from serialized data."""
         domain_pair = data.get("domain_pair", {})
-        source_domain = str(
-            data.get("source_domain") or domain_pair.get("source_domain", "")
-        )
-        target_domain = str(
-            data.get("target_domain") or domain_pair.get("target_domain", "")
-        )
+        source_domain = str(data.get("source_domain") or domain_pair.get("source_domain", ""))
+        target_domain = str(data.get("target_domain") or domain_pair.get("target_domain", ""))
         return cls(
             record_id=str(data.get("record_id", uuid4().hex)),
             timestamp=_serialize_timestamp(data.get("timestamp")),
@@ -268,9 +262,7 @@ class FailureRecord:
             implementation_feasibility=data.get("implementation_feasibility"),
             feasibility_rating=str(data.get("feasibility_rating", "")),
             prior_art_status=str(data.get("prior_art_status", "")),
-            verifier_critique=VerifierCritique.from_dict(
-                dict(data.get("verifier_critique", {}))
-            ),
+            verifier_critique=VerifierCritique.from_dict(dict(data.get("verifier_critique", {}))),
         )
 
     @classmethod
@@ -303,9 +295,7 @@ class FailureRecord:
             verdict=invention.verdict,
             strongest_objection=invention.adversarial_result.strongest_objection,
             fatal_flaws=list(invention.adversarial_result.fatal_flaws),
-            structural_weaknesses=list(
-                invention.adversarial_result.structural_weaknesses
-            ),
+            structural_weaknesses=list(invention.adversarial_result.structural_weaknesses),
             validity_notes=invention.validity_notes,
             feasibility_notes=invention.feasibility_notes,
             novelty_notes=invention.novelty_notes,

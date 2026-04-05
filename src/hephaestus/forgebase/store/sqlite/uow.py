@@ -1,4 +1,5 @@
 """SQLite UnitOfWork implementation."""
+
 from __future__ import annotations
 
 import aiosqlite
@@ -7,16 +8,20 @@ from hephaestus.forgebase.domain.event_types import Clock, EventFactory
 from hephaestus.forgebase.repository.content_store import StagedContentStore
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
 from hephaestus.forgebase.service.id_generator import IdGenerator
-from hephaestus.forgebase.store.sqlite.candidate_evidence_repo import SqliteCandidateEvidenceRepository
+from hephaestus.forgebase.store.sqlite.candidate_evidence_repo import (
+    SqliteCandidateEvidenceRepository,
+)
 from hephaestus.forgebase.store.sqlite.claim_derivation_repo import SqliteClaimDerivationRepository
-from hephaestus.forgebase.store.sqlite.compile_manifest_repo import SqliteCompileManifestRepository
-from hephaestus.forgebase.store.sqlite.concept_candidate_repo import SqliteConceptCandidateRepository
-from hephaestus.forgebase.store.sqlite.dirty_marker_repo import SqliteDirtyMarkerRepository
-from hephaestus.forgebase.store.sqlite.invention_meta_repo import SqliteInventionPageMetaRepository
 from hephaestus.forgebase.store.sqlite.claim_repo import SqliteClaimRepository
 from hephaestus.forgebase.store.sqlite.claim_support_repo import SqliteClaimSupportRepository
+from hephaestus.forgebase.store.sqlite.compile_manifest_repo import SqliteCompileManifestRepository
+from hephaestus.forgebase.store.sqlite.concept_candidate_repo import (
+    SqliteConceptCandidateRepository,
+)
+from hephaestus.forgebase.store.sqlite.dirty_marker_repo import SqliteDirtyMarkerRepository
 from hephaestus.forgebase.store.sqlite.event_repo import SqliteEventRepository
 from hephaestus.forgebase.store.sqlite.finding_repo import SqliteFindingRepository
+from hephaestus.forgebase.store.sqlite.invention_meta_repo import SqliteInventionPageMetaRepository
 from hephaestus.forgebase.store.sqlite.job_repo import SqliteJobRepository
 from hephaestus.forgebase.store.sqlite.link_repo import SqliteLinkRepository
 from hephaestus.forgebase.store.sqlite.lint_report_repo import SqliteLintReportRepository

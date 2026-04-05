@@ -1,4 +1,5 @@
 """SQLite implementation of CompileManifestRepository."""
+
 from __future__ import annotations
 
 import json
@@ -223,7 +224,9 @@ class SqliteCompileManifestRepository(CompileManifestRepository):
             job_id=EntityId(row["job_id"]),
             compiler_policy_version=row["compiler_policy_version"],
             prompt_versions=json.loads(row["prompt_versions"]),
-            backend_calls=[SqliteCompileManifestRepository._dict_to_call(c) for c in backend_calls_raw],
+            backend_calls=[
+                SqliteCompileManifestRepository._dict_to_call(c) for c in backend_calls_raw
+            ],
             claim_count=row["claim_count"],
             concept_count=row["concept_count"],
             relationship_count=row["relationship_count"],
@@ -242,7 +245,9 @@ class SqliteCompileManifestRepository(CompileManifestRepository):
             base_revision=VaultRevisionId(row["base_revision"]),
             synthesis_policy_version=row["synthesis_policy_version"],
             prompt_versions=json.loads(row["prompt_versions"]),
-            backend_calls=[SqliteCompileManifestRepository._dict_to_call(c) for c in backend_calls_raw],
+            backend_calls=[
+                SqliteCompileManifestRepository._dict_to_call(c) for c in backend_calls_raw
+            ],
             candidates_resolved=row["candidates_resolved"],
             augmentor_calls=row["augmentor_calls"],
             created_at=datetime.fromisoformat(row["created_at"]),

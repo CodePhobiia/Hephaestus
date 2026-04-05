@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -41,7 +40,9 @@ def _make_lens(
             f"{name} uses explicit gating instead of blind routing.",
         ],
         structural_patterns=[
-            StructuralPattern(name=f"{name.lower()}-pattern", abstract=f"{name} pattern", maps_to=maps_to)
+            StructuralPattern(
+                name=f"{name.lower()}-pattern", abstract=f"{name} pattern", maps_to=maps_to
+            )
         ],
         injection_prompt=f"Reason as {name}.",
     )
@@ -103,14 +104,30 @@ class _SelectorWithFallback(_SelectorStub):
 @pytest.mark.asyncio
 async def test_searcher_carries_bundle_proof_and_lineage() -> None:
     structure = _make_structure()
-    lens_a = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
-    lens_b = _make_lens(domain="economics", subdomain="auction", name="Auction Clearing", maps_to=["verification", "control"])
-    score_a = _make_score(lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
-    score_b = _make_score(lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"])
+    lens_a = _make_lens(
+        domain="biology",
+        subdomain="immune",
+        name="Immune Memory",
+        maps_to=["allocation", "control"],
+    )
+    lens_b = _make_lens(
+        domain="economics",
+        subdomain="auction",
+        name="Auction Clearing",
+        maps_to=["verification", "control"],
+    )
+    score_a = _make_score(
+        lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"]
+    )
+    score_b = _make_score(
+        lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"]
+    )
 
     selection = BundleComposer().select([score_a, score_b], structure)
     harness = MagicMock()
-    harness.forge = AsyncMock(side_effect=[_forge_result("Immune Memory"), _forge_result("Auction Clearing")])
+    harness.forge = AsyncMock(
+        side_effect=[_forge_result("Immune Memory"), _forge_result("Auction Clearing")]
+    )
 
     searcher = CrossDomainSearcher(
         harness=harness,
@@ -133,13 +150,31 @@ async def test_searcher_carries_bundle_proof_and_lineage() -> None:
 @pytest.mark.asyncio
 async def test_searcher_falls_back_to_singleton_when_bundle_retrieval_is_weak() -> None:
     structure = _make_structure()
-    lens_a = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
-    lens_b = _make_lens(domain="economics", subdomain="auction", name="Auction Clearing", maps_to=["verification", "control"])
-    fallback_lens = _make_lens(domain="physics", subdomain="optics", name="Optical Thresholds", maps_to=["control"])
+    lens_a = _make_lens(
+        domain="biology",
+        subdomain="immune",
+        name="Immune Memory",
+        maps_to=["allocation", "control"],
+    )
+    lens_b = _make_lens(
+        domain="economics",
+        subdomain="auction",
+        name="Auction Clearing",
+        maps_to=["verification", "control"],
+    )
+    fallback_lens = _make_lens(
+        domain="physics", subdomain="optics", name="Optical Thresholds", maps_to=["control"]
+    )
 
-    score_a = _make_score(lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
-    score_b = _make_score(lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"])
-    fallback_score = _make_score(fallback_lens, distance=0.75, relevance=0.68, matched_patterns=["control"])
+    score_a = _make_score(
+        lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"]
+    )
+    score_b = _make_score(
+        lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"]
+    )
+    fallback_score = _make_score(
+        fallback_lens, distance=0.75, relevance=0.68, matched_patterns=["control"]
+    )
 
     base_selection = BundleComposer().select([score_a, score_b], structure)
     selection = BundleSelectionResult(
@@ -180,14 +215,30 @@ async def test_searcher_falls_back_to_singleton_when_bundle_retrieval_is_weak() 
 @pytest.mark.asyncio
 async def test_searcher_can_disable_adaptive_lens_engine() -> None:
     structure = _make_structure()
-    lens_a = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
-    lens_b = _make_lens(domain="economics", subdomain="auction", name="Auction Clearing", maps_to=["verification", "control"])
-    score_a = _make_score(lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
-    score_b = _make_score(lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"])
+    lens_a = _make_lens(
+        domain="biology",
+        subdomain="immune",
+        name="Immune Memory",
+        maps_to=["allocation", "control"],
+    )
+    lens_b = _make_lens(
+        domain="economics",
+        subdomain="auction",
+        name="Auction Clearing",
+        maps_to=["verification", "control"],
+    )
+    score_a = _make_score(
+        lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"]
+    )
+    score_b = _make_score(
+        lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"]
+    )
 
     selection = BundleComposer().select([score_a, score_b], structure)
     harness = MagicMock()
-    harness.forge = AsyncMock(side_effect=[_forge_result("Immune Memory"), _forge_result("Auction Clearing")])
+    harness.forge = AsyncMock(
+        side_effect=[_forge_result("Immune Memory"), _forge_result("Auction Clearing")]
+    )
 
     searcher = CrossDomainSearcher(
         harness=harness,
@@ -207,9 +258,18 @@ async def test_searcher_can_disable_adaptive_lens_engine() -> None:
 @pytest.mark.asyncio
 async def test_searcher_records_retrieval_expansion_request() -> None:
     structure = _make_structure()
-    lens = _make_lens(domain="biology", subdomain="immune", name="Immune Memory", maps_to=["allocation", "control"])
-    score = _make_score(lens, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"])
-    selection = BundleSelectionResult(retrieval_mode="singleton", selected_lenses=(score,), fallback_lenses=())
+    lens = _make_lens(
+        domain="biology",
+        subdomain="immune",
+        name="Immune Memory",
+        maps_to=["allocation", "control"],
+    )
+    score = _make_score(
+        lens, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"]
+    )
+    selection = BundleSelectionResult(
+        retrieval_mode="singleton", selected_lenses=(score,), fallback_lenses=()
+    )
     seen_prompts: list[str] = []
 
     async def _forge(prompt: str, **_: object) -> ForgeResult:

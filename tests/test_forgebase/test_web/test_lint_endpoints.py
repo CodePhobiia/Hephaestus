@@ -1,12 +1,11 @@
 """Tests for ForgeBase linting API endpoints."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import (
     ClaimStatus,
-    FindingCategory,
-    FindingSeverity,
     PageType,
     SupportType,
 )

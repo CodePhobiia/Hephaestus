@@ -1,4 +1,5 @@
 """ForgeBase event infrastructure — dispatcher, consumers, and fanout."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.events.consumers import ConsumerRegistry, EventConsumer

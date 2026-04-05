@@ -6,13 +6,12 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from typing import Any, Sequence
+from typing import Any
 
 from hephaestus.execution.models import (
     ExecutionClass,
     RunRecord,
     RunStatus,
-    _config_hash,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,11 @@ class RunStore(ABC):
 
     @abstractmethod
     async def aggregate_cost(
-        self, *, user_id: str | None = None, tenant_id: str | None = None, since: datetime | None = None
+        self,
+        *,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        since: datetime | None = None,
     ) -> float:
         """Sum cost_usd for matching runs."""
 
@@ -132,8 +135,7 @@ class PostgresRunStore(RunStore):
             import asyncpg
         except ImportError as exc:
             raise ImportError(
-                "asyncpg is required for PostgresRunStore. "
-                "Install it with: pip install asyncpg"
+                "asyncpg is required for PostgresRunStore. Install it with: pip install asyncpg"
             ) from exc
 
         self._pool = await asyncpg.create_pool(self._dsn, min_size=2, max_size=10)
@@ -181,7 +183,9 @@ class PostgresRunStore(RunStore):
     ) -> None:
         assert self._pool is not None
         now = datetime.now(UTC)
-        entry = json.dumps({"stage": stage, "entered_at": now.isoformat(), "cost_delta": cost_delta})
+        entry = json.dumps(
+            {"stage": stage, "entered_at": now.isoformat(), "cost_delta": cost_delta}
+        )
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
@@ -195,7 +199,12 @@ class PostgresRunStore(RunStore):
                     stage_history = stage_history || $6::jsonb
                 WHERE run_id = $1
                 """,
-                run_id, stage, now, cost_delta, tokens_delta, f"[{entry}]",
+                run_id,
+                stage,
+                now,
+                cost_delta,
+                tokens_delta,
+                f"[{entry}]",
             )
 
     async def complete(
@@ -211,7 +220,10 @@ class PostgresRunStore(RunStore):
                     result_ref = COALESCE($3, result_ref), cost_usd = cost_usd + $4
                 WHERE run_id = $1
                 """,
-                run_id, now, result_ref, cost_usd,
+                run_id,
+                now,
+                result_ref,
+                cost_usd,
             )
 
     async def fail(self, run_id: str, *, error: str, stage: str = "") -> None:
@@ -225,7 +237,10 @@ class PostgresRunStore(RunStore):
                     error = $3, error_stage = $4
                 WHERE run_id = $1
                 """,
-                run_id, now, error, stage,
+                run_id,
+                now,
+                error,
+                stage,
             )
 
     async def cancel(self, run_id: str) -> bool:
@@ -238,7 +253,8 @@ class PostgresRunStore(RunStore):
                 SET status = 'cancelled', completed_at = $2, updated_at = $2
                 WHERE run_id = $1 AND status IN ('queued', 'running')
                 """,
-                run_id, now,
+                run_id,
+                now,
             )
         return result.split()[-1] != "0"  # "UPDATE N"
 
@@ -290,7 +306,8 @@ class PostgresRunStore(RunStore):
                   AND EXTRACT(EPOCH FROM created_at) > $2
                 ORDER BY created_at DESC LIMIT 1
                 """,
-                dedup_key, cutoff,
+                dedup_key,
+                cutoff,
             )
         return self._row_to_record(row) if row else None
 
@@ -339,7 +356,9 @@ class PostgresRunStore(RunStore):
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(f"SELECT COALESCE(SUM(cost_usd), 0.0) AS total FROM heph_runs {where}", *params)
+            row = await conn.fetchrow(
+                f"SELECT COALESCE(SUM(cost_usd), 0.0) AS total FROM heph_runs {where}", *params
+            )
         return float(row["total"]) if row else 0.0
 
     async def close(self) -> None:
@@ -440,11 +459,19 @@ class SQLiteRunStore(RunStore):
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
-                record.run_id, record.status.value, record.execution_class.value,
-                record.created_at.isoformat(), record.updated_at.isoformat(),
-                record.problem, json.dumps(record.config_snapshot), record.dedup_key,
-                record.current_stage, json.dumps(record.stage_history),
-                record.correlation_id, record.user_id, record.tenant_id,
+                record.run_id,
+                record.status.value,
+                record.execution_class.value,
+                record.created_at.isoformat(),
+                record.updated_at.isoformat(),
+                record.problem,
+                json.dumps(record.config_snapshot),
+                record.dedup_key,
+                record.current_stage,
+                json.dumps(record.stage_history),
+                record.correlation_id,
+                record.user_id,
+                record.tenant_id,
             ),
         )
         await self._db.commit()
@@ -628,10 +655,16 @@ class SQLiteRunStore(RunStore):
             run_id=row["run_id"],
             status=RunStatus(row["status"]),
             execution_class=ExecutionClass(row["execution_class"]),
-            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(UTC),
-            updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else datetime.now(UTC),
+            created_at=datetime.fromisoformat(row["created_at"])
+            if row["created_at"]
+            else datetime.now(UTC),
+            updated_at=datetime.fromisoformat(row["updated_at"])
+            if row["updated_at"]
+            else datetime.now(UTC),
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            completed_at=datetime.fromisoformat(row["completed_at"])
+            if row["completed_at"]
+            else None,
             problem=row["problem"],
             config_snapshot=config,
             dedup_key=row["dedup_key"],
@@ -648,7 +681,9 @@ class SQLiteRunStore(RunStore):
         )
 
 
-def create_run_store(*, backend: str = "sqlite", dsn: str = "", db_path: str = ":memory:") -> RunStore:
+def create_run_store(
+    *, backend: str = "sqlite", dsn: str = "", db_path: str = ":memory:"
+) -> RunStore:
     """Factory function for creating the appropriate RunStore backend."""
     if backend == "postgres":
         if not dsn:

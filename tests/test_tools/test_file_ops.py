@@ -1,7 +1,5 @@
 """Tests for file operation tools."""
 
-import pytest
-
 from hephaestus.tools.file_ops import (
     grep_search,
     list_directory,
@@ -10,10 +8,10 @@ from hephaestus.tools.file_ops import (
     write_file,
 )
 
-
 # ---------------------------------------------------------------------------
 # read_file
 # ---------------------------------------------------------------------------
+
 
 class TestReadFile:
     def test_read_existing(self, tmp_path):
@@ -40,6 +38,7 @@ class TestReadFile:
 # ---------------------------------------------------------------------------
 # write_file
 # ---------------------------------------------------------------------------
+
 
 class TestWriteFile:
     def test_write_new(self, tmp_path):
@@ -77,6 +76,7 @@ class TestWriteFile:
 # list_directory
 # ---------------------------------------------------------------------------
 
+
 class TestListDirectory:
     def test_lists_entries(self, tmp_path):
         (tmp_path / "a.txt").write_text("a")
@@ -108,6 +108,7 @@ class TestListDirectory:
 # search_files
 # ---------------------------------------------------------------------------
 
+
 class TestSearchFiles:
     def test_finds_by_pattern(self, tmp_path):
         (tmp_path / "foo.py").write_text("")
@@ -129,6 +130,7 @@ class TestSearchFiles:
 # ---------------------------------------------------------------------------
 # grep_search
 # ---------------------------------------------------------------------------
+
 
 class TestGrepSearch:
     def test_finds_content(self, tmp_path):

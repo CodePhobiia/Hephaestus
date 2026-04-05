@@ -1,4 +1,5 @@
 """Tests for MissingFigureDetector."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -10,9 +11,8 @@ from hephaestus.forgebase.domain.enums import (
     FindingSeverity,
     FindingStatus,
     PageType,
-    SourceFormat,
-    SourceTrustTier,
 )
+from hephaestus.forgebase.domain.event_types import FixedClock
 from hephaestus.forgebase.domain.models import (
     LintFinding,
     Page,
@@ -23,14 +23,12 @@ from hephaestus.forgebase.domain.values import (
     ContentHash,
     Version,
 )
-from hephaestus.forgebase.domain.event_types import FixedClock
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.linting.detectors.missing_figure import (
     MissingFigureDetector,
 )
 from hephaestus.forgebase.linting.state import VaultLintState
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -94,10 +92,12 @@ async def test_detects_empty_alt_text(env):
     uow = fb.uow_factory()
     async with uow:
         page_id = await _create_page(
-            uow, vault.vault_id,
+            uow,
+            vault.vault_id,
             "# Test Page\n\nSome text.\n\n![](image.png)\n\nMore text.",
             "Empty Alt Page",
-            clock, id_gen,
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -108,8 +108,7 @@ async def test_detects_empty_alt_text(env):
         findings = await detector.detect(state)
 
         figure_findings = [
-            f for f in findings
-            if f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
+            f for f in findings if f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
         ]
         assert len(figure_findings) >= 1
         assert figure_findings[0].severity == FindingSeverity.INFO
@@ -124,10 +123,12 @@ async def test_detects_generic_alt_text(env):
     uow = fb.uow_factory()
     async with uow:
         page_id = await _create_page(
-            uow, vault.vault_id,
+            uow,
+            vault.vault_id,
             "# Page\n\n![image](diagram.png)\n\nText after.",
             "Generic Alt Page",
-            clock, id_gen,
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -138,8 +139,7 @@ async def test_detects_generic_alt_text(env):
         findings = await detector.detect(state)
 
         figure_findings = [
-            f for f in findings
-            if f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
+            f for f in findings if f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
         ]
         assert len(figure_findings) >= 1
         assert "generic" in figure_findings[0].description.lower()
@@ -153,10 +153,12 @@ async def test_no_finding_for_meaningful_alt(env):
     uow = fb.uow_factory()
     async with uow:
         page_id = await _create_page(
-            uow, vault.vault_id,
+            uow,
+            vault.vault_id,
             "# Page\n\n![Diagram showing SEI layer formation](diagram.png)\n\nText.",
             "Good Alt Page",
-            clock, id_gen,
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -183,10 +185,12 @@ async def test_detects_html_img_empty_alt(env):
     uow = fb.uow_factory()
     async with uow:
         page_id = await _create_page(
-            uow, vault.vault_id,
+            uow,
+            vault.vault_id,
             '# HTML Page\n\n<img src="photo.jpg" alt="" />\n\nText.',
             "HTML Empty Alt",
-            clock, id_gen,
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -197,7 +201,8 @@ async def test_detects_html_img_empty_alt(env):
         findings = await detector.detect(state)
 
         figure_findings = [
-            f for f in findings
+            f
+            for f in findings
             if f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
             and str(page_id) in {str(e) for e in f.affected_entity_ids}
         ]
@@ -212,10 +217,12 @@ async def test_no_finding_for_page_without_images(env):
     uow = fb.uow_factory()
     async with uow:
         page_id = await _create_page(
-            uow, vault.vault_id,
+            uow,
+            vault.vault_id,
             "# Text Only\n\nThis page has no images at all.",
             "Text Only Page",
-            clock, id_gen,
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -226,7 +233,8 @@ async def test_no_finding_for_page_without_images(env):
         findings = await detector.detect(state)
 
         flagged = [
-            f for f in findings
+            f
+            for f in findings
             if f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
             and str(page_id) in {str(e) for e in f.affected_entity_ids}
         ]
@@ -241,10 +249,12 @@ async def test_is_resolved_when_alt_text_added(env):
     uow = fb.uow_factory()
     async with uow:
         page_id = await _create_page(
-            uow, vault.vault_id,
+            uow,
+            vault.vault_id,
             "# Page\n\n![](bad.png)\n\nText.",
             "Fix Alt Page",
-            clock, id_gen,
+            clock,
+            id_gen,
         )
         await uow.commit()
 
@@ -254,10 +264,7 @@ async def test_is_resolved_when_alt_text_added(env):
         state = VaultLintState(uow2, vault.vault_id)
         detector = MissingFigureDetector()
         findings = await detector.detect(state)
-        assert any(
-            f.category == FindingCategory.MISSING_FIGURE_EXPLANATION
-            for f in findings
-        )
+        assert any(f.category == FindingCategory.MISSING_FIGURE_EXPLANATION for f in findings)
         await uow2.rollback()
 
     # Fix: update the page content with a meaningful alt text

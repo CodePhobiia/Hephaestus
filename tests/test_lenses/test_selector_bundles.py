@@ -35,9 +35,15 @@ def _make_lens(lens_id: str, *, maps_to: list[str], domain: str) -> Lens:
 
 def test_select_plan_prefers_bundle_when_strong_bundle_exists() -> None:
     lenses = {
-        "biology_immune": _make_lens("biology_immune", maps_to=["trust", "verification"], domain="biology"),
-        "economics_markets": _make_lens("economics_markets", maps_to=["trust", "allocation"], domain="economics"),
-        "military_logistics": _make_lens("military_logistics", maps_to=["allocation", "routing"], domain="military"),
+        "biology_immune": _make_lens(
+            "biology_immune", maps_to=["trust", "verification"], domain="biology"
+        ),
+        "economics_markets": _make_lens(
+            "economics_markets", maps_to=["trust", "allocation"], domain="economics"
+        ),
+        "military_logistics": _make_lens(
+            "military_logistics", maps_to=["allocation", "routing"], domain="military"
+        ),
     }
     cards = {lens_id: compile_lens_card(lens) for lens_id, lens in lenses.items()}
     lineages = {
@@ -79,7 +85,9 @@ def test_select_plan_prefers_bundle_when_strong_bundle_exists() -> None:
 def test_select_plan_falls_back_to_singletons_when_bundle_is_weak() -> None:
     lenses = {
         "biology_immune": _make_lens("biology_immune", maps_to=["trust"], domain="biology"),
-        "economics_markets": _make_lens("economics_markets", maps_to=["allocation"], domain="economics"),
+        "economics_markets": _make_lens(
+            "economics_markets", maps_to=["allocation"], domain="economics"
+        ),
     }
     cards = {lens_id: compile_lens_card(lens) for lens_id, lens in lenses.items()}
     lineages = {

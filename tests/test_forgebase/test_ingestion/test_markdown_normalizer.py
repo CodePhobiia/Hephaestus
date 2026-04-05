@@ -1,4 +1,5 @@
 """Tests for markdown normalizer."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.ingestion.markdown_normalizer import normalize_markdown
@@ -76,7 +77,7 @@ class TestHandlesEmptyInput:
 
 class TestHandlesUtf8WithSpecialChars:
     def test_handles_utf8_with_special_chars(self) -> None:
-        raw = "Hello café résumé naïve 日本語".encode("utf-8")
+        raw = "Hello café résumé naïve 日本語".encode()
         result = normalize_markdown(raw)
         text = result.decode("utf-8")
         assert "café" in text

@@ -1,10 +1,10 @@
 """Tests for FindingVerificationJob — post-merge detector-specific verification."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import (
-    ClaimStatus,
     FindingCategory,
     FindingDisposition,
     FindingSeverity,
@@ -12,15 +12,10 @@ from hephaestus.forgebase.domain.enums import (
     LinkKind,
     PageType,
     RemediationStatus,
-    SupportType,
 )
 from hephaestus.forgebase.domain.models import LintFinding
-from hephaestus.forgebase.domain.values import ActorRef, EntityId
 from hephaestus.forgebase.linting.detectors.broken_reference import (
     BrokenReferenceDetector,
-)
-from hephaestus.forgebase.linting.detectors.unsupported_claim import (
-    UnsupportedClaimDetector,
 )
 from hephaestus.forgebase.linting.remediation.verification_job import (
     FindingVerificationJob,
@@ -30,8 +25,6 @@ from hephaestus.forgebase.service.link_service import LinkService
 from hephaestus.forgebase.service.lint_service import LintService
 from hephaestus.forgebase.service.page_service import PageService
 from hephaestus.forgebase.service.vault_service import VaultService
-from hephaestus.forgebase.linting.analyzers.mock_analyzer import MockLintAnalyzer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -63,7 +56,10 @@ class TestResolvedFindingGetsResolvedDisposition:
 
     @pytest.mark.asyncio
     async def test_resolved_finding_gets_resolved_disposition(
-        self, uow_factory, actor, id_gen,
+        self,
+        uow_factory,
+        actor,
+        id_gen,
     ):
         vault = await _create_vault(uow_factory, actor)
         lint_svc = LintService(uow_factory=uow_factory, default_actor=actor)
@@ -150,7 +146,10 @@ class TestUnresolvedFindingGetsReopened:
 
     @pytest.mark.asyncio
     async def test_unresolved_finding_gets_reopened(
-        self, uow_factory, actor, id_gen,
+        self,
+        uow_factory,
+        actor,
+        id_gen,
     ):
         vault = await _create_vault(uow_factory, actor)
         lint_svc = LintService(uow_factory=uow_factory, default_actor=actor)

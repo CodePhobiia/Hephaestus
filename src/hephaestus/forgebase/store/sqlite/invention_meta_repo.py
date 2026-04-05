@@ -1,4 +1,5 @@
 """SQLite implementation of InventionPageMetaRepository."""
+
 from __future__ import annotations
 
 import json
@@ -61,9 +62,7 @@ class SqliteInventionPageMetaRepository(InventionPageMetaRepository):
             return None
         return self._row_to_meta(row)
 
-    async def update_state(
-        self, page_id: EntityId, state: InventionEpistemicState
-    ) -> None:
+    async def update_state(self, page_id: EntityId, state: InventionEpistemicState) -> None:
         await self._db.execute(
             "UPDATE fb_invention_page_meta SET invention_state = ?, updated_at = ? WHERE page_id = ?",
             (state.value, datetime.now().isoformat(), str(page_id)),

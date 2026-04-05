@@ -1,6 +1,9 @@
 """Extraction and synthesis result schemas."""
+
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+
 from hephaestus.forgebase.domain.enums import CandidateKind, SupportType
 from hephaestus.forgebase.domain.values import EntityId, EvidenceSegmentRef
 

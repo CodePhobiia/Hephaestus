@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from hephaestus.core.recovery import (
-    PartialResult,
     PipelineCheckpoint,
     extract_partial_result,
     format_error_hint,
@@ -24,11 +21,17 @@ class TestPipelineCheckpoint:
 
     def test_is_complete(self):
         assert PipelineCheckpoint(problem="", stage_completed=5, stage_name="Verify").is_complete
-        assert not PipelineCheckpoint(problem="", stage_completed=4, stage_name="Translate").is_complete
+        assert not PipelineCheckpoint(
+            problem="", stage_completed=4, stage_name="Translate"
+        ).is_complete
 
     def test_has_partial(self):
-        assert PipelineCheckpoint(problem="", stage_completed=3, stage_name="Score").has_partial_results
-        assert not PipelineCheckpoint(problem="", stage_completed=1, stage_name="Decompose").has_partial_results
+        assert PipelineCheckpoint(
+            problem="", stage_completed=3, stage_name="Score"
+        ).has_partial_results
+        assert not PipelineCheckpoint(
+            problem="", stage_completed=1, stage_name="Decompose"
+        ).has_partial_results
 
 
 class TestExtractPartialResult:
@@ -38,8 +41,11 @@ class TestExtractPartialResult:
 
     def test_from_scored(self):
         cp = PipelineCheckpoint(
-            problem="test", stage_completed=3, stage_name="Score",
-            scored=["candidate1"], error="translation failed"
+            problem="test",
+            stage_completed=3,
+            stage_name="Score",
+            scored=["candidate1"],
+            error="translation failed",
         )
         result = extract_partial_result(cp)
         assert result is not None
@@ -48,16 +54,22 @@ class TestExtractPartialResult:
 
     def test_from_translations(self):
         cp = PipelineCheckpoint(
-            problem="test", stage_completed=4, stage_name="Translate",
-            translations=["trans1"], error="verify timeout"
+            problem="test",
+            stage_completed=4,
+            stage_name="Translate",
+            translations=["trans1"],
+            error="verify timeout",
         )
         result = extract_partial_result(cp)
         assert result.best_candidate == "trans1"
 
     def test_from_verified(self):
         cp = PipelineCheckpoint(
-            problem="test", stage_completed=5, stage_name="Verify",
-            verified=["inv1"], error="interrupted"
+            problem="test",
+            stage_completed=5,
+            stage_name="Verify",
+            verified=["inv1"],
+            error="interrupted",
         )
         result = extract_partial_result(cp)
         assert result.best_candidate == "inv1"

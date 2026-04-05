@@ -1,7 +1,9 @@
 """LintService — schedule lint, manage findings, complete/fail."""
+
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
@@ -196,9 +198,7 @@ class LintService:
                 raise EntityNotFoundError("Job", str(job_id))
 
             now = uow.clock.now()
-            await uow.jobs.update_status(
-                job_id, JobStatus.COMPLETED, completed_at=now
-            )
+            await uow.jobs.update_status(job_id, JobStatus.COMPLETED, completed_at=now)
 
             uow.record_event(
                 uow.event_factory.create(
@@ -242,7 +242,10 @@ class LintService:
                 raise EntityNotFoundError("LintFinding", str(finding_id))
 
             await uow.findings.update_remediation_status(
-                finding_id, remediation_status, route=route, route_source=route_source,
+                finding_id,
+                remediation_status,
+                route=route,
+                route_source=route_source,
             )
 
             # Determine event type
@@ -360,7 +363,9 @@ class LintService:
                 raise EntityNotFoundError("LintFinding", str(finding_id))
 
             await uow.findings.set_repair_workbook(
-                finding_id, repair_workbook_id, repair_batch_id,
+                finding_id,
+                repair_workbook_id,
+                repair_batch_id,
             )
 
             uow.record_event(

@@ -1,4 +1,5 @@
 """SQLite implementation of WorkbookRepository."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -100,7 +101,9 @@ class SqliteWorkbookRepository(WorkbookRepository):
             ),
         )
 
-    async def get_page_head(self, workbook_id: EntityId, page_id: EntityId) -> BranchPageHead | None:
+    async def get_page_head(
+        self, workbook_id: EntityId, page_id: EntityId
+    ) -> BranchPageHead | None:
         cursor = await self._db.execute(
             "SELECT * FROM fb_branch_page_heads WHERE workbook_id = ? AND page_id = ?",
             (str(workbook_id), str(page_id)),
@@ -146,7 +149,9 @@ class SqliteWorkbookRepository(WorkbookRepository):
             ),
         )
 
-    async def get_claim_head(self, workbook_id: EntityId, claim_id: EntityId) -> BranchClaimHead | None:
+    async def get_claim_head(
+        self, workbook_id: EntityId, claim_id: EntityId
+    ) -> BranchClaimHead | None:
         cursor = await self._db.execute(
             "SELECT * FROM fb_branch_claim_heads WHERE workbook_id = ? AND claim_id = ?",
             (str(workbook_id), str(claim_id)),
@@ -192,7 +197,9 @@ class SqliteWorkbookRepository(WorkbookRepository):
             ),
         )
 
-    async def get_link_head(self, workbook_id: EntityId, link_id: EntityId) -> BranchLinkHead | None:
+    async def get_link_head(
+        self, workbook_id: EntityId, link_id: EntityId
+    ) -> BranchLinkHead | None:
         cursor = await self._db.execute(
             "SELECT * FROM fb_branch_link_heads WHERE workbook_id = ? AND link_id = ?",
             (str(workbook_id), str(link_id)),
@@ -238,7 +245,9 @@ class SqliteWorkbookRepository(WorkbookRepository):
             ),
         )
 
-    async def get_source_head(self, workbook_id: EntityId, source_id: EntityId) -> BranchSourceHead | None:
+    async def get_source_head(
+        self, workbook_id: EntityId, source_id: EntityId
+    ) -> BranchSourceHead | None:
         cursor = await self._db.execute(
             "SELECT * FROM fb_branch_source_heads WHERE workbook_id = ? AND source_id = ?",
             (str(workbook_id), str(source_id)),
@@ -312,7 +321,9 @@ class SqliteWorkbookRepository(WorkbookRepository):
             ),
         )
 
-    async def list_claim_derivation_heads(self, workbook_id: EntityId) -> list[BranchClaimDerivationHead]:
+    async def list_claim_derivation_heads(
+        self, workbook_id: EntityId
+    ) -> list[BranchClaimDerivationHead]:
         cursor = await self._db.execute(
             "SELECT * FROM fb_branch_claim_derivation_heads WHERE workbook_id = ?",
             (str(workbook_id),),

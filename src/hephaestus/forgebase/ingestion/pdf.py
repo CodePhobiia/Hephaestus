@@ -1,4 +1,5 @@
 """PDF normalization — stub implementation."""
+
 from __future__ import annotations
 
 

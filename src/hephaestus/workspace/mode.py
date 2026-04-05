@@ -8,7 +8,7 @@ while applying cross-domain structural insights.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +17,6 @@ from hephaestus.session.schema import Session, SessionMeta
 from hephaestus.tools.permissions import PermissionMode, PermissionPolicy
 from hephaestus.tools.registry import ToolDefinition, ToolRegistry
 from hephaestus.workspace.context import WorkspaceContext
-from hephaestus.workspace.scanner import WorkspaceScanner
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +49,7 @@ from distant domains to propose novel solutions, then implement them directly.
 @dataclass
 class WorkspaceConfig:
     """Configuration for workspace mode."""
+
     root: Path
     permission_mode: PermissionMode = PermissionMode.WORKSPACE_WRITE
     context_budget: int = 24_000
@@ -88,7 +88,7 @@ class WorkspaceMode:
         *,
         permission_mode: PermissionMode = PermissionMode.WORKSPACE_WRITE,
         context_budget: int = 24_000,
-    ) -> "WorkspaceMode":
+    ) -> WorkspaceMode:
         """Create a workspace mode for a directory.
 
         Parameters
@@ -119,10 +119,12 @@ class WorkspaceMode:
         policy = PermissionPolicy(permission_mode, workspace_root=root, registry=registry)
 
         # Build session
-        session = Session(meta=SessionMeta(
-            name=f"workspace:{root.name}",
-            model=getattr(adapter, "model", "unknown"),
-        ))
+        session = Session(
+            meta=SessionMeta(
+                name=f"workspace:{root.name}",
+                model=getattr(adapter, "model", "unknown"),
+            )
+        )
         session.bind_reference_lot(
             kind="workspace",
             subject_key=root.name,
@@ -180,111 +182,147 @@ def _build_workspace_registry(root: Path) -> ToolRegistry:
 
     registry = ToolRegistry()
 
-    registry.register(ToolDefinition(
-        name="read_file",
-        description="Read the contents of a file in the workspace.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "File path (relative to workspace root or absolute)."},
-                "max_chars": {"type": "integer", "description": "Max characters to read.", "default": 20000},
+    registry.register(
+        ToolDefinition(
+            name="read_file",
+            description="Read the contents of a file in the workspace.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path (relative to workspace root or absolute).",
+                    },
+                    "max_chars": {
+                        "type": "integer",
+                        "description": "Max characters to read.",
+                        "default": 20000,
+                    },
+                },
+                "required": ["path"],
             },
-            "required": ["path"],
-        },
-        category="read",
-        handler=lambda path, max_chars=20000: read_file(
-            str(root / path) if not Path(path).is_absolute() else path,
-            max_chars=max_chars,
-        ),
-    ))
+            category="read",
+            handler=lambda path, max_chars=20000: read_file(
+                str(root / path) if not Path(path).is_absolute() else path,
+                max_chars=max_chars,
+            ),
+        )
+    )
 
-    registry.register(ToolDefinition(
-        name="write_file",
-        description="Write content to a file in the workspace. Creates parent directories if needed.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "File path (relative to workspace root)."},
-                "content": {"type": "string", "description": "Content to write."},
+    registry.register(
+        ToolDefinition(
+            name="write_file",
+            description="Write content to a file in the workspace. Creates parent directories if needed.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path (relative to workspace root).",
+                    },
+                    "content": {"type": "string", "description": "Content to write."},
+                },
+                "required": ["path", "content"],
             },
-            "required": ["path", "content"],
-        },
-        category="write",
-        handler=lambda path, content: write_file(
-            str(root / path) if not Path(path).is_absolute() else path,
-            content,
-            workspace_root=str(root),
-        ),
-    ))
+            category="write",
+            handler=lambda path, content: write_file(
+                str(root / path) if not Path(path).is_absolute() else path,
+                content,
+                workspace_root=str(root),
+            ),
+        )
+    )
 
-    registry.register(ToolDefinition(
-        name="edit_file",
-        description="Replace a specific text pattern in a file. Use for precise edits.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "File path."},
-                "old_text": {"type": "string", "description": "Exact text to find and replace."},
-                "new_text": {"type": "string", "description": "Replacement text."},
+    registry.register(
+        ToolDefinition(
+            name="edit_file",
+            description="Replace a specific text pattern in a file. Use for precise edits.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "File path."},
+                    "old_text": {
+                        "type": "string",
+                        "description": "Exact text to find and replace.",
+                    },
+                    "new_text": {"type": "string", "description": "Replacement text."},
+                },
+                "required": ["path", "old_text", "new_text"],
             },
-            "required": ["path", "old_text", "new_text"],
-        },
-        category="write",
-        handler=lambda path, old_text, new_text: _edit_file(root, path, old_text, new_text),
-    ))
+            category="write",
+            handler=lambda path, old_text, new_text: _edit_file(root, path, old_text, new_text),
+        )
+    )
 
-    registry.register(ToolDefinition(
-        name="list_directory",
-        description="List files and subdirectories in a directory.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "Directory path.", "default": "."},
-                "max_entries": {"type": "integer", "default": 100},
+    registry.register(
+        ToolDefinition(
+            name="list_directory",
+            description="List files and subdirectories in a directory.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Directory path.", "default": "."},
+                    "max_entries": {"type": "integer", "default": 100},
+                },
             },
-        },
-        category="read",
-        handler=lambda path=".", max_entries=100: list_directory(
-            str(root / path) if not Path(path).is_absolute() else path,
-            max_entries=max_entries,
-        ),
-    ))
+            category="read",
+            handler=lambda path=".", max_entries=100: list_directory(
+                str(root / path) if not Path(path).is_absolute() else path,
+                max_entries=max_entries,
+            ),
+        )
+    )
 
-    registry.register(ToolDefinition(
-        name="search_files",
-        description="Find files matching a glob pattern in the workspace.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "pattern": {"type": "string", "description": "Glob pattern (e.g. '*.py', 'test_*.js')."},
-                "directory": {"type": "string", "description": "Directory to search.", "default": "."},
+    registry.register(
+        ToolDefinition(
+            name="search_files",
+            description="Find files matching a glob pattern in the workspace.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern (e.g. '*.py', 'test_*.js').",
+                    },
+                    "directory": {
+                        "type": "string",
+                        "description": "Directory to search.",
+                        "default": ".",
+                    },
+                },
+                "required": ["pattern"],
             },
-            "required": ["pattern"],
-        },
-        category="read",
-        handler=lambda pattern, directory=".": search_files(
-            pattern,
-            str(root / directory) if not Path(directory).is_absolute() else directory,
-        ),
-    ))
+            category="read",
+            handler=lambda pattern, directory=".": search_files(
+                pattern,
+                str(root / directory) if not Path(directory).is_absolute() else directory,
+            ),
+        )
+    )
 
-    registry.register(ToolDefinition(
-        name="grep_search",
-        description="Search file contents for a text pattern.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Text to search for."},
-                "directory": {"type": "string", "description": "Directory to search.", "default": "."},
+    registry.register(
+        ToolDefinition(
+            name="grep_search",
+            description="Search file contents for a text pattern.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Text to search for."},
+                    "directory": {
+                        "type": "string",
+                        "description": "Directory to search.",
+                        "default": ".",
+                    },
+                },
+                "required": ["query"],
             },
-            "required": ["query"],
-        },
-        category="read",
-        handler=lambda query, directory=".": grep_search(
-            query,
-            str(root / directory) if not Path(directory).is_absolute() else directory,
-        ),
-    ))
+            category="read",
+            handler=lambda query, directory=".": grep_search(
+                query,
+                str(root / directory) if not Path(directory).is_absolute() else directory,
+            ),
+        )
+    )
 
     return registry
 

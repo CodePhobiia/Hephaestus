@@ -3,6 +3,7 @@
 Creates a ForgeBase instance with MockCompilerBackend, ingests and compiles
 sources, then creates problematic state to trigger specific detectors.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -13,7 +14,6 @@ from hephaestus.forgebase.domain.enums import (
     ClaimStatus,
     FindingCategory,
     FindingDisposition,
-    FindingSeverity,
     JobStatus,
     PageType,
     RemediationStatus,
@@ -31,7 +31,6 @@ from hephaestus.forgebase.domain.models import (
 from hephaestus.forgebase.domain.values import (
     ActorRef,
     ContentHash,
-    EntityId,
     Version,
 )
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
@@ -49,7 +48,6 @@ from hephaestus.forgebase.linting.detectors.unsupported_claim import (
 from hephaestus.forgebase.linting.engine import LintEngine
 from hephaestus.forgebase.linting.state import VaultLintState
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Helpers: a detector that always raises
@@ -269,9 +267,7 @@ async def test_run_lint_reopens_resolved(env):
 
     # Mark findings as RESOLVED disposition
     for f in all_findings:
-        await fb.lint.update_finding_disposition(
-            f.finding_id, FindingDisposition.RESOLVED
-        )
+        await fb.lint.update_finding_disposition(f.finding_id, FindingDisposition.RESOLVED)
 
     # Second run: should reopen resolved findings
     clock.tick(10)
@@ -296,10 +292,7 @@ async def test_run_lint_triages_findings(env):
     uow = fb.uow_factory()
     async with uow:
         all_findings = await uow.findings.list_by_vault(vault.vault_id)
-        triaged = [
-            f for f in all_findings
-            if f.remediation_status == RemediationStatus.TRIAGED
-        ]
+        triaged = [f for f in all_findings if f.remediation_status == RemediationStatus.TRIAGED]
         # At least the new findings should be triaged
         assert len(triaged) > 0
         # Every triaged finding should have a route
@@ -380,8 +373,10 @@ async def test_detector_failure_doesnt_kill_lint(env):
     assert report.finding_count > 0
     categories_found = set(report.findings_by_category.keys())
     # The working detectors should have produced their findings
-    assert FindingCategory.UNSUPPORTED_CLAIM.value in categories_found or \
-        FindingCategory.UNRESOLVED_TODO.value in categories_found
+    assert (
+        FindingCategory.UNSUPPORTED_CLAIM.value in categories_found
+        or FindingCategory.UNRESOLVED_TODO.value in categories_found
+    )
 
     # Job should still complete successfully
     uow = fb.uow_factory()

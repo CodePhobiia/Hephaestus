@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +73,7 @@ _KNOWN_PATTERNS = [
 @dataclass
 class QualityAssessment:
     """Result of the quality gate assessment."""
+
     passed: bool
     score_adjustment: float = 0.0  # negative = penalty
     decorative_signal_count: int = 0
@@ -140,7 +140,12 @@ def assess_invention_quality(
     # Check if baseline comparison reveals no difference
     if baseline_comparison:
         base_lower = baseline_comparison.lower()
-        no_diff_markers = ["essentially the same", "no significant", "similar approach", "same mechanism"]
+        no_diff_markers = [
+            "essentially the same",
+            "no significant",
+            "similar approach",
+            "same mechanism",
+        ]
         if any(m in base_lower for m in no_diff_markers):
             flags.append("BASELINE_MATCH: invention matches conventional baseline")
 

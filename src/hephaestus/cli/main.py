@@ -26,6 +26,7 @@ All options
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 from pathlib import Path
@@ -39,14 +40,13 @@ from hephaestus.cli.display import (
     StageProgress,
     make_console,
     print_banner,
-    print_cost_table,
     print_error,
     print_invention_report,
     print_quiet_result,
     print_success,
-    print_trace,
-    print_warning,
 )
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Version callback
@@ -94,7 +94,9 @@ def _version_callback(ctx: click.Context, _param: click.Parameter, value: bool) 
     "-m",
     default="both",
     show_default=True,
-    type=click.Choice(["claude-max", "claude-cli", "codex", "opus", "gpt5", "both"], case_sensitive=False),
+    type=click.Choice(
+        ["claude-max", "claude-cli", "codex", "opus", "gpt5", "both"], case_sensitive=False
+    ),
     help="Backend/model preset to use: claude-max, claude-cli, codex, opus, gpt5, or both.",
 )
 @click.option(
@@ -270,6 +272,14 @@ def cli(
             format="%(asctime)s %(name)s %(levelname)s %(message)s",
             datefmt="%H:%M:%S",
         )
+    else:
+        # Show agent-sdk activity so the user sees what Claude is doing
+        _logging.basicConfig(
+            level=_logging.WARNING,
+            format="  %(message)s",
+        )
+        _logging.getLogger("hephaestus.deepforge.adapters.agent_sdk").setLevel(_logging.INFO)
+        _logging.getLogger("hephaestus.core.genesis").setLevel(_logging.INFO)
     console = make_console(quiet=quiet)
     use_branchgenome_v1 = False
     use_adaptive_lens_engine = True
@@ -294,7 +304,7 @@ def cli(
         resolved = layered.resolve()
 
         # Use config values where CLI didn't explicitly override
-        _VALID_CLI_MODELS = {"claude-max", "claude-cli", "codex", "opus", "gpt5", "both"}
+        _VALID_CLI_MODELS = {"claude-max", "claude-cli", "codex", "opus", "gpt5", "both"} # noqa: N806
         src = ctx.get_parameter_source
         if src("depth") != click.core.ParameterSource.COMMANDLINE:
             depth = resolved.depth
@@ -321,12 +331,14 @@ def cli(
         pantheon_require_unanimity = getattr(resolved, "pantheon_require_unanimity", True)
         pantheon_allow_fail_closed = getattr(resolved, "pantheon_allow_fail_closed", True)
         pantheon_resolution_mode = getattr(resolved, "pantheon_resolution_mode", "TASK_SENSITIVE")
-        pantheon_max_survivors_to_council = getattr(resolved, "pantheon_max_survivors_to_council", 2)
+        pantheon_max_survivors_to_council = getattr(
+            resolved, "pantheon_max_survivors_to_council", 2
+        )
         pantheon_athena_model = getattr(resolved, "pantheon_athena_model", None)
         pantheon_hermes_model = getattr(resolved, "pantheon_hermes_model", None)
         pantheon_apollo_model = getattr(resolved, "pantheon_apollo_model", None)
     except Exception as exc:
-        logger = __import__('logging').getLogger(__name__)
+        logger = __import__("logging").getLogger(__name__)
         logger.warning("Config load failed, using CLI defaults: %s", exc)
 
     # ── Benchmark corpus mode ────────────────────────────────────────────────
@@ -335,7 +347,7 @@ def cli(
             print_error(
                 console,
                 "--benchmark-corpus runs as a standalone research mode.",
-                hint="Use `heph --benchmark-corpus \"topic\"` without a problem, --raw, or --interactive.",
+                hint='Use `heph --benchmark-corpus "topic"` without a problem, --raw, or --interactive.',
             )
             sys.exit(1)
 
@@ -356,7 +368,7 @@ def cli(
                 )
             )
         except KeyboardInterrupt:
-            console.print(f"\n  [dim]Interrupted by user.[/]")
+            console.print("\n  [dim]Interrupted by user.[/]")
             sys.exit(130)
         except Exception as exc:
             msg = str(exc) or exc.__class__.__name__
@@ -376,6 +388,7 @@ def cli(
         workspace_root = None
         try:
             from hephaestus.workspace.scanner import WorkspaceScanner
+
             cwd = Path.cwd()
             scanner = WorkspaceScanner(cwd, max_files=200, include_repo_dossier=False)
             quick_summary = scanner.scan()
@@ -383,12 +396,12 @@ def cli(
                 workspace_root = cwd
                 if not quiet:
                     console.print(
-                        f"  [dim]📂 Workspace detected:[/] [cyan]{cwd.name}/[/] "
+                        f"  [dim]📂 Workspace detected:[/] [dark_orange]{cwd.name}/[/] "
                         f"[dim]({quick_summary.total_files} files, "
                         f"{quick_summary.primary_language})[/]"
                     )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Workspace auto-detection failed: %s", exc)
 
         run_interactive(console, model=model, layered_config=layered, workspace_root=workspace_root)
         return
@@ -399,8 +412,8 @@ def cli(
             print_banner(console)
         console.print(
             "  [yellow]Provide a problem description.[/]\n\n"
-            "  Example:  [cyan]heph \"I need a load balancer for traffic spikes\"[/]\n\n"
-            "  Run [cyan]heph --interactive[/] for the REPL or [cyan]heph --help[/] for all options."
+            '  Example:  [dark_orange]heph "I need a load balancer for traffic spikes"[/]\n\n'
+            "  Run [dark_orange]heph --interactive[/] for the REPL or [dark_orange]heph --help[/] for all options."
         )
         sys.exit(0)
 
@@ -409,7 +422,7 @@ def cli(
     openai_key = os.environ.get("OPENAI_API_KEY")
 
     model_lower = model.lower()
-    if model_lower in ("claude-max", "claude-cli", "codex"):
+    if model_lower in ("agent-sdk", "claude-max", "claude-cli", "codex"):
         pass
     elif model_lower in ("opus", "both") and not anthropic_key:
         print_error(
@@ -482,7 +495,7 @@ def cli(
                 )
             )
     except KeyboardInterrupt:
-        console.print(f"\n  [dim]Interrupted by user.[/]")
+        console.print("\n  [dim]Interrupted by user.[/]")
         sys.exit(130)
     except Exception as exc:
         msg = str(exc) or exc.__class__.__name__
@@ -534,7 +547,6 @@ async def _run_genesis(
     """Run the full Genesis invention pipeline."""
     from hephaestus.core.genesis import (
         Genesis,
-        GenesisConfig,
         PipelineStage,
     )
 
@@ -565,7 +577,21 @@ async def _run_genesis(
         pantheon_apollo_model=pantheon_apollo_model,
     )
 
-    genesis = Genesis(config)
+    # Initialize ForgeBase if transliminality is enabled
+    _fb = None
+    if config.transliminality_enabled:
+        try:
+            from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
+
+            _fb_data_dir = Path.home() / ".hephaestus"
+            _fb_data_dir.mkdir(parents=True, exist_ok=True)
+            _fb = await create_forgebase(
+                ForgeBaseConfig(sqlite_path=str(_fb_data_dir / "forgebase.db")),
+            )
+        except Exception as fb_exc:
+            logger.warning("ForgeBase init failed, transliminality will use harness-only: %s", fb_exc)
+
+    genesis = Genesis(config, forgebase=_fb)
 
     # ── Streaming pipeline with stage progress ────────────────────────────────
     report: Any = None
@@ -596,7 +622,8 @@ async def _run_genesis(
         print_error(
             console,
             "The invention pipeline crashed before completion.",
-            hint=_error_hint(str(exc)) or "Check your API keys, backend connectivity, and model selection.",
+            hint=_error_hint(str(exc))
+            or "Check your API keys, backend connectivity, and model selection.",
         )
         sys.exit(1)
 
@@ -694,7 +721,7 @@ async def _run_benchmark_corpus(
     if not quiet:
         model_label = research_model or "configured default"
         console.print(
-            f"  [dim]Generating benchmark corpus for[/] [cyan]{topic}[/] "
+            f"  [dim]Generating benchmark corpus for[/] [dark_orange]{topic}[/] "
             f"[dim]({count} cases, model={model_label})[/]\n"
         )
 
@@ -785,7 +812,7 @@ async def _run_raw(
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(result.output, encoding="utf-8")
         if not quiet:
-            print_success(console, f"Saved to [cyan]{output}[/]")
+            print_success(console, f"Saved to [dark_orange]{output}[/]")
 
 
 # ---------------------------------------------------------------------------
@@ -795,7 +822,7 @@ async def _run_raw(
 
 def _render_json(console: Console, report: Any) -> None:
     """Render report as JSON to stdout."""
-    from hephaestus.output.formatter import OutputFormat, OutputFormatter
+    from hephaestus.output.formatter import OutputFormatter
 
     formatter = OutputFormatter()
     # We need to bridge genesis InventionReport → formatter InventionReport
@@ -806,7 +833,7 @@ def _render_json(console: Console, report: Any) -> None:
 
 def _render_text(console: Console, report: Any) -> None:
     """Render report as plain text to stdout."""
-    from hephaestus.output.formatter import OutputFormat, OutputFormatter
+    from hephaestus.output.formatter import OutputFormatter
 
     formatter = OutputFormatter()
     fmt_report = _bridge_report(report)
@@ -840,7 +867,7 @@ def _save_report(console: Console, report: Any, path: Path, fmt: str) -> None:
             hint="Check that the directory exists and that this shell can write to it.",
         )
         return
-    print_success(console, f"Saved to [cyan]{path}[/]")
+    print_success(console, f"Saved to [dark_orange]{path}[/]")
 
 
 def _serialize_benchmark_corpus(corpus: Any, fmt: str) -> str:
@@ -866,7 +893,7 @@ def _save_benchmark_corpus(console: Console, corpus: Any, path: Path, fmt: str) 
             hint="Check that the directory exists and that this shell can write to it.",
         )
         return
-    print_success(console, f"Saved to [cyan]{path}[/]")
+    print_success(console, f"Saved to [dark_orange]{path}[/]")
 
 
 def _bridge_report(genesis_report: Any) -> Any:
@@ -878,6 +905,8 @@ def _bridge_report(genesis_report: Any) -> Any:
     """
     from hephaestus.output.formatter import (
         AlternativeInvention,
+    )
+    from hephaestus.output.formatter import (
         InventionReport as FmtReport,
     )
 
@@ -919,7 +948,9 @@ def _bridge_report(genesis_report: Any) -> Any:
             invention_name=alt.invention_name,
             source_domain=alt.source_domain,
             domain_distance=getattr(alt.translation.source_candidate, "domain_distance", 0.0),
-            structural_fidelity=getattr(alt.translation.source_candidate, "structural_fidelity", 0.0),
+            structural_fidelity=getattr(
+                alt.translation.source_candidate, "structural_fidelity", 0.0
+            ),
             novelty_score=alt.novelty_score,
             summary=getattr(alt.translation, "key_insight", ""),
         )
@@ -951,7 +982,9 @@ def _bridge_report(genesis_report: Any) -> Any:
         cost_usd=genesis_report.total_cost_usd,
         input_tokens=getattr(genesis_report, "total_input_tokens", 0),
         output_tokens=getattr(genesis_report, "total_output_tokens", 0),
-        models_used=list(dict.fromkeys(_explicit_attr(genesis_report, "model_config", {}).values())),
+        models_used=list(
+            dict.fromkeys(_explicit_attr(genesis_report, "model_config", {}).values())
+        ),
         wall_time_seconds=genesis_report.total_duration_seconds,
     )
 
@@ -990,8 +1023,13 @@ def _build_genesis_config(
     pressure_search_mode: str = "adaptive",
 ) -> Any:
     """Build a GenesisConfig from CLI options."""
+    # Load transliminality flag from config (not yet a CLI flag)
+    from hephaestus.cli.config import load_config as _load_cfg
     from hephaestus.core.cross_model import get_model_preset
     from hephaestus.core.genesis import GenesisConfig
+
+    _user_cfg = _load_cfg()
+    _transliminality = getattr(_user_cfg, "transliminality_enabled", False) if _user_cfg else False
 
     if model == "agent-sdk":
         models = get_model_preset("opus")
@@ -1030,6 +1068,7 @@ def _build_genesis_config(
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
             pantheon_apollo_model=pantheon_apollo_model,
+            transliminality_enabled=_transliminality,
         )
 
     if model == "claude-max":
@@ -1069,6 +1108,7 @@ def _build_genesis_config(
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
             pantheon_apollo_model=pantheon_apollo_model,
+            transliminality_enabled=_transliminality,
         )
 
     if model == "claude-cli":
@@ -1108,6 +1148,7 @@ def _build_genesis_config(
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
             pantheon_apollo_model=pantheon_apollo_model,
+            transliminality_enabled=_transliminality,
         )
 
     if model == "codex":
@@ -1147,6 +1188,7 @@ def _build_genesis_config(
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
             pantheon_apollo_model=pantheon_apollo_model,
+            transliminality_enabled=_transliminality,
         )
 
     # Map CLI flag names to preset names
@@ -1186,6 +1228,7 @@ def _build_genesis_config(
         pantheon_athena_model=pantheon_athena_model,
         pantheon_hermes_model=pantheon_hermes_model,
         pantheon_apollo_model=pantheon_apollo_model,
+        transliminality_enabled=_transliminality,
     )
 
 
@@ -1200,12 +1243,15 @@ def _build_raw_adapter(
 
     if model == "claude-max":
         from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
+
         return ClaudeMaxAdapter(model="claude-opus-4-6")
     if model == "claude-cli":
         from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
+
         return ClaudeCliAdapter(model="claude-opus-4-6")
     if model == "codex":
         from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+
         return CodexCliAdapter(model="gpt-5.4")
 
     preset_key = {"opus": "opus", "gpt5": "gpt", "codex": "codex"}.get(model, "both")
@@ -1213,9 +1259,11 @@ def _build_raw_adapter(
 
     if model in ("opus", "both"):
         from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
+
         return AnthropicAdapter(model=models["decompose"], api_key=anthropic_key)
     else:
         from hephaestus.deepforge.adapters.openai import OpenAIAdapter
+
         return OpenAIAdapter(model=models["decompose"], api_key=openai_key)
 
 
@@ -1293,7 +1341,9 @@ def _error_hint(error_msg: str) -> str | None:
     "-m",
     default="both",
     show_default=True,
-    type=click.Choice(["claude-max", "claude-cli", "codex", "opus", "gpt5", "both"], case_sensitive=False),
+    type=click.Choice(
+        ["claude-max", "claude-cli", "codex", "opus", "gpt5", "both"], case_sensitive=False
+    ),
     help="Backend/model preset.",
 )
 def batch_cmd(
@@ -1391,17 +1441,18 @@ def init_cmd() -> None:
         if ".hephaestus/local.yaml" not in content:
             with open(gitignore, "a") as f:
                 f.write("\n# Hephaestus local overrides\n.hephaestus/local.yaml\n")
-            console.print(f"  [dim]Added .hephaestus/local.yaml to .gitignore[/]")
+            console.print("  [dim]Added .hephaestus/local.yaml to .gitignore[/]")
 
     from hephaestus.cli.display import GREEN
+
     console.print()
     console.print(f"  [{GREEN}]✓[/] Initialized .hephaestus/ in {cwd}")
-    console.print(f"  [dim]Created:[/]")
+    console.print("  [dim]Created:[/]")
     console.print(f"    {config_yaml}")
     console.print(f"    {instructions}")
     console.print()
-    console.print(f"  [dim]Edit .hephaestus/config.yaml for project defaults[/]")
-    console.print(f"  [dim]Edit .hephaestus/instructions.md for project context[/]")
+    console.print("  [dim]Edit .hephaestus/config.yaml for project defaults[/]")
+    console.print("  [dim]Edit .hephaestus/instructions.md for project context[/]")
     console.print()
 
 
@@ -1429,7 +1480,9 @@ def lenses_cmd(validate: bool) -> None:
         if not error_files:
             console.print(f"\n  [bold green]✓[/] All {total_files} lenses passed validation.\n")
         else:
-            console.print(f"\n  [bold red]✗[/] {len(error_files)}/{total_files} lenses have errors:\n")
+            console.print(
+                f"\n  [bold red]✗[/] {len(error_files)}/{total_files} lenses have errors:\n"
+            )
             for filename, errs in sorted(error_files.items()):
                 console.print(f"  [yellow]{filename}[/]")
                 for e in errs:
@@ -1439,14 +1492,14 @@ def lenses_cmd(validate: bool) -> None:
         return
 
     stats = compute_lens_stats()
-    console.print(f"\n  [bold]Lens Library[/]")
+    console.print("\n  [bold]Lens Library[/]")
     console.print(f"  Total lenses:       {stats.total_lenses}")
     console.print(f"  Domains:            {len(stats.domains)}")
     console.print(f"  Total axioms:       {stats.total_axioms}")
     console.print(f"  Total patterns:     {stats.total_patterns}")
     console.print(f"  Avg axioms/lens:    {stats.avg_axioms_per_lens}")
     console.print()
-    console.print(f"  [dim]Domain coverage:[/]")
+    console.print("  [dim]Domain coverage:[/]")
     for domain in sorted(stats.domain_counts, key=lambda d: stats.domain_counts[d], reverse=True):
         console.print(f"    {domain:<22} {stats.domain_counts[domain]} lenses")
     console.print()
@@ -1458,32 +1511,44 @@ def lenses_cmd(validate: bool) -> None:
 )
 @click.argument("directory", default=".", type=click.Path(exists=True, path_type=Path))
 @click.option("--model", "-m", default="both", help="Model preset.")
-@click.option("--permission", "-p", default="workspace-write",
-              type=click.Choice(["read-only", "workspace-write", "full-access"]),
-              help="Permission level for file operations.")
+@click.option(
+    "--permission",
+    "-p",
+    default="workspace-write",
+    type=click.Choice(["read-only", "workspace-write", "full-access"]),
+    help="Permission level for file operations.",
+)
 def workspace_cmd(directory: Path, model: str, permission: str) -> None:
     """Start a workspace session."""
     console = make_console(quiet=False)
     print_banner(console)
 
     from hephaestus.workspace.scanner import WorkspaceScanner
+
     scanner = WorkspaceScanner(directory)
     summary = scanner.scan()
 
-    console.print(f"\n  [bold cyan]Workspace:[/] {summary.root}")
-    console.print(f"  [dim]{summary.total_files} files | {summary.total_lines:,} lines | {summary.primary_language}[/]")
+    console.print(f"\n  [bold yellow]Workspace:[/] {summary.root}")
+    console.print(
+        f"  [dim]{summary.total_files} files | {summary.total_lines:,} lines | {summary.primary_language}[/]"
+    )
     if summary.git:
-        console.print(f"  [dim]Git: {summary.git.branch} {'(dirty)' if summary.git.has_changes else '(clean)'}[/]")
+        console.print(
+            f"  [dim]Git: {summary.git.branch} {'(dirty)' if summary.git.has_changes else '(clean)'}[/]"
+        )
     if summary.repo_dossier:
         for line in summary.repo_dossier.summary_lines():
             console.print(f"  [dim]{line}[/]")
     console.print()
-    console.print(f"  [yellow]Workspace mode ready.[/] Use the REPL to chat about and modify this codebase.")
+    console.print(
+        "  [yellow]Workspace mode ready.[/] Use the REPL to chat about and modify this codebase."
+    )
     console.print(f"  [dim]Permission: {permission} | Model: {model}[/]")
     console.print()
 
     # Launch REPL with workspace context
     from hephaestus.cli.repl import run_interactive
+
     run_interactive(console, model=model, workspace_root=directory)
 
 
@@ -1496,8 +1561,9 @@ def workspace_cmd(directory: Path, model: str, permission: str) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 def scan_cmd(directory: Path, tree: bool, as_json: bool) -> None:
     """Scan a codebase and display summary."""
-    from hephaestus.workspace.scanner import WorkspaceScanner
     import json as _json
+
+    from hephaestus.workspace.scanner import WorkspaceScanner
 
     console = make_console(quiet=False)
     scanner = WorkspaceScanner(directory)
@@ -1527,7 +1593,7 @@ def scan_cmd(directory: Path, tree: bool, as_json: bool) -> None:
         return
 
     console.print()
-    console.print(f"  [bold yellow]⚒️  Workspace Scan[/]")
+    console.print("  [bold yellow]⚒️  Workspace Scan[/]")
     console.print()
     console.print(f"  {summary.format_summary()}")
     console.print()
@@ -1544,7 +1610,7 @@ def scan_cmd(directory: Path, tree: bool, as_json: bool) -> None:
         console.print()
 
     if tree and summary.tree:
-        console.print(f"  [bold]Directory Tree:[/]")
+        console.print("  [bold]Directory Tree:[/]")
         for line in summary.tree.splitlines():
             console.print(f"  {line}")
         console.print()
@@ -1575,21 +1641,25 @@ def main() -> None:
         return
     if len(sys.argv) > 1 and sys.argv[1] == "vault":
         from hephaestus.cli.forgebase_commands import vault_cmd
+
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         vault_cmd(standalone_mode=True)
         return
     if len(sys.argv) > 1 and sys.argv[1] == "ask":
         from hephaestus.cli.forgebase_commands import ask_cmd
+
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         ask_cmd(standalone_mode=True)
         return
     if len(sys.argv) > 1 and sys.argv[1] == "fuse":
         from hephaestus.cli.forgebase_commands import fuse_cmd
+
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         fuse_cmd(standalone_mode=True)
         return
     if len(sys.argv) > 1 and sys.argv[1] == "fb-export":
         from hephaestus.cli.forgebase_commands import fb_export_cmd
+
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         fb_export_cmd(standalone_mode=True)
         return

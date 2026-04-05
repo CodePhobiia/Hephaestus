@@ -155,11 +155,15 @@ class ProtocolEngine:
                     results.append(frame)
         return results
 
-    def build_request(self, method: str, params: dict[str, Any], request_id: int | str) -> JSONRPCRequest:
+    def build_request(
+        self, method: str, params: dict[str, Any], request_id: int | str
+    ) -> JSONRPCRequest:
         """Build a JSON-RPC 2.0 request."""
         return JSONRPCRequest(method=method, params=params, id=request_id)
 
-    def build_notification(self, method: str, params: dict[str, Any] | None = None) -> JSONRPCRequest:
+    def build_notification(
+        self, method: str, params: dict[str, Any] | None = None
+    ) -> JSONRPCRequest:
         """Build a JSON-RPC 2.0 notification (no id)."""
         return JSONRPCRequest(method=method, params=params or {}, id=None)
 
@@ -174,7 +178,9 @@ class ProtocolEngine:
         latest = max(self.SUPPORTED_PROTOCOL_VERSIONS)
         logger.warning(
             "Server protocol version %s not in supported set %s; using %s",
-            server_version, self.SUPPORTED_PROTOCOL_VERSIONS, latest,
+            server_version,
+            self.SUPPORTED_PROTOCOL_VERSIONS,
+            latest,
         )
         return latest
 
@@ -185,9 +191,7 @@ class ProtocolEngine:
             try:
                 handler(notification)
             except Exception:
-                logger.exception(
-                    "Error in notification handler for %s", notification.method
-                )
+                logger.exception("Error in notification handler for %s", notification.method)
 
         if not handlers:
             logger.debug("Unhandled notification: %s", notification.method)

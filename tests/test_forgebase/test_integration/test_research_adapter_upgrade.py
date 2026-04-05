@@ -7,18 +7,16 @@ Key scenarios:
   2. Follow-on compile jobs are scheduled after source ingestion
   3. Adapter failure does not affect upstream (sync_status → "failed")
 """
+
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import JobKind, JobStatus
-from hephaestus.forgebase.domain.values import EntityId
 from hephaestus.forgebase.integration.research_adapter import ResearchAdapter
 from hephaestus.forgebase.service.compile_service import CompileService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -32,21 +30,30 @@ def compile_service(uow_factory, actor) -> CompileService:
 
 @pytest.fixture
 def research_adapter(
-    run_integration_service, ingest_service, uow_factory, compile_service,
+    run_integration_service,
+    ingest_service,
+    uow_factory,
+    compile_service,
 ) -> ResearchAdapter:
     return ResearchAdapter(
-        run_integration_service, ingest_service, uow_factory,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
         compile_service=compile_service,
     )
 
 
 @pytest.fixture
 def research_adapter_no_compile(
-    run_integration_service, ingest_service, uow_factory,
+    run_integration_service,
+    ingest_service,
+    uow_factory,
 ) -> ResearchAdapter:
     """Adapter without a compile service — fallback path."""
     return ResearchAdapter(
-        run_integration_service, ingest_service, uow_factory,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
     )
 
 
@@ -57,9 +64,11 @@ def research_adapter_no_compile(
 
 @pytest.mark.asyncio
 class TestResearchAdapterUpgrade:
-
     async def test_research_ingests_sources(
-        self, vault, research_adapter, sqlite_db,
+        self,
+        vault,
+        research_adapter,
+        sqlite_db,
     ):
         """Existing behavior: sources are ingested and run ref created."""
         artifacts = [
@@ -68,7 +77,9 @@ class TestResearchAdapterUpgrade:
         ]
 
         await research_adapter.handle_research_completed(
-            vault.vault_id, "res-upgrade-1", artifacts,
+            vault.vault_id,
+            "res-upgrade-1",
+            artifacts,
         )
 
         # Run ref should exist and be synced
@@ -90,7 +101,10 @@ class TestResearchAdapterUpgrade:
         assert row["cnt"] == 2
 
     async def test_research_schedules_follow_on(
-        self, vault, research_adapter, sqlite_db,
+        self,
+        vault,
+        research_adapter,
+        sqlite_db,
     ):
         """After ingesting sources, compile jobs are scheduled as follow-on work."""
         artifacts = [
@@ -99,7 +113,9 @@ class TestResearchAdapterUpgrade:
         ]
 
         await research_adapter.handle_research_completed(
-            vault.vault_id, "res-followon-1", artifacts,
+            vault.vault_id,
+            "res-followon-1",
+            artifacts,
         )
 
         # Compile jobs should have been scheduled
@@ -124,7 +140,10 @@ class TestResearchAdapterUpgrade:
             assert "res-followon-1" in row["idempotency_key"]
 
     async def test_research_schedules_follow_on_with_metadata(
-        self, vault, research_adapter, sqlite_db,
+        self,
+        vault,
+        research_adapter,
+        sqlite_db,
     ):
         """Follow-on job metadata references the ingested source and run."""
         artifacts = [
@@ -132,7 +151,9 @@ class TestResearchAdapterUpgrade:
         ]
 
         await research_adapter.handle_research_completed(
-            vault.vault_id, "res-meta-1", artifacts,
+            vault.vault_id,
+            "res-meta-1",
+            artifacts,
         )
 
         cursor = await sqlite_db.execute(
@@ -148,6 +169,7 @@ class TestResearchAdapterUpgrade:
         assert len(rows) == 1
 
         import json
+
         config = json.loads(rows[0]["config"])
         # Config should contain source_id and follow_on_from
         assert "source_id" in config
@@ -155,7 +177,10 @@ class TestResearchAdapterUpgrade:
         assert config["follow_on_from"] == "res-meta-1"
 
     async def test_research_without_compile_service(
-        self, vault, research_adapter_no_compile, sqlite_db,
+        self,
+        vault,
+        research_adapter_no_compile,
+        sqlite_db,
     ):
         """Without a compile service, sources are still ingested (no follow-on jobs)."""
         artifacts = [
@@ -163,7 +188,9 @@ class TestResearchAdapterUpgrade:
         ]
 
         await research_adapter_no_compile.handle_research_completed(
-            vault.vault_id, "res-nocompile-1", artifacts,
+            vault.vault_id,
+            "res-nocompile-1",
+            artifacts,
         )
 
         # Sources ingested
@@ -191,7 +218,12 @@ class TestResearchAdapterUpgrade:
         assert row["sync_status"] == "synced"
 
     async def test_sync_failure_independent(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         """Adapter failure doesn't affect upstream — sync_status goes to 'failed'."""
         # Create adapter with a compile service that explodes
@@ -201,7 +233,9 @@ class TestResearchAdapterUpgrade:
         )
 
         adapter = ResearchAdapter(
-            run_integration_service, ingest_service, uow_factory,
+            run_integration_service,
+            ingest_service,
+            uow_factory,
             compile_service=failing_compile,
         )
 
@@ -212,7 +246,9 @@ class TestResearchAdapterUpgrade:
         # Should raise (adapter doesn't swallow — bridge does)
         with pytest.raises(RuntimeError, match="Compile scheduler down"):
             await adapter.handle_research_completed(
-                vault.vault_id, "res-fail-compile", artifacts,
+                vault.vault_id,
+                "res-fail-compile",
+                artifacts,
             )
 
         # Run ref should exist but sync_status should be failed
@@ -225,7 +261,10 @@ class TestResearchAdapterUpgrade:
         assert row["sync_status"] == "failed"
 
     async def test_research_follow_on_idempotent(
-        self, vault, research_adapter, sqlite_db,
+        self,
+        vault,
+        research_adapter,
+        sqlite_db,
     ):
         """Scheduling the same follow-on twice is idempotent (same idempotency_key)."""
         artifacts = [
@@ -234,13 +273,17 @@ class TestResearchAdapterUpgrade:
 
         # Run twice with same run_id
         await research_adapter.handle_research_completed(
-            vault.vault_id, "res-idem-1", artifacts,
+            vault.vault_id,
+            "res-idem-1",
+            artifacts,
         )
 
         # The second call creates a new run ref but compile job is idempotent
         # (Different run_id to avoid run_ref collision, but same source content)
         await research_adapter.handle_research_completed(
-            vault.vault_id, "res-idem-2", artifacts,
+            vault.vault_id,
+            "res-idem-2",
+            artifacts,
         )
 
         # Should have 2 compile jobs (different run_ids = different idem keys)

@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import threading
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
 class _Counter:
     """Thread-safe counter metric."""
+
     name: str
     help_text: str
     values: dict[tuple[str, ...], float] = field(default_factory=lambda: defaultdict(float))
@@ -26,9 +25,24 @@ class _Counter:
 @dataclass
 class _Histogram:
     """Simple histogram with fixed buckets."""
+
     name: str
     help_text: str
-    buckets: tuple[float, ...] = (0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0)
+    buckets: tuple[float, ...] = (
+        0.01,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.5,
+        5.0,
+        10.0,
+        30.0,
+        60.0,
+        120.0,
+        300.0,
+    )
     counts: dict[tuple[str, ...], list[int]] = field(default_factory=dict)
     sums: dict[tuple[str, ...], float] = field(default_factory=lambda: defaultdict(float))
     totals: dict[tuple[str, ...], int] = field(default_factory=lambda: defaultdict(int))
@@ -49,6 +63,7 @@ class _Histogram:
 @dataclass
 class _Gauge:
     """Thread-safe gauge metric."""
+
     name: str
     help_text: str
     values: dict[tuple[str, ...], float] = field(default_factory=lambda: defaultdict(float))
@@ -91,8 +106,11 @@ class MetricsCollector:
         # Histograms
         self.histogram("heph_stage_duration_seconds", "Pipeline stage duration")
         self.histogram("heph_provider_latency_seconds", "Provider API call latency")
-        self.histogram("heph_run_duration_seconds", "Total run duration",
-                       buckets=(1, 5, 10, 30, 60, 120, 300, 600, 900))
+        self.histogram(
+            "heph_run_duration_seconds",
+            "Total run duration",
+            buckets=(1, 5, 10, 30, 60, 120, 300, 600, 900),
+        )
 
         # Gauges
         self.gauge("heph_active_runs", "Currently active runs")
@@ -104,7 +122,9 @@ class MetricsCollector:
             self._counters[name] = _Counter(name=name, help_text=help_text)
         return self._counters[name]
 
-    def histogram(self, name: str, help_text: str = "", buckets: tuple[float, ...] | None = None) -> _Histogram:
+    def histogram(
+        self, name: str, help_text: str = "", buckets: tuple[float, ...] | None = None
+    ) -> _Histogram:
         if name not in self._histograms:
             h = _Histogram(name=name, help_text=help_text)
             if buckets:
@@ -154,7 +174,7 @@ class MetricsCollector:
                 for label_key in h.counts:
                     label_str = self._format_labels(label_key)
                     for i, bound in enumerate(h.buckets):
-                        cumulative = sum(h.counts[label_key][:i + 1])
+                        cumulative = sum(h.counts[label_key][: i + 1])
                         le_label = self._format_labels(label_key, extra={"le": str(bound)})
                         lines.append(f"{h.name}_bucket{le_label} {cumulative}")
                     inf_label = self._format_labels(label_key, extra={"le": "+Inf"})

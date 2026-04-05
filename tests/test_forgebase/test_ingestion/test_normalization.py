@@ -1,4 +1,5 @@
 """Tests for the NormalizationPipeline dispatch."""
+
 from __future__ import annotations
 
 import pytest

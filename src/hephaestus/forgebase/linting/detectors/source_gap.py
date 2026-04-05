@@ -1,4 +1,5 @@
 """SourceGapDetector — detects concepts with insufficient source coverage."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -102,7 +103,6 @@ class SourceGapDetector(LintDetector):
 
         # The normalized_subject stores the concept name
         # Look for the same concept in current candidates
-        subject = original_finding.description  # fallback
         # Extract concept name from affected_entity_ids or description
         # Use a simple heuristic: if no new finding matches the same entities
         for new_f in new_findings:

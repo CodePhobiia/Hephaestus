@@ -1,9 +1,9 @@
 """Finding batching for repair workbook grouping."""
+
 from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
-from dataclasses import dataclass
 from datetime import datetime
 
 from hephaestus.forgebase.domain.models import LintFinding, RepairBatch
@@ -40,19 +40,13 @@ def batch_findings(
 
         batch = RepairBatch(
             batch_id=(
-                id_generator.batch_id()  # type: ignore[union-attr]
+                id_generator.batch_id()
                 if id_generator
-                else EntityId(
-                    f"batch_{hashlib.sha256(fingerprint.encode()).hexdigest()[:26]}"
-                )
+                else EntityId(f"batch_{hashlib.sha256(fingerprint.encode()).hexdigest()[:26]}")
             ),
             vault_id=vault_id,
             batch_fingerprint=fingerprint,
-            batch_strategy=(
-                strategy
-                if strategy != "auto"
-                else f"auto:{group_key.split(':')[0]}"
-            ),
+            batch_strategy=(strategy if strategy != "auto" else f"auto:{group_key.split(':')[0]}"),
             batch_reason=f"Grouped {len(group_findings)} findings by {group_key}",
             finding_ids=finding_ids,
             policy_version="1.0.0",

@@ -10,10 +10,10 @@ import pytest
 
 from hephaestus.tools.mcp.client import MCPClient, MCPError, MCPServerConfig, MCPTool
 
-
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_config(**overrides) -> MCPServerConfig:
     defaults = dict(name="test-server", command="/usr/bin/echo")
@@ -26,10 +26,16 @@ def _jsonrpc_response(req_id: int, result: dict) -> bytes:
 
 
 def _jsonrpc_error(req_id: int, code: int, message: str) -> bytes:
-    return (json.dumps({
-        "jsonrpc": "2.0", "id": req_id,
-        "error": {"code": code, "message": message},
-    }) + "\n").encode()
+    return (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": code, "message": message},
+            }
+        )
+        + "\n"
+    ).encode()
 
 
 def _mock_process(responses: list[bytes]):
@@ -52,6 +58,7 @@ def _mock_process(responses: list[bytes]):
 # MCPServerConfig
 # ---------------------------------------------------------------------------
 
+
 class TestMCPServerConfig:
     def test_defaults(self):
         cfg = MCPServerConfig(name="s", command="cmd")
@@ -61,8 +68,11 @@ class TestMCPServerConfig:
 
     def test_custom_values(self):
         cfg = MCPServerConfig(
-            name="s", command="node", args=["server.js"],
-            env={"KEY": "val"}, timeout_seconds=10,
+            name="s",
+            command="node",
+            args=["server.js"],
+            env={"KEY": "val"},
+            timeout_seconds=10,
         )
         assert cfg.args == ["server.js"]
         assert cfg.env["KEY"] == "val"
@@ -73,18 +83,23 @@ class TestMCPServerConfig:
 # MCPTool
 # ---------------------------------------------------------------------------
 
+
 class TestMCPTool:
     def test_qualified_name(self):
         tool = MCPTool(
-            server_name="fs", tool_name="read",
-            description="Read a file", input_schema={},
+            server_name="fs",
+            tool_name="read",
+            description="Read a file",
+            input_schema={},
         )
         assert tool.qualified_name == "fs.read"
 
     def test_fields(self):
         tool = MCPTool(
-            server_name="db", tool_name="query",
-            description="Run SQL", input_schema={"type": "object"},
+            server_name="db",
+            tool_name="query",
+            description="Run SQL",
+            input_schema={"type": "object"},
         )
         assert tool.description == "Run SQL"
         assert tool.input_schema == {"type": "object"}
@@ -94,14 +109,14 @@ class TestMCPTool:
 # MCPClient — lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestClientLifecycle:
     @pytest.mark.asyncio
     async def test_start_sends_initialize(self):
         init_resp = _jsonrpc_response(1, {"protocolVersion": "2024-11-05"})
         proc = _mock_process([init_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
 
@@ -118,8 +133,7 @@ class TestClientLifecycle:
         shutdown_resp = _jsonrpc_response(2, {})
         proc = _mock_process([init_resp, shutdown_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             await client.shutdown()
@@ -142,19 +156,30 @@ class TestClientLifecycle:
 # MCPClient — discover_tools
 # ---------------------------------------------------------------------------
 
+
 class TestDiscoverTools:
     @pytest.mark.asyncio
     async def test_parses_tools_list(self):
         init_resp = _jsonrpc_response(1, {})
-        tools_resp = _jsonrpc_response(2, {"tools": [
-            {"name": "read", "description": "Read file",
-             "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}}}},
-            {"name": "write", "description": "Write file", "inputSchema": {}},
-        ]})
+        tools_resp = _jsonrpc_response(
+            2,
+            {
+                "tools": [
+                    {
+                        "name": "read",
+                        "description": "Read file",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {"path": {"type": "string"}},
+                        },
+                    },
+                    {"name": "write", "description": "Write file", "inputSchema": {}},
+                ]
+            },
+        )
         proc = _mock_process([init_resp, tools_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             tools = await client.discover_tools()
@@ -170,8 +195,7 @@ class TestDiscoverTools:
         tools_resp = _jsonrpc_response(2, {"tools": []})
         proc = _mock_process([init_resp, tools_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             tools = await client.discover_tools()
@@ -183,17 +207,20 @@ class TestDiscoverTools:
 # MCPClient — call_tool
 # ---------------------------------------------------------------------------
 
+
 class TestCallTool:
     @pytest.mark.asyncio
     async def test_call_returns_text_content(self):
         init_resp = _jsonrpc_response(1, {})
-        call_resp = _jsonrpc_response(2, {
-            "content": [{"type": "text", "text": "hello world"}],
-        })
+        call_resp = _jsonrpc_response(
+            2,
+            {
+                "content": [{"type": "text", "text": "hello world"}],
+            },
+        )
         proc = _mock_process([init_resp, call_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             result = await client.call_tool("greet", {"name": "test"})
@@ -208,17 +235,19 @@ class TestCallTool:
     @pytest.mark.asyncio
     async def test_call_concatenates_multiple_text_blocks(self):
         init_resp = _jsonrpc_response(1, {})
-        call_resp = _jsonrpc_response(2, {
-            "content": [
-                {"type": "text", "text": "line1"},
-                {"type": "image", "data": "..."},
-                {"type": "text", "text": "line2"},
-            ],
-        })
+        call_resp = _jsonrpc_response(
+            2,
+            {
+                "content": [
+                    {"type": "text", "text": "line1"},
+                    {"type": "image", "data": "..."},
+                    {"type": "text", "text": "line2"},
+                ],
+            },
+        )
         proc = _mock_process([init_resp, call_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             result = await client.call_tool("multi", {})
@@ -231,8 +260,7 @@ class TestCallTool:
         call_resp = _jsonrpc_response(2, {"value": 42})
         proc = _mock_process([init_resp, call_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             result = await client.call_tool("calc", {})
@@ -244,6 +272,7 @@ class TestCallTool:
 # MCPClient — error handling
 # ---------------------------------------------------------------------------
 
+
 class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_error_response_raises_mcp_error(self):
@@ -251,8 +280,7 @@ class TestErrorHandling:
         err_resp = _jsonrpc_error(2, -32601, "Method not found")
         proc = _mock_process([init_resp, err_resp])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             with pytest.raises(MCPError, match="Method not found") as exc_info:
@@ -264,13 +292,14 @@ class TestErrorHandling:
         init_resp = _jsonrpc_response(1, {})
         proc = _mock_process([init_resp])
         # Make the second readline hang forever
-        proc.stdout.readline = AsyncMock(side_effect=[
-            init_resp,
-            asyncio.TimeoutError(),
-        ])
+        proc.stdout.readline = AsyncMock(
+            side_effect=[
+                init_resp,
+                TimeoutError(),
+            ]
+        )
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config(timeout_seconds=1))
             await client.start()
             with pytest.raises(asyncio.TimeoutError):
@@ -281,8 +310,7 @@ class TestErrorHandling:
         init_resp = _jsonrpc_response(1, {})
         proc = _mock_process([init_resp, b""])
 
-        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec",
-                    return_value=proc):
+        with patch("hephaestus.tools.mcp.client.asyncio.create_subprocess_exec", return_value=proc):
             client = MCPClient(_make_config())
             await client.start()
             with pytest.raises(RuntimeError, match="closed stdout"):

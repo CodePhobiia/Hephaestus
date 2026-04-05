@@ -62,8 +62,8 @@ from hephaestus.deepforge.pressure import (
 from hephaestus.deepforge.pruner import (
     ConvergencePattern,
     ConvergencePruner,
-    PrunerSession,
     PruneResult,
+    PrunerSession,
 )
 from hephaestus.deepforge.retry import (
     RetryConfig,

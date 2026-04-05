@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any, Protocol, runtime_checkable
+from enum import StrEnum
+from typing import Protocol, runtime_checkable
 
 
-class ProviderStatus(str, Enum):
+class ProviderStatus(StrEnum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     DEGRADED = "degraded"
 
 
-class ProviderCapability(str, Enum):
+class ProviderCapability(StrEnum):
     CHAT = "chat"
     EMBEDDINGS = "embeddings"
     RESEARCH = "research"

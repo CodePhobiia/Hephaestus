@@ -15,7 +15,6 @@ from typing import Any
 from rich.console import Console
 
 from hephaestus.workspace.context import WorkspaceContext
-from hephaestus.workspace.scanner import WorkspaceScanner
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +73,7 @@ Return a JSON array of problems to solve.
 @dataclass
 class IdentifiedProblem:
     """A problem identified by analyzing the codebase."""
+
     problem: str
     category: str
     severity: str
@@ -83,6 +83,7 @@ class IdentifiedProblem:
 @dataclass
 class WorkspaceInvention:
     """An invention produced for a specific codebase problem."""
+
     problem: IdentifiedProblem
     invention_name: str = ""
     source_domain: str = ""
@@ -106,6 +107,7 @@ class WorkspaceInvention:
 @dataclass
 class WorkspaceInventionReport:
     """Full report of workspace-aware invention run."""
+
     workspace_root: str
     problems_found: int = 0
     inventions_attempted: int = 0
@@ -211,6 +213,7 @@ class WorkspaceInventor:
 
         try:
             import os
+
             from hephaestus.cli.main import _build_genesis_config
             from hephaestus.core.genesis import Genesis
 
@@ -259,7 +262,7 @@ class WorkspaceInventor:
         report = WorkspaceInventionReport(workspace_root=str(self.root))
 
         if console:
-            console.print(f"\n  [bold cyan]Analyzing codebase...[/] {self.root.name}/")
+            console.print(f"\n  [bold yellow]Analyzing codebase...[/] {self.root.name}/")
 
         # Step 1: Analyze
         try:
@@ -271,7 +274,7 @@ class WorkspaceInventor:
 
         report.problems_found = len(problems)
         report.research_dossier = self._research_dossier
-        problems = problems[:self.max_inventions]
+        problems = problems[: self.max_inventions]
 
         if console:
             console.print(f"  [green]Found {len(problems)} problems to solve[/]\n")
@@ -283,7 +286,9 @@ class WorkspaceInventor:
         report.inventions_attempted = len(problems)
         for i, problem in enumerate(problems, 1):
             if console:
-                console.print(f"  [cyan]Inventing [{i}/{len(problems)}]:[/] {problem.problem[:60]}...")
+                console.print(
+                    f"  [dark_orange]Inventing [{i}/{len(problems)}]:[/] {problem.problem[:60]}..."
+                )
 
             inv = await self.invent_for_problem(problem, console)
             report.inventions.append(inv)
@@ -314,16 +319,21 @@ class WorkspaceInventor:
 
         dossier = getattr(report, "research_dossier", None)
         if dossier is not None:
-            lines.extend([
-                "## External Research Dossier",
-                "",
-                getattr(dossier, "summary", "") or "No external summary available.",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## External Research Dossier",
+                    "",
+                    getattr(dossier, "summary", "") or "No external summary available.",
+                    "",
+                ]
+            )
             for title, values in [
                 ("Comparable Tools", getattr(dossier, "comparable_tools", [])),
                 ("Architecture Patterns", getattr(dossier, "architecture_patterns", [])),
-                ("Differentiation Opportunities", getattr(dossier, "differentiation_opportunities", [])),
+                (
+                    "Differentiation Opportunities",
+                    getattr(dossier, "differentiation_opportunities", []),
+                ),
                 ("Implementation Risks", getattr(dossier, "implementation_risks", [])),
             ]:
                 if values:
@@ -341,50 +351,62 @@ class WorkspaceInventor:
                     quality_flags.append("⚠️ NOT LOAD-BEARING")
                 quality_str = f" ({', '.join(quality_flags)})" if quality_flags else ""
 
-                lines.extend([
-                    f"## {i}. {inv.invention_name}{quality_str}",
-                    "",
-                    f"**Problem:** {inv.problem.problem}",
-                    f"**Source Domain:** {inv.source_domain}",
-                    f"**Novelty Score:** {inv.novelty_score:.2f} | **Verdict:** {inv.verdict}",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        f"## {i}. {inv.invention_name}{quality_str}",
+                        "",
+                        f"**Problem:** {inv.problem.problem}",
+                        f"**Source Domain:** {inv.source_domain}",
+                        f"**Novelty Score:** {inv.novelty_score:.2f} | **Verdict:** {inv.verdict}",
+                        "",
+                    ]
+                )
 
                 if inv.phase1_abstract_mechanism:
-                    lines.extend([
-                        f"### Abstract Mechanism (domain-neutral)",
-                        inv.phase1_abstract_mechanism,
-                        "",
-                    ])
+                    lines.extend(
+                        [
+                            "### Abstract Mechanism (domain-neutral)",
+                            inv.phase1_abstract_mechanism,
+                            "",
+                        ]
+                    )
 
-                lines.extend([
-                    f"### Key Insight",
-                    inv.key_insight or "N/A",
-                    "",
-                    f"### Architecture",
-                    inv.architecture or "N/A",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        "### Key Insight",
+                        inv.key_insight or "N/A",
+                        "",
+                        "### Architecture",
+                        inv.architecture or "N/A",
+                        "",
+                    ]
+                )
 
                 if inv.baseline_comparison:
-                    lines.extend([
-                        f"### vs Conventional Baseline",
-                        inv.baseline_comparison,
-                        "",
-                    ])
+                    lines.extend(
+                        [
+                            "### vs Conventional Baseline",
+                            inv.baseline_comparison,
+                            "",
+                        ]
+                    )
 
-                lines.extend([
-                    "---",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        "---",
+                        "",
+                    ]
+                )
             else:
-                lines.extend([
-                    f"## {i}. ❌ {inv.problem.problem}",
-                    f"**Error:** {inv.error}",
-                    "",
-                    "---",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        f"## {i}. ❌ {inv.problem.problem}",
+                        f"**Error:** {inv.error}",
+                        "",
+                        "---",
+                        "",
+                    ]
+                )
 
         return "\n".join(lines)
 
@@ -392,10 +414,11 @@ class WorkspaceInventor:
 def _parse_problems(text: str) -> list[IdentifiedProblem]:
     """Parse the model's JSON response into IdentifiedProblem objects."""
     import re
+
     from hephaestus.core.json_utils import loads_lenient
 
     # Extract JSON array from response
-    match = re.search(r'\[.*\]', text, re.DOTALL)
+    match = re.search(r"\[.*\]", text, re.DOTALL)
     if not match:
         return []
 
@@ -406,12 +429,14 @@ def _parse_problems(text: str) -> list[IdentifiedProblem]:
     problems = []
     for item in data:
         if isinstance(item, dict) and "problem" in item:
-            problems.append(IdentifiedProblem(
-                problem=item["problem"],
-                category=item.get("category", "architecture"),
-                severity=item.get("severity", "medium"),
-                context=item.get("context", ""),
-            ))
+            problems.append(
+                IdentifiedProblem(
+                    problem=item["problem"],
+                    category=item.get("category", "architecture"),
+                    severity=item.get("severity", "medium"),
+                    context=item.get("context", ""),
+                )
+            )
 
     return problems
 

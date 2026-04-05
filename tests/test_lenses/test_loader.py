@@ -12,7 +12,6 @@ Tests cover:
 
 from __future__ import annotations
 
-import os
 import time
 from pathlib import Path
 
@@ -20,18 +19,18 @@ import pytest
 import yaml
 
 from hephaestus.lenses.loader import (
+    _DEFAULT_LIBRARY_DIR,
+    _SUPPORTED_DOMAIN_FAMILIES,
     Lens,
     LensLoader,
     LensValidationError,
-    StructuralPattern,
-    _DEFAULT_LIBRARY_DIR,
-    _SUPPORTED_DOMAIN_FAMILIES,
     classify_domain_family,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def library_dir() -> Path:
@@ -97,6 +96,7 @@ def write_valid_lens(dir: Path, name: str = "test_lens") -> Path:
 # Library directory
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestLibraryDirectory:
     def test_default_library_dir_exists(self):
         assert _DEFAULT_LIBRARY_DIR.is_dir(), (
@@ -106,34 +106,63 @@ class TestLibraryDirectory:
     def test_library_has_81_yaml_files(self, library_dir: Path):
         yaml_files = list(library_dir.glob("*.yaml"))
         assert len(yaml_files) == 81, (
-            f"Expected 81 YAML files, found {len(yaml_files)}: "
-            f"{sorted(f.stem for f in yaml_files)}"
+            f"Expected 81 YAML files, found {len(yaml_files)}: {sorted(f.stem for f in yaml_files)}"
         )
 
     def test_all_expected_lenses_present(self, library_dir: Path):
         """Verify all expected lens files are present."""
         expected = [
-            "biology_immune", "biology_ecology", "biology_mycology",
-            "biology_swarm", "biology_evolution",
-            "physics_thermodynamics", "physics_fluid_dynamics",
-            "physics_quantum", "physics_optics",
-            "chemistry_catalysis", "chemistry_polymers",
-            "math_topology", "math_game_theory", "math_chaos",
-            "cs_network_theory", "cs_cryptography", "cs_distributed_systems",
-            "military_strategy", "military_logistics", "military_intelligence",
-            "economics_markets", "economics_behavioral", "economics_game_theory",
-            "music_theory", "music_acoustics",
-            "linguistics_syntax", "linguistics_semantics",
-            "neuroscience_memory", "neuroscience_perception", "neuroscience_plasticity",
-            "urban_planning", "architecture_structural",
-            "materials_science", "geology_tectonics",
-            "meteorology", "oceanography", "astronomy_orbital",
-            "sociology_networks", "psychology_cognitive", "psychology_evolutionary",
+            "biology_immune",
+            "biology_ecology",
+            "biology_mycology",
+            "biology_swarm",
+            "biology_evolution",
+            "physics_thermodynamics",
+            "physics_fluid_dynamics",
+            "physics_quantum",
+            "physics_optics",
+            "chemistry_catalysis",
+            "chemistry_polymers",
+            "math_topology",
+            "math_game_theory",
+            "math_chaos",
+            "cs_network_theory",
+            "cs_cryptography",
+            "cs_distributed_systems",
+            "military_strategy",
+            "military_logistics",
+            "military_intelligence",
+            "economics_markets",
+            "economics_behavioral",
+            "economics_game_theory",
+            "music_theory",
+            "music_acoustics",
+            "linguistics_syntax",
+            "linguistics_semantics",
+            "neuroscience_memory",
+            "neuroscience_perception",
+            "neuroscience_plasticity",
+            "urban_planning",
+            "architecture_structural",
+            "materials_science",
+            "geology_tectonics",
+            "meteorology",
+            "oceanography",
+            "astronomy_orbital",
+            "sociology_networks",
+            "psychology_cognitive",
+            "psychology_evolutionary",
             "philosophy_logic",
-            "agriculture", "cooking_fermentation", "textiles_weaving",
-            "forestry_management", "epidemiology",
-            "mythology_narrative", "sports_strategy", "film_cinematography",
-            "martial_arts", "navigation_wayfinding",
+            "agriculture",
+            "cooking_fermentation",
+            "textiles_weaving",
+            "forestry_management",
+            "epidemiology",
+            "mythology_narrative",
+            "sports_strategy",
+            "film_cinematography",
+            "martial_arts",
+            "navigation_wayfinding",
         ]
         present = {f.stem for f in library_dir.glob("*.yaml")}
         missing = set(expected) - present
@@ -143,6 +172,7 @@ class TestLibraryDirectory:
 # ──────────────────────────────────────────────────────────────────────────────
 # Load All
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestLoadAll:
     def test_load_all_returns_81_lenses(self, loader: LensLoader):
@@ -172,9 +202,7 @@ class TestLoadAll:
         lenses = loader.load_all()
         for lens_id, lens in lenses.items():
             for i, axiom in enumerate(lens.axioms):
-                assert len(axiom) > 30, (
-                    f"{lens_id} axiom[{i}] is too short: {axiom!r}"
-                )
+                assert len(axiom) > 30, f"{lens_id} axiom[{i}] is too short: {axiom!r}"
 
     def test_all_structural_patterns_have_maps_to(self, loader: LensLoader):
         lenses = loader.load_all()
@@ -183,14 +211,13 @@ class TestLoadAll:
                 assert isinstance(pat.maps_to, list), (
                     f"{lens_id} pattern {pat.name!r}: maps_to must be a list"
                 )
-                assert len(pat.maps_to) >= 1, (
-                    f"{lens_id} pattern {pat.name!r}: maps_to is empty"
-                )
+                assert len(pat.maps_to) >= 1, f"{lens_id} pattern {pat.name!r}: maps_to is empty"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Load One
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestLoadOne:
     def test_load_one_returns_correct_lens(self, loader: LensLoader):
@@ -212,6 +239,7 @@ class TestLoadOne:
 # Validation
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestValidation:
     def test_missing_required_key_raises_validation_error(self, tmp_library: Path):
         # Write a lens missing 'domain'
@@ -219,9 +247,7 @@ class TestValidation:
             "name": "Incomplete Lens",
             "subdomain": "test",
             "axioms": ["axiom one", "axiom two"],
-            "structural_patterns": [
-                {"name": "pat", "abstract": "something", "maps_to": ["x"]}
-            ],
+            "structural_patterns": [{"name": "pat", "abstract": "something", "maps_to": ["x"]}],
             "injection_prompt": "This is a test injection prompt that is long enough.",
         }
         path = tmp_library / "incomplete.yaml"
@@ -237,9 +263,7 @@ class TestValidation:
             "domain": "test",
             "subdomain": "test",
             "axioms": ["Only one axiom here and it exists."],  # Only 1, need ≥2
-            "structural_patterns": [
-                {"name": "pat", "abstract": "desc", "maps_to": ["x"]}
-            ],
+            "structural_patterns": [{"name": "pat", "abstract": "desc", "maps_to": ["x"]}],
             "injection_prompt": "This injection prompt is definitely long enough to pass.",
         }
         path = tmp_library / "one_axiom.yaml"
@@ -277,6 +301,7 @@ class TestValidation:
 # Caching
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestCaching:
     def test_cache_populated_after_load_all(self, loader: LensLoader):
         loader.load_all()
@@ -305,6 +330,7 @@ class TestCaching:
 # Hot Reload
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestHotReload:
     def test_hot_reload_detects_mtime_change(self, tmp_library: Path):
         path = write_valid_lens(tmp_library, "hot_lens")
@@ -327,9 +353,7 @@ class TestHotReload:
         assert lens2.name == "Modified Test Lens"
         assert lens1 is not lens2
 
-    def test_no_hot_reload_returns_cached_even_after_file_change(
-        self, tmp_library: Path
-    ):
+    def test_no_hot_reload_returns_cached_even_after_file_change(self, tmp_library: Path):
         path = write_valid_lens(tmp_library, "static_lens")
         loader = LensLoader(library_dir=tmp_library, hot_reload=False)
 
@@ -354,6 +378,7 @@ class TestHotReload:
 # ──────────────────────────────────────────────────────────────────────────────
 # Listing
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestListAvailable:
     def test_list_available_returns_81_items(self, loader: LensLoader):
@@ -389,6 +414,7 @@ class TestListAvailable:
 # Domain Queries
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestDomainQueries:
     def test_get_by_domain_biology(self, loader: LensLoader):
         bio_lenses = loader.get_by_domain("biology")
@@ -410,6 +436,7 @@ class TestDomainQueries:
 # ──────────────────────────────────────────────────────────────────────────────
 # Lens Properties
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestLensProperties:
     def test_lens_id_format(self, loader: LensLoader):

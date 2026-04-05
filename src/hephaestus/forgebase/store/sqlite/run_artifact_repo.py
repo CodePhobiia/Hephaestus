@@ -1,4 +1,5 @@
 """SQLite implementation of KnowledgeRunArtifactRepository."""
+
 from __future__ import annotations
 
 import aiosqlite

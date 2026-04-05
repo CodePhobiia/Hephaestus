@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
 from types import SimpleNamespace
-
-import pytest
 
 from hephaestus.memory.transparency import (
     MemoryReport,
@@ -15,17 +12,19 @@ from hephaestus.memory.transparency import (
     format_memory_report,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers — lightweight stand-ins for SessionState / HephaestusConfig
 # ---------------------------------------------------------------------------
+
 
 def _make_session(**kwargs):
     """Return a SimpleNamespace mimicking SessionState with sensible defaults."""
     defaults = dict(
         context_items=[],
         pinned=[],
-        config=SimpleNamespace(backend="api", default_model="claude-sonnet-4-20250514", depth=3, candidates=8),
+        config=SimpleNamespace(
+            backend="api", default_model="claude-sonnet-4-20250514", depth=3, candidates=8
+        ),
         anti_memory_hits=[],
         loaded_instructions=[],
         compaction_summaries=[],
@@ -44,6 +43,7 @@ def _sample_hits() -> list[dict]:
 # ---------------------------------------------------------------------------
 # MemoryReport creation
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryReportCreation:
     """Tests for MemoryReport dataclass construction."""
@@ -103,6 +103,7 @@ class TestMemoryReportCreation:
 # ---------------------------------------------------------------------------
 # build_memory_report
 # ---------------------------------------------------------------------------
+
 
 class TestBuildMemoryReport:
     """Tests for build_memory_report with various session states."""
@@ -181,6 +182,7 @@ class TestBuildMemoryReport:
 # format_memory_report
 # ---------------------------------------------------------------------------
 
+
 class TestFormatMemoryReport:
     """Tests for the /status-oriented summary formatter."""
 
@@ -228,6 +230,7 @@ class TestFormatMemoryReport:
 # ---------------------------------------------------------------------------
 # format_context_report
 # ---------------------------------------------------------------------------
+
 
 class TestFormatContextReport:
     """Tests for the /context-oriented detail formatter."""
@@ -307,6 +310,7 @@ class TestFormatContextReport:
 # ---------------------------------------------------------------------------
 # Integration-style: build then format
 # ---------------------------------------------------------------------------
+
 
 class TestBuildThenFormat:
     """Round-trip: build a report from session state and format it."""

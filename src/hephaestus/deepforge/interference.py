@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 class InjectionStrategy(Enum):
     """Strategy for injecting lens axioms into the assistant prefill."""
 
-    FULL = auto()         # Inject all axioms at once
-    SINGLE = auto()       # Inject one axiom (highest-priority or random)
+    FULL = auto()  # Inject all axioms at once
+    SINGLE = auto()  # Inject one axiom (highest-priority or random)
     PROGRESSIVE = auto()  # Inject n axioms where n grows with each attempt
 
 

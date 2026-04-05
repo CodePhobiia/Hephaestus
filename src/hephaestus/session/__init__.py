@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from hephaestus.lenses.state import LensEngineState
 from hephaestus.session.deliberation import (
     CandidateStateCard,
     DeliberationClaim,
@@ -14,15 +15,14 @@ from hephaestus.session.deliberation import (
     RuntimeRouter,
     VerifierCheck,
 )
+from hephaestus.session.reference_lots import ReferenceLot, ResumeGateReport
 from hephaestus.session.schema import (
     InventionSnapshot,
     Session,
     SessionMeta,
     TranscriptEntry,
 )
-from hephaestus.session.reference_lots import ReferenceLot, ResumeGateReport
 from hephaestus.session.todos import TodoItem, TodoList
-from hephaestus.lenses.state import LensEngineState
 
 __all__ = [
     "CandidateStateCard",

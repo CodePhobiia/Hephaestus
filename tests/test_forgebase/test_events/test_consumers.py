@@ -1,4 +1,5 @@
 """Tests for ConsumerRegistry and PostCommitFanout."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -10,7 +11,6 @@ from hephaestus.forgebase.domain.models import DomainEvent
 from hephaestus.forgebase.domain.values import EntityId, Version
 from hephaestus.forgebase.events.consumers import ConsumerRegistry, EventConsumer
 from hephaestus.forgebase.events.fanout import PostCommitFanout
-
 
 # ---------------------------------------------------------------------------
 # Helpers

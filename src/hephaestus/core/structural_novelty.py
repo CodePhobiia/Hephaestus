@@ -15,7 +15,6 @@ same model generated it), this module uses structural signals to assess novelty:
 
 from __future__ import annotations
 
-import math
 import re
 from dataclasses import dataclass
 
@@ -23,6 +22,7 @@ from dataclasses import dataclass
 @dataclass
 class StructuralNoveltyScore:
     """Model-free novelty assessment based on structural text signals."""
+
     vocabulary_divergence: float  # 0-1: how different are invention words from problem words
     concept_density: float  # 0-1: technical concepts per unit text
     specificity: float  # 0-1: concrete vs vague language ratio
@@ -58,12 +58,7 @@ def compute_structural_novelty(
     self_contain = _self_containment(architecture, source_domain_words or [])
 
     # Weighted composite
-    composite = (
-        0.25 * vocab_div +
-        0.25 * concept_den +
-        0.30 * specificity +
-        0.20 * self_contain
-    )
+    composite = 0.25 * vocab_div + 0.25 * concept_den + 0.30 * specificity + 0.20 * self_contain
 
     return StructuralNoveltyScore(
         vocabulary_divergence=vocab_div,
@@ -107,32 +102,26 @@ def _specificity_score(architecture: str) -> float:
 
     # Specific signals: data structures, algorithms, parameters, equations
     specific_patterns = [
-        r'\b(?:array|list|dict|map|queue|stack|tree|graph|matrix|vector|tensor)\b',
-        r'\b(?:O\([^)]+\)|log\s*n|n\^2|linear|polynomial|exponential)\b',
-        r'\b\d+(?:\.\d+)?\b',  # numbers/parameters
-        r'[=<>≤≥]+',  # equations/comparisons
-        r'\b(?:if|then|else|while|for|return|def|class|struct)\b',  # code-like
-        r'\b(?:threshold|coefficient|weight|parameter|constant|variable)\b',
-        r'\b(?:UDP|TCP|HTTP|RPC|gRPC|REST|API)\b',  # protocols
-        r'\b(?:Redis|PostgreSQL|Kafka|NATS|ZeroMQ)\b',  # technologies
+        r"\b(?:array|list|dict|map|queue|stack|tree|graph|matrix|vector|tensor)\b",
+        r"\b(?:O\([^)]+\)|log\s*n|n\^2|linear|polynomial|exponential)\b",
+        r"\b\d+(?:\.\d+)?\b",  # numbers/parameters
+        r"[=<>≤≥]+",  # equations/comparisons
+        r"\b(?:if|then|else|while|for|return|def|class|struct)\b",  # code-like
+        r"\b(?:threshold|coefficient|weight|parameter|constant|variable)\b",
+        r"\b(?:UDP|TCP|HTTP|RPC|gRPC|REST|API)\b",  # protocols
+        r"\b(?:Redis|PostgreSQL|Kafka|NATS|ZeroMQ)\b",  # technologies
     ]
 
     # Vague signals
     vague_patterns = [
-        r'\b(?:could|would|might|perhaps|possibly|potentially)\b',
-        r'\b(?:similar|analogous|inspired|reminiscent|akin)\b',
-        r'\b(?:somehow|generally|typically|usually|often)\b',
-        r'\b(?:various|several|multiple|many|some)\b',
+        r"\b(?:could|would|might|perhaps|possibly|potentially)\b",
+        r"\b(?:similar|analogous|inspired|reminiscent|akin)\b",
+        r"\b(?:somehow|generally|typically|usually|often)\b",
+        r"\b(?:various|several|multiple|many|some)\b",
     ]
 
-    specific_count = sum(
-        len(re.findall(p, architecture, re.IGNORECASE))
-        for p in specific_patterns
-    )
-    vague_count = sum(
-        len(re.findall(p, architecture, re.IGNORECASE))
-        for p in vague_patterns
-    )
+    specific_count = sum(len(re.findall(p, architecture, re.IGNORECASE)) for p in specific_patterns)
+    vague_count = sum(len(re.findall(p, architecture, re.IGNORECASE)) for p in vague_patterns)
 
     total = specific_count + vague_count
     if total == 0:
@@ -149,9 +138,7 @@ def _self_containment(architecture: str, source_domain_words: list[str]) -> floa
     arch_lower = architecture.lower()
     total_words = len(architecture.split())
     source_hits = sum(
-        arch_lower.count(word.lower())
-        for word in source_domain_words
-        if len(word) > 3
+        arch_lower.count(word.lower()) for word in source_domain_words if len(word) > 3
     )
 
     # Source domain word density — lower is better
@@ -164,11 +151,12 @@ def _self_containment(architecture: str, source_domain_words: list[str]) -> floa
 def _extract_technical_words(text: str) -> list[str]:
     """Extract words that are likely technical terms."""
     # Words that are capitalized, contain underscores, or are longer than 6 chars
-    words = re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', text)
+    words = re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", text)
     technical = [
-        w for w in words
+        w
+        for w in words
         if len(w) > 5
-        or '_' in w
+        or "_" in w
         or (w[0].isupper() and len(w) > 3)
         or w.lower() in _TECHNICAL_VOCAB
     ]
@@ -176,15 +164,59 @@ def _extract_technical_words(text: str) -> list[str]:
 
 
 _TECHNICAL_VOCAB = {
-    "algorithm", "buffer", "cache", "cluster", "codec", "config",
-    "counter", "daemon", "delta", "epoch", "fetch", "graph",
-    "hash", "index", "kafka", "layer", "merge", "mutex",
-    "node", "queue", "redis", "shard", "state", "token",
-    "vector", "worker", "yield", "batch", "bloom", "chunk",
-    "codec", "fiber", "float", "frame", "guard", "heapq",
-    "infer", "latch", "model", "parse", "probe", "proto",
-    "qubit", "relay", "route", "scope", "stack", "table",
-    "timer", "tuple", "union", "valve", "async", "await",
+    "algorithm",
+    "buffer",
+    "cache",
+    "cluster",
+    "codec",
+    "config",
+    "counter",
+    "daemon",
+    "delta",
+    "epoch",
+    "fetch",
+    "graph",
+    "hash",
+    "index",
+    "kafka",
+    "layer",
+    "merge",
+    "mutex",
+    "node",
+    "queue",
+    "redis",
+    "shard",
+    "state",
+    "token",
+    "vector",
+    "worker",
+    "yield",
+    "batch",
+    "bloom",
+    "chunk",
+    "fiber",
+    "float",
+    "frame",
+    "guard",
+    "heapq",
+    "infer",
+    "latch",
+    "model",
+    "parse",
+    "probe",
+    "proto",
+    "qubit",
+    "relay",
+    "route",
+    "scope",
+    "stack",
+    "table",
+    "timer",
+    "tuple",
+    "union",
+    "valve",
+    "async",
+    "await",
 }
 
 

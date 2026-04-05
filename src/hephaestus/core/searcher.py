@@ -25,14 +25,13 @@ Usage::
 
 from __future__ import annotations
 
-import json
-from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.cards import compile_lens_card
 from hephaestus.lenses.cells import build_reference_state
@@ -309,7 +308,7 @@ class CrossDomainSearcher:
 
     async def search(
         self,
-        structure: "ProblemStructure",  # noqa: F821 — imported below
+        structure: ProblemStructure,  # noqa: F821 — imported below
         *,
         expansion_request: RetrievalExpansionRequest | None = None,
     ) -> list[SearchCandidate]:
@@ -380,7 +379,7 @@ class CrossDomainSearcher:
 
         # Step 2: collect successful candidates from the primary plan.
         candidates: list[SearchCandidate] = []
-        for ls, result in zip(selection.selected_lenses, results):
+        for ls, result in zip(selection.selected_lenses, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning(
                     "Lens %s search failed: %s",
@@ -421,7 +420,9 @@ class CrossDomainSearcher:
             ]
             fallback_results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
             fallback_used = True
-            for ls, result in zip(selection.fallback_lenses[:needed], fallback_results):
+            for _ls, result in zip(
+                selection.fallback_lenses[:needed], fallback_results, strict=True
+            ):
                 if isinstance(result, Exception) or result is None:
                     continue
                 if result.confidence >= self._min_confidence:
@@ -431,7 +432,11 @@ class CrossDomainSearcher:
         candidates.sort(
             key=lambda c: (
                 float(c.bundle_proof is not None),
-                float(getattr(c.bundle_proof, "proof_confidence", 0.0) if c.bundle_proof is not None else 0.0),
+                float(
+                    getattr(c.bundle_proof, "proof_confidence", 0.0)
+                    if c.bundle_proof is not None
+                    else 0.0
+                ),
                 c.domain_distance,
             ),
             reverse=True,
@@ -452,7 +457,7 @@ class CrossDomainSearcher:
 
         return candidates[: self._num_candidates]
 
-    def _select_runtime(self, structure: "ProblemStructure") -> Any:
+    def _select_runtime(self, structure: ProblemStructure) -> Any:
         """Select either a bundle proof or a singleton fallback plan."""
         if self._use_adaptive_lens_engine and hasattr(self._selector, "select_bundle_first"):
             return self._selector.select_bundle_first(
@@ -470,6 +475,7 @@ class CrossDomainSearcher:
 
         lens_scores = self._select_lenses(structure)
         from hephaestus.lenses.bundles import BundleSelectionResult
+
         return BundleSelectionResult(
             retrieval_mode="singleton",
             selected_lenses=tuple(lens_scores),
@@ -478,7 +484,7 @@ class CrossDomainSearcher:
 
     def _select_lenses(
         self,
-        structure: "ProblemStructure",
+        structure: ProblemStructure,
     ) -> list[LensScore]:
         """Select the most distant relevant lenses for the problem."""
         return self._selector.select(
@@ -492,7 +498,7 @@ class CrossDomainSearcher:
 
     async def _query_lens(
         self,
-        structure: "ProblemStructure",
+        structure: ProblemStructure,
         lens_score: LensScore,
         *,
         bundle_proof: Any | None = None,
@@ -521,8 +527,12 @@ class CrossDomainSearcher:
         frontier_context = self._expansion_context_for_prompt(expansion_request)
 
         dossier = getattr(structure, "baseline_dossier", None)
-        baseline_summary = getattr(dossier, "summary", "") or "(no external baseline reconnaissance attached)"
-        failure_modes = getattr(dossier, "common_failure_modes", []) or getattr(dossier, "known_bottlenecks", [])
+        baseline_summary = (
+            getattr(dossier, "summary", "") or "(no external baseline reconnaissance attached)"
+        )
+        failure_modes = getattr(dossier, "common_failure_modes", []) or getattr(
+            dossier, "known_bottlenecks", []
+        )
         keywords_to_avoid = getattr(dossier, "keywords_to_avoid", [])
 
         prompt = _SEARCH_PROMPT_TEMPLATE.format(
@@ -530,12 +540,12 @@ class CrossDomainSearcher:
             mathematical_shape=structure.mathematical_shape,
             constraints=constraints_text or "• (none specified)",
             baseline_summary=baseline_summary,
-            baseline_failures="\n".join(f"• {item}" for item in failure_modes[:6]) or "• (none recorded)",
-            baseline_keywords="\n".join(f"• {item}" for item in keywords_to_avoid[:8]) or "• (none recorded)",
+            baseline_failures="\n".join(f"• {item}" for item in failure_modes[:6])
+            or "• (none recorded)",
+            baseline_keywords="\n".join(f"• {item}" for item in keywords_to_avoid[:8])
+            or "• (none recorded)",
             domain_name=domain_desc,
-            domain_description=" | ".join(
-                p.abstract for p in lens.structural_patterns[:3]
-            ),
+            domain_description=" | ".join(p.abstract for p in lens.structural_patterns[:3]),
             retrieval_frontier=frontier_context,
             lens_card=lens_card.summary_text(),
             bundle_context=bundle_context,
@@ -559,13 +569,21 @@ class CrossDomainSearcher:
             if bundle_proof is not None:
                 lineage = lineage_from_bundle_proof(bundle_proof)
                 cohesion_cell = next(
-                    (cell for cell in getattr(bundle_proof, "cells", ()) if cell.lens_id == lens.lens_id),
+                    (
+                        cell
+                        for cell in getattr(bundle_proof, "cells", ())
+                        if cell.lens_id == lens.lens_id
+                    ),
                     None,
                 )
                 bundle_role = (
                     "critical"
                     if lens.lens_id in set(getattr(bundle_proof, "critical_lens_ids", ()))
-                    else ("conditional" if getattr(bundle_proof, "conditional_requirements", {}).get(lens.lens_id) else "support")
+                    else (
+                        "conditional"
+                        if getattr(bundle_proof, "conditional_requirements", {}).get(lens.lens_id)
+                        else "support"
+                    )
                 )
             else:
                 lineage = lineage_from_singleton(
@@ -601,7 +619,9 @@ class CrossDomainSearcher:
                     )
                     if bundle_proof is not None
                     else [],
-                    "retrieval_frontier": expansion_request.to_dict() if expansion_request is not None else {},
+                    "retrieval_frontier": expansion_request.to_dict()
+                    if expansion_request is not None
+                    else {},
                 },
             )
 
@@ -628,7 +648,9 @@ class CrossDomainSearcher:
     ) -> str:
         if bundle_proof is None:
             return ""
-        conditions = getattr(bundle_proof, "conditional_requirements", {}).get(lens_score.lens.lens_id, ())
+        conditions = getattr(bundle_proof, "conditional_requirements", {}).get(
+            lens_score.lens.lens_id, ()
+        )
         return (
             "\nACTIVE BUNDLE PROOF:\n"
             f"- bundle_id: {getattr(bundle_proof, 'bundle_id', '')}\n"
@@ -653,7 +675,9 @@ class CrossDomainSearcher:
             "• analogy_axes: " + (", ".join(expansion_request.analogy_axes) or "none"),
         ]
         lines.extend(f"• branch_hint: {hint}" for hint in expansion_request.branch_hints[:4])
-        lines.append("• search for a mechanism that expands the frontier rather than refining the nearest neighbor baseline.")
+        lines.append(
+            "• search for a mechanism that expands the frontier rather than refining the nearest neighbor baseline."
+        )
         return "\n".join(lines)
 
     def _parse_candidate(self, raw: str) -> dict[str, Any]:

@@ -1,7 +1,6 @@
 """Tests for SQLite merge proposal and merge conflict repositories."""
-from __future__ import annotations
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
@@ -11,12 +10,12 @@ from hephaestus.forgebase.domain.enums import (
     MergeVerdict,
 )
 from hephaestus.forgebase.domain.models import MergeConflict, MergeProposal
-from hephaestus.forgebase.domain.values import EntityId, Version, VaultRevisionId
-from hephaestus.forgebase.store.sqlite.merge_proposal_repo import (
-    SqliteMergeProposalRepository,
-)
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.store.sqlite.merge_conflict_repo import (
     SqliteMergeConflictRepository,
+)
+from hephaestus.forgebase.store.sqlite.merge_proposal_repo import (
+    SqliteMergeProposalRepository,
 )
 
 

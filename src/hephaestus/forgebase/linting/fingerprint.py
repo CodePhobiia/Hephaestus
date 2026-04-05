@@ -9,6 +9,7 @@ The ``dedup_findings`` function uses fingerprints to decide which raw
 findings are genuinely new, which should reopen a previously-closed
 finding, and which are duplicates of currently-open findings (skip).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -69,11 +70,13 @@ def compute_fingerprint(
 
 # Dispositions that indicate the finding is closed/inactive and should
 # be reopened if the same issue reappears.
-_REOPENABLE_DISPOSITIONS: frozenset[FindingDisposition] = frozenset({
-    FindingDisposition.RESOLVED,
-    FindingDisposition.FALSE_POSITIVE,
-    FindingDisposition.WONT_FIX,
-})
+_REOPENABLE_DISPOSITIONS: frozenset[FindingDisposition] = frozenset(
+    {
+        FindingDisposition.RESOLVED,
+        FindingDisposition.FALSE_POSITIVE,
+        FindingDisposition.WONT_FIX,
+    }
+)
 
 
 def dedup_findings(

@@ -8,17 +8,17 @@ Contains:
 All handlers follow the existing REPL convention:
     async def handler(console: Console, state: SessionState, args: str) -> None
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
 from rich.console import Console
 
-from hephaestus.cli.display import CYAN, GREEN, RED, DIM
+from hephaestus.cli.display import DIM, EMBER, GREEN, RED
 from hephaestus.cli.forgebase_display import (
     render_compile_result,
     render_export_success,
@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Lazy ForgeBase initialization
 # ---------------------------------------------------------------------------
+
 
 async def _ensure_forgebase(state: Any) -> Any:
     """Initialize ForgeBase lazily on the session state if not already set.
@@ -64,6 +65,7 @@ async def _ensure_forgebase(state: Any) -> Any:
 # Vault entity counts helper
 # ---------------------------------------------------------------------------
 
+
 async def _vault_entity_counts(fb: Any, vault_id: Any) -> dict[str, int]:
     """Query entity counts for a vault using a read-only UoW."""
     counts: dict[str, int] = {
@@ -78,28 +80,28 @@ async def _vault_entity_counts(fb: Any, vault_id: Any) -> dict[str, int]:
         try:
             pages = await uow.pages.list_by_vault(vault_id)
             counts["pages"] = len(pages)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to count pages for vault %s: %s", vault_id, exc)
         try:
             sources = await uow.sources.list_by_vault(vault_id)
             counts["sources"] = len(sources)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to count sources for vault %s: %s", vault_id, exc)
         try:
             claims = await uow.claims.list_by_vault(vault_id)
             counts["claims"] = len(claims)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to count claims for vault %s: %s", vault_id, exc)
         try:
             links = await uow.links.list_by_vault(vault_id)
             counts["links"] = len(links)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to count links for vault %s: %s", vault_id, exc)
         try:
             workbooks = await uow.workbooks.list_by_vault(vault_id)
             counts["workbooks"] = len(workbooks)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to count workbooks for vault %s: %s", vault_id, exc)
         await uow.rollback()
     return counts
 
@@ -109,6 +111,7 @@ async def _vault_entity_counts(fb: Any, vault_id: Any) -> dict[str, int]:
 # ═══════════════════════════════════════════════════════════════════════════
 #
 # All handlers: async def _cmd_X(console, state, args) -> None
+
 
 async def _cmd_vault(console: Console, state: Any, args: str) -> None:
     """Handle /vault [create <name>|list|use <id>|info|compile|lint]."""
@@ -120,12 +123,10 @@ async def _cmd_vault(console: Console, state: Any, args: str) -> None:
         # Show current vault context and usage
         current = getattr(state, "current_vault_id", None)
         if current:
-            console.print(f"  [dim]Active vault:[/] [{CYAN}]{current}[/]")
+            console.print(f"  [dim]Active vault:[/] [{EMBER}]{current}[/]")
         else:
             console.print("  [dim]No active vault. Use /vault create <name> or /vault use <id>.[/]")
-        console.print(
-            "  [dim]Subcommands:[/] create <name>, list, use <id>, info, compile, lint\n"
-        )
+        console.print("  [dim]Subcommands:[/] create <name>, list, use <id>, info, compile, lint\n")
         return
 
     if subcmd == "create":
@@ -162,11 +163,11 @@ async def _vault_create(console: Console, state: Any, args: str) -> None:
 
     state.current_vault_id = vault.vault_id
     console.print(f"  [{GREEN}]Vault created[/]")
-    console.print(f"  ID: [{CYAN}]{vault.vault_id}[/]")
-    console.print(f"  Name: [{CYAN}]{vault.name}[/]")
+    console.print(f"  ID: [{EMBER}]{vault.vault_id}[/]")
+    console.print(f"  Name: [{EMBER}]{vault.name}[/]")
     if description:
         console.print(f"  Description: {description}")
-    console.print(f"  [dim]Vault is now the active context.[/]\n")
+    console.print("  [dim]Vault is now the active context.[/]\n")
 
 
 async def _vault_list(console: Console, state: Any) -> None:
@@ -205,7 +206,7 @@ async def _vault_use(console: Console, state: Any, vault_id_str: str) -> None:
 
     state.current_vault_id = vid
     state.current_workbook_id = None  # Reset workbook when switching vault
-    console.print(f"  [{GREEN}]Active vault set to [{CYAN}]{vault.name}[/] ({vid})[/]\n")
+    console.print(f"  [{GREEN}]Active vault set to [{EMBER}]{vault.name}[/] ({vid})[/]\n")
 
 
 async def _vault_info(console: Console, state: Any) -> None:
@@ -250,9 +251,7 @@ async def _vault_compile(console: Console, state: Any) -> None:
 
     console.print(f"  [dim]Compiling vault {vault_id}...[/]")
     try:
-        manifest = await fb.vault_synthesizer.synthesize(
-            vault_id, workbook_id=workbook_id
-        )
+        manifest = await fb.vault_synthesizer.synthesize(vault_id, workbook_id=workbook_id)
         render_compile_result(console, manifest)
     except Exception as exc:
         console.print(f"  [{RED}]Compilation failed: {exc}[/]\n")
@@ -270,9 +269,7 @@ async def _vault_lint(console: Console, state: Any) -> None:
 
     console.print(f"  [dim]Linting vault {vault_id}...[/]")
     try:
-        report = await fb.lint_engine.run_lint(
-            vault_id, workbook_id=workbook_id
-        )
+        report = await fb.lint_engine.run_lint(vault_id, workbook_id=workbook_id)
         render_lint_report(console, report)
     except Exception as exc:
         console.print(f"  [{RED}]Lint failed: {exc}[/]\n")
@@ -281,6 +278,7 @@ async def _vault_lint(console: Console, state: Any) -> None:
 # ---------------------------------------------------------------------------
 # /ask
 # ---------------------------------------------------------------------------
+
 
 async def _cmd_ask(console: Console, state: Any, args: str) -> None:
     """Handle /ask <query> -- query within current vault context."""
@@ -304,20 +302,20 @@ async def _cmd_ask(console: Console, state: Any, args: str) -> None:
             # Format context summary
             console.print()
             if hasattr(baseline, "entries") and baseline.entries:
-                console.print(f"  Prior art entries: [{CYAN}]{len(baseline.entries)}[/]")
+                console.print(f"  Prior art entries: [{EMBER}]{len(baseline.entries)}[/]")
             if hasattr(context_pack, "entries") and context_pack.entries:
-                console.print(f"  Domain context entries: [{CYAN}]{len(context_pack.entries)}[/]")
+                console.print(f"  Domain context entries: [{EMBER}]{len(context_pack.entries)}[/]")
             if hasattr(dossier, "entries") and dossier.entries:
-                console.print(f"  Constraint dossier entries: [{CYAN}]{len(dossier.entries)}[/]")
+                console.print(f"  Constraint dossier entries: [{EMBER}]{len(dossier.entries)}[/]")
 
             console.print()
-            console.print(f"  [{CYAN}]Query:[/] {query}")
+            console.print(f"  [{EMBER}]Query:[/] {query}")
             console.print(
-                f"  [dim]Context assembled. Pipe this into the invention pipeline "
-                f"with: heph \"<problem>\" to use full ForgeBase context.[/]\n"
+                "  [dim]Context assembled. Pipe this into the invention pipeline "
+                'with: heph "<problem>" to use full ForgeBase context.[/]\n'
             )
         else:
-            console.print(f"  [dim]No context assembler available.[/]\n")
+            console.print("  [dim]No context assembler available.[/]\n")
     except Exception as exc:
         console.print(f"  [{RED}]Context assembly failed: {exc}[/]\n")
 
@@ -326,10 +324,13 @@ async def _cmd_ask(console: Console, state: Any, args: str) -> None:
 # /fuse
 # ---------------------------------------------------------------------------
 
+
 async def _cmd_fuse(console: Console, state: Any, args: str) -> None:
     """Handle /fuse <vault_ids...> [--problem TEXT] [--mode strict|exploratory]."""
     if not args.strip():
-        console.print(f"  [{RED}]Usage: /fuse <vault_id1> <vault_id2> [--problem TEXT] [--mode strict|exploratory][/]\n")
+        console.print(
+            f"  [{RED}]Usage: /fuse <vault_id1> <vault_id2> [--problem TEXT] [--mode strict|exploratory][/]\n"
+        )
         return
 
     from hephaestus.forgebase.contracts.fusion import FusionRequest
@@ -386,6 +387,7 @@ async def _cmd_fuse(console: Console, state: Any, args: str) -> None:
 # ---------------------------------------------------------------------------
 # /ingest
 # ---------------------------------------------------------------------------
+
 
 async def _cmd_ingest(console: Console, state: Any, args: str) -> None:
     """Handle /ingest <path_or_url> -- ingest source into current vault."""
@@ -451,6 +453,7 @@ async def _cmd_ingest(console: Console, state: Any, args: str) -> None:
 # /lint (standalone, operates on current vault)
 # ---------------------------------------------------------------------------
 
+
 async def _cmd_lint(console: Console, state: Any, args: str) -> None:
     """Handle /lint -- lint current vault."""
     await _vault_lint(console, state)
@@ -459,6 +462,7 @@ async def _cmd_lint(console: Console, state: Any, args: str) -> None:
 # ---------------------------------------------------------------------------
 # /compile (standalone, operates on current vault)
 # ---------------------------------------------------------------------------
+
 
 async def _cmd_compile(console: Console, state: Any, args: str) -> None:
     """Handle /compile -- compile current vault."""
@@ -469,6 +473,7 @@ async def _cmd_compile(console: Console, state: Any, args: str) -> None:
 # /workbook
 # ---------------------------------------------------------------------------
 
+
 async def _cmd_workbook(console: Console, state: Any, args: str) -> None:
     """Handle /workbook [open <name>|list|diff|merge|abandon]."""
     parts = args.strip().split(None, 1)
@@ -478,12 +483,10 @@ async def _cmd_workbook(console: Console, state: Any, args: str) -> None:
     if not subcmd:
         current = getattr(state, "current_workbook_id", None)
         if current:
-            console.print(f"  [dim]Active workbook:[/] [{CYAN}]{current}[/]")
+            console.print(f"  [dim]Active workbook:[/] [{EMBER}]{current}[/]")
         else:
             console.print("  [dim]No active workbook.[/]")
-        console.print(
-            "  [dim]Subcommands:[/] open <name>, list, diff, merge, abandon\n"
-        )
+        console.print("  [dim]Subcommands:[/] open <name>, list, diff, merge, abandon\n")
         return
 
     if subcmd == "open":
@@ -526,8 +529,8 @@ async def _workbook_open(console: Console, state: Any, name: str) -> None:
         )
         state.current_workbook_id = wb.workbook_id
         console.print(f"  [{GREEN}]Workbook created and activated[/]")
-        console.print(f"  ID: [{CYAN}]{wb.workbook_id}[/]")
-        console.print(f"  Name: [{CYAN}]{wb.name}[/]")
+        console.print(f"  ID: [{EMBER}]{wb.workbook_id}[/]")
+        console.print(f"  Name: [{EMBER}]{wb.name}[/]")
         console.print(f"  Base revision: [{DIM}]{wb.base_revision_id}[/]\n")
     except Exception as exc:
         console.print(f"  [{RED}]Failed to create workbook: {exc}[/]\n")
@@ -555,7 +558,6 @@ async def _workbook_diff(console: Console, state: Any) -> None:
         console.print("  [dim]No active workbook. Use /workbook open <name> first.[/]\n")
         return
 
-    vault_id = getattr(state, "current_vault_id", None)
     fb = await _ensure_forgebase(state)
 
     # Read workbook metadata
@@ -575,13 +577,13 @@ async def _workbook_diff(console: Console, state: Any) -> None:
         await uow.rollback()
 
     console.print()
-    console.print(f"  [{CYAN}]Workbook:[/] {wb.name} ({workbook_id})")
+    console.print(f"  [{EMBER}]Workbook:[/] {wb.name} ({workbook_id})")
     console.print(f"  Base revision: [{DIM}]{wb.base_revision_id}[/]")
     console.print()
-    console.print(f"  Modified pages:    [{CYAN}]{len(page_heads)}[/]")
-    console.print(f"  Modified claims:   [{CYAN}]{len(claim_heads)}[/]")
-    console.print(f"  Modified sources:  [{CYAN}]{len(source_heads)}[/]")
-    console.print(f"  Deleted entities:  [{CYAN}]{len(tombstones)}[/]")
+    console.print(f"  Modified pages:    [{EMBER}]{len(page_heads)}[/]")
+    console.print(f"  Modified claims:   [{EMBER}]{len(claim_heads)}[/]")
+    console.print(f"  Modified sources:  [{EMBER}]{len(source_heads)}[/]")
+    console.print(f"  Deleted entities:  [{EMBER}]{len(tombstones)}[/]")
     console.print()
 
 
@@ -601,8 +603,7 @@ async def _workbook_merge(console: Console, state: Any) -> None:
 
         if n_conflicts > 0:
             console.print(
-                f"  [{RED}]Merge has {n_conflicts} conflict(s). "
-                f"Resolve them before merging.[/]\n"
+                f"  [{RED}]Merge has {n_conflicts} conflict(s). Resolve them before merging.[/]\n"
             )
             return
 
@@ -610,7 +611,7 @@ async def _workbook_merge(console: Console, state: Any) -> None:
         await fb.merge.execute_merge(proposal.proposal_id)
         state.current_workbook_id = None
         console.print(f"  [{GREEN}]Merge executed successfully.[/]")
-        console.print(f"  [dim]Workbook merged into canonical. Active workbook cleared.[/]\n")
+        console.print("  [dim]Workbook merged into canonical. Active workbook cleared.[/]\n")
     except Exception as exc:
         console.print(f"  [{RED}]Merge failed: {exc}[/]\n")
 
@@ -628,7 +629,7 @@ async def _workbook_abandon(console: Console, state: Any) -> None:
         await fb.branches.abandon_workbook(workbook_id)
         state.current_workbook_id = None
         console.print(f"  [{GREEN}]Workbook abandoned.[/]")
-        console.print(f"  [dim]Active workbook cleared.[/]\n")
+        console.print("  [dim]Active workbook cleared.[/]\n")
     except Exception as exc:
         console.print(f"  [{RED}]Abandon failed: {exc}[/]\n")
 
@@ -636,6 +637,7 @@ async def _workbook_abandon(console: Console, state: Any) -> None:
 # ---------------------------------------------------------------------------
 # /export (ForgeBase vault export)
 # ---------------------------------------------------------------------------
+
 
 async def _cmd_fb_export(console: Console, state: Any, args: str) -> None:
     """Handle /export [markdown|obsidian] -- export current vault."""
@@ -676,7 +678,9 @@ async def _cmd_fb_export(console: Console, state: Any, args: str) -> None:
         page_key = getattr(page, "page_key", str(page.page_id))
         safe_name = "".join(c if c.isalnum() or c in "-_ " else "_" for c in page_key)
         filename = f"{safe_name}.md"
-        content = getattr(pv, "content_markdown", "") or getattr(pv, "body", "") or f"# {pv.title}\n"
+        content = (
+            getattr(pv, "content_markdown", "") or getattr(pv, "body", "") or f"# {pv.title}\n"
+        )
         (output_dir / filename).write_text(content, encoding="utf-8")
 
     render_export_success(console, str(output_dir), format_name)
@@ -686,7 +690,7 @@ async def _cmd_fb_export(console: Console, state: Any, args: str) -> None:
 # Click CLI subcommands (standalone, dispatched from main.py)
 # ═══════════════════════════════════════════════════════════════════════════
 
-import click
+import click  # noqa: E402
 
 
 def _cli_forgebase_factory() -> tuple[Any, Any]:
@@ -759,6 +763,7 @@ def _cli_vault_list() -> None:
 def _cli_vault_info(vault_id: str) -> None:
     """Show vault details."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.domain.values import EntityId
 
     cfg, create_fb = _cli_forgebase_factory()
@@ -788,6 +793,7 @@ def _cli_vault_info(vault_id: str) -> None:
 def _cli_vault_compile(vault_id: str) -> None:
     """Compile a vault (run Tier 2 synthesis)."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.domain.values import EntityId
 
     cfg, create_fb = _cli_forgebase_factory()
@@ -810,6 +816,7 @@ def _cli_vault_compile(vault_id: str) -> None:
 def _cli_vault_lint(vault_id: str) -> None:
     """Lint a vault for quality issues."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.domain.values import EntityId
 
     cfg, create_fb = _cli_forgebase_factory()
@@ -834,6 +841,7 @@ def _cli_vault_lint(vault_id: str) -> None:
 def _cli_vault_ingest(vault_id: str, source_path: str, fmt: str | None) -> None:
     """Ingest a source into a vault."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.domain.enums import SourceFormat
     from hephaestus.forgebase.domain.values import EntityId
 
@@ -898,6 +906,7 @@ def _cli_vault_ingest(vault_id: str, source_path: str, fmt: str | None) -> None:
 def ask_cmd(query: str, vault_id: str, scope: str) -> None:
     """Query within a vault's knowledge context."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.domain.values import EntityId
 
     cfg, create_fb = _cli_forgebase_factory()
@@ -909,15 +918,14 @@ def ask_cmd(query: str, vault_id: str, scope: str) -> None:
             vid = EntityId(vault_id)
             if fb.context_assembler is not None:
                 baseline, ctx_pack, dossier = await fb.context_assembler.assemble_all(vid)
-                console.print(f"\n  [{GREEN}]Context assembled[/] for vault [{CYAN}]{vault_id}[/]")
+                console.print(f"\n  [{GREEN}]Context assembled[/] for vault [{EMBER}]{vault_id}[/]")
                 if hasattr(baseline, "entries") and baseline.entries:
-                    console.print(f"  Prior art entries: [{CYAN}]{len(baseline.entries)}[/]")
+                    console.print(f"  Prior art entries: [{EMBER}]{len(baseline.entries)}[/]")
                 if hasattr(ctx_pack, "entries") and ctx_pack.entries:
-                    console.print(f"  Domain context entries: [{CYAN}]{len(ctx_pack.entries)}[/]")
-                console.print(f"\n  [{CYAN}]Query:[/] {query}")
+                    console.print(f"  Domain context entries: [{EMBER}]{len(ctx_pack.entries)}[/]")
+                console.print(f"\n  [{EMBER}]Query:[/] {query}")
                 console.print(
-                    f"  [dim]Use this context with the full pipeline via: "
-                    f"heph \"<problem>\"[/]\n"
+                    '  [dim]Use this context with the full pipeline via: heph "<problem>"[/]\n'
                 )
             else:
                 console.print("  [dim]No context assembler available.[/]\n")
@@ -940,6 +948,7 @@ def ask_cmd(query: str, vault_id: str, scope: str) -> None:
 def fuse_cmd(vault_ids: tuple[str, ...], problem: str | None, mode: str) -> None:
     """Cross-vault fusion between two or more vaults."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.contracts.fusion import FusionRequest
     from hephaestus.forgebase.domain.enums import FusionMode
     from hephaestus.forgebase.domain.values import EntityId
@@ -985,6 +994,7 @@ def fuse_cmd(vault_ids: tuple[str, ...], problem: str | None, mode: str) -> None
 def fb_export_cmd(vault_id: str, fmt: str, output: str | None) -> None:
     """Export a vault's pages to markdown or Obsidian format."""
     from rich.console import Console as RichConsole
+
     from hephaestus.forgebase.domain.values import EntityId
 
     cfg, create_fb = _cli_forgebase_factory()
@@ -1014,9 +1024,7 @@ def fb_export_cmd(vault_id: str, fmt: str, output: str | None) -> None:
 
             for page, pv in page_versions:
                 page_key = getattr(page, "page_key", str(page.page_id))
-                safe_name = "".join(
-                    c if c.isalnum() or c in "-_ " else "_" for c in page_key
-                )
+                safe_name = "".join(c if c.isalnum() or c in "-_ " else "_" for c in page_key)
                 filename = f"{safe_name}.md"
                 content = (
                     getattr(pv, "content_markdown", "")

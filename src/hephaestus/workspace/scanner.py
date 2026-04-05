@@ -14,29 +14,88 @@ if TYPE_CHECKING:
     from hephaestus.workspace.repo_dossier import RepoDossier
 
 _IGNORE_DIRS = {
-    ".git", ".hg", ".svn", "__pycache__", "node_modules", ".venv", "venv",
-    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", ".eggs",
-    ".next", ".nuxt", "target", "vendor", ".hephaestus",
+    ".git",
+    ".hg",
+    ".svn",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "dist",
+    "build",
+    ".eggs",
+    ".next",
+    ".nuxt",
+    "target",
+    "vendor",
+    ".hephaestus",
 }
 
 _CODE_EXTENSIONS = {
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".rs", ".go", ".java", ".c", ".cpp",
-    ".h", ".hpp", ".rb", ".php", ".swift", ".kt", ".scala", ".cs", ".lua",
-    ".sh", ".bash", ".zsh", ".yaml", ".yml", ".toml", ".json", ".md",
-    ".html", ".css", ".scss", ".sql", ".proto", ".graphql",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".rs",
+    ".go",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".cs",
+    ".lua",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".json",
+    ".md",
+    ".html",
+    ".css",
+    ".scss",
+    ".sql",
+    ".proto",
+    ".graphql",
 }
 
 _CONFIG_FILES = {
-    "package.json", "Cargo.toml", "pyproject.toml", "setup.py", "setup.cfg",
-    "Makefile", "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
-    ".env.example", "requirements.txt", "Pipfile", "go.mod", "Gemfile",
-    "tsconfig.json", "webpack.config.js", "vite.config.ts", "jest.config.js",
+    "package.json",
+    "Cargo.toml",
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "Makefile",
+    "Dockerfile",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    ".env.example",
+    "requirements.txt",
+    "Pipfile",
+    "go.mod",
+    "Gemfile",
+    "tsconfig.json",
+    "webpack.config.js",
+    "vite.config.ts",
+    "jest.config.js",
 }
 
 
 @dataclass
 class FileInfo:
     """Metadata about a single file."""
+
     path: str  # relative to workspace root
     extension: str
     size_bytes: int
@@ -48,6 +107,7 @@ class FileInfo:
 @dataclass
 class DirectoryInfo:
     """Metadata about a directory."""
+
     path: str
     file_count: int
     subdirs: list[str] = field(default_factory=list)
@@ -56,6 +116,7 @@ class DirectoryInfo:
 @dataclass
 class GitInfo:
     """Git repository information."""
+
     branch: str = ""
     head_sha: str = ""
     has_changes: bool = False
@@ -67,6 +128,7 @@ class GitInfo:
 @dataclass
 class WorkspaceSummary:
     """Complete summary of a workspace/codebase."""
+
     root: str
     total_files: int = 0
     total_lines: int = 0
@@ -80,7 +142,7 @@ class WorkspaceSummary:
     git: GitInfo | None = None
     tree: str = ""  # formatted directory tree
     files: list[FileInfo] = field(default_factory=list)
-    repo_dossier: "RepoDossier | None" = None
+    repo_dossier: RepoDossier | None = None
 
     @property
     def primary_language(self) -> str:
@@ -96,14 +158,18 @@ class WorkspaceSummary:
             f"Primary language: {self.primary_language}",
         ]
         if self.languages:
-            lang_str = ", ".join(f"{ext}({n})" for ext, n in sorted(self.languages.items(), key=lambda x: -x[1])[:8])
+            lang_str = ", ".join(
+                f"{ext}({n})" for ext, n in sorted(self.languages.items(), key=lambda x: -x[1])[:8]
+            )
             lines.append(f"Languages: {lang_str}")
         if self.config_files:
             lines.append(f"Config files: {', '.join(self.config_files[:10])}")
         if self.entry_points:
             lines.append(f"Entry points: {', '.join(self.entry_points[:5])}")
         if self.git:
-            lines.append(f"Git: {self.git.branch} {'(dirty)' if self.git.has_changes else '(clean)'}")
+            lines.append(
+                f"Git: {self.git.branch} {'(dirty)' if self.git.has_changes else '(clean)'}"
+            )
         if self.repo_dossier:
             lines.extend(self.repo_dossier.summary_lines())
         return "\n".join(lines)
@@ -144,19 +210,32 @@ class WorkspaceScanner:
         for f in files:
             if f.extension in _CODE_EXTENSIONS:
                 summary.languages[f.extension] = summary.languages.get(f.extension, 0) + 1
-                summary.language_lines[f.extension] = summary.language_lines.get(f.extension, 0) + f.line_count
+                summary.language_lines[f.extension] = (
+                    summary.language_lines.get(f.extension, 0) + f.line_count
+                )
 
         # Config files
         summary.config_files = sorted(f.path for f in files if f.is_config)
 
         # Top-level dirs
         summary.top_level_dirs = sorted(
-            d.name for d in self.root.iterdir()
+            d.name
+            for d in self.root.iterdir()
             if d.is_dir() and d.name not in _IGNORE_DIRS and not d.name.startswith(".")
         )
 
         # Entry points
-        entry_names = {"main.py", "app.py", "index.js", "index.ts", "main.rs", "main.go", "main.c", "server.py", "cli.py"}
+        entry_names = {
+            "main.py",
+            "app.py",
+            "index.js",
+            "index.ts",
+            "main.rs",
+            "main.go",
+            "main.c",
+            "server.py",
+            "cli.py",
+        }
         summary.entry_points = sorted(f.path for f in files if Path(f.path).name in entry_names)
 
         # README
@@ -219,14 +298,16 @@ class WorkspaceScanner:
                     mtime_ns = 0
 
                 rel = str(entry.relative_to(self.root))
-                files.append(FileInfo(
-                    path=rel,
-                    extension=ext,
-                    size_bytes=size,
-                    line_count=line_count,
-                    mtime_ns=mtime_ns,
-                    is_config=entry.name in _CONFIG_FILES,
-                ))
+                files.append(
+                    FileInfo(
+                        path=rel,
+                        extension=ext,
+                        size_bytes=size,
+                        line_count=line_count,
+                        mtime_ns=mtime_ns,
+                        is_config=entry.name in _CONFIG_FILES,
+                    )
+                )
 
     def _scan_git(self) -> GitInfo | None:
         """Extract git information."""
@@ -238,16 +319,25 @@ class WorkspaceScanner:
         try:
             info.branch = subprocess.run(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                capture_output=True, text=True, cwd=self.root, timeout=5,
+                capture_output=True,
+                text=True,
+                cwd=self.root,
+                timeout=5,
             ).stdout.strip()
             info.head_sha = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
-                capture_output=True, text=True, cwd=self.root, timeout=5,
+                capture_output=True,
+                text=True,
+                cwd=self.root,
+                timeout=5,
             ).stdout.strip()
 
             status = subprocess.run(
                 ["git", "status", "--porcelain"],
-                capture_output=True, text=True, cwd=self.root, timeout=5,
+                capture_output=True,
+                text=True,
+                cwd=self.root,
+                timeout=5,
             ).stdout.strip()
             if status:
                 info.has_changes = True
@@ -255,14 +345,20 @@ class WorkspaceScanner:
 
             log = subprocess.run(
                 ["git", "log", "--oneline", "-5"],
-                capture_output=True, text=True, cwd=self.root, timeout=5,
+                capture_output=True,
+                text=True,
+                cwd=self.root,
+                timeout=5,
             ).stdout.strip()
             if log:
                 info.recent_commits = log.splitlines()
 
             remote = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
-                capture_output=True, text=True, cwd=self.root, timeout=5,
+                capture_output=True,
+                text=True,
+                cwd=self.root,
+                timeout=5,
             ).stdout.strip()
             info.remote_url = remote
 
@@ -277,7 +373,15 @@ class WorkspaceScanner:
         self._tree_walk(self.root, "", 0, max_depth, max_entries, lines)
         return "\n".join(lines[:max_entries])
 
-    def _tree_walk(self, directory: Path, prefix: str, depth: int, max_depth: int, max_entries: int, lines: list[str]) -> None:
+    def _tree_walk(
+        self,
+        directory: Path,
+        prefix: str,
+        depth: int,
+        max_depth: int,
+        max_entries: int,
+        lines: list[str],
+    ) -> None:
         if depth >= max_depth or len(lines) >= max_entries:
             return
         try:

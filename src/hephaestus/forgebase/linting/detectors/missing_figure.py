@@ -1,4 +1,5 @@
 """MissingFigureDetector — detects images without meaningful alt text or descriptions."""
+
 from __future__ import annotations
 
 import re

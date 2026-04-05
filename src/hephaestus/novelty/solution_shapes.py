@@ -14,10 +14,10 @@ overlap between baseline and invention shapes.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-import re
 from typing import Any, Literal
 
 SourceKind = Literal["baseline", "invention", "text"]

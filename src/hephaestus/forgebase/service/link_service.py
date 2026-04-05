@@ -1,7 +1,8 @@
 """LinkService — link creation, update, and deletion."""
+
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import EntityKind, LinkKind
 from hephaestus.forgebase.domain.models import (
@@ -74,7 +75,9 @@ class LinkService:
                 )
             else:
                 await uow.vaults.set_canonical_link_head(
-                    vault_id, link_id, 1,
+                    vault_id,
+                    link_id,
+                    1,
                 )
 
             uow.record_event(
@@ -160,7 +163,9 @@ class LinkService:
                 )
             else:
                 await uow.vaults.set_canonical_link_head(
-                    link.vault_id, link_id, new_version_num.number,
+                    link.vault_id,
+                    link_id,
+                    new_version_num.number,
                 )
 
             uow.record_event(

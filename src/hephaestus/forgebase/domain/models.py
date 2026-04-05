@@ -1,4 +1,5 @@
 """ForgeBase domain models — all core entities."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -44,10 +45,10 @@ from hephaestus.forgebase.domain.values import (
     Version,
 )
 
-
 # ---------------------------------------------------------------------------
 # Vault
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Vault:
@@ -74,6 +75,7 @@ class VaultRevision:
 # ---------------------------------------------------------------------------
 # Source
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Source:
@@ -105,6 +107,7 @@ class SourceVersion:
 # Page
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Page:
     page_id: EntityId
@@ -132,6 +135,7 @@ class PageVersion:
 # ---------------------------------------------------------------------------
 # Claim
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Claim:
@@ -180,6 +184,7 @@ class ClaimDerivation:
 # Link
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Link:
     link_id: EntityId
@@ -204,6 +209,7 @@ class LinkVersion:
 # Workbook (= Branch)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Workbook:
     workbook_id: EntityId
@@ -220,6 +226,7 @@ class Workbook:
 # ---------------------------------------------------------------------------
 # Branch heads and tombstones
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BranchPageHead:
@@ -279,6 +286,7 @@ class BranchTombstone:
 # Merge
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MergeProposal:
     merge_id: EntityId
@@ -309,6 +317,7 @@ class MergeConflict:
 # ---------------------------------------------------------------------------
 # Jobs
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Job:
@@ -363,6 +372,7 @@ class LintFinding:
 # Run integration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class KnowledgeRunRef:
     ref_id: EntityId
@@ -379,6 +389,23 @@ class KnowledgeRunRef:
 
 
 @dataclass
+class FusionRun:
+    """Record of a cross-vault fusion run."""
+
+    fusion_run_id: EntityId
+    vault_ids: list[EntityId]
+    problem: str | None
+    fusion_mode: Any  # FusionMode — avoid circular import
+    status: str
+    bridge_count: int
+    transfer_count: int
+    manifest_id: EntityId | None
+    policy_version: str
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+@dataclass
 class KnowledgeRunArtifact:
     ref_id: EntityId
     entity_kind: EntityKind
@@ -389,6 +416,7 @@ class KnowledgeRunArtifact:
 # ---------------------------------------------------------------------------
 # Events
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DomainEvent:
@@ -426,6 +454,7 @@ class EventDelivery:
 # Backend call metadata
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BackendCallRecord:
     model_name: str
@@ -443,6 +472,7 @@ class BackendCallRecord:
 # ---------------------------------------------------------------------------
 # Concept candidates
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ConceptCandidate:
@@ -477,6 +507,7 @@ class ConceptCandidateEvidence:
 # Dirty tracking
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SynthesisDirtyMarker:
     marker_id: EntityId
@@ -496,6 +527,7 @@ class SynthesisDirtyMarker:
 # ---------------------------------------------------------------------------
 # Compile manifests
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SourceCompileManifest:
@@ -534,6 +566,7 @@ class VaultSynthesisManifest:
 # Repair batches
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RepairBatch:
     batch_id: EntityId
@@ -551,6 +584,7 @@ class RepairBatch:
 # ---------------------------------------------------------------------------
 # Research packets
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ResearchPacket:
@@ -600,6 +634,7 @@ class ResearchPacketFreshnessResult:
 # Lint reports
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LintReport:
     report_id: EntityId
@@ -618,6 +653,7 @@ class LintReport:
 # ---------------------------------------------------------------------------
 # Invention page metadata
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class InventionPageMeta:
@@ -645,6 +681,7 @@ class InventionPageMeta:
 # ---------------------------------------------------------------------------
 # Promotion result
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PromotionResult:

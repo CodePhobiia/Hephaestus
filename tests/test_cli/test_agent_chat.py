@@ -117,8 +117,8 @@ class TestAgentChatIntegration:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from hephaestus.cli.repl import InventionEntry, _chat_about_invention
         import hephaestus.cli.agent_chat as agent_chat_module
+        from hephaestus.cli.repl import InventionEntry, _chat_about_invention
 
         called = {"run": False}
 

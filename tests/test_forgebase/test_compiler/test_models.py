@@ -1,9 +1,14 @@
 from __future__ import annotations
-import pytest
+
 from hephaestus.forgebase.compiler.models import (
-    ExtractedClaim, ExtractedConcept, SourceCardContent,
-    EvidenceGrade, SynthesizedPage, SynthesizedClaim,
-    OpenQuestion, ConceptEvidence,
+    ConceptEvidence,
+    EvidenceGrade,
+    ExtractedClaim,
+    ExtractedConcept,
+    OpenQuestion,
+    SourceCardContent,
+    SynthesizedClaim,
+    SynthesizedPage,
 )
 from hephaestus.forgebase.domain.enums import CandidateKind, SupportType
 from hephaestus.forgebase.domain.values import EntityId, EvidenceSegmentRef, Version
@@ -13,8 +18,10 @@ def _seg() -> EvidenceSegmentRef:
     return EvidenceSegmentRef(
         source_id=EntityId("source_01HXYZ12345678901234ABCDEF"),
         source_version=Version(1),
-        segment_start=0, segment_end=100,
-        section_key=None, preview_text="Test...",
+        segment_start=0,
+        segment_end=100,
+        section_key=None,
+        preview_text="Test...",
     )
 
 
@@ -30,7 +37,10 @@ class TestExtractedClaim:
 
     def test_confidence_stored(self):
         c = ExtractedClaim(
-            statement="X", segment_ref=_seg(), confidence=0.5, claim_type="methodological",
+            statement="X",
+            segment_ref=_seg(),
+            confidence=0.5,
+            claim_type="methodological",
         )
         assert c.confidence == 0.5
         assert c.claim_type == "methodological"
@@ -49,8 +59,11 @@ class TestExtractedConcept:
 
     def test_aliases_list(self):
         c = ExtractedConcept(
-            name="Lithium", aliases=["Li", "Li+"], kind=CandidateKind.ENTITY,
-            evidence_segments=[], salience=0.7,
+            name="Lithium",
+            aliases=["Li", "Li+"],
+            kind=CandidateKind.ENTITY,
+            evidence_segments=[],
+            salience=0.7,
         )
         assert len(c.aliases) == 2
         assert c.kind == CandidateKind.ENTITY
@@ -71,7 +84,9 @@ class TestSourceCardContent:
     def test_empty_lists(self):
         sc = SourceCardContent(
             summary="Minimal paper",
-            key_claims=[], methods=[], limitations=[],
+            key_claims=[],
+            methods=[],
+            limitations=[],
             evidence_quality="unknown",
             concepts_mentioned=[],
         )
@@ -105,12 +120,14 @@ class TestSynthesizedPage:
         sp = SynthesizedPage(
             title="Solid Electrolyte Interphase",
             content_markdown="# SEI\n\nThe SEI layer...",
-            claims=[SynthesizedClaim(
-                statement="SEI is primary degradation mechanism",
-                support_type=SupportType.SYNTHESIZED,
-                confidence=0.8,
-                derived_from_claims=["SEI degrades during cycling"],
-            )],
+            claims=[
+                SynthesizedClaim(
+                    statement="SEI is primary degradation mechanism",
+                    support_type=SupportType.SYNTHESIZED,
+                    confidence=0.8,
+                    derived_from_claims=["SEI degrades during cycling"],
+                )
+            ],
             related_concepts=["anode", "electrolyte"],
         )
         assert len(sp.claims) == 1

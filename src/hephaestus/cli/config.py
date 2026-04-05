@@ -7,6 +7,7 @@ parameters, and first-run setup wizard for interactive mode.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,6 +17,8 @@ import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -30,7 +33,7 @@ SESSIONS_DIR = HEPHAESTUS_DIR / "sessions"
 # Config dataclass
 # ---------------------------------------------------------------------------
 
-VALID_BACKENDS = ("claude-max", "claude-cli", "codex-cli", "api", "openrouter")
+VALID_BACKENDS = ("agent-sdk", "claude-max", "claude-cli", "codex-cli", "api", "openrouter")
 VALID_INTENSITIES = ("STANDARD", "AGGRESSIVE", "MAXIMUM")
 VALID_OUTPUT_MODES = (
     "MECHANISM",
@@ -44,7 +47,7 @@ VALID_OUTPUT_MODES = (
 VALID_PANTHEON_RESOLUTION_MODES = ("STRICT", "TASK_SENSITIVE")
 
 # Import the single source-of-truth default model name
-from hephaestus.core.cross_model import DEFAULT_MODEL as _DEFAULT_MODEL
+from hephaestus.core.cross_model import DEFAULT_MODEL as _DEFAULT_MODEL  # noqa: E402
 
 
 @dataclass
@@ -77,6 +80,9 @@ class HephaestusConfig:
     pantheon_athena_model: str | None = None
     pantheon_hermes_model: str | None = None
     pantheon_apollo_model: str | None = None
+
+    # Transliminality Engine (Layer 2)
+    transliminality_enabled: bool = False
 
     # API keys (resolved from env at load time, never persisted)
     anthropic_api_key: str | None = field(default=None, repr=False)
@@ -112,6 +118,7 @@ class HephaestusConfig:
             "pantheon_athena_model": self.pantheon_athena_model,
             "pantheon_hermes_model": self.pantheon_hermes_model,
             "pantheon_apollo_model": self.pantheon_apollo_model,
+            "transliminality_enabled": self.transliminality_enabled,
         }
 
 
@@ -120,8 +127,25 @@ class HephaestusConfig:
 # ---------------------------------------------------------------------------
 
 
+def _load_env_file() -> None:
+    """Load ~/.hephaestus/.env into os.environ if it exists."""
+    env_path = HEPHAESTUS_DIR / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip()
+            if key and key not in os.environ:  # don't override existing env
+                os.environ[key] = value
+
+
 def load_config() -> HephaestusConfig | None:
     """Load config from disk.  Returns ``None`` if the file doesn't exist."""
+    _load_env_file()
     if not CONFIG_PATH.exists():
         return None
     try:
@@ -140,7 +164,12 @@ def load_config() -> HephaestusConfig | None:
             exploration_mode = "standard"
         pressure_translate_enabled = data.get("pressure_translate_enabled", True)
         if not isinstance(pressure_translate_enabled, bool):
-            pressure_translate_enabled = str(pressure_translate_enabled).strip().lower() in ("1", "true", "yes", "on")
+            pressure_translate_enabled = str(pressure_translate_enabled).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         pressure_search_mode = str(data.get("pressure_search_mode", "adaptive")).lower()
         if pressure_search_mode not in ("off", "adaptive", "always"):
             pressure_search_mode = "adaptive"
@@ -152,41 +181,88 @@ def load_config() -> HephaestusConfig | None:
             output_mode = "MECHANISM"
         use_perplexity_research = data.get("use_perplexity_research", True)
         if not isinstance(use_perplexity_research, bool):
-            use_perplexity_research = str(use_perplexity_research).strip().lower() in ("1", "true", "yes", "on")
+            use_perplexity_research = str(use_perplexity_research).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         perplexity_model = str(data.get("perplexity_model", "sonar-pro")).strip() or "sonar-pro"
         use_branchgenome_v1 = data.get("use_branchgenome_v1", False)
         if not isinstance(use_branchgenome_v1, bool):
-            use_branchgenome_v1 = str(use_branchgenome_v1).strip().lower() in ("1", "true", "yes", "on")
+            use_branchgenome_v1 = str(use_branchgenome_v1).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         use_adaptive_lens_engine = data.get("use_adaptive_lens_engine", True)
         if not isinstance(use_adaptive_lens_engine, bool):
-            use_adaptive_lens_engine = str(use_adaptive_lens_engine).strip().lower() in ("1", "true", "yes", "on")
+            use_adaptive_lens_engine = str(use_adaptive_lens_engine).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         allow_lens_bundle_fallback = data.get("allow_lens_bundle_fallback", True)
         if not isinstance(allow_lens_bundle_fallback, bool):
-            allow_lens_bundle_fallback = str(allow_lens_bundle_fallback).strip().lower() in ("1", "true", "yes", "on")
+            allow_lens_bundle_fallback = str(allow_lens_bundle_fallback).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         enable_derived_lens_composites = data.get("enable_derived_lens_composites", True)
         if not isinstance(enable_derived_lens_composites, bool):
-            enable_derived_lens_composites = str(enable_derived_lens_composites).strip().lower() in ("1", "true", "yes", "on")
+            enable_derived_lens_composites = str(
+                enable_derived_lens_composites
+            ).strip().lower() in ("1", "true", "yes", "on")
         use_pantheon_mode = data.get("use_pantheon_mode", False)
         if not isinstance(use_pantheon_mode, bool):
             use_pantheon_mode = str(use_pantheon_mode).strip().lower() in ("1", "true", "yes", "on")
         pantheon_max_rounds = data.get("pantheon_max_rounds", 4)
-        if not isinstance(pantheon_max_rounds, int) or pantheon_max_rounds < 1 or pantheon_max_rounds > 8:
+        if (
+            not isinstance(pantheon_max_rounds, int)
+            or pantheon_max_rounds < 1
+            or pantheon_max_rounds > 8
+        ):
             pantheon_max_rounds = 4
         pantheon_require_unanimity = data.get("pantheon_require_unanimity", True)
         if not isinstance(pantheon_require_unanimity, bool):
-            pantheon_require_unanimity = str(pantheon_require_unanimity).strip().lower() in ("1", "true", "yes", "on")
+            pantheon_require_unanimity = str(pantheon_require_unanimity).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         pantheon_allow_fail_closed = data.get("pantheon_allow_fail_closed", True)
         if not isinstance(pantheon_allow_fail_closed, bool):
-            pantheon_allow_fail_closed = str(pantheon_allow_fail_closed).strip().lower() in ("1", "true", "yes", "on")
-        pantheon_resolution_mode = str(data.get("pantheon_resolution_mode", "TASK_SENSITIVE") or "TASK_SENSITIVE").upper()
+            pantheon_allow_fail_closed = str(pantheon_allow_fail_closed).strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
+        pantheon_resolution_mode = str(
+            data.get("pantheon_resolution_mode", "TASK_SENSITIVE") or "TASK_SENSITIVE"
+        ).upper()
         if pantheon_resolution_mode not in VALID_PANTHEON_RESOLUTION_MODES:
             pantheon_resolution_mode = "TASK_SENSITIVE"
         pantheon_max_survivors_to_council = data.get("pantheon_max_survivors_to_council", 2)
-        if not isinstance(pantheon_max_survivors_to_council, int) or pantheon_max_survivors_to_council < 1 or pantheon_max_survivors_to_council > 5:
+        if (
+            not isinstance(pantheon_max_survivors_to_council, int)
+            or pantheon_max_survivors_to_council < 1
+            or pantheon_max_survivors_to_council > 5
+        ):
             pantheon_max_survivors_to_council = 2
         pantheon_athena_model = str(data.get("pantheon_athena_model", "") or "").strip() or None
         pantheon_hermes_model = str(data.get("pantheon_hermes_model", "") or "").strip() or None
         pantheon_apollo_model = str(data.get("pantheon_apollo_model", "") or "").strip() or None
+        transliminality_enabled = data.get("transliminality_enabled", False)
+        if not isinstance(transliminality_enabled, bool):
+            transliminality_enabled = str(transliminality_enabled).strip().lower() in (
+                "1", "true", "yes", "on",
+            )
         cfg = HephaestusConfig(
             backend=backend,
             default_model=data.get("default_model", _DEFAULT_MODEL),
@@ -214,8 +290,10 @@ def load_config() -> HephaestusConfig | None:
             pantheon_athena_model=pantheon_athena_model,
             pantheon_hermes_model=pantheon_hermes_model,
             pantheon_apollo_model=pantheon_apollo_model,
+            transliminality_enabled=transliminality_enabled,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("Config construction failed, using defaults: %s", exc)
         cfg = HephaestusConfig()
     _resolve_keys(cfg)
     return cfg
@@ -231,10 +309,13 @@ def save_config(cfg: HephaestusConfig) -> None:
 
 
 def _resolve_keys(cfg: HephaestusConfig) -> None:
-    """Populate API key fields from the environment."""
-    cfg.anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
-    cfg.openai_api_key = os.environ.get("OPENAI_API_KEY")
-    cfg.openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
+    """Populate API key fields from the environment (only if set)."""
+    if val := os.environ.get("ANTHROPIC_API_KEY"):
+        cfg.anthropic_api_key = val
+    if val := os.environ.get("OPENAI_API_KEY"):
+        cfg.openai_api_key = val
+    if val := os.environ.get("OPENROUTER_API_KEY"):
+        cfg.openrouter_api_key = val
 
 
 def ensure_dirs() -> None:
@@ -253,25 +334,30 @@ def _detect_claude_max() -> bool:
     try:
         import json
         from pathlib import Path
+
         store_path = Path.home() / ".openclaw" / "agents" / "main" / "agent" / "auth-profiles.json"
         if not store_path.exists():
             return False
         store = json.loads(store_path.read_text())
         token = store.get("profiles", {}).get("anthropic:default", {}).get("token", "")
         return token.startswith("sk-ant-oat")
-    except Exception:
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        logger.warning("Claude Max detection failed: %s", exc)
         return False
 
 
 def _detect_claude_cli() -> bool:
     """Return True if the ``claude`` binary is on PATH."""
     import shutil
+
     return shutil.which("claude") is not None
 
 
 def _detect_codex_cli() -> bool:
     """Return True if Codex CLI and ChatGPT/Codex auth are available."""
-    import json, shutil
+    import json
+    import shutil
+
     codex_bin = shutil.which("codex")
     if codex_bin is None:
         return False
@@ -281,7 +367,20 @@ def _detect_codex_cli() -> bool:
     try:
         data = json.loads(auth_path.read_text())
         return data.get("auth_mode") == "chatgpt" and bool(data.get("tokens", {}).get("id_token"))
-    except Exception:
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        logger.warning("Codex OAuth detection failed: %s", exc)
+        return False
+
+
+def _detect_agent_sdk() -> bool:
+    """Return True if the Claude Agent SDK and CLI are available."""
+    import shutil
+
+    try:
+        import claude_agent_sdk  # noqa: F401
+
+        return shutil.which("claude") is not None
+    except ImportError:
         return False
 
 
@@ -318,10 +417,10 @@ def run_onboarding(console: Console) -> HephaestusConfig:
     banner.append("  Welcome to Hephaestus interactive mode.\n", style="dim")
     banner.append("  Pick the backend this shell should use for invention runs.\n", style="dim")
     banner.append("  You can change it later with /backend or by editing ", style="dim")
-    banner.append(str(CONFIG_PATH), style="bold cyan")
+    banner.append(str(CONFIG_PATH), style="dark_orange")
     banner.append(".\n\n", style="dim")
 
-    banner.append("  [1] Claude Max", style="bold cyan")
+    banner.append("  [1] Claude Max", style="yellow")
     banner.append("  — Uses your Claude subscription (no per-run cost)", style="dim")
     if has_claude_max:
         banner.append("  <-- detected", style="bold green")
@@ -329,7 +428,7 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
-    banner.append("  [2] Claude CLI", style="bold cyan")
+    banner.append("  [2] Claude CLI", style="yellow")
     banner.append("  — Runs via the `claude` command-line tool", style="dim")
     if has_claude_cli:
         banner.append("  <-- detected", style="bold green")
@@ -337,7 +436,7 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
-    banner.append("  [3] Codex CLI", style="bold cyan")
+    banner.append("  [3] Codex CLI", style="yellow")
     banner.append(" — Uses your GPT Pro / ChatGPT Codex OAuth session", style="dim")
     if has_codex_cli:
         banner.append("  <-- detected", style="bold green")
@@ -345,7 +444,7 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
-    banner.append("  [4] API keys", style="bold cyan")
+    banner.append("  [4] API keys", style="yellow")
     banner.append("   — Direct API access (Anthropic + OpenAI, pay-per-use)", style="dim")
     if has_api:
         banner.append("  <-- keys found", style="bold green")
@@ -353,7 +452,7 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         banner.append("  (recommended)", style="bold green")
     banner.append("\n")
 
-    banner.append("  [5] OpenRouter", style="bold cyan")
+    banner.append("  [5] OpenRouter", style="yellow")
     banner.append(" — Single API key, routes to many models", style="dim")
     if has_openrouter:
         banner.append("  <-- key found", style="bold green")
@@ -370,7 +469,13 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         )
     )
 
-    backend_map = {"1": "claude-max", "2": "claude-cli", "3": "codex-cli", "4": "api", "5": "openrouter"}
+    backend_map = {
+        "1": "claude-max",
+        "2": "claude-cli",
+        "3": "codex-cli",
+        "4": "api",
+        "5": "openrouter",
+    }
     rec_hint = f" [dim](Enter for {recommended})[/]" if recommended else ""
 
     while True:
@@ -397,7 +502,7 @@ def run_onboarding(console: Console) -> HephaestusConfig:
     if backend == "claude-max" and not _detect_claude_max():
         console.print(
             "  [yellow]Warning:[/] Claude Max login was not detected in "
-            "[cyan]~/.openclaw/agents/main/agent/auth-profiles.json[/]."
+            "[dark_orange]~/.openclaw/agents/main/agent/auth-profiles.json[/]."
         )
         ok = False
     elif backend == "claude-cli" and not _detect_claude_cli():
@@ -405,7 +510,9 @@ def run_onboarding(console: Console) -> HephaestusConfig:
         ok = False
     elif backend == "api":
         if not cfg.anthropic_api_key and not cfg.openai_api_key:
-            console.print("  [yellow]Warning:[/] No API keys found. Set ANTHROPIC_API_KEY / OPENAI_API_KEY.")
+            console.print(
+                "  [yellow]Warning:[/] No API keys found. Set ANTHROPIC_API_KEY / OPENAI_API_KEY."
+            )
             ok = False
     elif backend == "openrouter":
         if not cfg.openrouter_api_key:
@@ -416,11 +523,13 @@ def run_onboarding(console: Console) -> HephaestusConfig:
     save_config(cfg)
 
     if ok:
-        console.print(f"  [bold green]\u2713[/] Backend set to [cyan]{backend}[/]")
+        console.print(f"  [bold green]\u2713[/] Backend set to [dark_orange]{backend}[/]")
         console.print("  [dim]Next time, interactive mode will reuse this choice automatically.[/]")
     else:
-        console.print("  [dim]The config was saved, but this backend still needs setup before it can run requests.[/]")
-    console.print(f"  [bold green]\u2713[/] Config saved to [cyan]{CONFIG_PATH}[/]")
+        console.print(
+            "  [dim]The config was saved, but this backend still needs setup before it can run requests.[/]"
+        )
+    console.print(f"  [bold green]\u2713[/] Config saved to [dark_orange]{CONFIG_PATH}[/]")
     console.print()
 
     return cfg

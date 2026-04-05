@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -10,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from hephaestus.deepforge.adapters.codex_cli import (
-    CODEX_CLI_MODELS,
     CodexCliAdapter,
     _detect_codex_auth,
 )
@@ -25,10 +23,14 @@ class TestCodexAuthDetection:
     def test_detect_true_with_chatgpt_tokens(self, tmp_path, monkeypatch):
         codex_dir = tmp_path / ".codex"
         codex_dir.mkdir()
-        (codex_dir / "auth.json").write_text(json.dumps({
-            "auth_mode": "chatgpt",
-            "tokens": {"id_token": "abc"},
-        }))
+        (codex_dir / "auth.json").write_text(
+            json.dumps(
+                {
+                    "auth_mode": "chatgpt",
+                    "tokens": {"id_token": "abc"},
+                }
+            )
+        )
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         assert _detect_codex_auth() is True
 
@@ -38,12 +40,18 @@ class TestCodexCliAdapter:
     def patched_env(self, tmp_path, monkeypatch):
         codex_dir = tmp_path / ".codex"
         codex_dir.mkdir()
-        (codex_dir / "auth.json").write_text(json.dumps({
-            "auth_mode": "chatgpt",
-            "tokens": {"id_token": "abc"},
-        }))
+        (codex_dir / "auth.json").write_text(
+            json.dumps(
+                {
+                    "auth_mode": "chatgpt",
+                    "tokens": {"id_token": "abc"},
+                }
+            )
+        )
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/codex" if name == "codex" else None)
+        monkeypatch.setattr(
+            "shutil.which", lambda name: "/usr/bin/codex" if name == "codex" else None
+        )
         return tmp_path
 
     def test_instantiation(self, patched_env):
@@ -85,7 +93,11 @@ class TestCodexCliAdapter:
     @pytest.mark.asyncio
     async def test_generate_stream(self, patched_env):
         adapter = CodexCliAdapter("gpt-5.4")
-        with patch.object(adapter, "generate", new=AsyncMock(return_value=MagicMock(text="out", stop_reason="end_turn"))):
+        with patch.object(
+            adapter,
+            "generate",
+            new=AsyncMock(return_value=MagicMock(text="out", stop_reason="end_turn")),
+        ):
             chunks = []
             async for chunk in adapter.generate_stream("p"):
                 chunks.append(chunk)
@@ -106,7 +118,7 @@ class TestCodexCliAdapter:
     async def test_call_cli_timeout(self, patched_env):
         adapter = CodexCliAdapter("gpt-5.4")
         proc = MagicMock()
-        proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
+        proc.communicate = AsyncMock(side_effect=TimeoutError())
         proc.returncode = 0
         with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=proc)):
             with pytest.raises(AdapterError):

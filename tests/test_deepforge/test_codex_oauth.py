@@ -17,12 +17,18 @@ class TestCodexOAuthAdapter:
     def patched_env(self, tmp_path, monkeypatch):
         codex_dir = tmp_path / ".codex"
         codex_dir.mkdir()
-        (codex_dir / "auth.json").write_text(json.dumps({
-            "auth_mode": "chatgpt",
-            "tokens": {"access_token": "a", "refresh_token": "r"},
-        }))
+        (codex_dir / "auth.json").write_text(
+            json.dumps(
+                {
+                    "auth_mode": "chatgpt",
+                    "tokens": {"access_token": "a", "refresh_token": "r"},
+                }
+            )
+        )
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/node" if name == "node" else None)
+        monkeypatch.setattr(
+            "shutil.which", lambda name: "/usr/bin/node" if name == "node" else None
+        )
         bridge = tmp_path / "bridge.mjs"
         bridge.write_text("// bridge")
         return bridge
@@ -40,7 +46,9 @@ class TestCodexOAuthAdapter:
     def test_missing_bridge_raises(self, tmp_path, monkeypatch):
         codex_dir = tmp_path / ".codex"
         codex_dir.mkdir()
-        (codex_dir / "auth.json").write_text('{"auth_mode":"chatgpt","tokens":{"access_token":"a","refresh_token":"r"}}')
+        (codex_dir / "auth.json").write_text(
+            '{"auth_mode":"chatgpt","tokens":{"access_token":"a","refresh_token":"r"}}'
+        )
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/node")
         with pytest.raises(AuthenticationError):
@@ -57,14 +65,20 @@ class TestCodexOAuthAdapter:
     @pytest.mark.asyncio
     async def test_generate_success(self, patched_env):
         adapter = CodexOAuthAdapter("gpt-5.4", bridge_script=patched_env)
-        with patch.object(adapter, "_bridge_call", new=AsyncMock(return_value={
-            "text": "ok",
-            "input_tokens": 10,
-            "output_tokens": 5,
-            "cost_usd": 0.0,
-            "model": "gpt-5.4",
-            "stop_reason": "stop",
-        })):
+        with patch.object(
+            adapter,
+            "_bridge_call",
+            new=AsyncMock(
+                return_value={
+                    "text": "ok",
+                    "input_tokens": 10,
+                    "output_tokens": 5,
+                    "cost_usd": 0.0,
+                    "model": "gpt-5.4",
+                    "stop_reason": "stop",
+                }
+            ),
+        ):
             result = await adapter.generate("hi")
         assert result.text == "ok"
         assert result.input_tokens == 10
@@ -72,17 +86,27 @@ class TestCodexOAuthAdapter:
     @pytest.mark.asyncio
     async def test_generate_with_tools_success(self, patched_env):
         adapter = CodexOAuthAdapter("gpt-5.4", bridge_script=patched_env)
-        with patch.object(adapter, "_bridge_call", new=AsyncMock(return_value={
-            "text": "",
-            "content_blocks": [{"type": "tool_use", "id": "1", "name": "read_file", "input": {"path": "x"}}],
-            "tool_calls": [{"id": "1", "name": "read_file", "input": {"path": "x"}}],
-            "input_tokens": 10,
-            "output_tokens": 2,
-            "cost_usd": 0.0,
-            "model": "gpt-5.4",
-            "stop_reason": "toolUse",
-        })):
-            result = await adapter.generate_with_tools([{"role": "user", "content": "read file"}], tools=[])
+        with patch.object(
+            adapter,
+            "_bridge_call",
+            new=AsyncMock(
+                return_value={
+                    "text": "",
+                    "content_blocks": [
+                        {"type": "tool_use", "id": "1", "name": "read_file", "input": {"path": "x"}}
+                    ],
+                    "tool_calls": [{"id": "1", "name": "read_file", "input": {"path": "x"}}],
+                    "input_tokens": 10,
+                    "output_tokens": 2,
+                    "cost_usd": 0.0,
+                    "model": "gpt-5.4",
+                    "stop_reason": "toolUse",
+                }
+            ),
+        ):
+            result = await adapter.generate_with_tools(
+                [{"role": "user", "content": "read file"}], tools=[]
+            )
         assert len(result.tool_calls) == 1
         assert result.tool_calls[0].name == "read_file"
 
@@ -96,9 +120,17 @@ class TestCodexOAuthAdapter:
     @pytest.mark.asyncio
     async def test_generate_stream_fallback(self, patched_env):
         adapter = CodexOAuthAdapter("gpt-5.4", bridge_script=patched_env)
-        with patch.object(adapter, "generate", new=AsyncMock(return_value=type("R", (), {
-            "text": "hello", "input_tokens": 1, "output_tokens": 1, "stop_reason": "stop"
-        })())):
+        with patch.object(
+            adapter,
+            "generate",
+            new=AsyncMock(
+                return_value=type(
+                    "R",
+                    (),
+                    {"text": "hello", "input_tokens": 1, "output_tokens": 1, "stop_reason": "stop"},
+                )()
+            ),
+        ):
             chunks = []
             async for chunk in adapter.generate_stream("hi"):
                 chunks.append(chunk)

@@ -4,13 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 import yaml
 
 from hephaestus.lenses.loader import Lens, StructuralPattern
 from hephaestus.lenses.validator import (
-    LensStats,
-    LensValidationIssue,
     compute_lens_stats,
     validate_all_lenses,
     validate_lens,
@@ -113,9 +110,14 @@ class TestValidateAllLenses:
         assert validate_all_lenses(tmp_path) == {}
 
     def test_mixed_valid_invalid(self, tmp_path: Path):
-        good = {"name": "Good", "domain": "x", "subdomain": "x", "axioms": ["a"],
-                "structural_patterns": [{"name": "p", "abstract": "a", "maps_to": ["t"]}],
-                "injection_prompt": "x"}
+        good = {
+            "name": "Good",
+            "domain": "x",
+            "subdomain": "x",
+            "axioms": ["a"],
+            "structural_patterns": [{"name": "p", "abstract": "a", "maps_to": ["t"]}],
+            "injection_prompt": "x",
+        }
         bad = {"name": "", "domain": ""}
         (tmp_path / "good.yaml").write_text(yaml.dump(good))
         (tmp_path / "bad.yaml").write_text(yaml.dump(bad))
@@ -139,10 +141,14 @@ class TestComputeStats:
         assert stats.avg_axioms_per_lens == 0.0
 
     def test_single_lens(self, tmp_path: Path):
-        data = {"name": "Solo", "domain": "math", "subdomain": "algebra",
-                "axioms": ["a", "b", "c"],
-                "structural_patterns": [{"name": "p", "abstract": "a", "maps_to": ["t"]}],
-                "injection_prompt": "x"}
+        data = {
+            "name": "Solo",
+            "domain": "math",
+            "subdomain": "algebra",
+            "axioms": ["a", "b", "c"],
+            "structural_patterns": [{"name": "p", "abstract": "a", "maps_to": ["t"]}],
+            "injection_prompt": "x",
+        }
         (tmp_path / "solo.yaml").write_text(yaml.dump(data))
         stats = compute_lens_stats(tmp_path)
         assert stats.total_lenses == 1

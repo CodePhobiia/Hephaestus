@@ -1,7 +1,8 @@
 """FindingResearchJob — orchestrate research for a single lint finding."""
+
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
@@ -9,7 +10,6 @@ from hephaestus.forgebase.domain.enums import (
     ResearchOutcome,
 )
 from hephaestus.forgebase.domain.models import (
-    LintFinding,
     ResearchPacket,
     ResearchPacketContradictionResult,
     ResearchPacketDiscoveredSource,
@@ -26,11 +26,13 @@ from hephaestus.forgebase.research.augmentor import (
 from hephaestus.forgebase.service.lint_service import LintService
 
 # Categories that dispatch to find_supporting_evidence
-_EVIDENCE_SEARCH_CATEGORIES = frozenset({
-    FindingCategory.SOURCE_GAP,
-    FindingCategory.RESOLVABLE_BY_SEARCH,
-    FindingCategory.UNSUPPORTED_CLAIM,
-})
+_EVIDENCE_SEARCH_CATEGORIES = frozenset(
+    {
+        FindingCategory.SOURCE_GAP,
+        FindingCategory.RESOLVABLE_BY_SEARCH,
+        FindingCategory.UNSUPPORTED_CLAIM,
+    }
+)
 
 # Relevance threshold for classifying sources as sufficient
 _RELEVANCE_THRESHOLD = 0.5
@@ -240,9 +242,7 @@ class FindingResearchJob:
         if not discovered_sources:
             return ResearchOutcome.NO_ACTIONABLE_RESULT
 
-        has_sufficient = any(
-            src.relevance > _RELEVANCE_THRESHOLD for src in discovered_sources
-        )
+        has_sufficient = any(src.relevance > _RELEVANCE_THRESHOLD for src in discovered_sources)
         if has_sufficient:
             return ResearchOutcome.SUFFICIENT_FOR_REPAIR
 

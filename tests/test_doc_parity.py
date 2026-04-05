@@ -223,19 +223,26 @@ def test_objection_valid_transitions():
     machine = ObjectionLifecycleMachine()
     # Valid
     machine.transition(
-        objection_id="test-1", from_status="OPEN", to_status="RESOLVED",
-        round_index=1, agent="test", reason="fixed",
+        objection_id="test-1",
+        from_status="OPEN",
+        to_status="RESOLVED",
+        round_index=1,
+        agent="test",
+        reason="fixed",
     )
     # Invalid
     with pytest.raises(PantheonStateError):
         machine.transition(
-            objection_id="test-2", from_status="RESOLVED", to_status="ESCALATED",
-            round_index=2, agent="test",
+            objection_id="test-2",
+            from_status="RESOLVED",
+            to_status="ESCALATED",
+            round_index=2,
+            agent="test",
         )
 
 
 def test_council_phase_machine():
-    from hephaestus.pantheon.state_machine import CouncilPhaseMachine, PantheonStateError
+    from hephaestus.pantheon.state_machine import CouncilPhaseMachine
 
     machine = CouncilPhaseMachine()
     assert machine.current_phase == "PREPARE"
@@ -263,10 +270,11 @@ def test_metrics_prometheus_export():
 
 
 def test_structured_json_logging():
-    import json
     import io
-    from hephaestus.telemetry.logging import configure_logging, set_correlation_id
+    import json
     import logging
+
+    from hephaestus.telemetry.logging import configure_logging, set_correlation_id
 
     stream = io.StringIO()
     configure_logging(level="DEBUG", json_output=True, stream=stream)
@@ -282,7 +290,7 @@ def test_structured_json_logging():
 
 
 def test_event_bus_dispatch():
-    from hephaestus.telemetry.events import EventBus, EventType, TelemetryEvent
+    from hephaestus.telemetry.events import EventBus, EventType
 
     received = []
     bus = EventBus()

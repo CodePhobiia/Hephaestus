@@ -1,4 +1,5 @@
 """Injectable ID generation policy."""
+
 from __future__ import annotations
 
 import os
@@ -15,8 +16,9 @@ _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 def _encode_ulid_now() -> str:
     """Generate a 26-char ULID string: 10-char timestamp + 16-char random."""
     ts_ms = int(time.time() * 1000)
-    rand = struct.unpack(">Q", b"\x00" + os.urandom(7))[0]
-    rand2 = struct.unpack(">H", os.urandom(2))[0]
+    rand_bytes = os.urandom(10)
+    rand = struct.unpack(">Q", rand_bytes[:8])[0]
+    rand2 = struct.unpack(">H", rand_bytes[8:])[0]
 
     chars: list[str] = []
     # Encode 48-bit timestamp in 10 chars

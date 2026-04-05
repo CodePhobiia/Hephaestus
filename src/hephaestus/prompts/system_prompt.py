@@ -53,9 +53,7 @@ def _extract_template() -> str:
         re.DOTALL,
     )
     if not match:
-        raise RuntimeError(
-            f"Could not find <system_prompt>...</system_prompt> in {_TEMPLATE_PATH}"
-        )
+        raise RuntimeError(f"Could not find <system_prompt>...</system_prompt> in {_TEMPLATE_PATH}")
     return match.group(1)
 
 
@@ -131,7 +129,9 @@ def build_system_prompt(
 
     # Default banned baselines text
     if not banned_baselines.strip():
-        banned_baselines = "(No baselines provided — all consensus responses are still banned by default.)"
+        banned_baselines = (
+            "(No baselines provided — all consensus responses are still banned by default.)"
+        )
 
     # Default domains
     if not domain_a.strip():

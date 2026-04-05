@@ -35,14 +35,11 @@ def _make_repo_workspace(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (package / "utils" / "formatting.py").write_text(
-        "def format_message(value: str) -> str:\n"
-        "    return f'[{value}]'\n",
+        "def format_message(value: str) -> str:\n    return f'[{value}]'\n",
         encoding="utf-8",
     )
     (tmp_path / "tests" / "test_cli" / "test_main.py").write_text(
-        "from demo.cli.main import main\n\n"
-        "def test_main() -> None:\n"
-        "    assert main() == '[ok]'\n",
+        "from demo.cli.main import main\n\ndef test_main() -> None:\n    assert main() == '[ok]'\n",
         encoding="utf-8",
     )
     (tmp_path / "tests" / "test_core" / "test_engine.py").write_text(
@@ -96,8 +93,7 @@ class TestRepoDossier:
         assert "docs/architecture.md" in dossier.documentation_paths
         assert {component.name for component in dossier.components} >= {"cli", "core", "utils"}
         assert any(
-            edge.source == "cli" and edge.target == "core"
-            for edge in dossier.dependency_edges
+            edge.source == "cli" and edge.target == "core" for edge in dossier.dependency_edges
         )
         assert any(command.command == "make test" for command in dossier.commands)
         assert any(command.command == "pytest" for command in dossier.commands)

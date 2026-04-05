@@ -282,7 +282,7 @@ def _reference_key_tokens(
     if not reference_context:
         return []
     if isinstance(reference_context, Mapping):
-        return [_slug(str(key)) for key in reference_context.keys()]
+        return [_slug(str(key)) for key in reference_context]
     tokens: list[str] = []
     for lot in reference_context:
         tokens.append(_slug(getattr(lot, "kind", "")))
@@ -347,7 +347,9 @@ class Lens:
 
         axioms = data["axioms"]
         if not isinstance(axioms, list) or len(axioms) < 2:
-            raise ValueError(f"Lens 'axioms' must be a list with at least 2 entries, got: {axioms!r}")
+            raise ValueError(
+                f"Lens 'axioms' must be a list with at least 2 entries, got: {axioms!r}"
+            )
 
         raw_patterns = data["structural_patterns"]
         if not isinstance(raw_patterns, list) or len(raw_patterns) < 1:
@@ -367,7 +369,9 @@ class Lens:
             injection_prompt=injection.strip(),
             source_file=source_file or Path(),
             tags=[str(item) for item in data.get("tags", [])],
-            distance_hints={str(k): float(v) for k, v in dict(data.get("distance_hints", {})).items()},
+            distance_hints={
+                str(k): float(v) for k, v in dict(data.get("distance_hints", {})).items()
+            },
             domain_family=classify_domain_family(
                 str(data["domain"]),
                 str(data["subdomain"]),
@@ -376,7 +380,9 @@ class Lens:
             source_kind=str(data.get("source_kind", "library")),
             version=int(data.get("version", 1)),
             explicit_lens_id=str(data.get("lens_id", "")),
-            parent_lens_ids=tuple(str(item) for item in list(data.get("parent_lens_ids", []) or [])),
+            parent_lens_ids=tuple(
+                str(item) for item in list(data.get("parent_lens_ids", []) or [])
+            ),
             reference_signature=str(data.get("reference_signature", "")),
             metadata={str(k): str(v) for k, v in dict(data.get("metadata", {})).items()},
         )
@@ -623,11 +629,7 @@ class LensLoader:
 
     def get_by_domain(self, domain: str) -> list[Lens]:
         target = domain.lower().strip()
-        return [
-            lens
-            for lens in self.load_all(skip_errors=True).values()
-            if lens.domain == target
-        ]
+        return [lens for lens in self.load_all(skip_errors=True).values() if lens.domain == target]
 
     def get_by_maps_to(self, problem_type: str) -> list[Lens]:
         target = problem_type.lower().strip()
@@ -668,7 +670,9 @@ class LensLoader:
         if lineage is None:
             if lens.source_kind == "derived_composite" and lens.parent_lens_ids:
                 parent_cards = [self.get_card(parent_id) for parent_id in lens.parent_lens_ids]
-                parent_lineages = [self.get_lineage(parent_id) for parent_id in lens.parent_lens_ids]
+                parent_lineages = [
+                    self.get_lineage(parent_id) for parent_id in lens.parent_lens_ids
+                ]
                 lineage = build_composite_lineage(
                     lens_id=lens.lens_id,
                     version=lens.version,
@@ -693,7 +697,9 @@ class LensLoader:
         lens.lineage_token = lineage.proof_token
         lens.reference_signature = lineage.reference_digest or lens.reference_signature
         derived_card.lineage_token = lineage.proof_token
-        derived_card.reference_signature = lineage.reference_digest or derived_card.reference_signature
+        derived_card.reference_signature = (
+            lineage.reference_digest or derived_card.reference_signature
+        )
         self._derived_lenses[lens.lens_id] = lens
         self._derived_cards[lens.lens_id] = derived_card
         self._derived_lineages[lens.lens_id] = lineage
@@ -713,7 +719,9 @@ class LensLoader:
     ) -> Lens:
         if not self._allow_derived_composites:
             raise RuntimeError("Derived lens composites are disabled by configuration")
-        unique_parent_ids = tuple(dict.fromkeys(_slug(parent_id) for parent_id in parent_lens_ids if parent_id))
+        unique_parent_ids = tuple(
+            dict.fromkeys(_slug(parent_id) for parent_id in parent_lens_ids if parent_id)
+        )
         if len(unique_parent_ids) < 2:
             raise ValueError("Composite lenses require at least two parent lenses")
 
@@ -727,9 +735,11 @@ class LensLoader:
         for card in parent_cards:
             if card.evidence_atoms:
                 axioms.append(f"{card.domain_name} contributes {card.evidence_atoms[0]}.")
-        shared_terms = sorted(
-            set.intersection(*[set(card.transfer_shape) for card in parent_cards])
-        ) if parent_cards else []
+        shared_terms = (
+            sorted(set.intersection(*[set(card.transfer_shape) for card in parent_cards]))
+            if parent_cards
+            else []
+        )
         if shared_terms:
             axioms.append(
                 "Composite transfer is stabilized by shared structural commitments: "

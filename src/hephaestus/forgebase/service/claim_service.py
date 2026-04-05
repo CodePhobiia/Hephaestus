@@ -1,11 +1,11 @@
 """ClaimService — claim creation, update, support, derivation, and invalidation."""
+
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import (
     ClaimStatus,
-    EntityKind,
     SupportType,
 )
 from hephaestus.forgebase.domain.models import (
@@ -83,7 +83,9 @@ class ClaimService:
                 )
             else:
                 await uow.vaults.set_canonical_claim_head(
-                    vault_id, claim_id, 1,
+                    vault_id,
+                    claim_id,
+                    1,
                 )
 
             # Emit event
@@ -167,7 +169,9 @@ class ClaimService:
                 )
             else:
                 await uow.vaults.set_canonical_claim_head(
-                    claim.vault_id, claim_id, new_version_num.number,
+                    claim.vault_id,
+                    claim_id,
+                    new_version_num.number,
                 )
 
             # Emit event
@@ -396,7 +400,9 @@ class ClaimService:
                 )
             else:
                 await uow.vaults.set_canonical_claim_head(
-                    claim.vault_id, claim_id, new_version_num.number,
+                    claim.vault_id,
+                    claim_id,
+                    new_version_num.number,
                 )
 
             uow.record_event(

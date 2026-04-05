@@ -1,4 +1,5 @@
 """Tests for HTML normalizer."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.ingestion.html import normalize_html

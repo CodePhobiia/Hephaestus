@@ -7,7 +7,7 @@ LLM calls and prior art searches are mocked.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -18,13 +18,11 @@ from hephaestus.core.translator import ElementMapping, Translation
 from hephaestus.core.verifier import (
     AdversarialResult,
     NoveltyVerifier,
-    VerificationError,
     VerifiedInvention,
 )
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
 from hephaestus.lenses.loader import Lens, StructuralPattern
 from hephaestus.lenses.selector import LensScore
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -50,7 +48,7 @@ def _make_scored_candidate(distance: float = 0.85) -> ScoredCandidate:
         lens=lens,
         domain_distance=distance,
         structural_relevance=0.7,
-        composite_score=0.8 * distance ** 1.5,
+        composite_score=0.8 * distance**1.5,
         matched_patterns=["allocation"],
     )
     search_candidate = SearchCandidate(
@@ -66,7 +64,7 @@ def _make_scored_candidate(distance: float = 0.85) -> ScoredCandidate:
         candidate=search_candidate,
         structural_fidelity=0.8,
         domain_distance=distance,
-        combined_score=0.8 * distance ** 1.5,
+        combined_score=0.8 * distance**1.5,
         fidelity_reasoning="Strong match",
         strong_mappings=["T-cell → task"],
         weak_mappings=["No MHC equivalent"],
@@ -112,30 +110,34 @@ def _make_forge_result(text: str, cost: float = 0.005) -> ForgeResult:
 
 
 def _valid_attack_json(verdict: str = "NOVEL", has_flaws: bool = False) -> str:
-    return json.dumps({
-        "attack_valid": has_flaws,
-        "fatal_flaws": ["Fundamental mapping breaks under high load"] if has_flaws else [],
-        "structural_weaknesses": ["Cache invalidation not addressed"],
-        "strongest_objection": "The analogy may not hold under adversarial conditions",
-        "novelty_risk": 0.15 if verdict == "NOVEL" else 0.6,
-        "verdict": verdict,
-    })
+    return json.dumps(
+        {
+            "attack_valid": has_flaws,
+            "fatal_flaws": ["Fundamental mapping breaks under high load"] if has_flaws else [],
+            "structural_weaknesses": ["Cache invalidation not addressed"],
+            "strongest_objection": "The analogy may not hold under adversarial conditions",
+            "novelty_risk": 0.15 if verdict == "NOVEL" else 0.6,
+            "verdict": verdict,
+        }
+    )
 
 
 def _valid_validity_json(feasibility: str = "HIGH") -> str:
-    return json.dumps({
-        "structural_validity": 0.85,
-        "implementation_feasibility": 0.80,
-        "novelty_score": 0.88,
-        "feasibility_rating": feasibility,
-        "validity_notes": "The structural mapping holds across all major constraints",
-        "feasibility_notes": "Implementable with Redis + standard scheduler frameworks",
-        "novelty_notes": "No prior art found for this specific immune-scheduler mapping",
-        "recommended_next_steps": [
-            "Prototype the memory layer with Redis",
-            "Benchmark against standard schedulers",
-        ],
-    })
+    return json.dumps(
+        {
+            "structural_validity": 0.85,
+            "implementation_feasibility": 0.80,
+            "novelty_score": 0.88,
+            "feasibility_rating": feasibility,
+            "validity_notes": "The structural mapping holds across all major constraints",
+            "feasibility_notes": "Implementable with Redis + standard scheduler frameworks",
+            "novelty_notes": "No prior art found for this specific immune-scheduler mapping",
+            "recommended_next_steps": [
+                "Prototype the memory layer with Redis",
+                "Benchmark against standard schedulers",
+            ],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -237,10 +239,12 @@ class TestNoveltyVerifier:
     @pytest.mark.asyncio
     async def test_successful_verification(self):
         attack_harness = MagicMock()
-        attack_harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_attack_json("NOVEL")),
-            _make_forge_result(_valid_validity_json("HIGH")),
-        ])
+        attack_harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_attack_json("NOVEL")),
+                _make_forge_result(_valid_validity_json("HIGH")),
+            ]
+        )
 
         verifier = NoveltyVerifier(
             attack_harness=attack_harness,
@@ -263,29 +267,55 @@ class TestNoveltyVerifier:
         attack_harness = MagicMock()
 
         # 3 translations — 6 forge calls total (2 per translation: attack + defend)
-        attack_harness.forge = AsyncMock(side_effect=[
-            # Translation 1: low novelty_risk → high novelty
-            _make_forge_result(_valid_attack_json("NOVEL")),
-            _make_forge_result(json.dumps({
-                "structural_validity": 0.9, "implementation_feasibility": 0.9,
-                "feasibility_rating": "HIGH", "validity_notes": "",
-                "feasibility_notes": "", "novelty_notes": "", "recommended_next_steps": []
-            })),
-            # Translation 2: medium novelty
-            _make_forge_result(_valid_attack_json("QUESTIONABLE")),
-            _make_forge_result(json.dumps({
-                "structural_validity": 0.5, "implementation_feasibility": 0.5,
-                "feasibility_rating": "MEDIUM", "validity_notes": "",
-                "feasibility_notes": "", "novelty_notes": "", "recommended_next_steps": []
-            })),
-            # Translation 3: low novelty
-            _make_forge_result(_valid_attack_json("DERIVATIVE")),
-            _make_forge_result(json.dumps({
-                "structural_validity": 0.3, "implementation_feasibility": 0.3,
-                "feasibility_rating": "LOW", "validity_notes": "",
-                "feasibility_notes": "", "novelty_notes": "", "recommended_next_steps": []
-            })),
-        ])
+        attack_harness.forge = AsyncMock(
+            side_effect=[
+                # Translation 1: low novelty_risk → high novelty
+                _make_forge_result(_valid_attack_json("NOVEL")),
+                _make_forge_result(
+                    json.dumps(
+                        {
+                            "structural_validity": 0.9,
+                            "implementation_feasibility": 0.9,
+                            "feasibility_rating": "HIGH",
+                            "validity_notes": "",
+                            "feasibility_notes": "",
+                            "novelty_notes": "",
+                            "recommended_next_steps": [],
+                        }
+                    )
+                ),
+                # Translation 2: medium novelty
+                _make_forge_result(_valid_attack_json("QUESTIONABLE")),
+                _make_forge_result(
+                    json.dumps(
+                        {
+                            "structural_validity": 0.5,
+                            "implementation_feasibility": 0.5,
+                            "feasibility_rating": "MEDIUM",
+                            "validity_notes": "",
+                            "feasibility_notes": "",
+                            "novelty_notes": "",
+                            "recommended_next_steps": [],
+                        }
+                    )
+                ),
+                # Translation 3: low novelty
+                _make_forge_result(_valid_attack_json("DERIVATIVE")),
+                _make_forge_result(
+                    json.dumps(
+                        {
+                            "structural_validity": 0.3,
+                            "implementation_feasibility": 0.3,
+                            "feasibility_rating": "LOW",
+                            "validity_notes": "",
+                            "feasibility_notes": "",
+                            "novelty_notes": "",
+                            "recommended_next_steps": [],
+                        }
+                    )
+                ),
+            ]
+        )
 
         verifier = NoveltyVerifier(
             attack_harness=attack_harness,
@@ -328,10 +358,12 @@ class TestNoveltyVerifier:
     async def test_prior_art_check_graceful_fallback(self):
         """If prior art search fails, verification continues with SEARCH_UNAVAILABLE."""
         attack_harness = MagicMock()
-        attack_harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_attack_json("NOVEL")),
-            _make_forge_result(_valid_validity_json("HIGH")),
-        ])
+        attack_harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_attack_json("NOVEL")),
+                _make_forge_result(_valid_validity_json("HIGH")),
+            ]
+        )
 
         verifier = NoveltyVerifier(
             attack_harness=attack_harness,
@@ -351,15 +383,21 @@ class TestNoveltyVerifier:
     @pytest.mark.asyncio
     async def test_attaches_grounding_and_risk_reviews(self):
         attack_harness = MagicMock()
-        attack_harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_attack_json("NOVEL")),
-            _make_forge_result(_valid_validity_json("HIGH")),
-        ])
+        attack_harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_attack_json("NOVEL")),
+                _make_forge_result(_valid_validity_json("HIGH")),
+            ]
+        )
 
         verifier = NoveltyVerifier(attack_harness=attack_harness, run_prior_art=False)
         verifier._perplexity_client = MagicMock()
-        verifier._perplexity_client.ground_invention_report = AsyncMock(return_value=MagicMock(summary="Grounded against adjacent systems"))
-        verifier._perplexity_client.review_implementation_risks = AsyncMock(return_value=MagicMock(summary="Main risk is feedback delay"))
+        verifier._perplexity_client.ground_invention_report = AsyncMock(
+            return_value=MagicMock(summary="Grounded against adjacent systems")
+        )
+        verifier._perplexity_client.review_implementation_risks = AsyncMock(
+            return_value=MagicMock(summary="Main risk is feedback delay")
+        )
 
         result = await verifier.verify([_make_translation()], _make_structure())
         assert result[0].grounding_report is not None
@@ -371,10 +409,12 @@ class TestNoveltyVerifier:
     async def test_novelty_score_penalised_by_fatal_flaws(self):
         """Fatal flaws from adversarial attack should reduce novelty score."""
         attack_harness = MagicMock()
-        attack_harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_attack_json("INVALID", has_flaws=True)),
-            _make_forge_result(_valid_validity_json("LOW")),
-        ])
+        attack_harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_attack_json("INVALID", has_flaws=True)),
+                _make_forge_result(_valid_validity_json("LOW")),
+            ]
+        )
 
         verifier = NoveltyVerifier(attack_harness=attack_harness, run_prior_art=False)
         result = await verifier.verify([_make_translation()], _make_structure())
@@ -386,10 +426,12 @@ class TestNoveltyVerifier:
     async def test_novelty_score_reduced_by_prior_art(self):
         """POSSIBLE_PRIOR_ART status should reduce novelty score."""
         attack_harness = MagicMock()
-        attack_harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_attack_json("QUESTIONABLE")),
-            _make_forge_result(_valid_validity_json("MEDIUM")),
-        ])
+        attack_harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_attack_json("QUESTIONABLE")),
+                _make_forge_result(_valid_validity_json("MEDIUM")),
+            ]
+        )
 
         verifier = NoveltyVerifier(attack_harness=attack_harness, run_prior_art=True)
 

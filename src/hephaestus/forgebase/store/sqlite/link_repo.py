@@ -1,4 +1,5 @@
 """SQLite implementation of LinkRepository."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -23,9 +24,7 @@ class SqliteLinkRepository(LinkRepository):
         await self.create_version(version)
 
     async def get(self, link_id: EntityId) -> Link | None:
-        cursor = await self._db.execute(
-            "SELECT * FROM fb_links WHERE link_id = ?", (str(link_id),)
-        )
+        cursor = await self._db.execute("SELECT * FROM fb_links WHERE link_id = ?", (str(link_id),))
         row = await cursor.fetchone()
         if row is None:
             return None
@@ -139,5 +138,7 @@ class SqliteLinkRepository(LinkRepository):
             label=row["label"],
             weight=row["weight"],
             created_at=datetime.fromisoformat(row["created_at"]),
-            created_by=ActorRef(actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]),
+            created_by=ActorRef(
+                actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]
+            ),
         )

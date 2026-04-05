@@ -1,4 +1,5 @@
 """Image normalization — stub implementation."""
+
 from __future__ import annotations
 
 
@@ -10,4 +11,4 @@ def normalize_image(raw: bytes, metadata: dict | None = None) -> bytes:
     that includes the image title from metadata if available.
     """
     title = (metadata or {}).get("title", "Image")
-    return f"# Image: {title}\n\n*Image description extraction not yet implemented.*\n".encode("utf-8")
+    return f"# Image: {title}\n\n*Image description extraction not yet implemented.*\n".encode()

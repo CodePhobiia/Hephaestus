@@ -5,6 +5,7 @@ and vault B about "supply chain logistics"), compiled via Tier 1 + Tier 2 with
 MockCompilerBackend. Uses deterministic embeddings to avoid loading
 sentence-transformers.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -15,23 +16,21 @@ import pytest
 
 from hephaestus.forgebase.domain.enums import (
     BridgeCandidateKind,
-    ClaimStatus,
     FusionMode,
     SourceFormat,
     SourceTrustTier,
 )
 from hephaestus.forgebase.domain.event_types import FixedClock
-from hephaestus.forgebase.domain.values import EntityId, Version
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.fusion.candidates import generate_bridge_candidates
 from hephaestus.forgebase.fusion.embeddings import EmbeddingIndex
 from hephaestus.forgebase.fusion.policy import FusionPolicy
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
 
-
 # ---------------------------------------------------------------------------
 # Deterministic embedding helper (avoids sentence-transformers)
 # ---------------------------------------------------------------------------
+
 
 def _deterministic_embedding(text: str) -> bytes:
     """Produce a deterministic 384-dim normalised float32 embedding from text."""
@@ -46,6 +45,7 @@ def _deterministic_embedding(text: str) -> bytes:
 # In-memory embedding cache repository (test double)
 # ---------------------------------------------------------------------------
 
+
 class InMemoryEmbeddingCacheRepo:
     """Minimal in-memory implementation of EmbeddingCacheRepository for tests."""
 
@@ -57,7 +57,11 @@ class InMemoryEmbeddingCacheRepo:
         return entry[0] if entry is not None else None
 
     async def put(
-        self, entity_id: str, version: int, embedding_blob: bytes, computed_at: str,
+        self,
+        entity_id: str,
+        version: int,
+        embedding_blob: bytes,
+        computed_at: str,
     ) -> None:
         self._store[(entity_id, version)] = (embedding_blob, computed_at)
 
@@ -67,7 +71,8 @@ class InMemoryEmbeddingCacheRepo:
             del self._store[k]
 
     async def batch_get(
-        self, items: list[tuple[str, int]],
+        self,
+        items: list[tuple[str, int]],
     ) -> dict[tuple[str, int], bytes]:
         results: dict[tuple[str, int], bytes] = {}
         for entity_id, version in items:
@@ -93,7 +98,7 @@ class FakeEmbeddingUoW:
     async def rollback(self) -> None:
         pass
 
-    async def __aenter__(self) -> "FakeEmbeddingUoW":
+    async def __aenter__(self) -> FakeEmbeddingUoW:
         await self.begin()
         return self
 
@@ -175,6 +180,7 @@ async def _setup_compiled_vault(fb, name: str, description: str, content: bytes,
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def embedding_cache():
     return InMemoryEmbeddingCacheRepo()
@@ -183,8 +189,10 @@ def embedding_cache():
 @pytest.fixture
 def embedding_index(embedding_cache):
     """EmbeddingIndex with deterministic embeddings (no real model)."""
+
     def _factory():
         return FakeEmbeddingUoW(embedding_cache)
+
     idx = EmbeddingIndex(uow_factory=_factory, model_name="test-model")
     idx._compute_embedding = _deterministic_embedding  # type: ignore[assignment]
     return idx
@@ -214,12 +222,18 @@ async def compiled_vaults():
     )
 
     vault_a = await _setup_compiled_vault(
-        fb, "battery-research", "Li-ion battery vault",
-        BATTERY_SOURCE_CONTENT, clock,
+        fb,
+        "battery-research",
+        "Li-ion battery vault",
+        BATTERY_SOURCE_CONTENT,
+        clock,
     )
     vault_b = await _setup_compiled_vault(
-        fb, "logistics-research", "Supply chain vault",
-        LOGISTICS_SOURCE_CONTENT, clock,
+        fb,
+        "logistics-research",
+        "Supply chain vault",
+        LOGISTICS_SOURCE_CONTENT,
+        clock,
     )
 
     yield fb, vault_a, vault_b
@@ -231,11 +245,16 @@ async def compiled_vaults():
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestGeneratesCandidates:
     """test_generates_candidates: 2 compiled vaults -> non-empty candidate list."""
 
     async def test_generates_candidates(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -262,7 +281,11 @@ class TestCandidatesTyped:
     """test_candidates_typed: all candidates have valid BridgeCandidateKind values."""
 
     async def test_candidates_typed(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -288,7 +311,10 @@ class TestCandidatesDiversified:
     """test_candidates_diversified: not all candidates have the same kind."""
 
     async def test_candidates_diversified(
-        self, compiled_vaults, embedding_index, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -317,16 +343,18 @@ class TestCandidatesDiversified:
         left_kinds = {c.left_kind for c in candidates}
         right_kinds = {c.right_kind for c in candidates}
         all_kinds = left_kinds | right_kinds
-        assert len(all_kinds) > 1, (
-            f"Expected diverse candidate kinds, got only: {all_kinds}"
-        )
+        assert len(all_kinds) > 1, f"Expected diverse candidate kinds, got only: {all_kinds}"
 
 
 class TestStrictModeFiltersHypothesis:
     """test_strict_mode_filters_hypothesis: HYPOTHESIS claims excluded in STRICT mode."""
 
     async def test_strict_mode_filters_hypothesis(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -357,7 +385,10 @@ class TestSimilarityThresholdRespected:
     """test_similarity_threshold_respected: all candidates above min threshold."""
 
     async def test_similarity_threshold_respected(
-        self, compiled_vaults, embedding_index, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -387,7 +418,11 @@ class TestProblemRelevanceBoost:
     """test_problem_relevance_boost: with problem, candidates get problem_relevance scores."""
 
     async def test_problem_relevance_boost(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -413,7 +448,11 @@ class TestProblemRelevanceBoost:
             )
 
     async def test_no_problem_no_relevance(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -440,14 +479,16 @@ class TestEmptyVaultReturnsEmpty:
     """test_empty_vault_returns_empty: one empty vault -> no candidates."""
 
     async def test_empty_vault_returns_empty(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
         # Create a third, empty vault
-        empty_vault = await fb.vaults.create_vault(
-            name="empty-vault", description="No content"
-        )
+        empty_vault = await fb.vaults.create_vault(name="empty-vault", description="No content")
 
         uow = fb.uow_factory()
         async with uow:
@@ -468,7 +509,10 @@ class TestMaxCandidatesRespected:
     """test_max_candidates_respected: doesn't exceed policy cap."""
 
     async def test_max_candidates_respected(
-        self, compiled_vaults, embedding_index, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 
@@ -491,8 +535,7 @@ class TestMaxCandidatesRespected:
             await uow.rollback()
 
         assert len(candidates) <= policy.max_candidates_per_pair, (
-            f"Got {len(candidates)} candidates, exceeding cap of "
-            f"{policy.max_candidates_per_pair}"
+            f"Got {len(candidates)} candidates, exceeding cap of {policy.max_candidates_per_pair}"
         )
 
 
@@ -500,7 +543,11 @@ class TestProvenancePopulated:
     """test_provenance_populated: left/right revision refs, entity refs set."""
 
     async def test_provenance_populated(
-        self, compiled_vaults, embedding_index, policy, candidate_id_gen,
+        self,
+        compiled_vaults,
+        embedding_index,
+        policy,
+        candidate_id_gen,
     ):
         fb, vault_a, vault_b = compiled_vaults
 

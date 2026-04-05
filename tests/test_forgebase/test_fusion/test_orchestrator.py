@@ -13,6 +13,7 @@ Tests:
 7. test_fuse_result_has_pair_results — pair_results populated
 8. test_fuse_result_has_manifest — manifest has correct counts
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -30,19 +31,18 @@ from hephaestus.forgebase.domain.enums import (
     SupportType,
 )
 from hephaestus.forgebase.domain.event_types import FixedClock
-from hephaestus.forgebase.domain.models import FusionRun
 from hephaestus.forgebase.domain.values import ActorRef, Version
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.fusion.analyzers.mock_analyzer import MockFusionAnalyzer
 from hephaestus.forgebase.fusion.embeddings import EmbeddingIndex
 from hephaestus.forgebase.fusion.orchestrator import FusionOrchestrator
-from hephaestus.forgebase.fusion.policy import DEFAULT_FUSION_POLICY, FusionPolicy
+from hephaestus.forgebase.fusion.policy import FusionPolicy
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Deterministic embedding helper (avoids sentence-transformers)
 # ---------------------------------------------------------------------------
+
 
 def _deterministic_embedding(text: str) -> bytes:
     """Produce a deterministic 384-dim normalised float32 embedding from text."""
@@ -75,6 +75,7 @@ Hub-and-spoke networks optimize routing efficiency.
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _setup_compiled_vault(fb, name, description, content, clock):
     """Ingest, normalize, compile, synthesize a vault."""
@@ -127,6 +128,7 @@ def _make_orchestrator(fb, embedding_index):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def setup():
     """Create ForgeBase with two compiled vaults and a FusionOrchestrator."""
@@ -140,17 +142,24 @@ async def setup():
     )
 
     vault_a = await _setup_compiled_vault(
-        fb, "battery-materials", "Na-ion research",
-        BATTERY_SOURCE, clock,
+        fb,
+        "battery-materials",
+        "Na-ion research",
+        BATTERY_SOURCE,
+        clock,
     )
     vault_b = await _setup_compiled_vault(
-        fb, "logistics-optimization", "Supply chain",
-        LOGISTICS_SOURCE, clock,
+        fb,
+        "logistics-optimization",
+        "Supply chain",
+        LOGISTICS_SOURCE,
+        clock,
     )
 
     # Embedding index with deterministic embeddings (no real model)
     embedding_index = EmbeddingIndex(
-        uow_factory=fb.uow_factory, model_name="test-model",
+        uow_factory=fb.uow_factory,
+        model_name="test-model",
     )
     embedding_index._compute_embedding = _deterministic_embedding  # type: ignore[assignment]
 
@@ -205,9 +214,7 @@ class TestFusePersistsFusionRun:
 
         uow = fb.uow_factory()
         async with uow:
-            runs = await uow.fusion_runs.list_by_vaults(
-                [vault_a.vault_id, vault_b.vault_id]
-            )
+            runs = await uow.fusion_runs.list_by_vaults([vault_a.vault_id, vault_b.vault_id])
             await uow.rollback()
 
         assert len(runs) >= 1
@@ -311,7 +318,9 @@ class TestFusePoisoningGuard:
                 )
                 await uow.claims.create(claim, cv)
                 await uow.vaults.set_canonical_claim_head(
-                    vault_a.vault_id, contested_claim_id, 1,
+                    vault_a.vault_id,
+                    contested_claim_id,
+                    1,
                 )
                 await uow.commit()
 

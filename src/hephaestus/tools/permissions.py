@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 
-class PermissionMode(str, Enum):
+class PermissionMode(StrEnum):
     """Access level for tool execution."""
 
     READ_ONLY = "read_only"
@@ -65,10 +66,7 @@ class PermissionPolicy:
                 f"Current mode: {self.mode.value}."
             )
         if cat == "dangerous":
-            return (
-                f"Tool '{tool_name}' requires FULL_ACCESS mode. "
-                f"Current mode: {self.mode.value}."
-            )
+            return f"Tool '{tool_name}' requires FULL_ACCESS mode. Current mode: {self.mode.value}."
         if cat == "unknown":
             return f"Tool '{tool_name}' is not registered and is explicitly denied."
         return f"Tool '{tool_name}' is not allowed under current policy."

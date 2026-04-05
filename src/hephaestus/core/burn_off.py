@@ -18,10 +18,10 @@ Usage::
 from __future__ import annotations
 
 import json
-from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.deepforge.harness import DeepForgeHarness
 
 logger = logging.getLogger(__name__)

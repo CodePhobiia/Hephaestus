@@ -9,6 +9,7 @@ Design invariants:
     caught, logged, and recorded as ``sync_status = "failed"`` on the
     corresponding ``KnowledgeRunRef``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Abstract bridge
 # ---------------------------------------------------------------------------
+
 
 class ForgeBaseIntegrationBridge(ABC):
     """Bridge interface for upstream Hephaestus systems to push artifacts into ForgeBase.
@@ -63,6 +65,7 @@ class ForgeBaseIntegrationBridge(ABC):
 # No-op bridge (ForgeBase not configured)
 # ---------------------------------------------------------------------------
 
+
 class NoOpBridge(ForgeBaseIntegrationBridge):
     """No-op bridge for when ForgeBase is not configured."""
 
@@ -94,6 +97,7 @@ class NoOpBridge(ForgeBaseIntegrationBridge):
 # ---------------------------------------------------------------------------
 # Production bridge — delegates to specialised adapters
 # ---------------------------------------------------------------------------
+
 
 class DefaultForgeBaseBridge(ForgeBaseIntegrationBridge):
     """Production bridge that delegates to specialised adapters.

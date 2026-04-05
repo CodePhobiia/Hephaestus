@@ -1,4 +1,5 @@
 """Shared test fixtures for ForgeBase."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

@@ -5,12 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from hephaestus.novelty import NoveltyVector
 
 
-class CommitmentKind(str, Enum):
+class CommitmentKind(StrEnum):
     """Kinds of partial structural commitments tracked on a branch."""
 
     MECHANISM_CLAIM = "mechanism_claim"
@@ -20,7 +20,7 @@ class CommitmentKind(str, Enum):
     VERIFICATION_ASSERTION = "verification_assertion"
 
 
-class OperatorFamily(str, Enum):
+class OperatorFamily(StrEnum):
     """High-level operator families used to evolve a branch."""
 
     MECHANISM = "mechanism"
@@ -32,7 +32,7 @@ class OperatorFamily(str, Enum):
     CONSTRAINT = "constraint"
 
 
-class RecoveryOperatorKind(str, Enum):
+class RecoveryOperatorKind(StrEnum):
     """Named rescue operators used when a branch drifts toward obviousness."""
 
     ATTRACTOR_BREAKER = "attractor_breaker"
@@ -41,7 +41,7 @@ class RecoveryOperatorKind(str, Enum):
     LOAD_BEARING_ABLATION = "load_bearing_ablation"
 
 
-class BranchStatus(str, Enum):
+class BranchStatus(StrEnum):
     """Lifecycle state for an in-memory branch."""
 
     ACTIVE = "active"

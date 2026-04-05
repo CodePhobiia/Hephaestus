@@ -34,7 +34,9 @@ def _make_scored(index: int = 0) -> ScoredCandidate:
         domain="biology",
         subdomain="immune",
         axioms=["Memory persists."],
-        structural_patterns=[StructuralPattern("allocation", "Allocate adaptively", ["allocation"])],
+        structural_patterns=[
+            StructuralPattern("allocation", "Allocate adaptively", ["allocation"])
+        ],
         injection_prompt="Reason biologically.",
     )
     lens_score = LensScore(
@@ -171,9 +173,24 @@ async def test_genesis_without_branchgenome_passes_scored_candidates_through() -
     )
     genesis, patches = _run_genesis(config, inputs)
 
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7], patches[8], patches[9], patches[10]:
+    with (
+        patches[0],
+        patches[1],
+        patches[2],
+        patches[3],
+        patches[4],
+        patches[5],
+        patches[6],
+        patches[7],
+        patches[8],
+        patches[9],
+        patches[10],
+    ):
         genesis._stages_built = True
-        genesis._harnesses = {key: MagicMock() for key in ["decompose", "search", "score", "translate", "attack", "defend"]}
+        genesis._harnesses = {
+            key: MagicMock()
+            for key in ["decompose", "search", "score", "translate", "attack", "defend"]
+        }
         genesis._adapters = {}
         report = await genesis.invent("test problem")
 
@@ -184,7 +201,9 @@ async def test_genesis_without_branchgenome_passes_scored_candidates_through() -
 
 
 @pytest.mark.asyncio
-async def test_genesis_with_branchgenome_promotes_branch_candidates_and_records_metrics(tmp_path) -> None:
+async def test_genesis_with_branchgenome_promotes_branch_candidates_and_records_metrics(
+    tmp_path,
+) -> None:
     inputs: list[list[ScoredCandidate]] = []
     config = GenesisConfig(
         anthropic_api_key="test",
@@ -197,9 +216,24 @@ async def test_genesis_with_branchgenome_promotes_branch_candidates_and_records_
     )
     genesis, patches = _run_genesis(config, inputs)
 
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7], patches[8], patches[9], patches[10]:
+    with (
+        patches[0],
+        patches[1],
+        patches[2],
+        patches[3],
+        patches[4],
+        patches[5],
+        patches[6],
+        patches[7],
+        patches[8],
+        patches[9],
+        patches[10],
+    ):
         genesis._stages_built = True
-        genesis._harnesses = {key: MagicMock() for key in ["decompose", "search", "score", "translate", "attack", "defend"]}
+        genesis._harnesses = {
+            key: MagicMock()
+            for key in ["decompose", "search", "score", "translate", "attack", "defend"]
+        }
         genesis._adapters = {}
         report = await genesis.invent("test problem")
 
@@ -223,7 +257,9 @@ async def test_genesis_with_branchgenome_promotes_branch_candidates_and_records_
 
 
 @pytest.mark.asyncio
-async def test_branchgenome_bundle_invalidation_prunes_invalidated_promoted_branch(tmp_path) -> None:
+async def test_branchgenome_bundle_invalidation_prunes_invalidated_promoted_branch(
+    tmp_path,
+) -> None:
     config = GenesisConfig(
         anthropic_api_key="test",
         openai_api_key="test",
@@ -280,7 +316,10 @@ async def test_branchgenome_bundle_invalidation_prunes_invalidated_promoted_bran
         patch("hephaestus.analytics.failure_log.FailureLog"),
     ):
         genesis._stages_built = True
-        genesis._harnesses = {key: MagicMock() for key in ["decompose", "search", "score", "translate", "attack", "defend"]}
+        genesis._harnesses = {
+            key: MagicMock()
+            for key in ["decompose", "search", "score", "translate", "attack", "defend"]
+        }
         genesis._adapters = {}
         await genesis.invent("test problem")
 

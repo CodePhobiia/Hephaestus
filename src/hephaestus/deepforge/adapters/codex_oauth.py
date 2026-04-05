@@ -63,7 +63,7 @@ CODEX_OAUTH_MODELS: dict[str, ModelConfig] = {
 
 
 class CodexOAuthToolCall:
-    def __init__(self, id: str, name: str, input: dict[str, Any]) -> None:
+    def __init__(self, id: str, name: str, input: dict[str, Any]) -> None: # noqa: A002 # noqa: A002
         self.id = id
         self.name = name
         self.input = input
@@ -131,14 +131,21 @@ class CodexOAuthAdapter(BaseAdapter):
         super().__init__(config, api_key=None, timeout=timeout, max_retries=max_retries)
         self._node_bin = shutil.which("node")
         if not self._node_bin:
-            raise AuthenticationError("Node.js is required for Codex OAuth bridge but `node` is not on PATH.")
-        self._bridge = Path(bridge_script or Path(__file__).resolve().parents[4] / "scripts" / "codex_oauth_bridge.mjs")
+            raise AuthenticationError(
+                "Node.js is required for Codex OAuth bridge but `node` is not on PATH."
+            )
+        self._bridge = Path(
+            bridge_script
+            or Path(__file__).resolve().parents[4] / "scripts" / "codex_oauth_bridge.mjs"
+        )
         if not self._bridge.is_file():
             raise AuthenticationError(f"Codex OAuth bridge script not found: {self._bridge}")
         self._fallback_to_cli = fallback_to_cli
         auth_path = Path.home() / ".codex" / "auth.json"
         if not auth_path.exists():
-            raise AuthenticationError("Codex auth not found in ~/.codex/auth.json. Run `codex login` first.")
+            raise AuthenticationError(
+                "Codex auth not found in ~/.codex/auth.json. Run `codex login` first."
+            )
 
     async def _bridge_call(self, payload: dict[str, Any]) -> dict[str, Any]:
         proc = await asyncio.create_subprocess_exec(
@@ -150,8 +157,10 @@ class CodexOAuthAdapter(BaseAdapter):
         )
         data = json.dumps(payload).encode("utf-8")
         try:
-            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(data), timeout=self._timeout)
-        except asyncio.TimeoutError as exc:
+            stdout_b, stderr_b = await asyncio.wait_for(
+                proc.communicate(data), timeout=self._timeout
+            )
+        except TimeoutError as exc:
             proc.kill()
             raise AdapterError(f"Codex OAuth bridge timed out after {self._timeout}s") from exc
 
@@ -204,8 +213,11 @@ class CodexOAuthAdapter(BaseAdapter):
         except Exception:
             if self._fallback_to_cli:
                 from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+
                 self._logger.warning("Codex OAuth bridge failed, falling back to Codex CLI")
-                fallback = CodexCliAdapter(model=self.model_name, timeout=self._timeout, max_retries=self._max_retries)
+                fallback = CodexCliAdapter(
+                    model=self.model_name, timeout=self._timeout, max_retries=self._max_retries
+                )
                 return await fallback.generate_with_tools(
                     messages,
                     system=system,
@@ -217,7 +229,11 @@ class CodexOAuthAdapter(BaseAdapter):
             raise
 
         tool_calls = [
-            CodexOAuthToolCall(id=str(tc.get("id", "")), name=str(tc.get("name", "")), input=dict(tc.get("input", {}) or {}))
+            CodexOAuthToolCall(
+                id=str(tc.get("id", "")),
+                name=str(tc.get("name", "")),
+                input=dict(tc.get("input", {}) or {}),
+            )
             for tc in result.get("tool_calls", [])
         ]
         content_blocks = list(result.get("content_blocks", []) or [])
@@ -269,8 +285,11 @@ class CodexOAuthAdapter(BaseAdapter):
         except Exception:
             if self._fallback_to_cli:
                 from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
+
                 self._logger.warning("Codex OAuth bridge failed, falling back to Codex CLI")
-                fallback = CodexCliAdapter(model=self.model_name, timeout=self._timeout, max_retries=self._max_retries)
+                fallback = CodexCliAdapter(
+                    model=self.model_name, timeout=self._timeout, max_retries=self._max_retries
+                )
                 return await fallback.generate(
                     prompt,
                     system=system,
@@ -290,7 +309,7 @@ class CodexOAuthAdapter(BaseAdapter):
         )
         text = str(result.get("text", ""))
         if prefill and text.startswith(prefill):
-            text = text[len(prefill):]
+            text = text[len(prefill) :]
         return GenerationResult(
             text=text,
             input_tokens=int(result.get("input_tokens", 0) or 0),
@@ -366,8 +385,13 @@ class CodexOAuthAdapter(BaseAdapter):
         if rc != 0:
             if self._fallback_to_cli:
                 from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
-                self._logger.warning("Codex OAuth stream bridge failed, falling back to Codex CLI stream")
-                fallback = CodexCliAdapter(model=self.model_name, timeout=self._timeout, max_retries=self._max_retries)
+
+                self._logger.warning(
+                    "Codex OAuth stream bridge failed, falling back to Codex CLI stream"
+                )
+                fallback = CodexCliAdapter(
+                    model=self.model_name, timeout=self._timeout, max_retries=self._max_retries
+                )
                 async for chunk in fallback.generate_stream(
                     prompt,
                     system=system,
@@ -403,7 +427,7 @@ class CodexOAuthAdapter(BaseAdapter):
 
         final_text = str(final_result.get("text", accumulated))
         if prefill and final_text.startswith(prefill):
-            final_text = final_text[len(prefill):]
+            final_text = final_text[len(prefill) :]
         yield StreamChunk(
             delta="",
             accumulated=final_text,
@@ -414,4 +438,9 @@ class CodexOAuthAdapter(BaseAdapter):
         )
 
 
-__all__ = ["CodexOAuthAdapter", "CODEX_OAUTH_MODELS", "CodexOAuthToolGenerationResult", "CodexOAuthToolCall"]
+__all__ = [
+    "CodexOAuthAdapter",
+    "CODEX_OAUTH_MODELS",
+    "CodexOAuthToolGenerationResult",
+    "CodexOAuthToolCall",
+]

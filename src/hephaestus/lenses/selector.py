@@ -8,8 +8,6 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -26,6 +24,11 @@ from hephaestus.lenses.cells import CohesionCellIndex
 from hephaestus.lenses.exclusion_ledger import AdaptiveExclusionLedger
 from hephaestus.lenses.lineage import LensLineage, build_native_lineage, validate_lineage
 from hephaestus.lenses.loader import Lens, LensLoader, classify_domain_family
+
+
+def _lazy_np():
+    import numpy as np
+    return np
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +144,7 @@ class EmbeddingModel:
         if self._model is None:
             try:
                 from sentence_transformers import (
-                    SentenceTransformer,  # type: ignore[import-untyped]
+                    SentenceTransformer,
                 )
 
                 logger.info("Loading embedding model %r", _EMBEDDING_MODEL)
@@ -152,22 +155,22 @@ class EmbeddingModel:
                     "Install it: pip install sentence-transformers"
                 ) from exc
 
-    def encode(self, texts: list[str]) -> NDArray[np.float32]:
+    def encode(self, texts: list[str]) -> NDArray[_lazy_np().float32]:
         self._ensure_loaded()
-        embeddings = self._model.encode(  # type: ignore[union-attr]
+        embeddings = self._model.encode(
             texts,
             normalize_embeddings=True,
             show_progress_bar=False,
             convert_to_numpy=True,
         )
-        return np.array(embeddings, dtype=np.float32)
+        return _lazy_np().array(embeddings, dtype=_lazy_np().float32)
 
-    def encode_one(self, text: str) -> NDArray[np.float32]:
+    def encode_one(self, text: str) -> NDArray[_lazy_np().float32]:
         return self.encode([text])[0]
 
 
-def _cosine_distance(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
-    sim = float(np.dot(a, b))
+def _cosine_distance(a: NDArray[_lazy_np().float32], b: NDArray[_lazy_np().float32]) -> float:
+    sim = float(_lazy_np().dot(a, b))
     sim = max(-1.0, min(1.0, sim))
     return 1.0 - sim
 
@@ -192,7 +195,9 @@ def _structural_relevance(lens: Lens, problem_maps_to: set[str]) -> tuple[float,
     lens_maps_to = {item.lower() for item in lens.all_maps_to}
     problem_lower = {item.lower() for item in problem_maps_to}
     matched = lens_maps_to & problem_lower
-    score = len(matched) / len(problem_lower | lens_maps_to) if (problem_lower | lens_maps_to) else 0.0
+    score = (
+        len(matched) / len(problem_lower | lens_maps_to) if (problem_lower | lens_maps_to) else 0.0
+    )
     return float(score), sorted(matched)
 
 
@@ -230,10 +235,7 @@ def _diversity_weight(domain_family: str, target_families: set[str]) -> float:
 def _query_terms(problem_description: str, problem_maps_to: set[str] | None) -> tuple[str, ...]:
     parts = {term.lower().strip() for term in (problem_maps_to or set()) if term.strip()}
     parts.update(term.lower() for term in problem_description.split() if len(term) > 3)
-    normalized = {
-        term.strip(".,:;!?()[]{}<>\"'").replace("-", "_")
-        for term in parts
-    }
+    normalized = {term.strip(".,:;!?()[]{}<>\"'").replace("-", "_") for term in parts}
     return tuple(sorted(term for term in normalized if term))
 
 
@@ -255,14 +257,14 @@ class LensSelector:
         self._min_distance = min_distance
         self._ledger = exclusion_ledger or AdaptiveExclusionLedger()
         self._bundle_min_score = bundle_min_score
-        self._lens_embed_cache: dict[str, NDArray[np.float32]] = {}
+        self._lens_embed_cache: dict[str, NDArray[_lazy_np().float32]] = {}
         self._last_plan: SelectionPlan | None = None
 
     @property
     def last_plan(self) -> SelectionPlan | None:
         return self._last_plan
 
-    def _get_lens_embedding(self, lens: Lens) -> NDArray[np.float32]:
+    def _get_lens_embedding(self, lens: Lens) -> NDArray[_lazy_np().float32]:
         if lens.lens_id not in self._lens_embed_cache:
             self._lens_embed_cache[lens.lens_id] = self._embed.encode_one(_domain_text(lens))
         return self._lens_embed_cache[lens.lens_id]
@@ -274,7 +276,7 @@ class LensSelector:
         if not texts:
             return
         embeddings = self._embed.encode(texts)
-        for lens_id, embedding in zip(lens_ids, embeddings):
+        for lens_id, embedding in zip(lens_ids, embeddings, strict=True):
             self._lens_embed_cache[lens_id] = embedding
         logger.info("Pre-computed embeddings for %d lenses", len(lens_ids))
 
@@ -294,7 +296,7 @@ class LensSelector:
         uncached = [lens for lens in lenses if lens.lens_id not in self._lens_embed_cache]
         if uncached:
             embeddings = self._embed.encode([_domain_text(lens) for lens in uncached])
-            for lens, embedding in zip(uncached, embeddings):
+            for lens, embedding in zip(uncached, embeddings, strict=True):
                 self._lens_embed_cache[lens.lens_id] = embedding
         return {
             lens.lens_id: _cosine_distance(problem_emb, self._lens_embed_cache[lens.lens_id])
@@ -319,7 +321,9 @@ class LensSelector:
             cards[lens.lens_id] = card
 
             try:
-                lineage = self._loader.get_lineage(lens.lens_id, reference_context=reference_context)
+                lineage = self._loader.get_lineage(
+                    lens.lens_id, reference_context=reference_context
+                )
             except Exception:
                 lineage = build_native_lineage(
                     lens_id=lens.lens_id,
@@ -346,9 +350,13 @@ class LensSelector:
                         reference_context=reference_context,
                     )
             else:
-                index = CohesionCellIndex.build(cards, lineages=lineages, reference_context=reference_context)
+                index = CohesionCellIndex.build(
+                    cards, lineages=lineages, reference_context=reference_context
+                )
         except Exception:
-            index = CohesionCellIndex.build(cards, lineages=lineages, reference_context=reference_context)
+            index = CohesionCellIndex.build(
+                cards, lineages=lineages, reference_context=reference_context
+            )
         return cards, lineages, index
 
     def select_plan(
@@ -371,9 +379,7 @@ class LensSelector:
         maps_to = {mapping.lower() for mapping in (problem_maps_to or set())}
         query_terms = _query_terms(problem_description, maps_to)
         target_families = _target_domain_families(target_domain, exclude)
-        candidate_lenses = [
-            lens for lens in all_lenses.values() if lens.domain not in exclude
-        ]
+        candidate_lenses = [lens for lens in all_lenses.values() if lens.domain not in exclude]
         if not candidate_lenses:
             plan = SelectionPlan(mode="fallback", scores=[], fallback_used=True)
             self._last_plan = plan
@@ -422,9 +428,15 @@ class LensSelector:
             card_bonus = 1.0 + min(card_score / 10.0, 0.5)
             cell_bonus = 1.0 + min(cell_scores.get(lens.lens_id, 0.0) / 8.0, 0.35)
             if maps_to:
-                composite = (distance ** self._alpha) * max(relevance, 0.1) * diversity_weight * card_bonus * cell_bonus
+                composite = (
+                    (distance**self._alpha)
+                    * max(relevance, 0.1)
+                    * diversity_weight
+                    * card_bonus
+                    * cell_bonus
+                )
             else:
-                composite = (distance ** self._alpha) * diversity_weight * card_bonus * cell_bonus
+                composite = (distance**self._alpha) * diversity_weight * card_bonus * cell_bonus
 
             ledger_decision = self._ledger.decide(
                 families=[card.domain_family],
@@ -442,7 +454,8 @@ class LensSelector:
                     domain_distance=distance,
                     structural_relevance=relevance,
                     composite_score=composite,
-                    matched_patterns=matched or list(cell_index.matched_tokens_for_lens(lens.lens_id, query_terms)),
+                    matched_patterns=matched
+                    or list(cell_index.matched_tokens_for_lens(lens.lens_id, query_terms)),
                     domain_family=lens.domain_family,
                     diversity_weight=diversity_weight,
                     lineage=lineage,
@@ -465,7 +478,9 @@ class LensSelector:
         base_scores = {score.lens.lens_id: score.composite_score for score in singleton_scores}
         bundle_candidates = build_bundle_candidates(
             cards={score.lens.lens_id: cards[score.lens.lens_id] for score in singleton_scores},
-            lineages={score.lens.lens_id: lineages[score.lens.lens_id] for score in singleton_scores},
+            lineages={
+                score.lens.lens_id: lineages[score.lens.lens_id] for score in singleton_scores
+            },
             cell_index=cell_index,
             query_terms=query_terms,
             base_scores=base_scores,
@@ -478,7 +493,9 @@ class LensSelector:
         if primary_bundle and primary_bundle.bundle_score >= self._bundle_min_score:
             singleton_by_id = {score.lens.lens_id: score for score in singleton_scores}
             bundle_scores: list[LensScore] = []
-            max_contribution = max(primary_bundle.fold_state.member_contributions.values(), default=1.0)
+            max_contribution = max(
+                primary_bundle.fold_state.member_contributions.values(), default=1.0
+            )
             for rank, lens_id in enumerate(
                 sorted(
                     primary_bundle.lens_ids,
@@ -555,9 +572,7 @@ class LensSelector:
             lens_ids=[score.lens.lens_id for score in selected],
             families=[score.domain_family for score in selected],
             novelty_axes=[
-                axis
-                for score in selected
-                for axis in cards[score.lens.lens_id].novelty_axes
+                axis for score in selected for axis in cards[score.lens.lens_id].novelty_axes
             ],
             proof_token=selected[0].lineage.proof_token if selected and selected[0].lineage else "",
             weight=sum(score.composite_score for score in selected) / max(1, len(selected)),
@@ -579,7 +594,7 @@ class LensSelector:
         target_domain: str | None = None,
         top_n: int = 5,
         require_relevance: bool = False,
-        ) -> list[LensScore]:
+    ) -> list[LensScore]:
         return self.select_plan(
             problem_description=problem_description,
             problem_maps_to=problem_maps_to,

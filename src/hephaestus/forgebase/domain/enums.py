@@ -1,10 +1,11 @@
 """ForgeBase domain enumerations."""
+
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class PageType(str, Enum):
+class PageType(StrEnum):
     CONCEPT = "concept"
     PROBLEM = "problem"
     MECHANISM = "mechanism"
@@ -17,7 +18,7 @@ class PageType(str, Enum):
     SOURCE_CARD = "source_card"
 
 
-class ClaimStatus(str, Enum):
+class ClaimStatus(StrEnum):
     SUPPORTED = "supported"
     INFERRED = "inferred"
     HYPOTHESIS = "hypothesis"
@@ -25,14 +26,14 @@ class ClaimStatus(str, Enum):
     STALE = "stale"
 
 
-class SupportType(str, Enum):
+class SupportType(StrEnum):
     DIRECT = "direct"
     SYNTHESIZED = "synthesized"
     GENERATED = "generated"
     INHERITED = "inherited"
 
 
-class LinkKind(str, Enum):
+class LinkKind(StrEnum):
     BACKLINK = "backlink"
     RELATED_CONCEPT = "related_concept"
     PAGE_TO_PAGE = "page_to_page"
@@ -45,7 +46,7 @@ class LinkKind(str, Enum):
     CHALLENGED_BY = "challenged_by"
 
 
-class SourceFormat(str, Enum):
+class SourceFormat(StrEnum):
     PDF = "pdf"
     URL = "url"
     MARKDOWN = "markdown"
@@ -58,27 +59,27 @@ class SourceFormat(str, Enum):
     HEPH_OUTPUT = "heph_output"
 
 
-class SourceTrustTier(str, Enum):
+class SourceTrustTier(StrEnum):
     AUTHORITATIVE = "authoritative"
     STANDARD = "standard"
     LOW = "low"
     UNTRUSTED = "untrusted"
 
 
-class SourceStatus(str, Enum):
+class SourceStatus(StrEnum):
     INGESTED = "ingested"
     NORMALIZED = "normalized"
     FAILED = "failed"
 
 
-class WorkbookStatus(str, Enum):
+class WorkbookStatus(StrEnum):
     OPEN = "open"
     MERGED = "merged"
     ABANDONED = "abandoned"
     CONFLICTED = "conflicted"
 
 
-class BranchPurpose(str, Enum):
+class BranchPurpose(StrEnum):
     RESEARCH = "research"
     LINT_REPAIR = "lint_repair"
     INVENTION = "invention"
@@ -90,7 +91,7 @@ class BranchPurpose(str, Enum):
     AGENT_CUSTOM = "agent_custom"
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -98,7 +99,7 @@ class JobStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class JobKind(str, Enum):
+class JobKind(StrEnum):
     COMPILE = "compile"
     LINT = "lint"
     NORMALIZE = "normalize"
@@ -106,13 +107,13 @@ class JobKind(str, Enum):
     MERGE_FOLLOWUP = "merge_followup"
 
 
-class FindingSeverity(str, Enum):
+class FindingSeverity(StrEnum):
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
 
 
-class FindingCategory(str, Enum):
+class FindingCategory(StrEnum):
     DUPLICATE_PAGE = "duplicate_page"
     BROKEN_REFERENCE = "broken_reference"
     UNSUPPORTED_CLAIM = "unsupported_claim"
@@ -126,47 +127,47 @@ class FindingCategory(str, Enum):
     RESOLVABLE_BY_SEARCH = "resolvable_by_search"
 
 
-class FindingStatus(str, Enum):
+class FindingStatus(StrEnum):
     OPEN = "open"
     RESOLVED = "resolved"
     WAIVED = "waived"
     DEFERRED = "deferred"
 
 
-class MergeVerdict(str, Enum):
+class MergeVerdict(StrEnum):
     CLEAN = "clean"
     CONFLICTED = "conflicted"
     REQUIRES_REVIEW = "requires_review"
 
 
-class MergeResolution(str, Enum):
+class MergeResolution(StrEnum):
     ACCEPT_BRANCH = "accept_branch"
     ACCEPT_CANONICAL = "accept_canonical"
     MANUAL = "manual"
 
 
-class EntityKind(str, Enum):
+class EntityKind(StrEnum):
     PAGE = "page"
     CLAIM = "claim"
     LINK = "link"
     SOURCE = "source"
 
 
-class ActorType(str, Enum):
+class ActorType(StrEnum):
     SYSTEM = "system"
     USER = "user"
     AGENT = "agent"
     RUN = "run"
 
 
-class CandidateKind(str, Enum):
+class CandidateKind(StrEnum):
     CONCEPT = "concept"
     ENTITY = "entity"
     MECHANISM = "mechanism"
     TERM = "term"
 
 
-class CandidateStatus(str, Enum):
+class CandidateStatus(StrEnum):
     ACTIVE = "active"
     CLUSTERED = "clustered"
     PROMOTED = "promoted"
@@ -174,7 +175,7 @@ class CandidateStatus(str, Enum):
     SUPERSEDED = "superseded"
 
 
-class DirtyTargetKind(str, Enum):
+class DirtyTargetKind(StrEnum):
     CONCEPT = "concept"
     MECHANISM = "mechanism"
     COMPARISON = "comparison"
@@ -183,7 +184,7 @@ class DirtyTargetKind(str, Enum):
     SOURCE_INDEX = "source_index"
 
 
-class CompilePhase(str, Enum):
+class CompilePhase(StrEnum):
     TIER1_EXTRACTION = "tier1_extraction"
     TIER1_PERSIST = "tier1_persist"
     TIER2_CLUSTER = "tier2_cluster"
@@ -191,7 +192,7 @@ class CompilePhase(str, Enum):
     TIER2_GRAPH = "tier2_graph"
 
 
-class RemediationStatus(str, Enum):
+class RemediationStatus(StrEnum):
     OPEN = "open"
     TRIAGED = "triaged"
     RESEARCH_PENDING = "research_pending"
@@ -203,21 +204,21 @@ class RemediationStatus(str, Enum):
     VERIFIED = "verified"
 
 
-class RemediationRoute(str, Enum):
+class RemediationRoute(StrEnum):
     REPORT_ONLY = "report_only"
     RESEARCH_ONLY = "research_only"
     REPAIR_ONLY = "repair_only"
     RESEARCH_THEN_REPAIR = "research_then_repair"
 
 
-class RouteSource(str, Enum):
+class RouteSource(StrEnum):
     POLICY = "policy"
     USER = "user"
     AUTOMATION = "automation"
     RETRIAGE = "retriage"
 
 
-class FindingDisposition(str, Enum):
+class FindingDisposition(StrEnum):
     ACTIVE = "active"
     RESOLVED = "resolved"
     FALSE_POSITIVE = "false_positive"
@@ -225,14 +226,14 @@ class FindingDisposition(str, Enum):
     ABANDONED = "abandoned"
 
 
-class ResearchOutcome(str, Enum):
+class ResearchOutcome(StrEnum):
     SUFFICIENT_FOR_REPAIR = "sufficient_for_repair"
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
     NEW_SOURCES_PENDING = "new_sources_pending"
     NO_ACTIONABLE_RESULT = "no_actionable_result"
 
 
-class InventionEpistemicState(str, Enum):
+class InventionEpistemicState(StrEnum):
     PROPOSED = "proposed"
     REVIEWED = "reviewed"
     VERIFIED = "verified"
@@ -240,19 +241,19 @@ class InventionEpistemicState(str, Enum):
     REJECTED = "rejected"
 
 
-class ProvenanceKind(str, Enum):
+class ProvenanceKind(StrEnum):
     GENERATED = "generated"
     DERIVED = "derived"
     EMPIRICAL = "empirical"
     INHERITED = "inherited"
 
 
-class FusionMode(str, Enum):
+class FusionMode(StrEnum):
     STRICT = "strict"
     EXPLORATORY = "exploratory"
 
 
-class BridgeCandidateKind(str, Enum):
+class BridgeCandidateKind(StrEnum):
     CONCEPT = "concept"
     MECHANISM = "mechanism"
     CLAIM_CLUSTER = "claim_cluster"
@@ -260,7 +261,7 @@ class BridgeCandidateKind(str, Enum):
     EXPLORATORY = "exploratory"
 
 
-class AnalogyVerdict(str, Enum):
+class AnalogyVerdict(StrEnum):
     STRONG_ANALOGY = "strong_analogy"
     WEAK_ANALOGY = "weak_analogy"
     NO_ANALOGY = "no_analogy"

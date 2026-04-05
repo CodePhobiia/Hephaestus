@@ -1,12 +1,12 @@
 """RepairWorkbookJob — create a workbook branch with proposed fixes for findings."""
+
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import (
     BranchPurpose,
     ClaimStatus,
-    EntityKind,
     FindingCategory,
     LinkKind,
     PageType,
@@ -17,7 +17,7 @@ from hephaestus.forgebase.domain.models import (
     RepairBatch,
     ResearchPacket,
 )
-from hephaestus.forgebase.domain.values import ActorRef, EntityId, Version
+from hephaestus.forgebase.domain.values import ActorRef, EntityId
 from hephaestus.forgebase.repository.uow import AbstractUnitOfWork
 from hephaestus.forgebase.service.branch_service import BranchService
 from hephaestus.forgebase.service.claim_service import ClaimService
@@ -132,7 +132,10 @@ class RepairWorkbookJob:
 
         elif finding_category == FindingCategory.CONTRADICTORY_CLAIM:
             await self._repair_contradictory_claim(
-                finding, workbook_id, vault_id, research_packet,
+                finding,
+                workbook_id,
+                vault_id,
+                research_packet,
             )
 
         elif finding_category == FindingCategory.UNSUPPORTED_CLAIM:
@@ -243,7 +246,10 @@ class RepairWorkbookJob:
                 page_key=f"open-question-{getattr(finding, 'finding_id', 'unknown')}",
                 page_type=PageType.OPEN_QUESTION,
                 title=f"Open Question: {description[:80]}",
-                content=f"# Open Question\n\n{description}\n\nThis contradiction has not been resolved by research.".encode(),
+                content=(
+                    f"# Open Question\n\n{description}\n\n"
+                    "This contradiction has not been resolved by research."
+                ).encode(),
                 workbook_id=workbook_id,
                 summary="Auto-generated open question for unresolved contradiction",
             )

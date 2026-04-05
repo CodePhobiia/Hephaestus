@@ -31,9 +31,9 @@ from hephaestus.deepforge.adapters.base import (
     StreamChunk,
 )
 from hephaestus.deepforge.exceptions import (
+    AdapterError,
     APIConnectionError,
     APITimeoutError,
-    AdapterError,
     AuthenticationError,
     GenerationKilled,
     ModelNotFoundError,
@@ -142,8 +142,7 @@ class AnthropicAdapter(BaseAdapter):
         if isinstance(model, str):
             if model not in ANTHROPIC_MODELS:
                 raise ModelNotFoundError(
-                    f"Unknown Anthropic model {model!r}. "
-                    f"Available: {list(ANTHROPIC_MODELS)}"
+                    f"Unknown Anthropic model {model!r}. Available: {list(ANTHROPIC_MODELS)}"
                 )
             config = ANTHROPIC_MODELS[model]
         else:
@@ -188,9 +187,7 @@ class AnthropicAdapter(BaseAdapter):
             block["cache_control"] = {"type": "ephemeral"}
         return [block]
 
-    def _build_messages(
-        self, prompt: str, prefill: str | None
-    ) -> list[dict[str, Any]]:
+    def _build_messages(self, prompt: str, prefill: str | None) -> list[dict[str, Any]]:
         """
         Assemble the ``messages`` list.
 
@@ -205,9 +202,8 @@ class AnthropicAdapter(BaseAdapter):
 
     def _build_thinking_param(self) -> dict[str, Any] | None:
         """Return the ``thinking`` parameter dict if applicable."""
-        if (
-            self._thinking_budget is not None
-            and self._config.supports(ModelCapability.EXTENDED_THINKING)
+        if self._thinking_budget is not None and self._config.supports(
+            ModelCapability.EXTENDED_THINKING
         ):
             return {"type": "enabled", "budget_tokens": self._thinking_budget}
         return None
@@ -250,7 +246,11 @@ class AnthropicAdapter(BaseAdapter):
         """
         try:
             return await coro_factory()
-        except (anthropic.RateLimitError, anthropic.APITimeoutError, anthropic.APIConnectionError) as exc:
+        except (
+            anthropic.RateLimitError,
+            anthropic.APITimeoutError,
+            anthropic.APIConnectionError,
+        ) as exc:
             if attempt >= self._max_retries:
                 raise self._translate_error(exc) from exc
             delay = _RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)]
@@ -330,7 +330,7 @@ class AnthropicAdapter(BaseAdapter):
             # caller sees only the freshly generated content.
             output_text = accumulated
             if prefill and output_text.startswith(prefill):
-                output_text = output_text[len(prefill):]
+                output_text = output_text[len(prefill) :]
 
             return GenerationResult(
                 text=output_text,
@@ -383,15 +383,13 @@ class AnthropicAdapter(BaseAdapter):
 
         # Strip prefill from the front of the generated text
         if prefill and full_text.startswith(prefill):
-            full_text = full_text[len(prefill):]
+            full_text = full_text[len(prefill) :]
 
         return GenerationResult(
             text=full_text,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
-            cost_usd=self.compute_cost(
-                response.usage.input_tokens, response.usage.output_tokens
-            ),
+            cost_usd=self.compute_cost(response.usage.input_tokens, response.usage.output_tokens),
             model=self.model_name,
             stop_reason=response.stop_reason or "end_turn",
             raw=response,

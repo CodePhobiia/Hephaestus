@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from hephaestus.core.input_validation import validate_domain_hint, validate_problem
 
 

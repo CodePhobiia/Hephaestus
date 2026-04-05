@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -26,6 +27,8 @@ from hephaestus.output.formatter import OutputFormatter
 
 if TYPE_CHECKING:
     from hephaestus.cli.repl import SessionState
+
+logger = logging.getLogger(__name__)
 
 
 MAX_FILE_CHARS = 20_000
@@ -127,7 +130,7 @@ class AgentChat:
         top = report.top_invention
         self.console.print()
         self.console.print(
-            f"  [yellow]Agent mode[/] — tool-enabled chat for [cyan]{top.invention_name}[/]"
+            f"  [yellow]Agent mode[/] — tool-enabled chat for [dark_orange]{top.invention_name}[/]"
         )
         self.console.print(
             "  [dim]Type /back to return to the menu. Tools run automatically when useful.[/]"
@@ -178,21 +181,25 @@ class AgentChat:
                 tool_results: list[dict[str, Any]] = []
                 for tool_call in result.tool_calls:
                     tool_result = await self._execute_tool(tool_call.name, tool_call.input)
-                    style = "yellow" if tool_result.is_error else "cyan"
-                    self.console.print(f"  [{style}]tool[{tool_call.name}][/] {tool_result.summary}")
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_call.id,
-                        "content": tool_result.content,
-                        "is_error": tool_result.is_error,
-                    })
+                    style = "yellow" if tool_result.is_error else "dark_orange"
+                    self.console.print(
+                        f"  [{style}]tool[{tool_call.name}][/] {tool_result.summary}"
+                    )
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_call.id,
+                            "content": tool_result.content,
+                            "is_error": tool_result.is_error,
+                        }
+                    )
 
                 self.messages.append({"role": "user", "content": tool_results})
                 continue
 
             self.messages.append({"role": "assistant", "content": result.content_blocks})
             reply = result.text.strip() or "No response returned."
-            self.console.print("  [cyan]heph>[/] ", end="")
+            self.console.print("  [dark_orange]heph>[/] ", end="")
             self.console.print(reply)
             self.console.print()
             return
@@ -288,16 +295,9 @@ class AgentChat:
             raise ValueError(f"Perplexity request failed: {detail}")
 
         data = response.json()
-        message = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
+        message = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
         citations = [
-            {"url": url}
-            for url in data.get("citations", [])[:8]
-            if isinstance(url, str) and url
+            {"url": url} for url in data.get("citations", [])[:8] if isinstance(url, str) and url
         ]
         payload = {
             "query": query,
@@ -323,7 +323,7 @@ class AgentChat:
         slug = self._sanitize_slug(getattr(self.state.current, "slug", "") or top.invention_name)
         path = notes_dir / f"{slug}.md"
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
         if path.exists():
             block = f"\n## {timestamp}\n\n{note}\n"
         else:
@@ -354,10 +354,12 @@ class AgentChat:
         if path.is_dir():
             entries = []
             for child in sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))[:100]:
-                entries.append({
-                    "name": child.name,
-                    "type": "directory" if child.is_dir() else "file",
-                })
+                entries.append(
+                    {
+                        "name": child.name,
+                        "type": "directory" if child.is_dir() else "file",
+                    }
+                )
             payload = {
                 "path": str(path),
                 "type": "directory",
@@ -421,7 +423,7 @@ class AgentChat:
         ext = self._normalise_export_format(fmt_input)
 
         ensure_dirs()
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         default_stem = f"{date_str}-{self._sanitize_slug(self.state.current.slug)}"
         stem = self._sanitize_slug(filename) if filename else default_stem
 
@@ -444,7 +446,7 @@ class AgentChat:
             markdown = formatter.to_markdown(fmt_report)
             path = self._unique_path(INVENTIONS_DIR, stem, ".pdf")
             try:
-                from weasyprint import HTML  # type: ignore[import-untyped]
+                from weasyprint import HTML
 
                 html = self._markdown_to_simple_html(markdown)
                 document = (
@@ -540,7 +542,8 @@ class AgentChat:
         for match in matches:
             try:
                 data = json.loads(match.read_text(encoding="utf-8"))
-            except Exception:
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping unreadable invention file %s: %s", match.name, exc)
                 continue
             if isinstance(data, dict) and "top_invention" in data:
                 return data

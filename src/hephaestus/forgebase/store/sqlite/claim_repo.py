@@ -1,4 +1,5 @@
 """SQLite implementation of ClaimRepository."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -18,7 +19,12 @@ class SqliteClaimRepository(ClaimRepository):
     async def create(self, claim: Claim, version: ClaimVersion) -> None:
         await self._db.execute(
             "INSERT INTO fb_claims (claim_id, vault_id, page_id, created_at) VALUES (?, ?, ?, ?)",
-            (str(claim.claim_id), str(claim.vault_id), str(claim.page_id), claim.created_at.isoformat()),
+            (
+                str(claim.claim_id),
+                str(claim.vault_id),
+                str(claim.page_id),
+                claim.created_at.isoformat(),
+            ),
         )
         await self.create_version(version)
 
@@ -106,5 +112,7 @@ class SqliteClaimRepository(ClaimRepository):
             validated_at=datetime.fromisoformat(row["validated_at"]),
             fresh_until=datetime.fromisoformat(row["fresh_until"]) if row["fresh_until"] else None,
             created_at=datetime.fromisoformat(row["created_at"]),
-            created_by=ActorRef(actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]),
+            created_by=ActorRef(
+                actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]
+            ),
         )

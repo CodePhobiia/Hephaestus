@@ -1,0 +1,123 @@
+<h2>Foundation Platform: Layer Architecture</h2>
+<p class="subtitle">How ForgeBase fits into the Hephaestus source tree and how its internal layers interact</p>
+
+<div class="section">
+  <h3>Module Location</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 1.8; color: #d1d5db; background: rgba(0,0,0,0.3); padding: 16px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+    <div>src/hephaestus/</div>
+    <div>&nbsp;&nbsp;forgebase/</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#60a5fa">domain/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Pure domain models (dataclasses, enums, no I/O)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;models.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Vault, Source, Page, Claim, Link, Workbook...</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;events.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Event types, taxonomy, payload schemas</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;values.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Value objects: EntityId, Version, Revision...</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6ee7b7">repository/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Abstract repository contracts (ABCs)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;vault_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;source_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;page_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;claim_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;link_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;workbook_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;job_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;event_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fdba74">store/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Concrete store implementations</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sqlite/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># aiosqlite backend</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;postgres/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># asyncpg backend</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;blobs/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Pluggable blob store (local FS / S3)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;migrations/ &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Schema migrations (both backends)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#f0abfc">service/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Business logic orchestration</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;vault_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ingest_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;branch_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;merge_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;compile_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lint_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fca5a5">events/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Event infrastructure</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;outbox.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Transactional outbox writer</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dispatcher.py &nbsp;&nbsp;<span style="color:#6b7280"># Background event dispatcher</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;consumers.py &nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Durable consumer registry</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fanout.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Optional post-commit in-memory fanout</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fde68a">projection/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Read projections and derived views</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;branch_view.py &nbsp;<span style="color:#6b7280"># Branch-state read-through logic</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;diff.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Derived diff/review projection</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;git_mirror.py &nbsp;&nbsp;<span style="color:#6b7280"># Git workspace projection</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;factory.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># ForgeBase bootstrap: config &rarr; wired stores + services</span></div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Layer Dependency Rules</h3>
+  <div style="display: flex; flex-direction: column; gap: 4px; max-width: 680px; margin: 0 auto;">
+
+    <div style="background: linear-gradient(135deg, #1e3a5f, #1a2744); padding: 14px 20px; border-radius: 8px; border: 1px solid #2563eb; text-align: center;">
+      <div style="color:#60a5fa; font-weight:700; font-size: 15px;">domain/</div>
+      <div style="color:#93c5fd; font-size: 12px; margin-top:4px;">Pure models, enums, value objects &mdash; zero imports from other layers</div>
+    </div>
+    <div style="text-align:center; color:#4b5563; font-size:20px;">&darr;</div>
+
+    <div style="background: linear-gradient(135deg, #1a3329, #142b22); padding: 14px 20px; border-radius: 8px; border: 1px solid #059669; text-align: center;">
+      <div style="color:#6ee7b7; font-weight:700; font-size: 15px;">repository/</div>
+      <div style="color:#a7f3d0; font-size: 12px; margin-top:4px;">Abstract contracts (ABCs) &mdash; imports only domain/</div>
+    </div>
+    <div style="text-align:center; color:#4b5563; font-size:20px;">&darr;</div>
+
+    <div style="display: flex; gap: 8px;">
+      <div style="flex:1; background: linear-gradient(135deg, #362617, #2a1d10); padding: 14px 16px; border-radius: 8px; border: 1px solid #d97706; text-align: center;">
+        <div style="color:#fdba74; font-weight:700; font-size: 14px;">store/sqlite/</div>
+        <div style="color:#fde68a; font-size: 11px; margin-top:4px;">aiosqlite impl</div>
+      </div>
+      <div style="flex:1; background: linear-gradient(135deg, #362617, #2a1d10); padding: 14px 16px; border-radius: 8px; border: 1px solid #d97706; text-align: center;">
+        <div style="color:#fdba74; font-weight:700; font-size: 14px;">store/postgres/</div>
+        <div style="color:#fde68a; font-size: 11px; margin-top:4px;">asyncpg impl</div>
+      </div>
+      <div style="flex:1; background: linear-gradient(135deg, #362617, #2a1d10); padding: 14px 16px; border-radius: 8px; border: 1px solid #d97706; text-align: center;">
+        <div style="color:#fdba74; font-weight:700; font-size: 14px;">store/blobs/</div>
+        <div style="color:#fde68a; font-size: 11px; margin-top:4px;">Local FS / S3</div>
+      </div>
+    </div>
+    <div style="text-align:center; color:#4b5563; font-size:20px;">&darr;</div>
+
+    <div style="display: flex; gap: 8px;">
+      <div style="flex:1; background: linear-gradient(135deg, #3b1c3b, #2d1430); padding: 14px 16px; border-radius: 8px; border: 1px solid #a855f7; text-align: center;">
+        <div style="color:#f0abfc; font-weight:700; font-size: 14px;">service/</div>
+        <div style="color:#e9d5ff; font-size: 11px; margin-top:4px;">Business logic &mdash; uses repos + outbox</div>
+      </div>
+      <div style="flex:1; background: linear-gradient(135deg, #3b1c1c, #2d1414); padding: 14px 16px; border-radius: 8px; border: 1px solid #dc2626; text-align: center;">
+        <div style="color:#fca5a5; font-weight:700; font-size: 14px;">events/</div>
+        <div style="color:#fecaca; font-size: 11px; margin-top:4px;">Outbox + dispatcher + consumers</div>
+      </div>
+      <div style="flex:1; background: linear-gradient(135deg, #3b3a1c, #2d2c14); padding: 14px 16px; border-radius: 8px; border: 1px solid #ca8a04; text-align: center;">
+        <div style="color:#fde68a; font-weight:700; font-size: 14px;">projection/</div>
+        <div style="color:#fef9c3; font-size: 11px; margin-top:4px;">Branch view, diff, Git mirror</div>
+      </div>
+    </div>
+    <div style="text-align:center; color:#4b5563; font-size:20px;">&darr;</div>
+
+    <div style="background: linear-gradient(135deg, #1c2333, #171d2e); padding: 14px 20px; border-radius: 8px; border: 1px solid #475569; text-align: center;">
+      <div style="color:#cbd5e1; font-weight:700; font-size: 15px;">factory.py</div>
+      <div style="color:#94a3b8; font-size: 12px; margin-top:4px;">Bootstrap: reads config &rarr; wires backend &rarr; returns ready ForgeBase instance</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Key Design Rules</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="background: rgba(0,0,0,0.2); padding: 12px 16px; border-radius: 8px; border-left: 3px solid #059669;">
+      <div style="color:#6ee7b7; font-weight:600; font-size:13px;">domain/ has zero I/O</div>
+      <div style="color:#9ca3af; font-size:12px; margin-top:4px;">No database, no filesystem, no network. Pure Python dataclasses and enums.</div>
+    </div>
+    <div style="background: rgba(0,0,0,0.2); padding: 12px 16px; border-radius: 8px; border-left: 3px solid #2563eb;">
+      <div style="color:#60a5fa; font-weight:600; font-size:13px;">repository/ defines contracts</div>
+      <div style="color:#9ca3af; font-size:12px; margin-top:4px;">Abstract base classes. Service layer and tests depend on these, never on store/.</div>
+    </div>
+    <div style="background: rgba(0,0,0,0.2); padding: 12px 16px; border-radius: 8px; border-left: 3px solid #d97706;">
+      <div style="color:#fdba74; font-weight:600; font-size:13px;">store/ implements, never leaks</div>
+      <div style="color:#9ca3af; font-size:12px; margin-top:4px;">SQLite and Postgres implement the same ABCs. No backend-specific logic escapes this layer.</div>
+    </div>
+    <div style="background: rgba(0,0,0,0.2); padding: 12px 16px; border-radius: 8px; border-left: 3px solid #a855f7;">
+      <div style="color:#f0abfc; font-weight:600; font-size:13px;">service/ owns transactions</div>
+      <div style="color:#9ca3af; font-size:12px; margin-top:4px;">State mutation + event emission happens here, in one transaction. Repos and outbox are injected.</div>
+    </div>
+  </div>
+</div>

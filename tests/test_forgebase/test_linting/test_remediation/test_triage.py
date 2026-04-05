@@ -1,9 +1,6 @@
 """Tests for triage — route assignment and override."""
+
 from __future__ import annotations
-
-from datetime import datetime
-
-import pytest
 
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
@@ -23,10 +20,10 @@ from hephaestus.forgebase.linting.remediation.triage import (
     triage_finding,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _eid(prefix: str, suffix: str) -> EntityId:
     """Build an EntityId with a deterministic 26-char ULID-like string."""
@@ -55,6 +52,7 @@ def _finding(
 # ---------------------------------------------------------------------------
 # triage_finding tests
 # ---------------------------------------------------------------------------
+
 
 class TestTriageFinding:
     def test_triage_assigns_route_from_policy(self) -> None:
@@ -122,6 +120,7 @@ class TestTriageFinding:
 # ---------------------------------------------------------------------------
 # override_route tests
 # ---------------------------------------------------------------------------
+
 
 class TestOverrideRoute:
     def test_override_changes_route_and_source(self) -> None:

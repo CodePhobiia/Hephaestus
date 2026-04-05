@@ -166,6 +166,11 @@ async def _pipeline_fn(record: RunRecord, cancel_event: asyncio.Event) -> str | 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not _HEPH_API_KEY:
+        logger.warning(
+            "HEPH_API_KEY is not set — API is unauthenticated. "
+            "Set HEPH_API_KEY to require Bearer token auth."
+        )
     await _orchestrator.start()
     await _orchestrator.start_dispatcher(_pipeline_fn)
     yield

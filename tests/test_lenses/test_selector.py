@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from hephaestus.lenses.loader import Lens, LensLoader, StructuralPattern, _DEFAULT_LIBRARY_DIR
+from hephaestus.lenses.loader import _DEFAULT_LIBRARY_DIR, Lens, LensLoader, StructuralPattern
 from hephaestus.lenses.selector import (
     EmbeddingModel,
     LensScore,
@@ -30,10 +30,10 @@ from hephaestus.lenses.selector import (
     _structural_relevance,
 )
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="module")
 def loader() -> LensLoader:
@@ -101,6 +101,7 @@ def make_lens(
 # Cosine Distance
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestCosineDistance:
     def test_identical_vectors_distance_zero(self):
         v = np.array([1.0, 0.0, 0.0], dtype=np.float32)
@@ -131,6 +132,7 @@ class TestCosineDistance:
 # ──────────────────────────────────────────────────────────────────────────────
 # Structural Relevance
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestStructuralRelevance:
     def test_no_overlap_returns_zero(self):
@@ -167,6 +169,7 @@ class TestStructuralRelevance:
 # Domain Text
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestDomainText:
     def test_domain_text_includes_name(self):
         lens = make_lens("biology_immune", domain="biology")
@@ -187,6 +190,7 @@ class TestDomainText:
 # ──────────────────────────────────────────────────────────────────────────────
 # Distance Computation
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestDistanceComputation:
     def test_compute_distance_returns_float(self, selector: LensSelector):
@@ -225,6 +229,7 @@ class TestDistanceComputation:
 # ──────────────────────────────────────────────────────────────────────────────
 # Selection
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestSelect:
     def test_select_returns_top_n(self, selector: LensSelector):
@@ -293,9 +298,7 @@ class TestSelect:
         )
         assert len(scores) == 1
 
-    def test_select_top_n_larger_than_library_returns_all(
-        self, selector: LensSelector
-    ):
+    def test_select_top_n_larger_than_library_returns_all(self, selector: LensSelector):
         scores = selector.select(
             problem_description="some problem",
             top_n=999,
@@ -303,9 +306,7 @@ class TestSelect:
         # Should return at most len(library) results
         assert len(scores) <= 81
 
-    def test_select_require_relevance_excludes_zero_overlap(
-        self, selector: LensSelector
-    ):
+    def test_select_require_relevance_excludes_zero_overlap(self, selector: LensSelector):
         """With require_relevance=True, lenses with no maps_to overlap are excluded."""
         scores = selector.select(
             problem_description="something",
@@ -316,9 +317,7 @@ class TestSelect:
         # With a tag that no lens has, all should be excluded
         assert len(scores) == 0
 
-    def test_select_without_require_relevance_can_return_zero_overlap(
-        self, selector: LensSelector
-    ):
+    def test_select_without_require_relevance_can_return_zero_overlap(self, selector: LensSelector):
         """Without require_relevance, distance alone can win even with no overlap."""
         scores = selector.select(
             problem_description="something abstract",
@@ -332,6 +331,7 @@ class TestSelect:
 # ──────────────────────────────────────────────────────────────────────────────
 # Maximum Distance Selection
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestMaximumDistanceSelection:
     def test_max_distance_selection_returns_results(self, selector: LensSelector):
@@ -355,10 +355,9 @@ class TestMaximumDistanceSelection:
 # Domain Exclusion (Same Domain as Problem)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestDomainExclusion:
-    def test_exclude_native_domain_removes_all_same_domain_lenses(
-        self, selector: LensSelector
-    ):
+    def test_exclude_native_domain_removes_all_same_domain_lenses(self, selector: LensSelector):
         """A biology problem should not get biology lenses."""
         scores = selector.select(
             problem_description="immune cell signaling and activation",
@@ -369,9 +368,7 @@ class TestDomainExclusion:
             assert s.lens.domain != "biology"
 
     def test_exclude_nonexistent_domain_has_no_effect(self, selector: LensSelector):
-        scores_without_exclude = selector.select(
-            "some problem", top_n=5
-        )
+        scores_without_exclude = selector.select("some problem", top_n=5)
         scores_with_exclude = selector.select(
             "some problem",
             exclude_domains={"totally_nonexistent_domain_xyz"},
@@ -385,10 +382,9 @@ class TestDomainExclusion:
 # Composite Score Formula
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class TestCompositeScore:
-    def test_higher_distance_produces_higher_score_when_relevance_fixed(
-        self, loader: LensLoader
-    ):
+    def test_higher_distance_produces_higher_score_when_relevance_fixed(self, loader: LensLoader):
         """With same relevance, higher distance → higher composite score."""
         # Use mock embeddings to control distances precisely
         sel = LensSelector(loader=loader, distance_alpha=1.8)
@@ -403,17 +399,16 @@ class TestCompositeScore:
             sel,
             "compute_all_distances",
             return_value={"cs_unit": 0.2, "mythology_unit": 0.9},
+        ), patch.object(
+            loader,
+            "load_all",
+            return_value={"cs_unit": lens_near, "mythology_unit": lens_far},
         ):
-            with patch.object(
-                loader,
-                "load_all",
-                return_value={"cs_unit": lens_near, "mythology_unit": lens_far},
-            ):
-                scores = sel.select(
-                    problem_description="trust problem",
-                    problem_maps_to=problem_maps_to,
-                    top_n=10,
-                )
+            scores = sel.select(
+                problem_description="trust problem",
+                problem_maps_to=problem_maps_to,
+                top_n=10,
+            )
 
         if len(scores) >= 2:
             # The far lens should score higher
@@ -426,9 +421,7 @@ class TestCompositeScore:
         for s in scores:
             assert s.composite_score > 0.0
 
-    def test_target_family_penalty_downweights_nearby_families(
-        self, loader: LensLoader
-    ):
+    def test_target_family_penalty_downweights_nearby_families(self, loader: LensLoader):
         sel = LensSelector(loader=loader, distance_alpha=1.8, min_distance=0.0)
 
         lens_same_family = make_lens("engineering_grid", domain="engineering", maps_to=["trust"])
@@ -443,22 +436,21 @@ class TestCompositeScore:
                 "math_queueing": 0.9,
                 "mythology_narrative": 0.9,
             },
+        ), patch.object(
+            loader,
+            "load_all",
+            return_value={
+                "engineering_grid": lens_same_family,
+                "math_queueing": lens_near_family,
+                "mythology_narrative": lens_far_family,
+            },
         ):
-            with patch.object(
-                loader,
-                "load_all",
-                return_value={
-                    "engineering_grid": lens_same_family,
-                    "math_queueing": lens_near_family,
-                    "mythology_narrative": lens_far_family,
-                },
-            ):
-                scores = sel.select(
-                    problem_description="trust problem",
-                    problem_maps_to={"trust"},
-                    target_domain="distributed_systems",
-                    top_n=10,
-                )
+            scores = sel.select(
+                problem_description="trust problem",
+                problem_maps_to={"trust"},
+                target_domain="distributed_systems",
+                top_n=10,
+            )
 
         assert [score.lens.lens_id for score in scores] == [
             "mythology_narrative",
@@ -476,12 +468,15 @@ class TestCompositeScore:
         assert near_family.diversity_weight == pytest.approx(0.75)
         assert far_family.domain_family == "myth"
         assert far_family.diversity_weight == pytest.approx(1.0)
-        assert far_family.composite_score > near_family.composite_score > same_family.composite_score
+        assert (
+            far_family.composite_score > near_family.composite_score > same_family.composite_score
+        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Cache Invalidation
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestCacheInvalidation:
     def test_invalidate_cache_clears_embeddings(self, loader: LensLoader):
@@ -503,6 +498,7 @@ class TestCacheInvalidation:
 # ──────────────────────────────────────────────────────────────────────────────
 # Semantic Plausibility (Integration)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TestSemanticPlausibility:
     """These tests use real embeddings and check that the selection is

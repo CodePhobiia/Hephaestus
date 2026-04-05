@@ -5,9 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class InventionRecord:
     """A single invention run record for analytics."""
+
     timestamp: str
     problem: str
     invention_name: str
@@ -33,6 +32,7 @@ class InventionRecord:
 @dataclass
 class AnalyticsSummary:
     """Aggregate analytics over invention history."""
+
     total_runs: int = 0
     successful: int = 0
     failed: int = 0
@@ -77,10 +77,15 @@ class InventionHistory:
                 continue
             try:
                 data = json.loads(line)
-                records.append(InventionRecord(**{
-                    k: v for k, v in data.items()
-                    if k in InventionRecord.__dataclass_fields__
-                }))
+                records.append(
+                    InventionRecord(
+                        **{
+                            k: v
+                            for k, v in data.items()
+                            if k in InventionRecord.__dataclass_fields__
+                        }
+                    )
+                )
             except Exception as exc:
                 logger.warning("Skipping malformed history line: %s", exc)
 

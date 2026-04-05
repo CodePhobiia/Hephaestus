@@ -4,18 +4,17 @@ Exposes vault operations (create, ingest, compile, lint, fuse)
 as ToolDefinition objects that can be registered with the
 ToolRegistry for use by the ConversationRuntime.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from hephaestus.forgebase.contracts.agent import AgentRole
 from hephaestus.forgebase.domain.enums import SourceFormat
 from hephaestus.tools.invocation import ToolContext
 from hephaestus.tools.registry import ToolDefinition
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase
@@ -36,13 +35,16 @@ def _make_vault_create_handler(forgebase: ForgeBase):
         name = kwargs["name"]
         description = kwargs.get("description", "")
         vault = await forgebase.vaults.create_vault(
-            name=name, description=description,
+            name=name,
+            description=description,
         )
-        return json.dumps({
-            "vault_id": str(vault.vault_id),
-            "name": vault.name,
-            "description": vault.description,
-        })
+        return json.dumps(
+            {
+                "vault_id": str(vault.vault_id),
+                "name": vault.name,
+                "description": vault.description,
+            }
+        )
 
     return handler
 
@@ -71,11 +73,13 @@ def _make_vault_ingest_handler(forgebase: ForgeBase):
             format=source_format,
             title=title,
         )
-        return json.dumps({
-            "source_id": str(source.source_id),
-            "version": version.version.number,
-            "title": title,
-        })
+        return json.dumps(
+            {
+                "source_id": str(source.source_id),
+                "version": version.version.number,
+                "title": title,
+            }
+        )
 
     return handler
 
@@ -93,10 +97,12 @@ def _make_vault_compile_handler(forgebase: ForgeBase):
         manifest = await forgebase.vault_synthesizer.synthesize(
             vault_id=vault_id,
         )
-        return json.dumps({
-            "manifest_id": str(manifest.manifest_id),
-            "candidates_resolved": manifest.candidates_resolved,
-        })
+        return json.dumps(
+            {
+                "manifest_id": str(manifest.manifest_id),
+                "candidates_resolved": manifest.candidates_resolved,
+            }
+        )
 
     return handler
 
@@ -112,13 +118,15 @@ def _make_vault_lint_handler(forgebase: ForgeBase):
         vault_id = EntityId(vault_id_str)
 
         report = await forgebase.lint_engine.run_lint(vault_id=vault_id)
-        return json.dumps({
-            "report_id": str(report.report_id),
-            "finding_count": report.finding_count,
-            "debt_score": report.debt_score,
-            "findings_by_category": report.findings_by_category,
-            "findings_by_severity": report.findings_by_severity,
-        })
+        return json.dumps(
+            {
+                "report_id": str(report.report_id),
+                "finding_count": report.finding_count,
+                "debt_score": report.debt_score,
+                "findings_by_category": report.findings_by_category,
+                "findings_by_severity": report.findings_by_severity,
+            }
+        )
 
     return handler
 
@@ -142,10 +150,12 @@ def _make_vault_fuse_handler(forgebase: ForgeBase):
             source_vault_id=source_vault,
             target_vault_id=target_vault,
         )
-        return json.dumps({
-            "fusion_id": str(result.fusion_id),
-            "packs_created": result.packs_created,
-        })
+        return json.dumps(
+            {
+                "fusion_id": str(result.fusion_id),
+                "packs_created": result.packs_created,
+            }
+        )
 
     return handler
 
@@ -178,19 +188,21 @@ def _make_vault_team_handler(forgebase: ForgeBase):
         else:
             return json.dumps({"error": f"Unknown run_type: {run_type}"})
 
-        return json.dumps({
-            "run_id": str(run.run_id),
-            "status": run.status.value,
-            "tasks": [
-                {
-                    "task_id": str(t.task_id),
-                    "role": t.role.value,
-                    "status": t.status.value,
-                    "artifacts": [str(a) for a in t.artifacts_created],
-                }
-                for t in run.tasks
-            ],
-        })
+        return json.dumps(
+            {
+                "run_id": str(run.run_id),
+                "status": run.status.value,
+                "tasks": [
+                    {
+                        "task_id": str(t.task_id),
+                        "role": t.role.value,
+                        "status": t.status.value,
+                        "artifacts": [str(a) for a in t.artifacts_created],
+                    }
+                    for t in run.tasks
+                ],
+            }
+        )
 
     return handler
 

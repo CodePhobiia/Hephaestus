@@ -1,4 +1,5 @@
 """UnsupportedClaimDetector — detects claims with SUPPORTED status but no support records."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import FindingCategory, FindingSeverity
@@ -77,7 +78,4 @@ class UnsupportedClaimDetector(LintDetector):
 
         if cv.status != ClaimStatus.SUPPORTED:
             return True
-        if len(supports) > 0:
-            return True
-
-        return False
+        return len(supports) > 0

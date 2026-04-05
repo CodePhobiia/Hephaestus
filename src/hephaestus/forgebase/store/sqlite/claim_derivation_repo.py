@@ -1,4 +1,5 @@
 """SQLite implementation of ClaimDerivationRepository."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -59,5 +60,7 @@ class SqliteClaimDerivationRepository(ClaimDerivationRepository):
             parent_claim_id=EntityId(row["parent_claim_id"]),
             relationship=row["relationship"],
             created_at=datetime.fromisoformat(row["created_at"]),
-            created_by=ActorRef(actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]),
+            created_by=ActorRef(
+                actor_type=ActorType(row["created_by_type"]), actor_id=row["created_by_id"]
+            ),
         )

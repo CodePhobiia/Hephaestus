@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 from hephaestus.tools.mcp.client import MCPClient, MCPServerConfig, MCPTool
 from hephaestus.tools.permissions import PermissionPolicy
 from hephaestus.tools.registry import ToolDefinition, ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class MCPManager:
@@ -34,15 +39,18 @@ class MCPManager:
             async def _make_handler(qname: str) -> Any:
                 async def _handler(**kwargs: Any) -> str:
                     return await self.call(qname, kwargs)
+
                 return _handler
 
-            self._registry.register(ToolDefinition(
-                name=tool.qualified_name,
-                description=tool.description,
-                input_schema=tool.input_schema,
-                category="dangerous",
-                handler=await _make_handler(tool.qualified_name),
-            ))
+            self._registry.register(
+                ToolDefinition(
+                    name=tool.qualified_name,
+                    description=tool.description,
+                    input_schema=tool.input_schema,
+                    category="dangerous",
+                    handler=await _make_handler(tool.qualified_name),
+                )
+            )
 
     async def remove_server(self, name: str) -> None:
         """Shut down a server and unregister its tools."""
@@ -71,8 +79,7 @@ class MCPManager:
         parts = qualified_name.split(".", 1)
         if len(parts) != 2:
             raise ValueError(
-                f"Invalid qualified tool name '{qualified_name}': "
-                "expected 'server_name.tool_name'"
+                f"Invalid qualified tool name '{qualified_name}': expected 'server_name.tool_name'"
             )
         server_name, tool_name = parts
 
@@ -89,5 +96,5 @@ class MCPManager:
         for name in list(self._clients.keys()):
             try:
                 await self.remove_server(name)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Failed to shut down MCP server %s: %s", name, exc)

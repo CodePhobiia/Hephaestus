@@ -45,7 +45,7 @@ A technical deep dive into how Hephaestus works internally.
 │  ┌──────────────────────────────────────────────────────────────────┐   │ │
 │  │  Supporting Systems                                               │   │ │
 │  │                                                                   │   │ │
-│  │  LensLoader / LensSelector    (51 YAML domain axiom sets)        │   │ │
+│  │  LensLoader / LensSelector    (164 YAML domain axiom sets)        │   │ │
 │  │  ConvergenceDatabase          (SQLite banality index)            │   │ │
 │  │  ConvergenceDetector          (sentence-transformer embeddings)  │   │ │
 │  │  OutputFormatter              (Markdown / JSON / plain text)     │   │ │
@@ -294,7 +294,7 @@ src/hephaestus/
 ├── lenses/
 │   ├── loader.py            # LensLoader (YAML → Lens objects)
 │   ├── selector.py          # LensSelector (domain distance + selection)
-│   └── library/             # 51 YAML lens files
+│   └── library/             # 164 YAML lens files
 ├── convergence/
 │   ├── database.py          # SQLite convergence store
 │   ├── detector.py          # Embedding-based detection

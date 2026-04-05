@@ -15,8 +15,8 @@ from hephaestus.tools.file_ops import (
     search_files,
     write_file,
 )
-from hephaestus.tools.registry import ToolDefinition, ToolRegistry
 from hephaestus.tools.invocation import ToolContext
+from hephaestus.tools.registry import ToolDefinition, ToolRegistry
 from hephaestus.tools.web_tools import web_fetch, web_search
 
 # ── shared todo list for the session ────────────────────────────────
@@ -39,9 +39,16 @@ _CALC_OPS: dict[str, Any] = {
 }
 
 _CALC_ALLOWED_NAMES: set[str] = {
-    "abs", "round", "min", "max", "sum",
-    "int", "float", "pow",
-    "True", "False",
+    "abs",
+    "round",
+    "min",
+    "max",
+    "sum",
+    "int",
+    "float",
+    "pow",
+    "True",
+    "False",
 }
 
 
@@ -134,7 +141,9 @@ def _safe_eval(expression: str) -> str:
     import ast
 
     if len(expression) > _MAX_EXPR_LEN:
-        return f"Calculation error: expression too long ({len(expression)} chars, max {_MAX_EXPR_LEN})"
+        return (
+            f"Calculation error: expression too long ({len(expression)} chars, max {_MAX_EXPR_LEN})"
+        )
     try:
         tree = ast.parse(expression.strip(), mode="eval")
         result = _ast_eval_node(tree.body)
@@ -184,17 +193,21 @@ def _handle_grep_search(context: ToolContext, **kwargs: Any) -> str:
 
 
 def _handle_web_search(context: ToolContext, **kwargs: Any) -> str:
-    return asyncio.run(web_search(
-        query=kwargs["query"],
-        max_results=kwargs.get("max_results", 5),
-    ))
+    return asyncio.run(
+        web_search(
+            query=kwargs["query"],
+            max_results=kwargs.get("max_results", 5),
+        )
+    )
 
 
 def _handle_web_fetch(context: ToolContext, **kwargs: Any) -> str:
-    return asyncio.run(web_fetch(
-        url=kwargs["url"],
-        max_chars=kwargs.get("max_chars", 15_000),
-    ))
+    return asyncio.run(
+        web_fetch(
+            url=kwargs["url"],
+            max_chars=kwargs.get("max_chars", 15_000),
+        )
+    )
 
 
 def _handle_calculator(context: ToolContext, **kwargs: Any) -> str:

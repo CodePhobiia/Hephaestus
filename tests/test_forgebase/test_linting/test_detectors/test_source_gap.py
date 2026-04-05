@@ -1,4 +1,5 @@
 """Tests for SourceGapDetector."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -14,15 +15,14 @@ from hephaestus.forgebase.domain.enums import (
     SourceFormat,
     SourceTrustTier,
 )
-from hephaestus.forgebase.domain.models import ConceptCandidate, LintFinding
-from hephaestus.forgebase.domain.values import EntityId, Version
 from hephaestus.forgebase.domain.event_types import FixedClock
+from hephaestus.forgebase.domain.models import ConceptCandidate, LintFinding
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.linting.analyzers.mock_analyzer import MockLintAnalyzer
 from hephaestus.forgebase.linting.detectors.source_gap import SourceGapDetector
 from hephaestus.forgebase.linting.state import VaultLintState
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -135,14 +135,9 @@ async def test_detects_single_source_concept(env):
         detector = SourceGapDetector(analyzer=MockLintAnalyzer())
         findings = await detector.detect(state)
 
-        gap_findings = [
-            f for f in findings if f.category == FindingCategory.SOURCE_GAP
-        ]
+        gap_findings = [f for f in findings if f.category == FindingCategory.SOURCE_GAP]
         # Should find the lonely concept
-        lonely_findings = [
-            f for f in gap_findings
-            if "lonely_concept" in f.normalized_subject
-        ]
+        lonely_findings = [f for f in gap_findings if "lonely_concept" in f.normalized_subject]
         assert len(lonely_findings) >= 1
         assert lonely_findings[0].severity in (
             FindingSeverity.WARNING,
@@ -208,9 +203,9 @@ async def test_no_gap_for_multi_source_concept(env):
 
         # "well_covered" should not appear in source gap findings
         well_covered_findings = [
-            f for f in findings
-            if f.category == FindingCategory.SOURCE_GAP
-            and "well_covered" in f.normalized_subject
+            f
+            for f in findings
+            if f.category == FindingCategory.SOURCE_GAP and "well_covered" in f.normalized_subject
         ]
         assert len(well_covered_findings) == 0
         await uow2.rollback()
@@ -254,7 +249,8 @@ async def test_is_resolved_when_source_added(env):
         detector = SourceGapDetector(analyzer=MockLintAnalyzer())
         findings = await detector.detect(state)
         gap_findings = [
-            f for f in findings
+            f
+            for f in findings
             if f.category == FindingCategory.SOURCE_GAP
             and "growing_concept" in f.normalized_subject
         ]
@@ -295,7 +291,8 @@ async def test_is_resolved_when_source_added(env):
 
         # growing_concept should no longer be in source gap findings
         still_gap = [
-            f for f in new_findings
+            f
+            for f in new_findings
             if f.category == FindingCategory.SOURCE_GAP
             and "growing_concept" in f.normalized_subject
         ]

@@ -11,10 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
-
 
 @dataclass
 class MemoryReport:
@@ -73,24 +69,16 @@ def build_memory_report(
     cfg = config or getattr(session_state, "config", None)
 
     # -- Anti-memory hits ---------------------------------------------------
-    anti_memory_hits: list[dict[str, Any]] = list(
-        getattr(session_state, "anti_memory_hits", [])
-    )
+    anti_memory_hits: list[dict[str, Any]] = list(getattr(session_state, "anti_memory_hits", []))
 
     # -- Loaded instructions ------------------------------------------------
-    loaded_instructions: list[str] = list(
-        getattr(session_state, "loaded_instructions", [])
-    )
+    loaded_instructions: list[str] = list(getattr(session_state, "loaded_instructions", []))
 
     # -- Pinned context -----------------------------------------------------
-    pinned_context: list[str] = list(
-        getattr(session_state, "context_items", [])
-    )
+    pinned_context: list[str] = list(getattr(session_state, "context_items", []))
 
     # -- Compaction summaries -----------------------------------------------
-    compaction_summaries: list[str] = list(
-        getattr(session_state, "compaction_summaries", [])
-    )
+    compaction_summaries: list[str] = list(getattr(session_state, "compaction_summaries", []))
 
     # -- Config sources -----------------------------------------------------
     active_config_sources: dict[str, str] = {}
@@ -128,34 +116,25 @@ def format_memory_report(report: MemoryReport) -> str:
     n_patterns = len(report.anti_memory_hits)
     total_hits = report.total_anti_memory_hits
     if n_patterns:
-        lines.append(
-            f"[bold]Anti-Memory[/]  {n_patterns} pattern(s), "
-            f"{total_hits} total hit(s)"
-        )
+        lines.append(f"[bold]Anti-Memory[/]  {n_patterns} pattern(s), {total_hits} total hit(s)")
     else:
         lines.append("[bold]Anti-Memory[/]  [dim]no patterns active[/]")
 
     # -- Instructions -------------------------------------------------------
     if report.loaded_instructions:
-        lines.append(
-            f"[bold]Instructions[/]  {len(report.loaded_instructions)} file(s) loaded"
-        )
+        lines.append(f"[bold]Instructions[/]  {len(report.loaded_instructions)} file(s) loaded")
     else:
         lines.append("[bold]Instructions[/]  [dim]none loaded[/]")
 
     # -- Pinned context -----------------------------------------------------
     if report.pinned_context:
-        lines.append(
-            f"[bold]Pinned Context[/]  {len(report.pinned_context)} item(s)"
-        )
+        lines.append(f"[bold]Pinned Context[/]  {len(report.pinned_context)} item(s)")
     else:
         lines.append("[bold]Pinned Context[/]  [dim]none[/]")
 
     # -- Compaction ---------------------------------------------------------
     if report.compaction_summaries:
-        lines.append(
-            f"[bold]Compaction[/]  {len(report.compaction_summaries)} summary(ies)"
-        )
+        lines.append(f"[bold]Compaction[/]  {len(report.compaction_summaries)} summary(ies)")
     else:
         lines.append("[bold]Compaction[/]  [dim]not triggered[/]")
 
@@ -183,9 +162,7 @@ def format_context_report(report: MemoryReport) -> str:
             count = hit.get("count", 0)
             last_time = hit.get("last_hit_time")
             time_str = _format_timestamp(last_time) if last_time else "n/a"
-            sections.append(
-                f"  [cyan]{pattern}[/]  hits={count}  last={time_str}"
-            )
+            sections.append(f"  [dark_orange]{pattern}[/]  hits={count}  last={time_str}")
     else:
         sections.append("  [dim]No anti-memory patterns matched this session.[/]")
 
@@ -203,7 +180,7 @@ def format_context_report(report: MemoryReport) -> str:
     sections.append("[bold underline]Pinned Context[/]")
     if report.pinned_context:
         for i, item in enumerate(report.pinned_context, 1):
-            sections.append(f"  [cyan]{i}.[/] {item}")
+            sections.append(f"  [dark_orange]{i}.[/] {item}")
     else:
         sections.append("  [dim]No context items pinned.[/]")
 
@@ -221,9 +198,7 @@ def format_context_report(report: MemoryReport) -> str:
         sections.append("")
         sections.append("[bold underline]Active Config Sources[/]")
         for key in sorted(report.active_config_sources):
-            sections.append(
-                f"  {key}: [dim]{report.active_config_sources[key]}[/]"
-            )
+            sections.append(f"  {key}: [dim]{report.active_config_sources[key]}[/]")
 
     return "\n".join(sections)
 
@@ -232,9 +207,10 @@ def format_context_report(report: MemoryReport) -> str:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _format_timestamp(ts: float) -> str:
     """Format an epoch timestamp as a short human-readable string."""
     import datetime
 
-    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.UTC)
     return dt.strftime("%Y-%m-%d %H:%M:%S UTC")

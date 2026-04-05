@@ -1,4 +1,5 @@
 """InventionPageMeta repository contract."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -16,9 +17,7 @@ class InventionPageMetaRepository(ABC):
     async def get(self, page_id: EntityId) -> InventionPageMeta | None: ...
 
     @abstractmethod
-    async def update_state(
-        self, page_id: EntityId, state: InventionEpistemicState
-    ) -> None: ...
+    async def update_state(self, page_id: EntityId, state: InventionEpistemicState) -> None: ...
 
     @abstractmethod
     async def update_pantheon(

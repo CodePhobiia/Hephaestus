@@ -6,19 +6,15 @@ The sentence-transformer model is mocked to avoid downloading weights in CI.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from hephaestus.convergence.database import ConvergenceDatabase, PatternRecord
 from hephaestus.convergence.detector import (
-    BatchDetectionResult,
-    BatchScore,
     ConvergenceDetector,
-    DetectionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -73,9 +69,7 @@ class TestDetectorNoDb:
     def test_detect_high_similarity_convergent(self) -> None:
         emb = _unit(32, 0)
         mock_model = _make_mock_model(emb)
-        detector = ConvergenceDetector(
-            similarity_threshold=0.9, embed_model=mock_model
-        )
+        detector = ConvergenceDetector(similarity_threshold=0.9, embed_model=mock_model)
         record = _make_record(0, embedding=emb)
         detector.load_patterns_from_records([record])
 
@@ -89,9 +83,7 @@ class TestDetectorNoDb:
         pattern_emb = _unit(32, 0)
         query_emb = _unit(32, 1)  # orthogonal
         mock_model = _make_mock_model(query_emb)
-        detector = ConvergenceDetector(
-            similarity_threshold=0.9, embed_model=mock_model
-        )
+        detector = ConvergenceDetector(similarity_threshold=0.9, embed_model=mock_model)
         detector.load_patterns_from_records([_make_record(0, embedding=pattern_emb)])
 
         result = detector.detect_sync("orthogonal text")
@@ -160,22 +152,16 @@ class TestDetectorWithDb:
         yield db
         await db.disconnect()
 
-    async def test_load_patterns_from_db(
-        self, db_with_patterns: ConvergenceDatabase
-    ) -> None:
+    async def test_load_patterns_from_db(self, db_with_patterns: ConvergenceDatabase) -> None:
         emb = _unit(32, 0)
         mock_model = _make_mock_model(emb)
-        detector = ConvergenceDetector(
-            db=db_with_patterns, embed_model=mock_model
-        )
+        detector = ConvergenceDetector(db=db_with_patterns, embed_model=mock_model)
         count = await detector.load_patterns("auth")
         assert count == 3
         assert detector.loaded_pattern_count == 3
         assert detector.loaded_class == "auth"
 
-    async def test_auto_load_on_detect(
-        self, db_with_patterns: ConvergenceDatabase
-    ) -> None:
+    async def test_auto_load_on_detect(self, db_with_patterns: ConvergenceDatabase) -> None:
         emb = _unit(32, 0)
         mock_model = _make_mock_model(emb)
         detector = ConvergenceDetector(
@@ -188,9 +174,7 @@ class TestDetectorWithDb:
         # Pattern at idx=0 is identical to query → convergent
         assert result.is_convergent
 
-    async def test_load_patterns_all(
-        self, db_with_patterns: ConvergenceDatabase
-    ) -> None:
+    async def test_load_patterns_all(self, db_with_patterns: ConvergenceDatabase) -> None:
         # Add pattern for a different class
         await db_with_patterns.add_pattern(
             problem_class="cache", pattern_text="cache p", embedding=_unit(32, 5)
@@ -206,9 +190,7 @@ class TestDetectorWithDb:
         with pytest.raises(RuntimeError, match="No database"):
             await detector.load_patterns("test")
 
-    async def test_force_reload(
-        self, db_with_patterns: ConvergenceDatabase
-    ) -> None:
+    async def test_force_reload(self, db_with_patterns: ConvergenceDatabase) -> None:
         emb = _unit(32, 0)
         mock_model = _make_mock_model(emb)
         detector = ConvergenceDetector(db=db_with_patterns, embed_model=mock_model)
@@ -222,9 +204,7 @@ class TestDetectorWithDb:
         await detector.load_patterns("auth", force_reload=True)
         assert detector.loaded_pattern_count == initial_count + 1
 
-    async def test_no_reload_same_class(
-        self, db_with_patterns: ConvergenceDatabase
-    ) -> None:
+    async def test_no_reload_same_class(self, db_with_patterns: ConvergenceDatabase) -> None:
         emb = _unit(32, 0)
         mock_model = _make_mock_model(emb)
         detector = ConvergenceDetector(db=db_with_patterns, embed_model=mock_model)
@@ -242,9 +222,7 @@ class TestDetectorWithDb:
 
 
 class TestBatchScoring:
-    def _make_batch_detector(
-        self, query_embeddings: np.ndarray
-    ) -> ConvergenceDetector:
+    def _make_batch_detector(self, query_embeddings: np.ndarray) -> ConvergenceDetector:
         """Create a detector whose model returns rows of *query_embeddings*."""
         call_count = [0]
 
@@ -259,9 +237,7 @@ class TestBatchScoring:
 
         mock_model = MagicMock()
         mock_model.encode.side_effect = encode_side_effect
-        return ConvergenceDetector(
-            similarity_threshold=0.9, embed_model=mock_model
-        )
+        return ConvergenceDetector(similarity_threshold=0.9, embed_model=mock_model)
 
     async def test_batch_empty_candidates(self) -> None:
         detector = ConvergenceDetector()
@@ -283,9 +259,7 @@ class TestBatchScoring:
         mock_model = MagicMock()
         mock_model.encode.return_value = np.tile(emb, (3, 1))
 
-        detector = ConvergenceDetector(
-            similarity_threshold=0.9, embed_model=mock_model
-        )
+        detector = ConvergenceDetector(similarity_threshold=0.9, embed_model=mock_model)
         detector.load_patterns_from_records([_make_record(0, embedding=emb)])
 
         result = await detector.score_batch(["a", "b", "c"])
@@ -300,9 +274,7 @@ class TestBatchScoring:
         mock_model = MagicMock()
         mock_model.encode.return_value = cand_embs
 
-        detector = ConvergenceDetector(
-            similarity_threshold=0.9, embed_model=mock_model
-        )
+        detector = ConvergenceDetector(similarity_threshold=0.9, embed_model=mock_model)
         detector.load_patterns_from_records([_make_record(0, embedding=pattern_emb)])
 
         result = await detector.score_batch(["text_a", "text_b"])
@@ -318,9 +290,7 @@ class TestBatchScoring:
         mock_model = MagicMock()
         mock_model.encode.return_value = cand_embs
 
-        detector = ConvergenceDetector(
-            similarity_threshold=0.9, embed_model=mock_model
-        )
+        detector = ConvergenceDetector(similarity_threshold=0.9, embed_model=mock_model)
         detector.load_patterns_from_records([_make_record(0, embedding=emb)])
 
         result = await detector.score_batch(["convergent", "novel"])

@@ -56,8 +56,15 @@ def test_loader_registers_and_invalidates_composite_lenses(tmp_path: Path) -> No
         reference_context={"keywords_to_avoid": ["cache"]},
     )
 
-    assert composite.lens_id in loader.load_all(include_derived=True, reference_context={"keywords_to_avoid": ["cache"]})
-    assert loader.get_lineage(composite.lens_id, reference_context={"keywords_to_avoid": ["cache"]}).source_kind == "derived_composite"
+    assert composite.lens_id in loader.load_all(
+        include_derived=True, reference_context={"keywords_to_avoid": ["cache"]}
+    )
+    assert (
+        loader.get_lineage(
+            composite.lens_id, reference_context={"keywords_to_avoid": ["cache"]}
+        ).source_kind
+        == "derived_composite"
+    )
 
     loader.reload()
     loaded = loader.load_all(include_derived=True)

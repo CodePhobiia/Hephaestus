@@ -3,11 +3,12 @@
 Ties together detectors, fingerprinting, dedup, triage, scoring,
 and LintReport generation into a single ``run_lint()`` operation.
 """
+
 from __future__ import annotations
 
 import logging
 from collections import Counter
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import (
     FindingSeverity,

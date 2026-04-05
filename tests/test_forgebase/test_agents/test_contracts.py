@@ -1,7 +1,6 @@
 """Tests for agent contracts — task model, roles, statuses."""
-from __future__ import annotations
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
@@ -12,7 +11,6 @@ from hephaestus.forgebase.contracts.agent import (
     RunStatus,
     TaskStatus,
 )
-from hephaestus.forgebase.domain.values import EntityId
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
 
 
@@ -25,8 +23,12 @@ class TestAgentRole:
     def test_all_six_roles_exist(self):
         roles = {r.value for r in AgentRole}
         assert roles == {
-            "scout", "compiler", "cartographer",
-            "skeptic", "librarian", "reporter",
+            "scout",
+            "compiler",
+            "cartographer",
+            "skeptic",
+            "librarian",
+            "reporter",
         }
 
     def test_role_is_str_enum(self):
@@ -40,14 +42,20 @@ class TestAgentRole:
 class TestTaskStatus:
     def test_all_statuses(self):
         assert {s.value for s in TaskStatus} == {
-            "pending", "running", "completed", "failed",
+            "pending",
+            "running",
+            "completed",
+            "failed",
         }
 
 
 class TestRunStatus:
     def test_all_statuses(self):
         assert {s.value for s in RunStatus} == {
-            "pending", "running", "completed", "failed",
+            "pending",
+            "running",
+            "completed",
+            "failed",
         }
 
 

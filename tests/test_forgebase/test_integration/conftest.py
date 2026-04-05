@@ -2,6 +2,7 @@
 
 Uses a real SQLite backend — no mocks — so the full service stack is exercised.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,7 +10,6 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from hephaestus.forgebase.domain.values import ActorRef
 from hephaestus.forgebase.service.ingest_service import IngestService
 from hephaestus.forgebase.service.run_integration_service import RunIntegrationService
 from hephaestus.forgebase.service.vault_service import VaultService
@@ -37,6 +37,7 @@ def content_store() -> InMemoryContentStore:
 @pytest.fixture
 def uow_factory(sqlite_db, content_store, clock, id_gen):
     """Factory that returns a fresh SqliteUnitOfWork each time."""
+
     def _factory() -> SqliteUnitOfWork:
         return SqliteUnitOfWork(
             db=sqlite_db,
@@ -44,6 +45,7 @@ def uow_factory(sqlite_db, content_store, clock, id_gen):
             clock=clock,
             id_generator=id_gen,
         )
+
     return _factory
 
 

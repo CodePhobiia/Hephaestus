@@ -7,8 +7,9 @@ facts instead of relying on text continuity alone.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from hephaestus.lenses.state import LensEngineState
@@ -31,7 +32,7 @@ class ReferenceLot:
 
     def __post_init__(self) -> None:
         if not self.penalty:
-            self.penalty = {k: 2.0 for k in self.floor.keys()}
+            self.penalty = {k: 2.0 for k in self.floor}
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -48,7 +49,7 @@ class ReferenceLot:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ReferenceLot":
+    def from_dict(cls, data: dict[str, Any]) -> ReferenceLot:
         return cls(
             lot_id=int(data["lot_id"]),
             kind=str(data["kind"]),
@@ -170,7 +171,7 @@ def default_probe_factory(
     workspace_root: str | None = None,
     active_tools: set[str] | None = None,
     permission_checker: Callable[[str], bool] | None = None,
-    lens_engine_state: "LensEngineState | None" = None,
+    lens_engine_state: LensEngineState | None = None,
 ) -> Callable[[ReferenceLot], dict[str, str]]:
     """Build a simple probe for common lot kinds used in Hephaestus."""
     tool_set = active_tools or set()
@@ -209,7 +210,11 @@ def default_probe_factory(
             }
         if lot.kind == "composite_lens" and lens_engine_state is not None:
             composite = next(
-                (item for item in lens_engine_state.composites if item.composite_id == lot.subject_key),
+                (
+                    item
+                    for item in lens_engine_state.composites
+                    if item.composite_id == lot.subject_key
+                ),
                 None,
             )
             if composite is None:
@@ -219,7 +224,11 @@ def default_probe_factory(
                 "version": str(composite.version),
                 "reference_generation": str(composite.reference_generation),
             }
-        if lot.kind == "research_reference" and lens_engine_state is not None and lens_engine_state.research is not None:
+        if (
+            lot.kind == "research_reference"
+            and lens_engine_state is not None
+            and lens_engine_state.research is not None
+        ):
             artifact = next(
                 (
                     item

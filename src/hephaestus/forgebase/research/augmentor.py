@@ -1,4 +1,5 @@
 """Research augmentation interface -- separate from compiler core."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

@@ -77,6 +77,5 @@ def test_shared_cells_include_query_aligned_overlap() -> None:
 
     assert "trust" in shared_tokens
     assert any(
-        membership.kind == "reference"
-        for membership in index.memberships_for_lens(left.lens_id)
+        membership.kind == "reference" for membership in index.memberships_for_lens(left.lens_id)
     )

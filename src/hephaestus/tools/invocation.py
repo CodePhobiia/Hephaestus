@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from hephaestus.tools.permissions import PermissionPolicy
 
@@ -12,6 +13,7 @@ from hephaestus.tools.permissions import PermissionPolicy
 @dataclass
 class ToolContext:
     """Runtime context passed to tools during execution."""
+
     policy: PermissionPolicy
 
 
@@ -37,7 +39,7 @@ class ToolInvocation:
         if not context.policy.check(self.name):
             denial = context.policy.explain_denial(self.name)
             raise PermissionError(denial)
-            
+
         try:
             if asyncio.iscoroutinefunction(self.handler):
                 return await self.handler(context, **kwargs)

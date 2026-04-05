@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class MCPServerState(str, Enum):
+class MCPServerState(StrEnum):
     """Health state of an MCP server."""
 
     STARTING = "starting"
@@ -123,7 +123,8 @@ class MCPHealthTracker:
             record.circuit_opened_at = time.monotonic()
             logger.warning(
                 "MCP server %s circuit opened after %d consecutive failures",
-                server_name, record.consecutive_failures,
+                server_name,
+                record.consecutive_failures,
             )
         elif record.consecutive_failures >= 2:
             record.state = MCPServerState.DEGRADED
@@ -147,7 +148,11 @@ class MCPHealthTracker:
                 return True  # Allow a probe
             return False
 
-        return record.state in (MCPServerState.READY, MCPServerState.STARTING, MCPServerState.DEGRADED)
+        return record.state in (
+            MCPServerState.READY,
+            MCPServerState.STARTING,
+            MCPServerState.DEGRADED,
+        )
 
     def get_health(self, server_name: str) -> ServerHealthRecord | None:
         return self._records.get(server_name)

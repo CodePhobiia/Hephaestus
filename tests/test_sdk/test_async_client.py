@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from hephaestus.sdk.async_client import HephaestusClient, InventionResult
 
 
@@ -28,11 +26,18 @@ class TestInventionResult:
 
     def test_defaults(self):
         r = InventionResult(
-            invention_name="X", source_domain="Y",
-            domain_distance=0.0, structural_fidelity=0.0,
-            novelty_score=0.0, key_insight="", architecture="",
-            limitations=[], verdict="", feasibility="",
-            cost_usd=0.0, duration_seconds=0.0,
+            invention_name="X",
+            source_domain="Y",
+            domain_distance=0.0,
+            structural_fidelity=0.0,
+            novelty_score=0.0,
+            key_insight="",
+            architecture="",
+            limitations=[],
+            verdict="",
+            feasibility="",
+            cost_usd=0.0,
+            duration_seconds=0.0,
         )
         assert r.raw_report is None
 
@@ -57,6 +62,7 @@ class TestHephaestusClient:
 
     def test_extract_result_no_invention(self):
         from unittest.mock import MagicMock
+
         report = MagicMock()
         report.top_invention = None
         report.total_cost_usd = 0.5
@@ -69,6 +75,7 @@ class TestHephaestusClient:
 
     def test_extract_result_with_invention(self):
         from unittest.mock import MagicMock
+
         trans = MagicMock()
         trans.source_candidate.domain_distance = 0.85
         trans.source_candidate.structural_fidelity = 0.82

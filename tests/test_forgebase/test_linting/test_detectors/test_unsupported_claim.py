@@ -1,4 +1,5 @@
 """Tests for UnsupportedClaimDetector."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -14,14 +15,14 @@ from hephaestus.forgebase.domain.enums import (
     SourceTrustTier,
     SupportType,
 )
+from hephaestus.forgebase.domain.event_types import FixedClock
 from hephaestus.forgebase.domain.models import (
     Claim,
     ClaimSupport,
     ClaimVersion,
     LintFinding,
 )
-from hephaestus.forgebase.domain.values import ActorRef, EntityId, Version
-from hephaestus.forgebase.domain.event_types import FixedClock
+from hephaestus.forgebase.domain.values import ActorRef, Version
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.linting.analyzers.mock_analyzer import MockLintAnalyzer
 from hephaestus.forgebase.linting.detectors.unsupported_claim import (
@@ -29,7 +30,6 @@ from hephaestus.forgebase.linting.detectors.unsupported_claim import (
 )
 from hephaestus.forgebase.linting.state import VaultLintState
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

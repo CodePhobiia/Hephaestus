@@ -1,4 +1,5 @@
 """Link repository contract."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -24,7 +25,9 @@ class LinkRepository(ABC):
     async def create_version(self, version: LinkVersion) -> None: ...
 
     @abstractmethod
-    async def list_by_entity(self, entity_id: EntityId, *, direction: str = "both", kind: str | None = None) -> list[Link]: ...
+    async def list_by_entity(
+        self, entity_id: EntityId, *, direction: str = "both", kind: str | None = None
+    ) -> list[Link]: ...
 
     @abstractmethod
     async def list_by_vault(self, vault_id: EntityId) -> list[Link]: ...

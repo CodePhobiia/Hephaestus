@@ -9,7 +9,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-class TrustViolation(Exception):
+class TrustViolation(Exception): # noqa: N818
     """Raised when a tool call violates the trust policy."""
 
 
@@ -18,7 +18,7 @@ class ServerTrustConfig:
     """Trust configuration for a single MCP server."""
 
     server_name: str
-    allowed_tools: list[str] | None = None   # None = all allowed
+    allowed_tools: list[str] | None = None  # None = all allowed
     denied_tools: list[str] = field(default_factory=list)
     max_calls_per_minute: int = 60
     max_concurrent_calls: int = 5
@@ -54,9 +54,7 @@ class MCPTrustPolicy:
         """
         # Global denials
         if tool_name in self.global_denied_tools:
-            raise TrustViolation(
-                f"Tool '{tool_name}' is globally denied"
-            )
+            raise TrustViolation(f"Tool '{tool_name}' is globally denied")
 
         config = self.server_configs.get(server_name)
         if config is None:
@@ -69,9 +67,7 @@ class MCPTrustPolicy:
 
         # Explicit deny list
         if tool_name in config.denied_tools:
-            raise TrustViolation(
-                f"Tool '{tool_name}' is denied for server '{server_name}'"
-            )
+            raise TrustViolation(f"Tool '{tool_name}' is denied for server '{server_name}'")
 
         # Explicit allow list (if set)
         if config.allowed_tools is not None and tool_name not in config.allowed_tools:
@@ -79,7 +75,9 @@ class MCPTrustPolicy:
                 f"Tool '{tool_name}' is not in the allowed list for server '{server_name}'"
             )
 
-    def validate_tool_schema(self, server_name: str, tool_name: str, schema: dict[str, Any]) -> list[str]:
+    def validate_tool_schema(
+        self, server_name: str, tool_name: str, schema: dict[str, Any]
+    ) -> list[str]:
         """Validate a discovered tool's schema. Returns list of warnings."""
         warnings: list[str] = []
 

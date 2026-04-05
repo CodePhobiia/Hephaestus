@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from hephaestus.convergence.tracker import ConvergenceSignal, ConvergenceTracker
 
 
@@ -28,8 +26,18 @@ class TestConvergenceTracker:
     def test_similar_entries_converge(self):
         t = ConvergenceTracker()
         t.add("Immune Scheduler v1", "biology", "T-cell memory scheduling", "Redis immune layer")
-        t.add("Immune Scheduler v2", "biology", "T-cell memory scheduling patterns", "Redis immune memory layer")
-        t.add("Immune Scheduler v3", "biology", "T-cell immune memory scheduling", "Redis immune cache layer")
+        t.add(
+            "Immune Scheduler v2",
+            "biology",
+            "T-cell memory scheduling patterns",
+            "Redis immune memory layer",
+        )
+        t.add(
+            "Immune Scheduler v3",
+            "biology",
+            "T-cell immune memory scheduling",
+            "Redis immune cache layer",
+        )
         signal = t.check()
         assert signal.is_converging
         assert signal.similarity_to_prior > 0.4

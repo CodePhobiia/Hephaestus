@@ -6,21 +6,20 @@ Tests cover:
 - Command registry integration
 - Click CLI commands via CliRunner
 """
+
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from rich.console import Console
 
 from hephaestus.cli.commands import default_registry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -117,7 +116,9 @@ def _make_fusion_result() -> SimpleNamespace:
     )
     return SimpleNamespace(
         fusion_id="fus_00000000000000000000000001",
-        request=SimpleNamespace(vault_ids=["vlt_00000000000000000000000001", "vlt_00000000000000000000000002"]),
+        request=SimpleNamespace(
+            vault_ids=["vlt_00000000000000000000000001", "vlt_00000000000000000000000002"]
+        ),
         bridge_concepts=[bridge],
         transfer_opportunities=[transfer],
         pair_results=[pair_result],
@@ -190,7 +191,9 @@ def _mock_forgebase(vaults: list | None = None) -> MagicMock:
     fb.ingest = AsyncMock()
     fb.ingest.ingest_source = AsyncMock(
         return_value=(
-            SimpleNamespace(source_id="src_00000000000000000000000001", format=SimpleNamespace(value="markdown")),
+            SimpleNamespace(
+                source_id="src_00000000000000000000000001", format=SimpleNamespace(value="markdown")
+            ),
             SimpleNamespace(
                 title="test.md",
                 trust_tier=SimpleNamespace(value="standard"),
@@ -247,7 +250,10 @@ class TestForgeBaseDisplay:
         from hephaestus.cli.forgebase_display import render_vault_list
 
         console = _console()
-        vaults = [_make_vault(), _make_vault(vault_id="vlt_00000000000000000000000002", name="Other")]
+        vaults = [
+            _make_vault(),
+            _make_vault(vault_id="vlt_00000000000000000000000002", name="Other"),
+        ]
         render_vault_list(console, vaults)
         output = _get_output(console)
         assert "Test Vault" in output
@@ -347,7 +353,7 @@ class TestVaultCommand:
 
     @pytest.mark.asyncio
     async def test_vault_create(self) -> None:
-        from hephaestus.cli.forgebase_commands import _cmd_vault, _ensure_forgebase
+        from hephaestus.cli.forgebase_commands import _cmd_vault
 
         console = _console()
         fb = _mock_forgebase()
@@ -530,7 +536,9 @@ class TestFuseCommand:
         console = _console()
         fb = _mock_forgebase()
         state = _make_state(forgebase=fb)
-        await _cmd_fuse(console, state, "vlt_00000000000000000000000001 vlt_00000000000000000000000002")
+        await _cmd_fuse(
+            console, state, "vlt_00000000000000000000000001 vlt_00000000000000000000000002"
+        )
         output = _get_output(console)
         assert "Fusion complete" in output or "Metabolic" in output
 
@@ -716,8 +724,14 @@ class TestFbLintCompileExport:
 # ═══════════════════════════════════════════════════════════════════════════
 
 EXPECTED_FORGEBASE_COMMANDS = {
-    "vault", "ask", "fuse", "ingest",
-    "fb-lint", "fb-compile", "workbook", "fb-export",
+    "vault",
+    "ask",
+    "fuse",
+    "ingest",
+    "fb-lint",
+    "fb-compile",
+    "workbook",
+    "fb-export",
 }
 
 
@@ -743,7 +757,7 @@ class TestForgeBaseRegistry:
         reg = default_registry()
         fb_cmds = reg.list_commands(category="forgebase")
         names = {c.name for c in fb_cmds}
-        assert EXPECTED_FORGEBASE_COMMANDS == names
+        assert names == EXPECTED_FORGEBASE_COMMANDS
 
     def test_ask_requires_args(self) -> None:
         reg = default_registry()
@@ -783,8 +797,16 @@ class TestReplCommandsWiring:
     def test_forgebase_handlers_wired(self) -> None:
         from hephaestus.cli.repl import COMMANDS
 
-        for name in ("vault", "ask", "fuse", "ingest", "fb-lint",
-                      "fb-compile", "workbook", "fb-export"):
+        for name in (
+            "vault",
+            "ask",
+            "fuse",
+            "ingest",
+            "fb-lint",
+            "fb-compile",
+            "workbook",
+            "fb-export",
+        ):
             assert COMMANDS.get(name) is not None, f"COMMANDS[{name!r}] not wired"
             assert callable(COMMANDS[name]), f"COMMANDS[{name!r}] is not callable"
 
@@ -802,8 +824,8 @@ class TestReplCommandsWiring:
 
 class TestSessionStateForgeBaseFields:
     def test_forgebase_fields_exist(self) -> None:
-        from hephaestus.cli.repl import SessionState
         from hephaestus.cli.config import HephaestusConfig
+        from hephaestus.cli.repl import SessionState
 
         cfg = HephaestusConfig(backend="api", default_model="opus", depth=3, candidates=8)
         state = SessionState(config=cfg)
@@ -813,8 +835,8 @@ class TestSessionStateForgeBaseFields:
         assert state.current_workbook_id is None
 
     def test_forgebase_fields_settable(self) -> None:
-        from hephaestus.cli.repl import SessionState
         from hephaestus.cli.config import HephaestusConfig
+        from hephaestus.cli.repl import SessionState
 
         cfg = HephaestusConfig(backend="api", default_model="opus", depth=3, candidates=8)
         state = SessionState(config=cfg)

@@ -18,7 +18,6 @@ from hephaestus.core.translator import (
     ElementMapping,
     SolutionTranslator,
     Translation,
-    TranslationError,
     TranslationGuidance,
 )
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
@@ -27,7 +26,6 @@ from hephaestus.lenses.cells import build_reference_state
 from hephaestus.lenses.lineage import lineage_from_bundle_proof
 from hephaestus.lenses.loader import Lens, StructuralPattern
 from hephaestus.lenses.selector import LensScore
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -39,7 +37,10 @@ def _make_lens(domain: str = "biology") -> Lens:
         name="Immune System",
         domain=domain,
         subdomain="immune",
-        axioms=["Trust is earned through molecular handshake.", "Memory is distributed across the system."],
+        axioms=[
+            "Trust is earned through molecular handshake.",
+            "Memory is distributed across the system.",
+        ],
         structural_patterns=[
             StructuralPattern("clonal", "Amplify successful responses", ["allocation"])
         ],
@@ -57,7 +58,7 @@ def _make_scored_candidate(
         lens=lens,
         domain_distance=distance,
         structural_relevance=0.7,
-        composite_score=fidelity * distance ** 1.5,
+        composite_score=fidelity * distance**1.5,
         matched_patterns=["allocation"],
     )
     search_candidate = SearchCandidate(
@@ -74,7 +75,7 @@ def _make_scored_candidate(
         candidate=search_candidate,
         structural_fidelity=fidelity,
         domain_distance=distance,
-        combined_score=fidelity * distance ** 1.5,
+        combined_score=fidelity * distance**1.5,
         fidelity_reasoning="Strong structural match",
         strong_mappings=["T-cell → task", "memory → cache"],
         weak_mappings=["No MHC equivalent"],
@@ -235,8 +236,7 @@ class TestSolutionTranslator:
 
             translator = SolutionTranslator(harness=harness, top_n=2)
             candidates = [
-                _make_scored_candidate(f"Domain {i}", distance=0.9 - i * 0.05)
-                for i in range(5)
+                _make_scored_candidate(f"Domain {i}", distance=0.9 - i * 0.05) for i in range(5)
             ]
             translations = await translator.translate(candidates, _make_structure())
 
@@ -276,10 +276,12 @@ class TestSolutionTranslator:
 
         with patch("hephaestus.core.translator.DeepForgeHarness") as MockHarness:
             instance = MockHarness.return_value
-            instance.forge = AsyncMock(side_effect=[
-                Exception("API error"),
-                good_result,
-            ])
+            instance.forge = AsyncMock(
+                side_effect=[
+                    Exception("API error"),
+                    good_result,
+                ]
+            )
 
             translator = SolutionTranslator(harness=harness, top_n=2)
             candidates = [
@@ -326,9 +328,7 @@ class TestSolutionTranslator:
 
             translator = SolutionTranslator(harness=harness, top_n=1)
             # Should handle gracefully (skipped, not crashed)
-            translations = await translator.translate(
-                [_make_scored_candidate()], _make_structure()
-            )
+            translations = await translator.translate([_make_scored_candidate()], _make_structure())
 
         # Failed translation gets skipped
         assert len(translations) == 0
@@ -345,9 +345,7 @@ class TestSolutionTranslator:
             instance.forge = AsyncMock(return_value=forge_result)
 
             translator = SolutionTranslator(harness=harness, top_n=1)
-            translations = await translator.translate(
-                [_make_scored_candidate()], _make_structure()
-            )
+            translations = await translator.translate([_make_scored_candidate()], _make_structure())
 
         if translations:
             assert translations[0].cost_usd == pytest.approx(0.025)
@@ -383,10 +381,14 @@ class TestSolutionTranslator:
     @pytest.mark.asyncio
     async def test_reforge_uses_base_harness(self):
         harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(_valid_translation_json(
-            invention_name="Reforged Scheduler",
-            architecture="Reforged architecture",
-        )))
+        harness.forge = AsyncMock(
+            return_value=_make_forge_result(
+                _valid_translation_json(
+                    invention_name="Reforged Scheduler",
+                    architecture="Reforged architecture",
+                )
+            )
+        )
 
         translator = SolutionTranslator(harness=harness, top_n=1)
         source_translation = Translation(
@@ -548,7 +550,9 @@ class TestSolutionTranslator:
             )
 
         assert len(translations) == 2
-        assert any(translation.selection_mode == "singleton_fallback" for translation in translations)
+        assert any(
+            translation.selection_mode == "singleton_fallback" for translation in translations
+        )
         assert translator.last_runtime is not None
         assert translator.last_runtime.fallback_used is True
         assert market_scored.lens_id in translator.last_runtime.invalidated_lens_ids

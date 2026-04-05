@@ -2,6 +2,7 @@
 
 Exercises: create vault -> ingest sources -> compile -> lint -> create workbook -> merge.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -47,9 +48,7 @@ async def test_full_lifecycle(client, forgebase):
     assert sources_resp.json()["count"] == 2
 
     # ----- 4. Verify source detail -----
-    detail_resp = await client.get(
-        f"/api/forgebase/vaults/{vault_id}/sources/{source_id}"
-    )
+    detail_resp = await client.get(f"/api/forgebase/vaults/{vault_id}/sources/{source_id}")
     assert detail_resp.status_code == 200
     assert detail_resp.json()["title"] == "Neural Networks Paper"
 
@@ -87,9 +86,7 @@ async def test_full_lifecycle(client, forgebase):
     assert diff_resp.json()["pages_added"] == 0
 
     # ----- 10. Abandon workbook -----
-    abandon_resp = await client.post(
-        f"/api/forgebase/workbooks/{workbook_id}/abandon"
-    )
+    abandon_resp = await client.post(f"/api/forgebase/workbooks/{workbook_id}/abandon")
     assert abandon_resp.status_code == 200
     assert abandon_resp.json()["status"] == "abandoned"
 

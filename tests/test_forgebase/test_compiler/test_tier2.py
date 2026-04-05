@@ -1,4 +1,5 @@
 """Tests for Tier 2 VaultSynthesizer — vault-wide synthesis orchestrator."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,19 +7,18 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from hephaestus.forgebase.compiler.policy import DEFAULT_POLICY, SynthesisPolicy
+from hephaestus.forgebase.compiler.policy import DEFAULT_POLICY
 from hephaestus.forgebase.compiler.tier1 import SourceCompiler
 from hephaestus.forgebase.compiler.tier2 import VaultSynthesizer
 from hephaestus.forgebase.domain.enums import (
     BranchPurpose,
     CandidateStatus,
     ClaimStatus,
-    DirtyTargetKind,
     PageType,
     SourceFormat,
     SupportType,
 )
-from hephaestus.forgebase.domain.values import ActorRef, EntityId, Version
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.service.branch_service import BranchService
 from hephaestus.forgebase.service.ingest_service import IngestService
 from hephaestus.forgebase.service.vault_service import VaultService
@@ -26,10 +26,10 @@ from hephaestus.forgebase.store.blobs.memory import InMemoryContentStore
 from hephaestus.forgebase.store.sqlite.schema import initialize_schema
 from hephaestus.forgebase.store.sqlite.uow import SqliteUnitOfWork
 
-
 # -----------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------
+
 
 @pytest.fixture
 async def sqlite_db(tmp_path: Path):
@@ -50,6 +50,7 @@ def content_store() -> InMemoryContentStore:
 @pytest.fixture
 def uow_factory(sqlite_db, content_store, clock, id_gen):
     """Factory that returns a fresh SqliteUnitOfWork each time."""
+
     def _factory() -> SqliteUnitOfWork:
         return SqliteUnitOfWork(
             db=sqlite_db,
@@ -57,6 +58,7 @@ def uow_factory(sqlite_db, content_store, clock, id_gen):
             clock=clock,
             id_generator=id_gen,
         )
+
     return _factory
 
 
@@ -107,6 +109,7 @@ Hardware acceleration for sparse operations remains limited.
 # Helpers
 # -----------------------------------------------------------------
 
+
 async def _setup_vault_two_sources_compiled(uow_factory, actor, mock_backend):
     """Create vault, ingest + normalize 2 sources, compile both with Tier 1.
 
@@ -114,7 +117,8 @@ async def _setup_vault_two_sources_compiled(uow_factory, actor, mock_backend):
     """
     vault_svc = VaultService(uow_factory=uow_factory, default_actor=actor)
     vault = await vault_svc.create_vault(
-        name="TestVault", description="Test vault for Tier 2",
+        name="TestVault",
+        description="Test vault for Tier 2",
     )
 
     ingest_svc = IngestService(uow_factory=uow_factory, default_actor=actor)
@@ -176,7 +180,8 @@ async def _setup_vault_two_sources_on_branch(uow_factory, actor, mock_backend):
     """
     vault_svc = VaultService(uow_factory=uow_factory, default_actor=actor)
     vault = await vault_svc.create_vault(
-        name="BranchVault", description="Test vault for Tier 2 on branch",
+        name="BranchVault",
+        description="Test vault for Tier 2 on branch",
     )
 
     branch_svc = BranchService(uow_factory=uow_factory, default_actor=actor)
@@ -254,11 +259,17 @@ class TestVaultSynthesizer:
     """Tier 2 VaultSynthesizer integration tests."""
 
     async def test_synthesize_creates_concept_pages(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Verify concept pages created from promoted candidates."""
         vault, src1, src2, m1, m2 = await _setup_vault_two_sources_compiled(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         synthesizer = VaultSynthesizer(
@@ -295,11 +306,17 @@ class TestVaultSynthesizer:
             assert ver_row["content_hash"] is not None
 
     async def test_synthesize_creates_synthesized_claims(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Verify claims with status=INFERRED, support_type=SYNTHESIZED."""
         vault, src1, src2, m1, m2 = await _setup_vault_two_sources_compiled(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         synthesizer = VaultSynthesizer(
@@ -325,9 +342,7 @@ class TestVaultSynthesizer:
                 (page_id,),
             )
             claim_rows = await cursor.fetchall()
-            assert len(claim_rows) >= 1, (
-                f"No claims for concept page {page_id}"
-            )
+            assert len(claim_rows) >= 1, f"No claims for concept page {page_id}"
 
             for claim_row in claim_rows:
                 cursor = await sqlite_db.execute(
@@ -340,11 +355,17 @@ class TestVaultSynthesizer:
                 assert ver_row["support_type"] == SupportType.SYNTHESIZED.value
 
     async def test_synthesize_promotes_candidates(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Verify candidate status changed from ACTIVE to PROMOTED."""
         vault, src1, src2, m1, m2 = await _setup_vault_two_sources_compiled(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         # Verify candidates are ACTIVE before synthesis
@@ -372,9 +393,7 @@ class TestVaultSynthesizer:
             (str(vault.vault_id), CandidateStatus.PROMOTED.value),
         )
         promoted = await cursor.fetchall()
-        assert len(promoted) >= 2, (
-            f"Expected promoted candidates, got {len(promoted)}"
-        )
+        assert len(promoted) >= 2, f"Expected promoted candidates, got {len(promoted)}"
 
         # Promoted candidates should have resolved_page_id set
         for row in promoted:
@@ -383,11 +402,17 @@ class TestVaultSynthesizer:
             )
 
     async def test_synthesize_consumes_dirty_markers(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Verify markers have consumed_by_job set."""
         vault, src1, src2, m1, m2 = await _setup_vault_two_sources_compiled(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         # Verify dirty markers exist before synthesis
@@ -425,11 +450,17 @@ class TestVaultSynthesizer:
         assert len(consumed) >= 1
 
     async def test_synthesize_writes_manifest(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Verify VaultSynthesisManifest persisted with join tables."""
         vault, src1, src2, m1, m2 = await _setup_vault_two_sources_compiled(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         synthesizer = VaultSynthesizer(
@@ -468,11 +499,17 @@ class TestVaultSynthesizer:
         assert len(dirty_consumed_rows) >= 1, "No dirty markers consumed in join table"
 
     async def test_synthesize_noop_on_unchanged_content(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Run synthesize twice; second time creates no new page versions."""
         vault, src1, src2, m1, m2 = await _setup_vault_two_sources_compiled(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         synthesizer = VaultSynthesizer(
@@ -536,11 +573,17 @@ class TestVaultSynthesizer:
             )
 
     async def test_synthesize_on_workbook_branch(
-        self, uow_factory, actor, mock_backend, sqlite_db,
+        self,
+        uow_factory,
+        actor,
+        mock_backend,
+        sqlite_db,
     ):
         """Compile + synthesize on branch, verify branch-scoped."""
         vault, workbook, src1, src2, m1, m2 = await _setup_vault_two_sources_on_branch(
-            uow_factory, actor, mock_backend,
+            uow_factory,
+            actor,
+            mock_backend,
         )
 
         synthesizer = VaultSynthesizer(
@@ -569,12 +612,8 @@ class TestVaultSynthesizer:
         )
         branch_page_heads = await cursor.fetchall()
         # Should have at least the concept pages + source card pages
-        concept_branch_heads = [
-            h for h in branch_page_heads if h["page_id"] in concept_page_ids
-        ]
-        assert len(concept_branch_heads) >= 1, (
-            "No branch page heads for concept pages"
-        )
+        concept_branch_heads = [h for h in branch_page_heads if h["page_id"] in concept_page_ids]
+        assert len(concept_branch_heads) >= 1, "No branch page heads for concept pages"
 
         # Verify NO canonical heads for concept pages
         for pid in concept_page_ids:

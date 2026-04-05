@@ -6,16 +6,11 @@ from __future__ import annotations
 
 import pytest
 
+from hephaestus.output.prior_art import PatentResult, PriorArtReport
 from hephaestus.output.proof import (
-    DomainDistanceAnalysis,
-    MechanismOriginalityAnalysis,
     NoveltyProof,
     NoveltyProofGenerator,
-    PriorArtAnalysis,
-    StructuralMappingAnalysis,
 )
-from hephaestus.output.prior_art import PriorArtReport, PatentResult, PaperResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,7 +61,7 @@ class TestNoveltyProofGeneratorBasic:
 
     def test_novelty_score_computed_from_distance_fidelity(self) -> None:
         # score = fidelity * (distance^alpha) = 0.87 * (0.94^1.5)
-        expected = 0.87 * (0.94 ** 1.5)
+        expected = 0.87 * (0.94**1.5)
         proof = _make_proof(novelty_score=None)
         assert proof.novelty_score == pytest.approx(expected, abs=1e-3)
 
@@ -166,9 +161,7 @@ class TestDomainDistanceAnalysis:
         assert proof.domain_distance.score == pytest.approx(0.94, abs=1e-4)
 
     def test_source_target_preserved(self) -> None:
-        proof = _make_proof(
-            source_domain="Biology", target_domain="Finance"
-        )
+        proof = _make_proof(source_domain="Biology", target_domain="Finance")
         assert proof.domain_distance.source_domain == "Biology"
         assert proof.domain_distance.target_domain == "Finance"
 
@@ -310,6 +303,7 @@ class TestToDict:
 
     def test_json_serialisable(self) -> None:
         import json
+
         proof = _make_proof()
         json.dumps(proof.to_dict())  # should not raise
 
@@ -324,9 +318,7 @@ class TestCaveats:
         proof = _make_proof(
             where_analogy_breaks="Pheromone evaporation too slow for ms-scale routing"
         )
-        assert any(
-            "Pheromone evaporation" in c for c in proof.caveats
-        )
+        assert any("Pheromone evaporation" in c for c in proof.caveats)
 
     def test_low_fidelity_caveat(self) -> None:
         proof = _make_proof(structural_fidelity=0.4)

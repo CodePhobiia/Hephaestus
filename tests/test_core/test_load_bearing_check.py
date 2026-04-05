@@ -29,7 +29,8 @@ def _make_lens(
         name=name,
         domain=domain,
         subdomain=domain,
-        axioms=axioms or [
+        axioms=axioms
+        or [
             "Memory persists successful responses.",
             "Clonal expansion reinforces effective defenses.",
         ],
@@ -164,9 +165,7 @@ def _make_decorative_source_translation() -> Translation:
         ),
         mathematical_proof="Queue depth crossing a threshold triggers scaling.",
         limitations=["Rate limits can reduce throughput during sustained bursts."],
-        implementation_notes=(
-            "Use queue metrics, autoscaling policies, and pre-warmed workers."
-        ),
+        implementation_notes=("Use queue metrics, autoscaling policies, and pre-warmed workers."),
         key_insight="Threshold-based autoscaling handles burst traffic.",
         source_candidate=candidate,
     )
@@ -267,8 +266,7 @@ class TestCheckLoadBearingDomains:
         assert result.source_assessment.is_load_bearing
         assert not result.target_assessment.is_load_bearing
         assert any(
-            "target-side mapping is too generic" in reason.lower()
-            for reason in result.reasons
+            "target-side mapping is too generic" in reason.lower() for reason in result.reasons
         )
 
     @pytest.mark.asyncio

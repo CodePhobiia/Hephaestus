@@ -1,4 +1,5 @@
 """SQLite implementation of PageRepository."""
+
 from __future__ import annotations
 
 import json
@@ -37,17 +38,13 @@ class SqlitePageRepository(PageRepository):
         await self.create_version(version)
 
     async def get(self, page_id: EntityId) -> Page | None:
-        cursor = await self._db.execute(
-            "SELECT * FROM fb_pages WHERE page_id = ?", (str(page_id),)
-        )
+        cursor = await self._db.execute("SELECT * FROM fb_pages WHERE page_id = ?", (str(page_id),))
         row = await cursor.fetchone()
         if row is None:
             return None
         return self._row_to_page(row)
 
-    async def get_version(
-        self, page_id: EntityId, version: Version
-    ) -> PageVersion | None:
+    async def get_version(self, page_id: EntityId, version: Version) -> PageVersion | None:
         cursor = await self._db.execute(
             "SELECT * FROM fb_page_versions WHERE page_id = ? AND version = ?",
             (str(page_id), version.number),

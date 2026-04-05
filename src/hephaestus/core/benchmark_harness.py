@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -138,8 +137,8 @@ class BenchmarkReport:
             "",
             "## Summary",
             "",
-            f"| Metric | Value |",
-            f"|--------|-------|",
+            "| Metric | Value |",
+            "|--------|-------|",
             f"| Total runs | {len(self.results)} |",
             f"| Successes | {self.success_count} |",
             f"| Failures | {self.failure_count} |",

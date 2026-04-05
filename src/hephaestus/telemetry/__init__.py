@@ -1,7 +1,13 @@
 """Hephaestus telemetry — structured logging, metrics, tracing, and cost governance."""
 
 from hephaestus.telemetry.cost import BudgetPolicy, BudgetViolation, CostGovernor
-from hephaestus.telemetry.events import EventBus, EventType, StageTimer, TelemetryEvent, get_event_bus
+from hephaestus.telemetry.events import (
+    EventBus,
+    EventType,
+    StageTimer,
+    TelemetryEvent,
+    get_event_bus,
+)
 from hephaestus.telemetry.logging import (
     configure_logging,
     get_correlation_id,

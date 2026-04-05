@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+from unittest.mock import MagicMock
 
 from hephaestus.workspace.mode import WorkspaceConfig, WorkspaceMode, _edit_file
 

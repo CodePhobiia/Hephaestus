@@ -3,14 +3,14 @@
 Uses ResearchAugmentor to discover sources and IngestService to
 schedule ingestion into the vault workbook.
 """
+
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.contracts.agent import AgentTask, TaskStatus
 from hephaestus.forgebase.domain.enums import SourceFormat
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase

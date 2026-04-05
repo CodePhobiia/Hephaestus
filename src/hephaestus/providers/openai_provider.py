@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Any
 
-from hephaestus.providers.base import BaseProvider, ProviderCapability, ProviderStatus
+from hephaestus.providers.base import ProviderCapability, ProviderStatus
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ def _lazy_import() -> Any:
         return None
     try:
         import openai
+
         _sdk_module = openai
         return _sdk_module
     except ImportError as exc:

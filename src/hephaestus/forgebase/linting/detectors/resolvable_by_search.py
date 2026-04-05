@@ -1,4 +1,5 @@
 """ResolvableBySearchDetector — detects claims that could be strengthened by web search."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import (
@@ -50,9 +51,11 @@ class ResolvableBySearchDetector(LintDetector):
 
             # Target: claims with weak support (few supports) or non-SUPPORTED status
             is_weak = False
-            if cv.status in (ClaimStatus.INFERRED, ClaimStatus.HYPOTHESIS):
-                is_weak = True
-            elif cv.status == ClaimStatus.SUPPORTED and len(supports) < 2:
+            if (
+                cv.status in (ClaimStatus.INFERRED, ClaimStatus.HYPOTHESIS)
+                or cv.status == ClaimStatus.SUPPORTED
+                and len(supports) < 2
+            ):
                 is_weak = True
 
             if not is_weak:
@@ -105,7 +108,4 @@ class ResolvableBySearchDetector(LintDetector):
 
         cv, supports, _derivations = claim_data
         # Resolved if the claim now has 2+ supports (no longer weak)
-        if cv.status == ClaimStatus.SUPPORTED and len(supports) >= 2:
-            return True
-
-        return False
+        return bool(cv.status == ClaimStatus.SUPPORTED and len(supports) >= 2)

@@ -30,7 +30,16 @@ import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from hephaestus.core.decomposer import ProblemStructure
+    from hephaestus.core.scorer import ScoredCandidate
+    from hephaestus.core.searcher import SearchCandidate
+    from hephaestus.core.translator import Translation
+    from hephaestus.core.verifier import VerifiedInvention
+    from hephaestus.lenses.state import LensEngineState
+    from hephaestus.pantheon.models import PantheonState
 
 # Module-level imports for test patchability.
 # These are the stage classes that tests patch via
@@ -40,6 +49,11 @@ from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
 from hephaestus.deepforge.adapters.openai import OpenAIAdapter
 from hephaestus.lenses.loader import LensLoader
 from hephaestus.lenses.selector import LensSelector
+
+__all__ = [
+    "AnthropicAdapter", "OpenAIAdapter", "LensLoader", "LensSelector",
+    "Genesis", "GenesisConfig", "InventionReport", "PipelineStage", "PipelineUpdate",
+]
 from hephaestus.session.deliberation import DeliberationGraph, RuntimeRouter
 
 logger = logging.getLogger(__name__)
@@ -49,14 +63,22 @@ logger = logging.getLogger(__name__)
 # Late-imported stage classes (populated at first use, patchable by tests)
 # ---------------------------------------------------------------------------
 
+
 def _import_stage_classes() -> tuple[Any, Any, Any, Any, Any]:
     """Import stage classes. Call once; cache result."""
     from hephaestus.core.decomposer import ProblemDecomposer
-    from hephaestus.core.searcher import CrossDomainSearcher
     from hephaestus.core.scorer import CandidateScorer
+    from hephaestus.core.searcher import CrossDomainSearcher
     from hephaestus.core.translator import SolutionTranslator
     from hephaestus.core.verifier import NoveltyVerifier
-    return ProblemDecomposer, CrossDomainSearcher, CandidateScorer, SolutionTranslator, NoveltyVerifier
+
+    return (
+        ProblemDecomposer,
+        CrossDomainSearcher,
+        CandidateScorer,
+        SolutionTranslator,
+        NoveltyVerifier,
+    )
 
 
 def _branchgenome_outcome_for_verified(
@@ -70,11 +92,20 @@ def _branchgenome_outcome_for_verified(
 
     verdict = str(getattr(invention, "verdict", "")).upper()
     feasibility = str(getattr(invention, "feasibility_rating", "")).upper()
-    if getattr(translation, "mechanism_is_decorative", False) or not getattr(invention, "load_bearing_passed", True):
+    if getattr(translation, "mechanism_is_decorative", False) or not getattr(
+        invention, "load_bearing_passed", True
+    ):
         return "decorative"
-    if verdict == "DERIVATIVE" or str(getattr(invention, "prior_art_status", "")) == "PRIOR_ART_FOUND":
+    if (
+        verdict == "DERIVATIVE"
+        or str(getattr(invention, "prior_art_status", "")) == "PRIOR_ART_FOUND"
+    ):
         return "derivative"
-    if verdict == "INVALID" or feasibility in {"LOW", "THEORETICAL"} or getattr(invention.adversarial_result, "fatal_flaws", []):
+    if (
+        verdict == "INVALID"
+        or feasibility in {"LOW", "THEORETICAL"}
+        or getattr(getattr(invention, "adversarial_result", None), "fatal_flaws", [])
+    ):
         return "invalid"
 
     try:
@@ -92,8 +123,8 @@ def _branchgenome_outcome_for_verified(
         )
         if detect_baseline_overlaps(invention_text, baselines):
             return "baseline_overlap"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Baseline overlap detection failed: %s", exc)
 
     return "accepted"
 
@@ -171,6 +202,7 @@ class GenesisConfig:
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     openrouter_api_key: str | None = None
+    use_agent_sdk: bool = False
     use_claude_cli: bool = False
     use_claude_max: bool = False
     use_codex_cli: bool = False
@@ -193,19 +225,23 @@ class GenesisConfig:
     @property
     def exploration_budget(self) -> dict[str, int]:
         """Strict semantic mapping of depth to operational bounds.
-        
+
         Depth 1: Minimal exploration. No forge permutations.
         Depth 3: Balanced. +1 internal translates, standard candidates.
         Depth 5+: Aggressive expansion. Heavy translate pressure, max adaptive search loops.
         """
         base_candidates = 4 + self.depth
-        translate_perms = 1 if self.exploration_mode == "standard" and self.depth < 3 else (2 if self.depth < 5 else 3)
+        translate_perms = (
+            1
+            if self.exploration_mode == "standard" and self.depth < 3
+            else (2 if self.depth < 5 else 3)
+        )
         pressure_max_rounds = self.depth if self.exploration_mode == "forge" else 0
         return {
             "search_candidates": min(16, base_candidates),
             "translate_permutations": translate_perms,
             "pressure_max_rounds": max(1, pressure_max_rounds),
-            "adaptive_search_loops": 1 if self.depth < 4 else 2
+            "adaptive_search_loops": 1 if self.depth < 4 else 2,
         }
 
     # Pipeline parameters
@@ -236,7 +272,9 @@ class GenesisConfig:
     perplexity_model: str | None = None
     # V2 system prompt parameters
     divergence_intensity: str = "STANDARD"  # STANDARD | AGGRESSIVE | MAXIMUM
-    output_mode: str = "MECHANISM"  # MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM | PROTOCOL | TAXONOMY | INTERFACE
+    output_mode: str = (
+        "MECHANISM"  # MECHANISM | FRAMEWORK | NARRATIVE | SYSTEM | PROTOCOL | TAXONOMY | INTERFACE
+    )
     output_length: str = "FULL"  # DENSE | FULL | EXPANSIVE
 
     # Token budgets
@@ -256,6 +294,9 @@ class GenesisConfig:
     # Library override
     lens_library_dir: str | None = None
 
+    # Transliminality Engine (Layer 2)
+    transliminality_enabled: bool = False
+
     def resolved_pantheon_models(self) -> dict[str, str]:
         return {
             "pantheon_athena": self.pantheon_athena_model or self.decompose_model,
@@ -271,6 +312,7 @@ class GenesisConfig:
 
 class PipelineStage(Enum):
     """Stages of the Genesis pipeline."""
+
     STARTING = auto()
     DECOMPOSING = auto()
     DECOMPOSED = auto()
@@ -289,6 +331,7 @@ class PipelineStage(Enum):
 @dataclass
 class PipelineUpdate:
     """A streaming progress update from the pipeline."""
+
     stage: PipelineStage
     message: str
     data: Any = None
@@ -307,6 +350,7 @@ class CostBreakdown:
 
     All costs in USD.
     """
+
     decomposition_cost: float = 0.0
     search_cost: float = 0.0
     scoring_cost: float = 0.0
@@ -377,24 +421,27 @@ class InventionReport:
     """
 
     problem: str
-    structure: Any  # ProblemStructure
-    all_candidates: list[Any]  # list[SearchCandidate]
-    scored_candidates: list[Any]  # list[ScoredCandidate]
-    translations: list[Any]  # list[Translation]
-    verified_inventions: list[Any]  # list[VerifiedInvention]
+    structure: ProblemStructure
+    all_candidates: list[SearchCandidate]
+    scored_candidates: list[ScoredCandidate]
+    translations: list[Translation]
+    verified_inventions: list[VerifiedInvention]
     baseline_dossier: Any | None = None
+    transliminality_pack: Any | None = None
+    transliminality_manifest: Any | None = None
     lens_runtime: dict[str, Any] = field(default_factory=dict)
-    lens_engine_state: Any | None = None
-    pantheon_state: Any | None = None
+    lens_engine_state: LensEngineState | None = None
+    pantheon_state: PantheonState | None = None
     pantheon_runtime: Any | None = None
     deliberation_graph: Any | None = None
     branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
     total_duration_seconds: float = 0.0
     models_used: list[str] = field(default_factory=list)
+    skipped_phases: list[str] = field(default_factory=list)
 
     @property
-    def top_invention(self) -> Any:
+    def top_invention(self) -> VerifiedInvention | None:
         """The highest-ranked verified invention, or None."""
         return self.verified_inventions[0] if self.verified_inventions else None
 
@@ -451,7 +498,7 @@ class InventionReport:
         return total
 
     @property
-    def alternative_inventions(self) -> list[Any]:
+    def alternative_inventions(self) -> list[VerifiedInvention]:
         """All inventions except the top one."""
         return self.verified_inventions[1:]
 
@@ -467,22 +514,40 @@ class InventionReport:
                 "source_domain": top.source_domain if top else None,
                 "novelty_score": top.novelty_score if top else None,
                 "feasibility": top.feasibility_rating if top else None,
-                "verdict": getattr(top, 'verdict', None) if top else None,
-                "architecture": getattr(top.translation, 'architecture', None) if top and hasattr(top, 'translation') else None,
-                "mapping": getattr(top.translation, 'mapping', None) if top and hasattr(top, 'translation') else None,
-                "limitations": getattr(top.translation, 'limitations', None) if top and hasattr(top, 'translation') else None,
-                "key_insight": getattr(top.translation, 'key_insight', None) if top and hasattr(top, 'translation') else None,
-                "implementation_notes": getattr(top.translation, 'implementation_notes', None) if top and hasattr(top, 'translation') else None,
-                "adversarial_critique": getattr(top, 'adversarial_result', None) if top else None,
-                "validity_notes": getattr(top, 'validity_notes', None) if top else None,
-                "recommended_next_steps": getattr(top, 'recommended_next_steps', None) if top else None,
-                "grounding_report": getattr(top, 'grounding_report', None) if top else None,
-                "implementation_risk_review": getattr(top, 'implementation_risk_review', None) if top else None,
-                "bundle_acceptance_status": getattr(top, 'bundle_acceptance_status', None) if top else None,
-                "orchestration_mode": getattr(top, 'orchestration_mode', None) if top else None,
-                "guard_failures": getattr(top, 'guard_failures', None) if top else None,
-                "lineage_stale": getattr(top, 'lineage_stale', None) if top else None,
-            } if top else None,
+                "verdict": getattr(top, "verdict", None) if top else None,
+                "architecture": getattr(top.translation, "architecture", None)
+                if top and hasattr(top, "translation")
+                else None,
+                "mapping": getattr(top.translation, "mapping", None)
+                if top and hasattr(top, "translation")
+                else None,
+                "limitations": getattr(top.translation, "limitations", None)
+                if top and hasattr(top, "translation")
+                else None,
+                "key_insight": getattr(top.translation, "key_insight", None)
+                if top and hasattr(top, "translation")
+                else None,
+                "implementation_notes": getattr(top.translation, "implementation_notes", None)
+                if top and hasattr(top, "translation")
+                else None,
+                "adversarial_critique": getattr(top, "adversarial_result", None) if top else None,
+                "validity_notes": getattr(top, "validity_notes", None) if top else None,
+                "recommended_next_steps": getattr(top, "recommended_next_steps", None)
+                if top
+                else None,
+                "grounding_report": getattr(top, "grounding_report", None) if top else None,
+                "implementation_risk_review": getattr(top, "implementation_risk_review", None)
+                if top
+                else None,
+                "bundle_acceptance_status": getattr(top, "bundle_acceptance_status", None)
+                if top
+                else None,
+                "orchestration_mode": getattr(top, "orchestration_mode", None) if top else None,
+                "guard_failures": getattr(top, "guard_failures", None) if top else None,
+                "lineage_stale": getattr(top, "lineage_stale", None) if top else None,
+            }
+            if top
+            else None,
             "baseline_dossier": self._research_to_dict(self.baseline_dossier),
             "lens_runtime": self._research_to_dict(self.lens_runtime),
             "lens_engine": self._research_to_dict(self.lens_engine_state),
@@ -494,10 +559,14 @@ class InventionReport:
                     "name": inv.invention_name,
                     "source_domain": inv.source_domain,
                     "novelty_score": inv.novelty_score,
-                    "architecture": getattr(inv.translation, 'architecture', None) if hasattr(inv, 'translation') else None,
-                    "key_insight": getattr(inv.translation, 'key_insight', None) if hasattr(inv, 'translation') else None,
-                    "bundle_acceptance_status": getattr(inv, 'bundle_acceptance_status', None),
-                    "orchestration_mode": getattr(inv, 'orchestration_mode', None),
+                    "architecture": getattr(inv.translation, "architecture", None)
+                    if hasattr(inv, "translation")
+                    else None,
+                    "key_insight": getattr(inv.translation, "key_insight", None)
+                    if hasattr(inv, "translation")
+                    else None,
+                    "bundle_acceptance_status": getattr(inv, "bundle_acceptance_status", None),
+                    "orchestration_mode": getattr(inv, "orchestration_mode", None),
                 }
                 for inv in self.alternative_inventions
             ],
@@ -518,10 +587,7 @@ class InventionReport:
         if isinstance(obj, dict):
             return {k: InventionReport._research_to_dict(v) for k, v in obj.items()}
         if hasattr(obj, "__dict__"):
-            return {
-                k: InventionReport._research_to_dict(v)
-                for k, v in obj.__dict__.items()
-            }
+            return {k: InventionReport._research_to_dict(v) for k, v in obj.__dict__.items()}
         return str(obj)
 
     @staticmethod
@@ -531,11 +597,11 @@ class InventionReport:
         if isinstance(obj, dict):
             try:
                 return int(obj.get(name, 0) or 0)
-            except Exception:
+            except (TypeError, ValueError):
                 return 0
         try:
             return int(getattr(obj, name, 0) or 0)
-        except Exception:
+        except (TypeError, ValueError):
             return 0
 
     def summary(self) -> str:
@@ -580,8 +646,13 @@ class Genesis:
         ``GenesisConfig`` controlling models, parameters, and features.
     """
 
-    def __init__(self, config: GenesisConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: GenesisConfig | None = None,
+        forgebase: Any | None = None,
+    ) -> None:
         self._config = config or GenesisConfig()
+        self._forgebase = forgebase
         self._adapters: dict[str, Any] = {}
         self._harnesses: dict[str, Any] = {}
         self._stages_built = False
@@ -611,7 +682,7 @@ class Genesis:
         """
         async for update in self.invent_stream(problem):
             if update.stage == PipelineStage.COMPLETE:
-                return update.data  # type: ignore[return-value]
+                return update.data
             elif update.stage == PipelineStage.FAILED:
                 if isinstance(update.data, Exception):
                     raise GenesisError("pipeline", str(update.data)) from update.data
@@ -619,9 +690,7 @@ class Genesis:
         # Should not reach here
         raise GenesisError("pipeline", "Stream ended without COMPLETE event")
 
-    async def invent_stream(
-        self, problem: str
-    ) -> AsyncIterator[PipelineUpdate]:
+    async def invent_stream(self, problem: str) -> AsyncIterator[PipelineUpdate]:
         """
         Run the Genesis pipeline with streaming progress updates.
 
@@ -704,18 +773,22 @@ class Genesis:
             # Reference the module-level names (patchable in tests)
             import hephaestus.core.genesis as _genesis_module
 
-            _ProblemDecomposer = _genesis_module.ProblemDecomposer
-            _CrossDomainSearcher = _genesis_module.CrossDomainSearcher
-            _CandidateScorer = _genesis_module.CandidateScorer
-            _SolutionTranslator = _genesis_module.SolutionTranslator
-            _NoveltyVerifier = _genesis_module.NoveltyVerifier
-            _LensLoader = _genesis_module.LensLoader
-            _LensSelector = _genesis_module.LensSelector
+            _ProblemDecomposer = _genesis_module.ProblemDecomposer # noqa: N806
+            _CrossDomainSearcher = _genesis_module.CrossDomainSearcher # noqa: N806
+            _CandidateScorer = _genesis_module.CandidateScorer # noqa: N806
+            _SolutionTranslator = _genesis_module.SolutionTranslator # noqa: N806
+            _NoveltyVerifier = _genesis_module.NoveltyVerifier # noqa: N806
+            _LensLoader = _genesis_module.LensLoader # noqa: N806
+            _LensSelector = _genesis_module.LensSelector # noqa: N806
+
+            skipped_phases: list[str] = []
 
             # ── Phase 0: Burn-Off (generate obvious baselines) ─────────────
             baselines: list[str] = list(self._config.banned_baselines or [])
             try:
                 from hephaestus.core.burn_off import BurnOff
+
+                logger.info("Phase 0: Burn-off starting (LLM call)…")
                 burn_off = BurnOff(self._harnesses["decompose"])
                 burn_off_results = await burn_off.generate_baselines(problem)
                 if burn_off_results:
@@ -723,6 +796,7 @@ class Genesis:
                     logger.info("Burn-off produced %d baselines", len(burn_off_results))
             except Exception as exc:
                 logger.warning("Burn-off skipped: %s", exc)
+                skipped_phases.append("burn-off")
 
             # ── Anti-Memory query (exclusion zone) ─────────────────────────
             exclusion_zone: str = ""
@@ -731,22 +805,26 @@ class Genesis:
                 exclusion_zone = "\n".join(f"- {e}" for e in config_exclusions)
             try:
                 from hephaestus.memory.anti_memory import AntiMemory
+
                 anti_mem = AntiMemory()
                 past_inventions = anti_mem.query(problem, top_k=5)
                 if past_inventions:
                     mem_lines = [
-                        f"- {p['invention_name']}: {p['text'][:120]}"
-                        for p in past_inventions
+                        f"- {p['invention_name']}: {p['text'][:120]}" for p in past_inventions
                     ]
                     exclusion_zone = (exclusion_zone + "\n" + "\n".join(mem_lines)).strip()
-                    logger.info("Anti-memory exclusion zone: %d past inventions", len(past_inventions))
+                    logger.info(
+                        "Anti-memory exclusion zone: %d past inventions", len(past_inventions)
+                    )
             except Exception as exc:
                 logger.warning("Anti-memory query skipped: %s", exc)
+                skipped_phases.append("anti-memory")
 
             # ── Build V2 system prompt (with burn-off + anti-memory) ───────
             v2_system_prompt: str | None = None
             try:
                 from hephaestus.prompts.system_prompt import build_system_prompt
+
                 v2_system_prompt = build_system_prompt(
                     user_prompt=problem,
                     anti_memory_zone=exclusion_zone,
@@ -763,10 +841,12 @@ class Genesis:
                 )
             except Exception as exc:
                 logger.warning("V2 system prompt build failed, using per-stage prompts: %s", exc)
+                skipped_phases.append("v2-system-prompt")
 
             # ── CrutchFilter injection ─────────────────────────────────────
             try:
                 from hephaestus.deepforge.crutch_filter import CrutchFilter
+
                 cf = CrutchFilter()
                 crutch_constraint = cf.get_negative_constraint_for_claude()
                 if v2_system_prompt:
@@ -774,6 +854,7 @@ class Genesis:
                 logger.info("Crutch filter injected (%d banned words)", len(cf.words))
             except Exception as exc:
                 logger.warning("Crutch filter skipped: %s", exc)
+                skipped_phases.append("crutch-filter")
 
             # ── Stage 1: Decompose ──────────────────────────────────────────
             yield PipelineUpdate(
@@ -784,6 +865,7 @@ class Genesis:
 
             from hephaestus.core.decomposer import DecompositionError
 
+            logger.info("Stage 1: calling Claude to decompose problem structure…")
             decomposer = _ProblemDecomposer(self._harnesses["decompose"])
             try:
                 structure = await decomposer.decompose(problem)
@@ -817,14 +899,14 @@ class Genesis:
             yield PipelineUpdate(
                 stage=PipelineStage.DECOMPOSED,
                 message=(
-                    f"Decomposed: [{structure.native_domain}] "
-                    f"{structure.mathematical_shape[:80]}"
+                    f"Decomposed: [{structure.native_domain}] {structure.mathematical_shape[:80]}"
                 ),
                 data=structure,
                 elapsed_seconds=elapsed(),
             )
 
             # ── Stage 1.5: External reconnaissance (Perplexity) ──────────
+            logger.info("Stage 1.5: checking Perplexity for baseline research…")
             baseline_dossier = None
             pantheon = None
             pantheon_state = None
@@ -856,22 +938,165 @@ class Genesis:
                             "baseline_research",
                             "Baseline dossier attached.",
                             payload={
-                                "standard_approach_count": len(getattr(baseline_dossier, "standard_approaches", []) or []),
-                                "avoid_count": len(getattr(baseline_dossier, "keywords_to_avoid", []) or []),
+                                "standard_approach_count": len(
+                                    getattr(baseline_dossier, "standard_approaches", []) or []
+                                ),
+                                "avoid_count": len(
+                                    getattr(baseline_dossier, "keywords_to_avoid", []) or []
+                                ),
                             },
                         )
                     await perplexity.close()
                 except Exception as exc:
                     logger.warning("Perplexity baseline dossier skipped: %s", exc)
+                    skipped_phases.append("perplexity-baseline")
 
+            # ── Stage 1.7: Transliminality (Layer 2) ────────────────────
+            logger.info("Stage 1.7: running transliminality engine (cross-domain synthesis)…")
+            transliminality_pack = None
+            transliminality_manifest = None
+            transliminality_injection = None
+            if self._config.transliminality_enabled:
+                try:
+                    from hephaestus.forgebase.service.id_generator import UlidIdGenerator
+                    from hephaestus.transliminality import (
+                        TransliminalityConfig,
+                        TransliminalityRequest,
+                    )
+                    from hephaestus.transliminality.adapters.genesis import (
+                        build_genesis_injection,
+                    )
+                    from hephaestus.transliminality.adapters.pantheon import (
+                        build_pantheon_dossier,
+                    )
+                    from hephaestus.transliminality.factory import (
+                        create_engine_with_deps,
+                        create_engine_with_harness,
+                    )
+
+                    _tlim_id_gen = UlidIdGenerator()
+                    _tlim_harness = self._harnesses.get("decompose")
+                    _fb = self._forgebase
+                    _tlim_uow = getattr(_fb, "uow_factory", None) if _fb else None
+                    _tlim_emb = getattr(
+                        getattr(_fb, "fusion", None), "embedding_index", None,
+                    ) if _fb else None
+                    # Also try fusion orchestrator's embedding_index
+                    if _tlim_emb is None and _fb is not None:
+                        _fusion_orch = getattr(_fb, "fusion", None)
+                        _tlim_emb = getattr(_fusion_orch, "_embedding_index", None)
+
+                    if _tlim_harness and _tlim_uow and _tlim_emb:
+                        # Full — ForgeBase available for vault routing + bridge retrieval
+                        tlim_engine = create_engine_with_deps(
+                            harness=_tlim_harness,
+                            uow_factory=_tlim_uow,
+                            embedding_index=_tlim_emb,
+                            id_generator=_tlim_id_gen,
+                        )
+                        logger.info("Transliminality: full ForgeBase wiring active")
+                    elif _tlim_harness:
+                        # Harness-only — LLM-backed, no ForgeBase
+                        tlim_engine = create_engine_with_harness(
+                            harness=_tlim_harness,
+                            id_generator=_tlim_id_gen,
+                        )
+                        logger.info("Transliminality: harness-only mode (no ForgeBase)")
+                    else:
+                        logger.warning("Transliminality: no harness available, skipping")
+                        raise RuntimeError("No harness for transliminality")
+
+                    tlim_request = TransliminalityRequest(
+                        run_id=_tlim_id_gen.generate("trun"),
+                        problem=problem,
+                        home_vault_ids=[],
+                        config=TransliminalityConfig(),
+                    )
+                    tlim_result = await tlim_engine.build_pack(tlim_request)
+                    transliminality_pack = tlim_result.pack
+                    transliminality_injection = build_genesis_injection(
+                        transliminality_pack,
+                    )
+
+                    # Inject into system prompt
+                    if (
+                        v2_system_prompt
+                        and transliminality_injection.system_prompt_supplement
+                    ):
+                        v2_system_prompt = (
+                            v2_system_prompt
+                            + "\n\n"
+                            + transliminality_injection.system_prompt_supplement
+                        )
+
+                    # Merge transliminality dossier into baseline
+                    tlim_dossier = build_pantheon_dossier(transliminality_pack)
+                    if baseline_dossier is None:
+                        baseline_dossier = tlim_dossier
+                    elif tlim_dossier.summary != "No transliminality context.":
+                        # Build a new dossier with merged summary (dossier is frozen)
+                        existing = getattr(baseline_dossier, "summary", "")
+                        from hephaestus.transliminality.adapters.pantheon import (
+                            TransliminalityDossier,
+                        )
+                        baseline_dossier = TransliminalityDossier(
+                            summary=existing + " " + tlim_dossier.summary,
+                            constraint_entries=tlim_dossier.constraint_entries,
+                            analogy_warnings=tlim_dossier.analogy_warnings,
+                            grounding_gaps=tlim_dossier.grounding_gaps,
+                            objection_types=tlim_dossier.objection_types,
+                        )
+
+                    # Writeback (decoupled — failure here doesn't crash pipeline)
+                    try:
+                        transliminality_manifest = await tlim_engine.write_back(
+                            tlim_result,
+                        )
+                    except Exception:
+                        logger.warning("Transliminality writeback skipped")
+
+                    logger.info(
+                        "Transliminality pack built | "
+                        "strict=%d soft=%d constraint=%d blocked=%d",
+                        len(transliminality_pack.strict_baseline_entries),
+                        len(transliminality_pack.soft_context_entries),
+                        len(transliminality_pack.strict_constraint_entries),
+                        len(transliminality_injection.extra_blocked_paths),
+                    )
+                    deliberation.record_stage(
+                        "transliminality",
+                        "Layer 2 cross-domain synthesis context assembled.",
+                        payload={
+                            "strict_baseline_count": len(
+                                transliminality_pack.strict_baseline_entries,
+                            ),
+                            "soft_context_count": len(
+                                transliminality_pack.soft_context_entries,
+                            ),
+                            "constraint_count": len(
+                                transliminality_pack.strict_constraint_entries,
+                            ),
+                        },
+                    )
+                except Exception as exc:
+                    logger.warning("Transliminality engine skipped: %s", exc)
+                    skipped_phases.append("transliminality")
+
+            logger.info("Stage 1.8: Pantheon multi-agent deliberation…")
             if self._config.use_pantheon_mode:
                 try:
                     from hephaestus.pantheon import PantheonCoordinator
 
                     pantheon = PantheonCoordinator(
-                        athena_harness=self._harnesses.get("pantheon_athena", self._harnesses["decompose"]),
-                        hermes_harness=self._harnesses.get("pantheon_hermes", self._harnesses["search"]),
-                        apollo_harness=self._harnesses.get("pantheon_apollo", self._harnesses["defend"]),
+                        athena_harness=self._harnesses.get(
+                            "pantheon_athena", self._harnesses["decompose"]
+                        ),
+                        hermes_harness=self._harnesses.get(
+                            "pantheon_hermes", self._harnesses["search"]
+                        ),
+                        apollo_harness=self._harnesses.get(
+                            "pantheon_apollo", self._harnesses["defend"]
+                        ),
                         max_rounds=self._config.pantheon_max_rounds,
                         require_unanimity=self._config.pantheon_require_unanimity,
                         allow_fail_closed=self._config.pantheon_allow_fail_closed,
@@ -897,6 +1122,7 @@ class Genesis:
                     pantheon_state = None
                     pantheon_guidance = None
                     logger.warning("Pantheon pipeline preparation skipped: %s", exc)
+                    skipped_phases.append("pantheon-prep")
 
             # ── Stage 2: Search ─────────────────────────────────────────────
             yield PipelineUpdate(
@@ -913,6 +1139,11 @@ class Genesis:
             )
             selector = _LensSelector(loader)
 
+            # Inject transliminality lens context if available (M-2)
+            _tlim_ref_ctx = None
+            if transliminality_injection is not None:
+                _tlim_ref_ctx = transliminality_injection.lens_reference_context
+
             searcher = _CrossDomainSearcher(
                 harness=self._harnesses["search"],
                 loader=loader,
@@ -924,6 +1155,10 @@ class Genesis:
                 use_adaptive_lens_engine=self._config.use_adaptive_lens_engine,
                 allow_lens_bundle_fallback=self._config.allow_lens_bundle_fallback,
             )
+            # Store reference context on searcher for lens selection flow
+            if _tlim_ref_ctx:
+                searcher._transliminality_reference_context = _tlim_ref_ctx  # type: ignore[attr-defined]
+
             try:
                 candidates = await searcher.search(structure)
             except SearchError as exc:
@@ -1051,7 +1286,9 @@ class Genesis:
                     self._config.divergence_intensity,
                     max_tokens_translate=self._config.max_tokens_translate,
                 )
-                branchgenome_ledger = RejectionLedger(self._config.branchgenome_rejection_ledger_path)
+                branchgenome_ledger = RejectionLedger(
+                    self._config.branchgenome_rejection_ledger_path
+                )
                 branch_arena = seed_branches_from_translation_inputs(
                     scored,
                     structure,
@@ -1063,8 +1300,11 @@ class Genesis:
                     idx = branch.source_candidate_index
                     if idx < 0 or idx >= len(scored):
                         logger.warning(
-                            "BranchGenome branch %s has out-of-range source_candidate_index %d (scored has %d); skipping",
-                            branch.branch_id, idx, len(scored))
+                            "BranchGenome branch %s: out-of-range index %d (max %d); skipping",
+                            branch.branch_id,
+                            idx,
+                            len(scored),
+                        )
                         continue
                     candidate = scored[idx]
                     branch.metrics = assay_branch(
@@ -1085,8 +1325,11 @@ class Genesis:
                     idx = branch.source_candidate_index
                     if idx < 0 or idx >= len(scored):
                         logger.warning(
-                            "BranchGenome recovery branch %s has out-of-range source_candidate_index %d (scored has %d); skipping",
-                            branch.branch_id, idx, len(scored))
+                            "BranchGenome recovery branch %s: out-of-range index %d (max %d); skipping",
+                            branch.branch_id,
+                            idx,
+                            len(scored),
+                        )
                         continue
                     candidate = scored[idx]
                     branch.metrics = assay_branch(
@@ -1107,8 +1350,11 @@ class Genesis:
                     idx = branch.source_candidate_index
                     if idx < 0 or idx >= len(scored):
                         logger.warning(
-                            "BranchGenome crossover branch %s has out-of-range source_candidate_index %d (scored has %d); skipping",
-                            branch.branch_id, idx, len(scored))
+                            "BranchGenome crossover branch %s: out-of-range index %d (max %d); skipping",
+                            branch.branch_id,
+                            idx,
+                            len(scored),
+                        )
                         continue
                     candidate = scored[idx]
                     branch.metrics = assay_branch(
@@ -1122,15 +1368,24 @@ class Genesis:
 
                 pruned = branch_arena.prune_over_budget(branch_strategy)
                 for branch in pruned:
-                    failed_checks = branch.metrics.perturbations_run - branch.metrics.perturbations_passed
-                    if branch.metrics.rejection_overlap >= branch_strategy.baseline_equivalent_overlap:
+                    failed_checks = (
+                        branch.metrics.perturbations_run - branch.metrics.perturbations_passed
+                    )
+                    if (
+                        branch.metrics.rejection_overlap
+                        >= branch_strategy.baseline_equivalent_overlap
+                    ):
                         outcome = "baseline_overlap"
                     elif (
-                        branch.metrics.comfort_penalty >= branch_strategy.recovery_activation_threshold
-                        and branch.metrics.future_option_preservation < branch_strategy.min_option_preservation
+                        (
+                            branch.metrics.comfort_penalty
+                            >= branch_strategy.recovery_activation_threshold
+                            and branch.metrics.future_option_preservation
+                            < branch_strategy.min_option_preservation
+                        )
+                        or failed_checks > branch_strategy.max_failed_perturbations
+                        or branch.metrics.collapse_risk >= 0.65
                     ):
-                        outcome = "decorative"
-                    elif failed_checks > branch_strategy.max_failed_perturbations or branch.metrics.collapse_risk >= 0.65:
                         outcome = "decorative"
                     else:
                         outcome = "invalid"
@@ -1160,23 +1415,27 @@ class Genesis:
                     )
                     return
 
-                def _safe_branch_candidate(branch):
+                def _safe_branch_candidate(branch: Any) -> Any:
                     idx = branch.source_candidate_index
                     if idx < 0 or idx >= len(scored):
                         logger.warning(
                             "BranchGenome promoted branch %s has out-of-range source_candidate_index %d; skipping",
-                            branch.branch_id, idx)
+                            branch.branch_id,
+                            idx,
+                        )
                         return None
                     return branch_candidate_for_translation(branch, scored[idx])
 
                 translation_inputs = [
-                    inp for inp in
-                    (_safe_branch_candidate(b) for b in promoted_branches)
+                    inp
+                    for inp in (_safe_branch_candidate(b) for b in promoted_branches)
                     if inp is not None
                 ]
                 branchgenome_metrics = branch_arena.observability_snapshot()
                 logger.info(
-                    "BranchGenome promoted %d/%d branches | recovered=%d crossover=%d archive=%d avg_spread=%.2f avg_option=%.2f avg_qd=%.2f avg_comfort=%.2f avg_baseline_attractor=%.2f avg_branch_fatigue=%.2f avg_collapse=%.2f",
+                    "BranchGenome promoted %d/%d | recovered=%d crossover=%d "
+                    "archive=%d spread=%.2f option=%.2f qd=%.2f "
+                    "comfort=%.2f attractor=%.2f fatigue=%.2f collapse=%.2f",
                     branchgenome_metrics["branches_promoted"],
                     branchgenome_metrics["branches_seeded"],
                     branchgenome_metrics["branches_recovered"],
@@ -1214,6 +1473,12 @@ class Genesis:
                 allow_bundle_fallback=self._config.allow_lens_bundle_fallback,
             )
             translator._banned_baselines = baselines if baselines else []
+            # Merge transliminality blocked paths into banned baselines
+            if transliminality_injection is not None:
+                translator._banned_baselines = (
+                    translator._banned_baselines
+                    + transliminality_injection.extra_blocked_paths
+                )
             attempted_translation_inputs = translation_inputs[:translation_top_n]
             translate_kwargs: dict[str, Any] = {}
             if pantheon_guidance is not None:
@@ -1231,11 +1496,15 @@ class Genesis:
                 from hephaestus.branchgenome.models import BranchStatus
 
                 for translation in translations:
-                    branch = getattr(getattr(translation, "source_candidate", None), "branch_genome", None)
+                    branch = getattr(
+                        getattr(translation, "source_candidate", None), "branch_genome", None
+                    )
                     if branch is not None:
                         branch.status = BranchStatus.TRANSLATED
                 invalidated_lens_ids = set(
-                    getattr(translation_runtime, "invalidated_lens_ids", ()) if translation_runtime is not None else ()
+                    getattr(translation_runtime, "invalidated_lens_ids", ())
+                    if translation_runtime is not None
+                    else ()
                 )
                 if invalidated_lens_ids:
                     for candidate in translation_inputs:
@@ -1252,7 +1521,9 @@ class Genesis:
                     scored=scored,
                     attempted=attempted_translation_inputs,
                     invalidated_lens_ids=set(
-                        getattr(translation_runtime, "invalidated_lens_ids", ()) if translation_runtime is not None else ()
+                        getattr(translation_runtime, "invalidated_lens_ids", ())
+                        if translation_runtime is not None
+                        else ()
                     ),
                 )
                 if fallback_inputs:
@@ -1350,7 +1621,9 @@ class Genesis:
                     cost_usd=self._metric_number(pantheon_runtime, "total_cost_usd"),
                     input_tokens=int(self._metric_number(pantheon_runtime, "total_input_tokens")),
                     output_tokens=int(self._metric_number(pantheon_runtime, "total_output_tokens")),
-                    duration_seconds=self._metric_number(pantheon_runtime, "total_duration_seconds"),
+                    duration_seconds=self._metric_number(
+                        pantheon_runtime, "total_duration_seconds"
+                    ),
                     calls=max(1, pantheon_rounds),
                 )
             deliberation.record_stage(
@@ -1409,8 +1682,7 @@ class Genesis:
                     for invention in verified
                 ],
                 "orchestration_modes": [
-                    getattr(invention, "orchestration_mode", "singleton")
-                    for invention in verified
+                    getattr(invention, "orchestration_mode", "singleton") for invention in verified
                 ],
                 "lineage_stale_count": sum(
                     1 for invention in verified if getattr(invention, "lineage_stale", False)
@@ -1424,7 +1696,9 @@ class Genesis:
                 promoted_outcomes: dict[str, Any] = {}
                 for invention in verified:
                     translation = getattr(invention, "translation", None)
-                    branch = getattr(getattr(translation, "source_candidate", None), "branch_genome", None)
+                    branch = getattr(
+                        getattr(translation, "source_candidate", None), "branch_genome", None
+                    )
                     if branch is None or translation is None:
                         continue
                     branch.status = BranchStatus.VERIFIED
@@ -1450,10 +1724,14 @@ class Genesis:
                         "novelty_score": getattr(invention, "novelty_score", 0.0),
                         "feasibility_rating": getattr(invention, "feasibility_rating", "UNKNOWN"),
                         "ledger_outcome": outcome,
-                        "bundle_acceptance_status": getattr(invention, "bundle_acceptance_status", "singleton"),
+                        "bundle_acceptance_status": getattr(
+                            invention, "bundle_acceptance_status", "singleton"
+                        ),
                         "orchestration_mode": getattr(invention, "orchestration_mode", "singleton"),
                         "operator_family_pattern": branch.operator_family_pattern(),
-                        "operator_families": [family.value for family in branch.operator_family_history],
+                        "operator_families": [
+                            family.value for family in branch.operator_family_history
+                        ],
                         "repeated_family_streak": branch.metrics.repeated_family_streak,
                         "archive_cell": branch.archive_cell or branch.metrics.archive_cell,
                         "island_key": branch.island_key or branch.metrics.island_key,
@@ -1487,7 +1765,9 @@ class Genesis:
                 stage=PipelineStage.VERIFIED,
                 message=(
                     f"Verified {len(verified)} inventions. "
-                    f"Top novelty: {verified[0].novelty_score:.2f}" if verified else "Verification complete"
+                    f"Top novelty: {verified[0].novelty_score:.2f}"
+                    if verified
+                    else "Verification complete"
                 ),
                 data=verified,
                 elapsed_seconds=elapsed(),
@@ -1517,6 +1797,7 @@ class Genesis:
             if verified:
                 try:
                     from hephaestus.memory.anti_memory import AntiMemory
+
                     anti_mem_store = AntiMemory()
                     for inv in verified:
                         anti_mem_store.store(
@@ -1539,6 +1820,8 @@ class Genesis:
                 translations=translations,
                 verified_inventions=verified,
                 baseline_dossier=baseline_dossier,
+                transliminality_pack=transliminality_pack,
+                transliminality_manifest=transliminality_manifest,
                 lens_runtime=lens_runtime,
                 branchgenome_metrics=branchgenome_metrics,
                 pantheon_state=pantheon_state,
@@ -1567,6 +1850,7 @@ class Genesis:
                         else []
                     ),
                 ],
+                skipped_phases=skipped_phases,
             )
             try:
                 from hephaestus.lenses.state import LensEngineState
@@ -1624,28 +1908,29 @@ class Genesis:
         if isinstance(obj, dict):
             try:
                 return float(obj.get(name, 0.0) or 0.0)
-            except Exception:
+            except (TypeError, ValueError):
                 return 0.0
         try:
             return float(getattr(obj, name, 0.0) or 0.0)
-        except Exception:
+        except (TypeError, ValueError):
             return 0.0
 
     @staticmethod
     def _metric_text(obj: Any | None, name: str, default: str = "") -> str:
         if obj is None:
             return default
-        if isinstance(obj, dict):
-            value = obj.get(name, default)
-        else:
-            value = getattr(obj, name, default)
+        value = obj.get(name, default) if isinstance(obj, dict) else getattr(obj, name, default)
         return str(value).strip() or default
 
     @classmethod
     def _pantheon_runtime_from_state(cls, state: Any | None) -> Any | None:
         if state is None:
             return None
-        accounting = state.get("accounting") if isinstance(state, dict) else getattr(state, "accounting", None)
+        accounting = (
+            state.get("accounting")
+            if isinstance(state, dict)
+            else getattr(state, "accounting", None)
+        )
         if accounting is None:
             return None
         if hasattr(accounting, "to_dict"):
@@ -1728,12 +2013,16 @@ class Genesis:
                 candidate_id,
                 fingerprint=f"{getattr(candidate, 'lens_id', '')}:{getattr(candidate, 'source_domain', '')}",
                 source_domain=str(getattr(candidate, "source_domain", "") or ""),
-                novelty_axes=list(getattr(getattr(candidate, "lens_score", None), "matched_patterns", []) or []),
+                novelty_axes=list(
+                    getattr(getattr(candidate, "lens_score", None), "matched_patterns", []) or []
+                ),
                 score=float(getattr(candidate, "confidence", 0.0) or 0.0),
                 status="alive",
                 route="search",
                 metadata={
-                    "selection_mode": str(getattr(candidate, "selection_mode", "singleton") or "singleton"),
+                    "selection_mode": str(
+                        getattr(candidate, "selection_mode", "singleton") or "singleton"
+                    ),
                 },
             )
 
@@ -1747,7 +2036,9 @@ class Genesis:
                 score=float(getattr(candidate, "combined_score", 0.0) or 0.0),
                 route="score",
                 metadata={
-                    "structural_fidelity": float(getattr(candidate, "structural_fidelity", 0.0) or 0.0),
+                    "structural_fidelity": float(
+                        getattr(candidate, "structural_fidelity", 0.0) or 0.0
+                    ),
                     "domain_distance": float(getattr(candidate, "domain_distance", 0.0) or 0.0),
                     "mechanism_novelty": float(getattr(candidate, "mechanism_novelty", 0.0) or 0.0),
                 },
@@ -1761,7 +2052,10 @@ class Genesis:
             card = graph.ensure_candidate(
                 candidate_id,
                 source_domain=str(getattr(translation, "source_domain", "") or ""),
-                novelty_axes=list(getattr(getattr(translation, "source_candidate", None), "strong_mappings", []) or []),
+                novelty_axes=list(
+                    getattr(getattr(translation, "source_candidate", None), "strong_mappings", [])
+                    or []
+                ),
                 status="translated",
                 route="translate",
                 metadata={
@@ -1772,7 +2066,8 @@ class Genesis:
             )
             card.compute_spent_usd += float(getattr(translation, "cost_usd", 0.0) or 0.0)
             summary = str(
-                getattr(translation, "key_insight", "") or getattr(translation, "architecture", "")[:200]
+                getattr(translation, "key_insight", "")
+                or getattr(translation, "architecture", "")[:200]
             )
             if summary:
                 graph.add_claim(
@@ -1780,8 +2075,15 @@ class Genesis:
                     summary,
                     kind="mechanism",
                     stage="translate",
-                    confidence=float(getattr(getattr(translation, "source_candidate", None), "combined_score", 0.0) or 0.0),
-                    metadata={"invention_name": str(getattr(translation, "invention_name", "") or "")},
+                    confidence=float(
+                        getattr(
+                            getattr(translation, "source_candidate", None), "combined_score", 0.0
+                        )
+                        or 0.0
+                    ),
+                    metadata={
+                        "invention_name": str(getattr(translation, "invention_name", "") or "")
+                    },
                 )
 
     @staticmethod
@@ -1818,11 +2120,24 @@ class Genesis:
             )
             candidate_id = str(getattr(objection, "candidate_id", "") or "")
             if existing is not None:
-                existing.status = str(getattr(objection, "status", existing.status) or existing.status).lower()
-                existing.severity = str(getattr(objection, "severity", existing.severity) or existing.severity).lower()
-                existing.statement = str(getattr(objection, "statement", existing.statement) or existing.statement)
-                existing.must_change = [str(getattr(objection, "required_change", "") or "")] if getattr(objection, "required_change", "") else existing.must_change
-                existing.disproof_test = str(getattr(objection, "closure_test", existing.disproof_test) or existing.disproof_test)
+                existing.status = str(
+                    getattr(objection, "status", existing.status) or existing.status
+                ).lower()
+                existing.severity = str(
+                    getattr(objection, "severity", existing.severity) or existing.severity
+                ).lower()
+                existing.statement = str(
+                    getattr(objection, "statement", existing.statement) or existing.statement
+                )
+                existing.must_change = (
+                    [str(getattr(objection, "required_change", "") or "")]
+                    if getattr(objection, "required_change", "")
+                    else existing.must_change
+                )
+                existing.disproof_test = str(
+                    getattr(objection, "closure_test", existing.disproof_test)
+                    or existing.disproof_test
+                )
                 graph.refresh_candidate(existing.candidate_id)
                 continue
             if not candidate_id:
@@ -1833,7 +2148,9 @@ class Genesis:
                 objection_type=str(getattr(objection, "opened_stage", "pantheon") or "pantheon"),
                 severity=str(getattr(objection, "severity", "major") or "major").lower(),
                 statement=str(getattr(objection, "statement", "") or ""),
-                must_change=[str(getattr(objection, "required_change", "") or "")] if getattr(objection, "required_change", "") else [],
+                must_change=[str(getattr(objection, "required_change", "") or "")]
+                if getattr(objection, "required_change", "")
+                else [],
                 disproof_test=str(getattr(objection, "closure_test", "") or ""),
                 status=str(getattr(objection, "status", "open") or "open").lower(),
                 introduced_round=int(getattr(objection, "opened_round", 0) or 0),
@@ -1847,6 +2164,7 @@ class Genesis:
 
         # Populate module-level stage class names (avoids circular imports at load time)
         import hephaestus.core.genesis as _self
+
         (
             _self.ProblemDecomposer,
             _self.CrossDomainSearcher,
@@ -1856,10 +2174,11 @@ class Genesis:
         ) = _import_stage_classes()
 
         # Ensure adapter classes are also populated
-        from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter as _AA
-        from hephaestus.deepforge.adapters.openai import OpenAIAdapter as _OA
-        from hephaestus.lenses.loader import LensLoader as _LL
-        from hephaestus.lenses.selector import LensSelector as _LS
+        from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter as _AA  # noqa: N814
+        from hephaestus.deepforge.adapters.openai import OpenAIAdapter as _OA  # noqa: N814
+        from hephaestus.lenses.loader import LensLoader as _LL  # noqa: N814
+        from hephaestus.lenses.selector import LensSelector as _LS  # noqa: N814
+
         _self.AnthropicAdapter = _AA
         _self.OpenAIAdapter = _OA
         _self.LensLoader = _LL
@@ -1875,9 +2194,11 @@ class Genesis:
     def _build_adapters(cfg: GenesisConfig) -> dict[str, Any]:
         """Build the model adapters needed for each stage."""
         import os
+
         import hephaestus.core.genesis as _genesis_module
-        _AnthropicAdapter = _genesis_module.AnthropicAdapter
-        _OpenAIAdapter = _genesis_module.OpenAIAdapter
+
+        _AnthropicAdapter = _genesis_module.AnthropicAdapter # noqa: N806
+        _OpenAIAdapter = _genesis_module.OpenAIAdapter # noqa: N806
 
         adapters: dict[str, Any] = {}
 
@@ -1891,9 +2212,24 @@ class Genesis:
             *cfg.resolved_pantheon_models().values(),
         }
 
+        # Agent SDK mode — route ALL models through Claude Agent SDK (subscription)
+        if cfg.use_agent_sdk:
+            from hephaestus.deepforge.adapters.agent_sdk import AgentSDKAdapter
+
+            logger.info("Agent SDK mode — routing all models via Claude subscription")
+            claude_default = "claude-opus-4-6"
+            for model_name in all_models:
+                if model_name.startswith("claude"):
+                    adapters[model_name] = AgentSDKAdapter(model=model_name)
+                else:
+                    adapters[model_name] = AgentSDKAdapter(model=claude_default)
+                    logger.info("Agent SDK: mapped %s -> %s", model_name, claude_default)
+            return adapters
+
         # Claude Max mode — route ALL models through OAT subscription auth
         if cfg.use_claude_max:
             from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
+
             logger.info("Claude Max mode — routing all models via OAT subscription auth")
             # Map any non-Claude model names to Claude equivalents
             claude_default = "claude-sonnet-4-6"
@@ -1910,6 +2246,7 @@ class Genesis:
         # Claude CLI mode
         if cfg.use_claude_cli:
             from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
+
             logger.info("Claude CLI mode — routing all models through claude --print")
             for model_name in all_models:
                 adapters[model_name] = ClaudeCliAdapter(model=model_name)
@@ -1918,7 +2255,10 @@ class Genesis:
         # Codex CLI mode (ChatGPT/Codex OAuth, GPT Pro subscription)
         if cfg.use_codex_cli:
             from hephaestus.deepforge.adapters.codex_oauth import CodexOAuthAdapter
-            logger.info("Codex OAuth mode — routing all models through native openai-codex-responses transport")
+
+            logger.info(
+                "Codex OAuth mode — routing all models through native openai-codex-responses transport"
+            )
             codex_default = "gpt-5.4"
             for model_name in all_models:
                 # Route every stage through Codex; unknown provider model names map to configured Codex model
@@ -1932,6 +2272,7 @@ class Genesis:
         openrouter_key = cfg.openrouter_api_key or os.environ.get("OPENROUTER_API_KEY")
         if openrouter_key:
             from hephaestus.deepforge.adapters.openrouter import OpenRouterAdapter
+
             logger.info("OpenRouter mode — routing all models through OpenRouter")
             for model_name in all_models:
                 adapters[model_name] = OpenRouterAdapter(model=model_name, api_key=openrouter_key)
@@ -1939,7 +2280,9 @@ class Genesis:
 
         # Direct API keys — deduplicate: build each unique model name once
         anthropic_models = {n for n in all_models if n.startswith("claude")}
-        openai_models = {n for n in all_models if n.startswith("gpt") or n.startswith("o3") or n.startswith("o4")}
+        openai_models = {
+            n for n in all_models if n.startswith("gpt") or n.startswith("o3") or n.startswith("o4")
+        }
 
         for model_name in anthropic_models:
             adapters[model_name] = _AnthropicAdapter(
@@ -1970,7 +2313,9 @@ class Genesis:
                     except Exception as exc2:
                         logger.warning(
                             "No adapter created for model %s: anthropic=%s openai=%s",
-                            model_name, exc, exc2,
+                            model_name,
+                            exc,
+                            exc2,
                         )
 
         return adapters
@@ -2115,7 +2460,7 @@ class Genesis:
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> "Genesis":
+    def from_env(cls) -> Genesis:
         """
         Create a Genesis instance using API keys from environment variables.
 

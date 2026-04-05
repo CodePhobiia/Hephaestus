@@ -7,7 +7,7 @@ LLM calls and embedding models are mocked.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
@@ -16,13 +16,11 @@ from hephaestus.core.decomposer import ProblemStructure
 from hephaestus.core.scorer import (
     CandidateScorer,
     ScoredCandidate,
-    ScoringError,
 )
 from hephaestus.core.searcher import SearchCandidate
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
 from hephaestus.lenses.loader import Lens, StructuralPattern
 from hephaestus.lenses.selector import EmbeddingModel, LensScore
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,7 +59,7 @@ def _make_lens_score(distance: float = 0.85) -> LensScore:
         lens=lens,
         domain_distance=distance,
         structural_relevance=0.7,
-        composite_score=distance ** 1.8 * 0.7,
+        composite_score=distance**1.8 * 0.7,
         matched_patterns=["allocation"],
     )
 
@@ -91,17 +89,20 @@ def _make_forge_result(text: str, cost: float = 0.003) -> ForgeResult:
 
 
 def _valid_fidelity_json(fidelity: float = 0.8) -> str:
-    return json.dumps({
-        "structural_fidelity": fidelity,
-        "fidelity_reasoning": "Strong structural match between immune memory and task persistence",
-        "strong_mappings": ["T-cell → task executor", "memory cell → cached result"],
-        "weak_mappings": ["No equivalent to MHC presentation"],
-    })
+    return json.dumps(
+        {
+            "structural_fidelity": fidelity,
+            "fidelity_reasoning": "Strong structural match between immune memory and task persistence",
+            "strong_mappings": ["T-cell → task executor", "memory cell → cached result"],
+            "weak_mappings": ["No equivalent to MHC presentation"],
+        }
+    )
 
 
 def _make_mock_embedding_model(distance: float = 0.8) -> MagicMock:
     """Create a mock embedding model that returns vectors with known cosine distance."""
     embed = MagicMock(spec=EmbeddingModel)
+
     # Return vectors where first is problem, rest are domain vectors
     # Cosine distance is controlled by dot product
     def encode_side_effect(texts):
@@ -110,7 +111,7 @@ def _make_mock_embedding_model(distance: float = 0.8) -> MagicMock:
         problem = np.array([1.0, 0.0, 0.0], dtype=np.float32)
         # Domain vectors at distance `distance` from problem
         cos_sim = 1.0 - distance
-        angle_component = np.sqrt(max(0.0, 1.0 - cos_sim ** 2))
+        angle_component = np.sqrt(max(0.0, 1.0 - cos_sim**2))
         domain = np.array([cos_sim, angle_component, 0.0], dtype=np.float32)
         return np.stack([problem] + [domain] * (n - 1))
 
@@ -131,7 +132,7 @@ class TestScoredCandidate:
             candidate=candidate,
             structural_fidelity=0.8,
             domain_distance=0.9,
-            combined_score=0.8 * 0.9 ** 1.5,
+            combined_score=0.8 * 0.9**1.5,
         )
         assert scored.source_domain == "Immune System"
         assert scored.mechanism
@@ -147,13 +148,13 @@ class TestScoredCandidate:
             combined_score=0.5,
             scoring_cost_usd=0.003,
         )
-        assert scored.total_cost_usd() == pytest.approx(0.008)
+        assert scored.total_cost_usd == pytest.approx(0.008)
 
     def test_combined_score_formula(self):
         """combined_score = fidelity × distance^1.5"""
         fidelity = 0.8
         distance = 0.9
-        expected = fidelity * (distance ** 1.5)
+        expected = fidelity * (distance**1.5)
 
         candidate = _make_candidate(distance=distance)
         scored = ScoredCandidate(
@@ -211,11 +212,13 @@ class TestCandidateScorer:
     async def test_sorted_by_combined_score_desc(self):
         """Results should be sorted by combined_score descending."""
         harness = MagicMock()
-        harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_fidelity_json(0.4)),  # low fidelity
-            _make_forge_result(_valid_fidelity_json(0.9)),  # high fidelity
-            _make_forge_result(_valid_fidelity_json(0.7)),  # medium fidelity
-        ])
+        harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_fidelity_json(0.4)),  # low fidelity
+                _make_forge_result(_valid_fidelity_json(0.9)),  # high fidelity
+                _make_forge_result(_valid_fidelity_json(0.7)),  # medium fidelity
+            ]
+        )
 
         embed = _make_mock_embedding_model(distance=0.8)
         scorer = CandidateScorer(
@@ -300,9 +303,9 @@ class TestCandidateScorer:
     @pytest.mark.asyncio
     async def test_scoring_cost_tracked(self):
         harness = MagicMock()
-        harness.forge = AsyncMock(return_value=_make_forge_result(
-            _valid_fidelity_json(), cost=0.003
-        ))
+        harness.forge = AsyncMock(
+            return_value=_make_forge_result(_valid_fidelity_json(), cost=0.003)
+        )
 
         embed = _make_mock_embedding_model(distance=0.8)
         scorer = CandidateScorer(
@@ -318,19 +321,21 @@ class TestCandidateScorer:
     @pytest.mark.asyncio
     async def test_mechanism_novelty_flows_into_creativity_score(self):
         harness = MagicMock()
-        harness.forge = AsyncMock(side_effect=[
-            _make_forge_result(_valid_fidelity_json(0.8)),
-            _make_forge_result(
-                json.dumps(
-                    {
-                        "mechanism_novelty": 0.9,
-                        "target_domain_equivalent": "no close equivalent",
-                        "novelty_reasoning": "The mechanism is still strange in the target domain.",
-                        "would_engineer_reach_for_this": False,
-                    }
-                )
-            ),
-        ])
+        harness.forge = AsyncMock(
+            side_effect=[
+                _make_forge_result(_valid_fidelity_json(0.8)),
+                _make_forge_result(
+                    json.dumps(
+                        {
+                            "mechanism_novelty": 0.9,
+                            "target_domain_equivalent": "no close equivalent",
+                            "novelty_reasoning": "The mechanism is still strange in the target domain.",
+                            "would_engineer_reach_for_this": False,
+                        }
+                    )
+                ),
+            ]
+        )
 
         scorer = CandidateScorer(
             harness=harness,

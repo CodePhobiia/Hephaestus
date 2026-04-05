@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
-from typing import Any, Callable
+from enum import StrEnum
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     RUN_STARTED = "run_started"
     STAGE_ENTERED = "stage_entered"
     STAGE_COMPLETED = "stage_completed"
@@ -77,9 +78,11 @@ class EventBus:
         # Inject correlation context if available
         if not event.correlation_id:
             from hephaestus.telemetry.logging import get_correlation_id
+
             event.correlation_id = get_correlation_id()
         if not event.run_id:
             from hephaestus.telemetry.logging import get_run_id
+
             event.run_id = get_run_id()
 
         for handler in self._handlers:
@@ -103,12 +106,14 @@ class EventBus:
         **metadata: Any,
     ) -> None:
         """Convenience method to emit an event without constructing the dataclass."""
-        self.emit(TelemetryEvent(
-            event_type=event_type,
-            stage=stage,
-            duration_ms=duration_ms,
-            metadata=metadata,
-        ))
+        self.emit(
+            TelemetryEvent(
+                event_type=event_type,
+                stage=stage,
+                duration_ms=duration_ms,
+                metadata=metadata,
+            )
+        )
 
 
 class StageTimer:

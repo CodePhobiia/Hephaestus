@@ -126,8 +126,8 @@ class Hephaestus:
             if use_perplexity_research is None
             else use_perplexity_research
         )
-        self._perplexity_model = (
-            perplexity_model or os.environ.get("HEPHAESTUS_PERPLEXITY_MODEL", "sonar-pro")
+        self._perplexity_model = perplexity_model or os.environ.get(
+            "HEPHAESTUS_PERPLEXITY_MODEL", "sonar-pro"
         )
 
         # Validate keys early
@@ -153,7 +153,7 @@ class Hephaestus:
         exploration_mode: str = "standard",
         pressure_translate_enabled: bool = True,
         pressure_search_mode: str = "adaptive",
-    ) -> "Hephaestus":
+    ) -> Hephaestus:
         """
         Create a Hephaestus client using API keys from environment variables.
 
@@ -196,7 +196,7 @@ class Hephaestus:
     # Context manager support
     # ------------------------------------------------------------------
 
-    async def __aenter__(self) -> "Hephaestus":
+    async def __aenter__(self) -> Hephaestus:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -255,9 +255,7 @@ class Hephaestus:
         except Exception as exc:
             raise HephaestusError(f"Invention pipeline failed: {exc}") from exc
 
-    async def invent_stream(
-        self, problem: str
-    ) -> AsyncIterator[PipelineUpdate]:
+    async def invent_stream(self, problem: str) -> AsyncIterator[PipelineUpdate]:
         """
         Run the invention pipeline with streaming progress updates.
 
@@ -440,11 +438,10 @@ class Hephaestus:
         loader = LensLoader()
         try:
             return loader.load_one(lens_id)
-        except FileNotFoundError:
+        except FileNotFoundError as err:
             raise HephaestusError(
-                f"Lens {lens_id!r} not found. "
-                f"Call list_lenses() to see available lenses."
-            )
+                f"Lens {lens_id!r} not found. Call list_lenses() to see available lenses."
+            ) from err
         except Exception as exc:
             raise HephaestusError(f"Failed to load lens {lens_id!r}: {exc}") from exc
 
@@ -481,7 +478,7 @@ class Hephaestus:
         # Cost model from PRD §8
         # Base estimates per stage (USD)
         stage_estimates = {
-            "decompose": (0.10, 0.15, 0.22),   # low, mid, high
+            "decompose": (0.10, 0.15, 0.22),  # low, mid, high
             "search": (0.08, 0.12, 0.18),
             "score": (0.03, 0.05, 0.08),
             "translate": (0.30, 0.45, 0.65),
@@ -605,15 +602,16 @@ class Hephaestus:
 
         if model in ("opus", "both"):
             from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
+
             return AnthropicAdapter(model=models["decompose"], api_key=self._anthropic_key)
         else:
             from hephaestus.deepforge.adapters.openai import OpenAIAdapter
+
             return OpenAIAdapter(model=models["decompose"], api_key=self._openai_key)
 
     def __repr__(self) -> str:
         return (
-            f"Hephaestus(model={self._model!r}, depth={self._depth}, "
-            f"candidates={self._candidates})"
+            f"Hephaestus(model={self._model!r}, depth={self._depth}, candidates={self._candidates})"
         )
 
 

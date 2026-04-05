@@ -1,15 +1,15 @@
 """ForgeBase factory — sole composition root."""
+
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
-import hashlib
+from typing import TYPE_CHECKING
 
 import aiosqlite
-import numpy as np
 
 from hephaestus.forgebase.compiler.backend import CompilerBackend
 from hephaestus.forgebase.compiler.backends.mock_backend import MockCompilerBackend
@@ -74,6 +74,13 @@ from hephaestus.forgebase.store.blobs.memory import InMemoryContentStore
 from hephaestus.forgebase.store.sqlite.schema import initialize_schema
 from hephaestus.forgebase.store.sqlite.uow import SqliteUnitOfWork
 
+if TYPE_CHECKING:
+    pass
+
+def _lazy_np():
+    import numpy as np
+    return np
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,12 +89,13 @@ logger = logging.getLogger(__name__)
 # and nested-transaction issues with single-connection SQLite).
 # ---------------------------------------------------------------------------
 
+
 def _fallback_embedding(text: str) -> bytes:
     """Produce a deterministic 384-dim normalised float32 embedding from text."""
     h = hashlib.sha256(text.encode()).digest()
-    rng = np.random.RandomState(int.from_bytes(h[:4], "big"))
-    vec = rng.randn(384).astype(np.float32)
-    vec = vec / np.linalg.norm(vec)
+    rng = _lazy_np().random.RandomState(int.from_bytes(h[:4], "big"))
+    vec = rng.randn(384).astype(_lazy_np().float32)
+    vec = vec / _lazy_np().linalg.norm(vec)
     return vec.tobytes()
 
 
@@ -95,8 +103,8 @@ def _fallback_embedding(text: str) -> bytes:
 class ForgeBaseConfig:
     """Configuration for ForgeBase."""
 
-    backend: str = "sqlite"       # "sqlite" or "postgres"
-    sqlite_path: str = ""         # path to SQLite database (empty = in-memory)
+    backend: str = "sqlite"  # "sqlite" or "postgres"
+    sqlite_path: str = ""  # path to SQLite database (empty = in-memory)
     default_actor: ActorRef = field(default_factory=ActorRef.system)
     consumer_names: list[str] = field(default_factory=list)
     compiler_backend: str = "mock"  # "mock" or "anthropic"
@@ -262,7 +270,6 @@ async def create_forgebase(
         run_integration_service=run_int_svc,
         ingest_service=ingest_svc,
         uow_factory=uow_factory,
-        invention_ingester=invention_ingester,
     )
     pantheon_adapter = PantheonAdapter(
         run_integration_service=run_int_svc,
@@ -287,12 +294,12 @@ async def create_forgebase(
 
     compiler_backend: CompilerBackend
     if cfg.compiler_backend == "anthropic" or (
-        cfg.compiler_backend == "auto"
-        and os.environ.get("ANTHROPIC_API_KEY")
+        cfg.compiler_backend == "auto" and os.environ.get("ANTHROPIC_API_KEY")
     ):
         from hephaestus.forgebase.compiler.backends.anthropic_backend import (
             AnthropicCompilerBackend,
         )
+
         compiler_backend = AnthropicCompilerBackend()
     else:
         compiler_backend = MockCompilerBackend()
@@ -311,13 +318,13 @@ async def create_forgebase(
     # --- Lint analyzer ---
     lint_analyzer: LintAnalyzer
     if cfg.compiler_backend == "anthropic" or (
-        cfg.compiler_backend == "auto"
-        and os.environ.get("ANTHROPIC_API_KEY")
+        cfg.compiler_backend == "auto" and os.environ.get("ANTHROPIC_API_KEY")
     ):
         try:
             from hephaestus.forgebase.linting.analyzers.anthropic_analyzer import (
                 AnthropicLintAnalyzer,
             )
+
             lint_analyzer = AnthropicLintAnalyzer()
         except (ImportError, Exception):
             lint_analyzer = MockLintAnalyzer()
@@ -387,17 +394,17 @@ async def create_forgebase(
     # The real sentence-transformers model can be swapped in by callers
     # who need production-quality embeddings (e.g. via a separate process
     # with its own DB connection to avoid nested-transaction issues).
-    embedding_index._compute_embedding = _fallback_embedding  # type: ignore[assignment]
+    embedding_index._compute_embedding = _fallback_embedding
 
     fusion_analyzer: FusionAnalyzer  # noqa: F841 — used below
     if cfg.compiler_backend == "anthropic" or (
-        cfg.compiler_backend == "auto"
-        and os.environ.get("ANTHROPIC_API_KEY")
+        cfg.compiler_backend == "auto" and os.environ.get("ANTHROPIC_API_KEY")
     ):
         try:
             from hephaestus.forgebase.fusion.analyzers.anthropic_analyzer import (
                 AnthropicFusionAnalyzer,
             )
+
             fusion_analyzer = AnthropicFusionAnalyzer(id_gen=id_gen)
         except (ImportError, Exception):
             fusion_analyzer = MockFusionAnalyzer(id_gen=id_gen)

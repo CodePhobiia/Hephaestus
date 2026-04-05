@@ -1,4 +1,5 @@
 """Tests for SQLite concept candidate and evidence repositories."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -8,8 +9,12 @@ import pytest
 from hephaestus.forgebase.domain.enums import CandidateKind, CandidateStatus
 from hephaestus.forgebase.domain.models import ConceptCandidate, ConceptCandidateEvidence
 from hephaestus.forgebase.domain.values import EntityId, EvidenceSegmentRef, Version
-from hephaestus.forgebase.store.sqlite.candidate_evidence_repo import SqliteCandidateEvidenceRepository
-from hephaestus.forgebase.store.sqlite.concept_candidate_repo import SqliteConceptCandidateRepository
+from hephaestus.forgebase.store.sqlite.candidate_evidence_repo import (
+    SqliteCandidateEvidenceRepository,
+)
+from hephaestus.forgebase.store.sqlite.concept_candidate_repo import (
+    SqliteConceptCandidateRepository,
+)
 
 
 def _now() -> datetime:
@@ -72,7 +77,9 @@ class TestSqliteConceptCandidateRepository:
         vault_id = id_gen.vault_id()
 
         c1 = _candidate(id_gen, vault_id, name="C1", normalized_name="c1")
-        c2 = _candidate(id_gen, vault_id, name="C2", normalized_name="c2", status=CandidateStatus.SUPERSEDED)
+        c2 = _candidate(
+            id_gen, vault_id, name="C2", normalized_name="c2", status=CandidateStatus.SUPERSEDED
+        )
         c3 = _candidate(id_gen, vault_id, name="C3", normalized_name="c3")
 
         for c in [c1, c2, c3]:
@@ -88,8 +95,22 @@ class TestSqliteConceptCandidateRepository:
         vault_id = id_gen.vault_id()
         source_id = id_gen.generate("source")
 
-        c1 = _candidate(id_gen, vault_id, name="C1", normalized_name="c1", source_id=source_id, source_version=Version(1))
-        c2 = _candidate(id_gen, vault_id, name="C2", normalized_name="c2", source_id=source_id, source_version=Version(1))
+        c1 = _candidate(
+            id_gen,
+            vault_id,
+            name="C1",
+            normalized_name="c1",
+            source_id=source_id,
+            source_version=Version(1),
+        )
+        c2 = _candidate(
+            id_gen,
+            vault_id,
+            name="C2",
+            normalized_name="c2",
+            source_id=source_id,
+            source_version=Version(1),
+        )
         c3 = _candidate(id_gen, vault_id, name="C3", normalized_name="c3")  # different source
 
         for c in [c1, c2, c3]:
@@ -136,9 +157,31 @@ class TestSqliteConceptCandidateRepository:
         vault_id = id_gen.vault_id()
         source_id = id_gen.generate("source")
 
-        c1 = _candidate(id_gen, vault_id, name="C1", normalized_name="c1", source_id=source_id, source_version=Version(1))
-        c2 = _candidate(id_gen, vault_id, name="C2", normalized_name="c2", source_id=source_id, source_version=Version(1))
-        c3 = _candidate(id_gen, vault_id, name="C3", normalized_name="c3", source_id=source_id, source_version=Version(1), status=CandidateStatus.PROMOTED)
+        c1 = _candidate(
+            id_gen,
+            vault_id,
+            name="C1",
+            normalized_name="c1",
+            source_id=source_id,
+            source_version=Version(1),
+        )
+        c2 = _candidate(
+            id_gen,
+            vault_id,
+            name="C2",
+            normalized_name="c2",
+            source_id=source_id,
+            source_version=Version(1),
+        )
+        c3 = _candidate(
+            id_gen,
+            vault_id,
+            name="C3",
+            normalized_name="c3",
+            source_id=source_id,
+            source_version=Version(1),
+            status=CandidateStatus.PROMOTED,
+        )
 
         for c in [c1, c2, c3]:
             await repo.create(c)

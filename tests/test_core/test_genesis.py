@@ -7,8 +7,6 @@ streaming, and error handling of the Genesis class.
 
 from __future__ import annotations
 
-import json
-from collections.abc import AsyncIterator
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,16 +20,14 @@ from hephaestus.core.genesis import (
     GenesisError,
     InventionReport,
     PipelineStage,
-    PipelineUpdate,
 )
 from hephaestus.core.scorer import ScoredCandidate
-from hephaestus.core.searcher import SearchCandidate, SearchError
+from hephaestus.core.searcher import SearchCandidate
 from hephaestus.core.translator import ElementMapping, Translation
 from hephaestus.core.verifier import AdversarialResult, VerifiedInvention
 from hephaestus.deepforge.harness import ForgeResult, ForgeTrace
 from hephaestus.lenses.loader import Lens, StructuralPattern
 from hephaestus.lenses.selector import LensScore
-
 
 # ---------------------------------------------------------------------------
 # Test fixtures and helpers
@@ -66,24 +62,33 @@ def _make_lens() -> Lens:
 def _make_search_candidate() -> SearchCandidate:
     lens = _make_lens()
     ls = LensScore(
-        lens=lens, domain_distance=0.85,
-        structural_relevance=0.7, composite_score=0.6, matched_patterns=["allocation"]
+        lens=lens,
+        domain_distance=0.85,
+        structural_relevance=0.7,
+        composite_score=0.6,
+        matched_patterns=["allocation"],
     )
     return SearchCandidate(
         source_domain="Immune System — T-Cell Memory",
         source_solution="T-cell memory through clonal expansion",
         mechanism="Clonal selection amplifies successful responses",
         structural_mapping="Task persistence maps to immune memory",
-        lens_used=lens, lens_score=ls, confidence=0.85, cost_usd=0.005,
+        lens_used=lens,
+        lens_score=ls,
+        confidence=0.85,
+        cost_usd=0.005,
     )
 
 
 def _make_scored_candidate() -> ScoredCandidate:
     sc = _make_search_candidate()
     return ScoredCandidate(
-        candidate=sc, structural_fidelity=0.8,
-        domain_distance=0.85, combined_score=0.65,
-        fidelity_reasoning="Strong match", scoring_cost_usd=0.003,
+        candidate=sc,
+        structural_fidelity=0.8,
+        domain_distance=0.85,
+        combined_score=0.65,
+        fidelity_reasoning="Strong match",
+        scoring_cost_usd=0.003,
     )
 
 
@@ -97,14 +102,19 @@ def _make_translation() -> Translation:
         limitations=["Cache invalidation needed", "No MHC equivalent"],
         implementation_notes="Use Redis for memory layer",
         key_insight="Immune memory eliminates redundant recognition work",
-        source_candidate=sc, cost_usd=0.02,
+        source_candidate=sc,
+        cost_usd=0.02,
     )
 
 
 def _make_verified_invention() -> VerifiedInvention:
     ar = AdversarialResult(
-        attack_valid=False, fatal_flaws=[], structural_weaknesses=[],
-        strongest_objection="", novelty_risk=0.15, verdict="NOVEL",
+        attack_valid=False,
+        fatal_flaws=[],
+        structural_weaknesses=[],
+        strongest_objection="",
+        novelty_risk=0.15,
+        verdict="NOVEL",
     )
     return VerifiedInvention(
         invention_name="Immune-Memory Task Scheduler",
@@ -312,7 +322,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             report = await genesis.invent("I need a fault-tolerant task scheduler")
@@ -336,7 +349,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             report = await genesis.invent("I need a fault-tolerant task scheduler")
@@ -385,7 +401,9 @@ class TestGenesis:
         pantheon_stub = MagicMock()
         pantheon_stub.prepare_pipeline = AsyncMock(return_value=(revised_structure, pantheon_state))
         pantheon_stub.translation_guidance.return_value = object()
-        pantheon_stub.screen_translations = AsyncMock(return_value=([_make_translation()], pantheon_state))
+        pantheon_stub.screen_translations = AsyncMock(
+            return_value=([_make_translation()], pantheon_state)
+        )
         pantheon_stub.deliberate = AsyncMock(return_value=([revised_translation], pantheon_state))
         pantheon_stub.finalize_with_verified.return_value = pantheon_state
 
@@ -402,7 +420,10 @@ class TestGenesis:
             patch("hephaestus.pantheon.PantheonCoordinator", return_value=pantheon_stub),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
             report = await genesis.invent("test problem")
 
@@ -419,7 +440,10 @@ class TestGenesis:
         assert report.total_input_tokens == 210
         assert report.total_output_tokens == 70
         assert mocks["searcher"].search.await_args.args[0] is revised_structure
-        assert mocks["translator"].translate.await_args.kwargs["guidance"] is pantheon_stub.translation_guidance.return_value
+        assert (
+            mocks["translator"].translate.await_args.kwargs["guidance"]
+            is pantheon_stub.translation_guidance.return_value
+        )
         pantheon_stub.screen_translations.assert_awaited_once()
         assert len(report.all_candidates) == 1
         assert len(report.scored_candidates) == 1
@@ -460,9 +484,7 @@ class TestGenesis:
         genesis = Genesis(self._make_config())
 
         mock_decomposer = MagicMock()
-        mock_decomposer.decompose = AsyncMock(
-            side_effect=DecompositionError("Test failure")
-        )
+        mock_decomposer.decompose = AsyncMock(side_effect=DecompositionError("Test failure"))
 
         updates = []
         with (
@@ -473,7 +495,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             async for update in genesis.invent_stream("test problem"):
@@ -503,7 +528,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             updates = []
@@ -532,7 +560,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             async for update in genesis.invent_stream("test"):
@@ -573,7 +604,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             complete_update = None
@@ -590,9 +624,7 @@ class TestGenesis:
         genesis = Genesis(self._make_config())
 
         mock_decomposer = MagicMock()
-        mock_decomposer.decompose = AsyncMock(
-            side_effect=DecompositionError("Complete failure")
-        )
+        mock_decomposer.decompose = AsyncMock(side_effect=DecompositionError("Complete failure"))
 
         with (
             patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mock_decomposer),
@@ -602,7 +634,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             with pytest.raises(GenesisError):
@@ -626,7 +661,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             report = await genesis.invent("test")
@@ -699,7 +737,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             updates = []
@@ -720,10 +761,13 @@ class TestGenesis:
 
     def test_genesis_from_env(self):
         """from_env should create Genesis without errors."""
-        with patch.dict("os.environ", {
-            "ANTHROPIC_API_KEY": "test-anthropic",
-            "OPENAI_API_KEY": "test-openai",
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "ANTHROPIC_API_KEY": "test-anthropic",
+                "OPENAI_API_KEY": "test-openai",
+            },
+        ):
             genesis = Genesis.from_env()
         assert genesis is not None
         assert genesis._config.anthropic_api_key == "test-anthropic"
@@ -753,7 +797,9 @@ class TestGenesis:
                 lens_used=lens,
                 lens_score=LensScore(
                     lens=lens,
-                    domain_distance=0.9 if domain == "biology" else (0.82 if domain == "economics" else 0.7),
+                    domain_distance=0.9
+                    if domain == "biology"
+                    else (0.82 if domain == "economics" else 0.7),
                     structural_relevance=0.8,
                     composite_score=0.7,
                     matched_patterns=["allocation"],
@@ -766,8 +812,12 @@ class TestGenesis:
                 ScoredCandidate(
                     candidate=search_candidate,
                     structural_fidelity=0.82,
-                    domain_distance=search_candidate.lens_score.domain_distance if search_candidate.lens_score else 0.7,
-                    combined_score=0.78 if domain == "biology" else (0.71 if domain == "economics" else 0.62),
+                    domain_distance=search_candidate.lens_score.domain_distance
+                    if search_candidate.lens_score
+                    else 0.7,
+                    combined_score=0.78
+                    if domain == "biology"
+                    else (0.71 if domain == "economics" else 0.62),
                     fidelity_reasoning="Strong mapping",
                 )
             )
@@ -779,7 +829,10 @@ class TestGenesis:
         mock_searcher.search = AsyncMock(return_value=candidates)
         mock_searcher.last_runtime = SimpleNamespace(
             retrieval_mode="bundle",
-            to_dict=lambda: {"retrieval_mode": "bundle", "selected_lens_ids": [c.lens_id for c in candidates[:2]]},
+            to_dict=lambda: {
+                "retrieval_mode": "bundle",
+                "selected_lens_ids": [c.lens_id for c in candidates[:2]],
+            },
         )
 
         mock_scorer = MagicMock()
@@ -820,23 +873,27 @@ class TestGenesis:
 
         mock_verifier = MagicMock()
         mock_verifier.verify = AsyncMock(
-            side_effect=lambda translations, _structure: [_make_verified_invention() if False else VerifiedInvention(
-                invention_name=translations[0].invention_name,
-                translation=translations[0],
-                novelty_score=0.77,
-                structural_validity=0.8,
-                implementation_feasibility=0.75,
-                feasibility_rating="HIGH",
-                adversarial_result=AdversarialResult(
-                    attack_valid=False,
-                    fatal_flaws=[],
-                    structural_weaknesses=[],
-                    strongest_objection="",
-                    novelty_risk=0.2,
-                    verdict="NOVEL",
-                ),
-                prior_art_status="NO_PRIOR_ART_FOUND",
-            )]
+            side_effect=lambda translations, _structure: [
+                _make_verified_invention()
+                if False
+                else VerifiedInvention(
+                    invention_name=translations[0].invention_name,
+                    translation=translations[0],
+                    novelty_score=0.77,
+                    structural_validity=0.8,
+                    implementation_feasibility=0.75,
+                    feasibility_rating="HIGH",
+                    adversarial_result=AdversarialResult(
+                        attack_valid=False,
+                        fatal_flaws=[],
+                        structural_weaknesses=[],
+                        strongest_objection="",
+                        novelty_risk=0.2,
+                        verdict="NOVEL",
+                    ),
+                    prior_art_status="NO_PRIOR_ART_FOUND",
+                )
+            ]
         )
 
         with (
@@ -851,7 +908,10 @@ class TestGenesis:
             patch("hephaestus.core.genesis.LensSelector"),
         ):
             genesis._stages_built = True
-            genesis._harnesses = {k: MagicMock() for k in ["decompose", "search", "score", "translate", "attack", "defend"]}
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
             genesis._adapters = {}
 
             report = await genesis.invent("test problem")

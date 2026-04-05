@@ -11,11 +11,8 @@ import pytest
 
 from hephaestus.convergence.database import (
     ConvergenceDatabase,
-    PatternRecord,
-    SimilarityResult,
     open_database,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -168,27 +165,21 @@ class TestGetPatternsForClass:
 
     async def test_limit_respected(self, db: ConvergenceDatabase) -> None:
         for i in range(10):
-            await db.add_pattern(
-                problem_class="bulk", pattern_text=f"p{i}", embedding=_rand_emb()
-            )
+            await db.add_pattern(problem_class="bulk", pattern_text=f"p{i}", embedding=_rand_emb())
         results = await db.get_patterns_for_class("bulk", limit=3)
         assert len(results) == 3
 
 
 class TestIncrementBlocked:
     async def test_increment_blocked(self, db: ConvergenceDatabase) -> None:
-        pid = await db.add_pattern(
-            problem_class="test", pattern_text="p", embedding=_rand_emb()
-        )
+        pid = await db.add_pattern(problem_class="test", pattern_text="p", embedding=_rand_emb())
         await db.increment_blocked(pid)
         record = await db.get_pattern(pid)
         assert record is not None
         assert record.blocked_count == 1
 
     async def test_multiple_increments(self, db: ConvergenceDatabase) -> None:
-        pid = await db.add_pattern(
-            problem_class="test", pattern_text="p", embedding=_rand_emb()
-        )
+        pid = await db.add_pattern(problem_class="test", pattern_text="p", embedding=_rand_emb())
         for _ in range(5):
             await db.increment_blocked(pid)
         record = await db.get_pattern(pid)
@@ -196,9 +187,7 @@ class TestIncrementBlocked:
         assert record.blocked_count == 5
 
     async def test_increment_by_custom_amount(self, db: ConvergenceDatabase) -> None:
-        pid = await db.add_pattern(
-            problem_class="test", pattern_text="p", embedding=_rand_emb()
-        )
+        pid = await db.add_pattern(problem_class="test", pattern_text="p", embedding=_rand_emb())
         await db.increment_blocked(pid, increment=10)
         record = await db.get_pattern(pid)
         assert record is not None
@@ -320,14 +309,13 @@ class TestCounters:
 
 class TestExportImport:
     async def test_export_to_json(self, db: ConvergenceDatabase, tmp_path: any) -> None:
-        await db.add_pattern(
-            problem_class="test", pattern_text="hello", embedding=_rand_emb()
-        )
+        await db.add_pattern(problem_class="test", pattern_text="hello", embedding=_rand_emb())
         out = tmp_path / "export.json"
         count = await db.export_to_json(out)
         assert count == 1
         assert out.exists()
         import json
+
         data = json.loads(out.read_text())
         assert len(data) == 1
         assert data[0]["pattern_text"] == "hello"
@@ -351,9 +339,7 @@ class TestExportImport:
 
     async def test_export_full_and_reimport(self, db: ConvergenceDatabase, tmp_path: any) -> None:
         emb = _rand_emb()
-        await db.add_pattern(
-            problem_class="full_test", pattern_text="full export", embedding=emb
-        )
+        await db.add_pattern(problem_class="full_test", pattern_text="full export", embedding=emb)
         out = tmp_path / "full.npz"
         count = await db.export_full(out)
         assert count == 1

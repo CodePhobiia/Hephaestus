@@ -19,7 +19,12 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
-from hephaestus.deepforge.adapters.base import GenerationResult, ModelCapability, ModelConfig, StreamChunk
+from hephaestus.deepforge.adapters.base import (
+    GenerationResult,
+    ModelCapability,
+    ModelConfig,
+    StreamChunk,
+)
 from hephaestus.deepforge.adapters.openai import OpenAIAdapter
 
 logger = logging.getLogger(__name__)
@@ -194,10 +199,7 @@ class OpenRouterAdapter(OpenAIAdapter):
         resolved_key = api_key or os.environ.get("OPENROUTER_API_KEY")
 
         # If the model name is already an OpenRouter path (provider/model), use as-is
-        if "/" in model:
-            or_model_id = model
-        else:
-            or_model_id = OPENROUTER_MODEL_MAP.get(model, model)
+        or_model_id = model if "/" in model else OPENROUTER_MODEL_MAP.get(model, model)
 
         # Track whether this is an Anthropic model (for provider pinning)
         self._is_anthropic = or_model_id.startswith("anthropic/")

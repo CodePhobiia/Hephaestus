@@ -3,11 +3,11 @@
 Returns deterministic results without making any LLM calls.
 Suitable for unit/integration tests and local development.
 """
+
 from __future__ import annotations
 
 from hephaestus.forgebase.compiler.backend import CompilerBackend
 from hephaestus.forgebase.compiler.models import (
-    ConceptEvidence,
     EvidenceGrade,
     ExtractedClaim,
     ExtractedConcept,
@@ -44,13 +44,9 @@ class MockCompilerBackend(CompilerBackend):
                 statement=f"Claim from: {source_text[:30]}",
                 segment_ref=EvidenceSegmentRef(
                     source_id=EntityId(
-                        source_metadata.get(
-                            "source_id", "source_00000000000000000000000001"
-                        )
+                        source_metadata.get("source_id", "source_00000000000000000000000001")
                     ),
-                    source_version=Version(
-                        source_metadata.get("source_version", 1)
-                    ),
+                    source_version=Version(source_metadata.get("source_version", 1)),
                     segment_start=0,
                     segment_end=min(100, len(source_text)),
                     section_key=None,
@@ -71,13 +67,9 @@ class MockCompilerBackend(CompilerBackend):
                 evidence_segments=[
                     EvidenceSegmentRef(
                         source_id=EntityId(
-                            source_metadata.get(
-                                "source_id", "source_00000000000000000000000001"
-                            )
+                            source_metadata.get("source_id", "source_00000000000000000000000001")
                         ),
-                        source_version=Version(
-                            source_metadata.get("source_version", 1)
-                        ),
+                        source_version=Version(source_metadata.get("source_version", 1)),
                         segment_start=0,
                         segment_end=50,
                         section_key=None,
@@ -123,9 +115,7 @@ class MockCompilerBackend(CompilerBackend):
                     statement=f"{concept_name} is well-established",
                     support_type=SupportType.SYNTHESIZED,
                     confidence=0.85,
-                    derived_from_claims=[
-                        c for e in evidence for c in e.claims[:1]
-                    ],
+                    derived_from_claims=[c for e in evidence for c in e.claims[:1]],
                 )
             ],
             related_concepts=related_concepts[:3],
@@ -155,9 +145,7 @@ class MockCompilerBackend(CompilerBackend):
         )
         return page, self._call_record("synthesis")
 
-    async def identify_open_questions(
-        self, contested_claims, evidence_gaps, policy
-    ):
+    async def identify_open_questions(self, contested_claims, evidence_gaps, policy):
         questions = [
             OpenQuestion(
                 question="What are the long-term effects?",

@@ -14,17 +14,15 @@ import numpy as np
 import pytest
 
 from hephaestus.deepforge.adapters.base import GenerationResult, StreamChunk
-from hephaestus.deepforge.exceptions import ConvergenceDetected, GenerationKilled
+from hephaestus.deepforge.exceptions import ConvergenceDetected
 from hephaestus.deepforge.harness import (
     DeepForgeHarness,
     ForgeResult,
-    ForgeTrace,
     HarnessConfig,
 )
-from hephaestus.deepforge.interference import InjectionStrategy, Lens
+from hephaestus.deepforge.interference import Lens
 from hephaestus.deepforge.pressure import PressureTrace
-from hephaestus.deepforge.pruner import ConvergencePattern, ConvergencePruner, PruneResult
-
+from hephaestus.deepforge.pruner import PruneResult
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -179,9 +177,7 @@ class TestHarnessWithPressure:
         )
         harness = DeepForgeHarness(adapter, cfg)
 
-        with patch.object(
-            harness._pressure, "apply", new=AsyncMock(return_value=pressure_trace)
-        ):
+        with patch.object(harness._pressure, "apply", new=AsyncMock(return_value=pressure_trace)):
             result = await harness.forge("Design a trustless system.")
 
         assert isinstance(result, ForgeResult)
@@ -209,9 +205,7 @@ class TestHarnessWithPressure:
         cfg = HarnessConfig(lenses=[_make_lens()], use_pressure=True)
         harness = DeepForgeHarness(adapter, cfg)
 
-        with patch.object(
-            harness._pressure, "apply", new=AsyncMock(return_value=pressure_trace)
-        ):
+        with patch.object(harness._pressure, "apply", new=AsyncMock(return_value=pressure_trace)):
             result = await harness.forge("Hard problem.")
 
         assert result.output == "Fallback text from blocked path."
@@ -248,8 +242,12 @@ class TestHarnessWithPruner:
         async def _mock_stream(*args: Any, **kwargs: Any) -> AsyncIterator[StreamChunk]:
             yield StreamChunk(delta="Clean novel output.", accumulated="Clean novel output.")
             yield StreamChunk(
-                delta="", accumulated="Clean novel output.",
-                is_final=True, input_tokens=100, output_tokens=20, stop_reason="end_turn"
+                delta="",
+                accumulated="Clean novel output.",
+                is_final=True,
+                input_tokens=100,
+                output_tokens=20,
+                stop_reason="end_turn",
             )
 
         adapter.generate_stream = _mock_stream

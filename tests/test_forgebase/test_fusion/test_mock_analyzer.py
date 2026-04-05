@@ -1,12 +1,10 @@
 """Tests for MockFusionAnalyzer -- deterministic analogy analysis."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import AnalogyVerdict
 from hephaestus.forgebase.fusion.analyzer import FusionAnalyzer
 from hephaestus.forgebase.fusion.analyzers.mock_analyzer import MockFusionAnalyzer
-
 from tests.test_forgebase.test_fusion.conftest import make_bridge_candidate
 
 
@@ -24,16 +22,25 @@ class TestStrongAnalogy:
     """Candidates with similarity_score >= 0.5 -> STRONG_ANALOGY."""
 
     async def test_strong_analogy_above_threshold(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.75,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -45,32 +52,50 @@ class TestStrongAnalogy:
         assert maps[0].mapped_components[0].mapping_confidence == 0.75
 
     async def test_strong_analogy_at_boundary(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.5,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
         assert maps[0].verdict == AnalogyVerdict.STRONG_ANALOGY
 
     async def test_strong_analogy_preserves_provenance(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.8,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         amap = maps[0]
@@ -85,16 +110,25 @@ class TestWeakAnalogy:
     """Candidates with 0.3 <= similarity_score < 0.5 -> WEAK_ANALOGY."""
 
     async def test_weak_analogy_in_middle(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.4,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -105,33 +139,51 @@ class TestWeakAnalogy:
         assert len(transfers) == 0
 
     async def test_weak_analogy_at_lower_boundary(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.3,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
         assert maps[0].verdict == AnalogyVerdict.WEAK_ANALOGY
 
     async def test_weak_analogy_at_upper_boundary_exclusive(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         """0.5 is STRONG, not WEAK (boundary belongs to STRONG)."""
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.49,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert maps[0].verdict == AnalogyVerdict.WEAK_ANALOGY
@@ -141,16 +193,25 @@ class TestNoAnalogy:
     """Candidates with similarity_score < 0.3 -> NO_ANALOGY."""
 
     async def test_no_analogy_below_threshold(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.15,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 1
@@ -160,32 +221,50 @@ class TestNoAnalogy:
         assert len(transfers) == 0
 
     async def test_no_analogy_at_zero(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.0,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert maps[0].verdict == AnalogyVerdict.NO_ANALOGY
 
     async def test_no_analogy_at_upper_boundary_exclusive(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         """0.3 is WEAK, not NO_ANALOGY (boundary belongs to WEAK)."""
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.29,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert maps[0].verdict == AnalogyVerdict.NO_ANALOGY
@@ -195,16 +274,25 @@ class TestTransferGeneration:
     """Transfer opportunities are generated only for STRONG analogies."""
 
     async def test_generates_transfer_for_strong(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.7,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(transfers) == 1
@@ -221,52 +309,81 @@ class TestTransferGeneration:
         assert t.from_claim_refs == candidate.left_claim_refs
 
     async def test_no_transfer_for_weak(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.4,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(transfers) == 0
 
     async def test_no_transfer_for_no_analogy(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.1,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert len(transfers) == 0
 
     async def test_multiple_strong_generate_multiple_transfers(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidates = [
             make_bridge_candidate(
-                id_gen, left_vault_id, right_vault_id,
+                id_gen,
+                left_vault_id,
+                right_vault_id,
                 similarity_score=0.6,
             ),
             make_bridge_candidate(
-                id_gen, left_vault_id, right_vault_id,
+                id_gen,
+                left_vault_id,
+                right_vault_id,
                 similarity_score=0.8,
             ),
         ]
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            candidates, left_context, right_context,
+            candidates,
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 2
@@ -278,10 +395,15 @@ class TestEmptyCandidates:
     """Empty input should produce empty output."""
 
     async def test_empty_candidates_returns_empty(
-        self, mock_fusion_analyzer, left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        left_context,
+        right_context,
     ):
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [], left_context, right_context,
+            [],
+            left_context,
+            right_context,
         )
 
         assert maps == []
@@ -296,34 +418,53 @@ class TestProblemRelevance:
     """Problem relevance is passed through from candidates to maps/transfers."""
 
     async def test_problem_relevance_passed_through(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.7,
             problem_relevance=0.92,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context, problem="Improve battery life",
+            [candidate],
+            left_context,
+            right_context,
+            problem="Improve battery life",
         )
 
         assert maps[0].problem_relevance == 0.92
         assert transfers[0].problem_relevance == 0.92
 
     async def test_none_problem_relevance_passed_through(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidate = make_bridge_candidate(
-            id_gen, left_vault_id, right_vault_id,
+            id_gen,
+            left_vault_id,
+            right_vault_id,
             similarity_score=0.6,
             problem_relevance=None,
         )
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            [candidate], left_context, right_context,
+            [candidate],
+            left_context,
+            right_context,
         )
 
         assert maps[0].problem_relevance is None
@@ -334,26 +475,39 @@ class TestMixedCandidates:
     """A mix of STRONG, WEAK, and NO_ANALOGY candidates."""
 
     async def test_mixed_verdicts(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidates = [
             make_bridge_candidate(
-                id_gen, left_vault_id, right_vault_id,
+                id_gen,
+                left_vault_id,
+                right_vault_id,
                 similarity_score=0.8,
             ),
             make_bridge_candidate(
-                id_gen, left_vault_id, right_vault_id,
+                id_gen,
+                left_vault_id,
+                right_vault_id,
                 similarity_score=0.4,
             ),
             make_bridge_candidate(
-                id_gen, left_vault_id, right_vault_id,
+                id_gen,
+                left_vault_id,
+                right_vault_id,
                 similarity_score=0.1,
             ),
         ]
 
         maps, transfers, record = await mock_fusion_analyzer.analyze_candidates(
-            candidates, left_context, right_context,
+            candidates,
+            left_context,
+            right_context,
         )
 
         assert len(maps) == 3
@@ -364,18 +518,27 @@ class TestMixedCandidates:
         assert len(transfers) == 1
 
     async def test_call_record_always_present(
-        self, mock_fusion_analyzer, id_gen, left_vault_id, right_vault_id,
-        left_context, right_context,
+        self,
+        mock_fusion_analyzer,
+        id_gen,
+        left_vault_id,
+        right_vault_id,
+        left_context,
+        right_context,
     ):
         candidates = [
             make_bridge_candidate(
-                id_gen, left_vault_id, right_vault_id,
+                id_gen,
+                left_vault_id,
+                right_vault_id,
                 similarity_score=0.6,
             ),
         ]
 
         _, _, record = await mock_fusion_analyzer.analyze_candidates(
-            candidates, left_context, right_context,
+            candidates,
+            left_context,
+            right_context,
         )
 
         assert record.model_name == "mock"

@@ -36,8 +36,7 @@ class ProviderRegistry:
     def providers_with_capability(self, capability: ProviderCapability) -> list[Any]:
         """Return providers that support a given capability."""
         return [
-            p for p in self._providers.values()
-            if capability in p.capabilities and p.is_available()
+            p for p in self._providers.values() if capability in p.capabilities and p.is_available()
         ]
 
     def is_capability_available(self, capability: ProviderCapability) -> bool:
@@ -68,8 +67,8 @@ def build_default_registry(
 ) -> ProviderRegistry:
     """Create a registry pre-populated with the standard providers."""
     from hephaestus.providers.anthropic import AnthropicProvider
-    from hephaestus.providers.openai_provider import OpenAIProvider
     from hephaestus.providers.embeddings import EmbeddingsProvider
+    from hephaestus.providers.openai_provider import OpenAIProvider
 
     registry = ProviderRegistry()
     registry.register(AnthropicProvider(api_key=anthropic_api_key))
@@ -79,6 +78,9 @@ def build_default_registry(
 
 
 __all__ = [
+    "BaseProvider",
+    "ProviderCapability",
     "ProviderRegistry",
+    "ProviderStatus",
     "build_default_registry",
 ]

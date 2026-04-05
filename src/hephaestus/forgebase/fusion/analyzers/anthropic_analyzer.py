@@ -5,6 +5,7 @@ Analogy-specific prompts ask Claude to determine genuine structural
 analogies, map components, identify breaks, and suggest transfers.
 Low temperature (0.1) for analytical precision.
 """
+
 from __future__ import annotations
 
 import json
@@ -132,11 +133,10 @@ class AnthropicFusionAnalyzer(FusionAnalyzer):
 
             try:
                 import anthropic
-            except ImportError:
+            except ImportError as err:
                 raise RuntimeError(
-                    "anthropic SDK not installed. "
-                    "Install it with: pip install anthropic"
-                )
+                    "anthropic SDK not installed. Install it with: pip install anthropic"
+                ) from err
 
             key = self._api_key or os.environ.get("ANTHROPIC_API_KEY", "")
             if not key:
@@ -232,9 +232,7 @@ class AnthropicFusionAnalyzer(FusionAnalyzer):
                     raise
                 continue
 
-        raise RuntimeError(
-            f"LLM call failed after {1 + self._max_retries} attempts: {last_error}"
-        )
+        raise RuntimeError(f"LLM call failed after {1 + self._max_retries} attempts: {last_error}")
 
     # ------------------------------------------------------------------
     # JSON extraction helper
@@ -305,9 +303,7 @@ class AnthropicFusionAnalyzer(FusionAnalyzer):
     ) -> tuple[list[AnalogicalMap], list[TransferOpportunity]]:
         """Parse LLM response into AnalogicalMaps and TransferOpportunities."""
         # Build a lookup for candidate provenance by ID string
-        candidate_lookup: dict[str, BridgeCandidate] = {
-            str(c.candidate_id): c for c in candidates
-        }
+        candidate_lookup: dict[str, BridgeCandidate] = {str(c.candidate_id): c for c in candidates}
 
         maps: list[AnalogicalMap] = []
         transfers: list[TransferOpportunity] = []
@@ -326,31 +322,37 @@ class AnthropicFusionAnalyzer(FusionAnalyzer):
             # Parse component mappings
             mapped_components: list[ComponentMapping] = []
             for comp in item.get("mapped_components", []):
-                mapped_components.append(ComponentMapping(
-                    left_component=comp.get("left_component", ""),
-                    right_component=comp.get("right_component", ""),
-                    left_ref=candidate.left_entity_ref if candidate else None,
-                    right_ref=candidate.right_entity_ref if candidate else None,
-                    mapping_confidence=comp.get("mapping_confidence", 0.0),
-                ))
+                mapped_components.append(
+                    ComponentMapping(
+                        left_component=comp.get("left_component", ""),
+                        right_component=comp.get("right_component", ""),
+                        left_ref=candidate.left_entity_ref if candidate else None,
+                        right_ref=candidate.right_entity_ref if candidate else None,
+                        mapping_confidence=comp.get("mapping_confidence", 0.0),
+                    )
+                )
 
             # Parse constraint mappings
             mapped_constraints: list[ConstraintMapping] = []
             for const in item.get("mapped_constraints", []):
-                mapped_constraints.append(ConstraintMapping(
-                    left_constraint=const.get("left_constraint", ""),
-                    right_constraint=const.get("right_constraint", ""),
-                    preserved=const.get("preserved", True),
-                ))
+                mapped_constraints.append(
+                    ConstraintMapping(
+                        left_constraint=const.get("left_constraint", ""),
+                        right_constraint=const.get("right_constraint", ""),
+                        preserved=const.get("preserved", True),
+                    )
+                )
 
             # Parse analogy breaks
             analogy_breaks: list[AnalogyBreak] = []
             for brk in item.get("analogy_breaks", []):
-                analogy_breaks.append(AnalogyBreak(
-                    description=brk.get("description", ""),
-                    severity=brk.get("severity", "low"),
-                    category=brk.get("category", "structural_mismatch"),
-                ))
+                analogy_breaks.append(
+                    AnalogyBreak(
+                        description=brk.get("description", ""),
+                        severity=brk.get("severity", "low"),
+                        category=brk.get("category", "structural_mismatch"),
+                    )
+                )
 
             amap = AnalogicalMap(
                 map_id=self._id_gen.generate("amap"),
@@ -374,21 +376,23 @@ class AnthropicFusionAnalyzer(FusionAnalyzer):
             # Generate transfer only for STRONG analogies with transfer data
             transfer_data = item.get("transfer")
             if verdict == AnalogyVerdict.STRONG_ANALOGY and transfer_data and candidate:
-                transfers.append(TransferOpportunity(
-                    opportunity_id=self._id_gen.generate("txfr"),
-                    from_vault_id=candidate.left_vault_id,
-                    to_vault_id=candidate.right_vault_id,
-                    mechanism=transfer_data.get("mechanism", ""),
-                    rationale=transfer_data.get("rationale", ""),
-                    caveats=transfer_data.get("caveats", []),
-                    caveat_categories=transfer_data.get("caveat_categories", []),
-                    analogical_map_id=amap.map_id,
-                    confidence=item.get("confidence", 0.0),
-                    problem_relevance=candidate.problem_relevance,
-                    from_page_refs=[candidate.left_entity_ref],
-                    to_page_refs=[candidate.right_entity_ref],
-                    from_claim_refs=candidate.left_claim_refs,
-                ))
+                transfers.append(
+                    TransferOpportunity(
+                        opportunity_id=self._id_gen.generate("txfr"),
+                        from_vault_id=candidate.left_vault_id,
+                        to_vault_id=candidate.right_vault_id,
+                        mechanism=transfer_data.get("mechanism", ""),
+                        rationale=transfer_data.get("rationale", ""),
+                        caveats=transfer_data.get("caveats", []),
+                        caveat_categories=transfer_data.get("caveat_categories", []),
+                        analogical_map_id=amap.map_id,
+                        confidence=item.get("confidence", 0.0),
+                        problem_relevance=candidate.problem_relevance,
+                        from_page_refs=[candidate.left_entity_ref],
+                        to_page_refs=[candidate.right_entity_ref],
+                        from_claim_refs=candidate.left_claim_refs,
+                    )
+                )
 
         return maps, transfers
 
@@ -421,9 +425,7 @@ class AnthropicFusionAnalyzer(FusionAnalyzer):
 
         # Build prompt
         problem_section = (
-            f"## Problem Context\n{problem}"
-            if problem
-            else "No specific problem context provided."
+            f"## Problem Context\n{problem}" if problem else "No specific problem context provided."
         )
 
         user_prompt = USER_PROMPT_TEMPLATE.format(

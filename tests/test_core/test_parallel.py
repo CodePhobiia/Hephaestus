@@ -9,7 +9,6 @@ import pytest
 from hephaestus.core.parallel import (
     ParallelConfig,
     PipelineTimer,
-    TimedResult,
     gather_with_semaphore,
 )
 
@@ -19,6 +18,7 @@ class TestGatherWithSemaphore:
     async def test_basic_parallel(self):
         async def task(n):
             return n * 2
+
         results = await gather_with_semaphore([task(1), task(2), task(3)])
         assert len(results) == 3
         assert all(r.success for r in results)
@@ -29,6 +29,7 @@ class TestGatherWithSemaphore:
         async def task(n):
             await asyncio.sleep(0.01 * (3 - n))  # reverse timing
             return n
+
         results = await gather_with_semaphore([task(1), task(2), task(3)])
         assert [r.value for r in results] == [1, 2, 3]  # original order
 
@@ -36,8 +37,10 @@ class TestGatherWithSemaphore:
     async def test_handles_failure(self):
         async def good():
             return "ok"
+
         async def bad():
             raise ValueError("boom")
+
         results = await gather_with_semaphore([good(), bad(), good()])
         assert results[0].success
         assert not results[1].success
@@ -48,6 +51,7 @@ class TestGatherWithSemaphore:
     async def test_semaphore_limits_concurrency(self):
         active = []
         max_active = [0]
+
         async def task():
             active.append(1)
             if len(active) > max_active[0]:
@@ -55,6 +59,7 @@ class TestGatherWithSemaphore:
             await asyncio.sleep(0.02)
             active.pop()
             return True
+
         cfg = ParallelConfig(max_concurrent=2)
         results = await gather_with_semaphore([task() for _ in range(5)], cfg)
         assert all(r.success for r in results)
@@ -64,6 +69,7 @@ class TestGatherWithSemaphore:
     async def test_timeout(self):
         async def slow():
             await asyncio.sleep(10)
+
         cfg = ParallelConfig(timeout_per_task=0.05)
         results = await gather_with_semaphore([slow()], cfg)
         assert not results[0].success
@@ -78,6 +84,7 @@ class TestGatherWithSemaphore:
         async def task():
             await asyncio.sleep(0.05)
             return True
+
         results = await gather_with_semaphore([task()])
         assert results[0].duration_seconds > 0.04
 
@@ -85,6 +92,7 @@ class TestGatherWithSemaphore:
 class TestPipelineTimer:
     def test_basic_timing(self):
         import time
+
         timer = PipelineTimer()
         timer.start("Decompose")
         time.sleep(0.05)

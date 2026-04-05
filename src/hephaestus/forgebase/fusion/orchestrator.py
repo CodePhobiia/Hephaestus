@@ -7,11 +7,12 @@ Ties together:
 
 Plus: vault validation, context assembly, FusionRun persistence, event emission.
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from itertools import combinations
-from typing import Callable
 
 from hephaestus.forgebase.contracts.fusion import (
     FusionRequest,
@@ -59,14 +60,14 @@ class FusionOrchestrator:
         fusion_analyzer: FusionAnalyzer,
         embedding_index: EmbeddingIndex,
         policy: FusionPolicy | None = None,
-        default_actor: ActorRef = ActorRef.system(),
+        default_actor: ActorRef | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._context_assembler = context_assembler
         self._analyzer = fusion_analyzer
         self._embedding_index = embedding_index
+        self._default_actor = default_actor or ActorRef.system()
         self._policy = policy or DEFAULT_FUSION_POLICY
-        self._default_actor = default_actor
 
     async def fuse(self, request: FusionRequest) -> FusionResult:
         """Execute full fusion pipeline."""
@@ -76,9 +77,7 @@ class FusionOrchestrator:
         # 1. Validate request
         # ------------------------------------------------------------------
         if len(request.vault_ids) < 2:
-            raise ValueError(
-                f"Fusion requires at least 2 vaults, got {len(request.vault_ids)}"
-            )
+            raise ValueError(f"Fusion requires at least 2 vaults, got {len(request.vault_ids)}")
 
         # Validate that all vaults exist
         uow = self._uow_factory()
@@ -134,7 +133,10 @@ class FusionOrchestrator:
                 left_context = vault_packs[left_id][1]  # DomainContextPack
                 right_context = vault_packs[right_id][1]
                 maps, transfers, call_record = await self._analyzer.analyze_candidates(
-                    candidates, left_context, right_context, request.problem,
+                    candidates,
+                    left_context,
+                    right_context,
+                    request.problem,
                 )
                 all_analyzer_calls.append(call_record)
 
@@ -149,14 +151,16 @@ class FusionOrchestrator:
                     transfer_count=len(transfers),
                     analyzer_calls=[call_record],
                 )
-                pair_results.append(PairFusionResult(
-                    left_vault_id=left_id,
-                    right_vault_id=right_id,
-                    candidates_generated=len(candidates),
-                    maps_produced=maps,
-                    transfers_produced=transfers,
-                    pair_manifest=pair_manifest,
-                ))
+                pair_results.append(
+                    PairFusionResult(
+                        left_vault_id=left_id,
+                        right_vault_id=right_id,
+                        candidates_generated=len(candidates),
+                        maps_produced=maps,
+                        transfers_produced=transfers,
+                        pair_manifest=pair_manifest,
+                    )
+                )
 
             # ------------------------------------------------------------------
             # 4. Stage 3: synthesize fusion result
@@ -203,21 +207,23 @@ class FusionOrchestrator:
                 # ------------------------------------------------------------------
                 # 6. Emit fusion.completed event
                 # ------------------------------------------------------------------
-                uow2.record_event(uow2.event_factory.create(
-                    event_type="fusion.completed",
-                    aggregate_type="fusion_run",
-                    aggregate_id=fusion_run.fusion_run_id,
-                    vault_id=request.vault_ids[0],  # primary vault
-                    payload={
-                        "vault_ids": [str(v) for v in request.vault_ids],
-                        "bridge_count": fusion_run.bridge_count,
-                        "transfer_count": fusion_run.transfer_count,
-                        "manifest_id": str(result.fusion_manifest.manifest_id),
-                        "fusion_mode": request.fusion_mode.value,
-                        "problem": request.problem,
-                    },
-                    actor=self._default_actor,
-                ))
+                uow2.record_event(
+                    uow2.event_factory.create(
+                        event_type="fusion.completed",
+                        aggregate_type="fusion_run",
+                        aggregate_id=fusion_run.fusion_run_id,
+                        vault_id=request.vault_ids[0],  # primary vault
+                        payload={
+                            "vault_ids": [str(v) for v in request.vault_ids],
+                            "bridge_count": fusion_run.bridge_count,
+                            "transfer_count": fusion_run.transfer_count,
+                            "manifest_id": str(result.fusion_manifest.manifest_id),
+                            "fusion_mode": request.fusion_mode.value,
+                            "problem": request.problem,
+                        },
+                        actor=self._default_actor,
+                    )
+                )
                 await uow2.commit()
 
             logger.info(
@@ -250,18 +256,20 @@ class FusionOrchestrator:
                     )
                     await uow_err.fusion_runs.create(fusion_run)
 
-                    uow_err.record_event(uow_err.event_factory.create(
-                        event_type="fusion.failed",
-                        aggregate_type="fusion_run",
-                        aggregate_id=fusion_run.fusion_run_id,
-                        vault_id=request.vault_ids[0],
-                        payload={
-                            "vault_ids": [str(v) for v in request.vault_ids],
-                            "fusion_mode": request.fusion_mode.value,
-                            "problem": request.problem,
-                        },
-                        actor=self._default_actor,
-                    ))
+                    uow_err.record_event(
+                        uow_err.event_factory.create(
+                            event_type="fusion.failed",
+                            aggregate_type="fusion_run",
+                            aggregate_id=fusion_run.fusion_run_id,
+                            vault_id=request.vault_ids[0],
+                            payload={
+                                "vault_ids": [str(v) for v in request.vault_ids],
+                                "fusion_mode": request.fusion_mode.value,
+                                "problem": request.problem,
+                            },
+                            actor=self._default_actor,
+                        )
+                    )
                     await uow_err.commit()
             except Exception:
                 logger.exception("Failed to persist failed FusionRun")

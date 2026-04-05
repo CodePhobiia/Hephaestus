@@ -7,11 +7,11 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
-from hephaestus.tools.mcp.protocol import ProtocolEngine, JSONRPCNotification
-from hephaestus.tools.mcp.health import MCPHealthTracker, MCPServerState
+from hephaestus.tools.mcp.health import MCPHealthTracker
+from hephaestus.tools.mcp.protocol import ProtocolEngine
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +49,18 @@ class MCPError(Exception):
         super().__init__(message)
 
 
-class MCPClientState(str, Enum):
+class MCPClientState(StrEnum):
     """Lifecycle state of an MCP client connection."""
+
     STARTING = "starting"
     READY = "ready"
     DEGRADED = "degraded"
     STOPPED = "stopped"
 
 
-import os
+import contextlib  # noqa: E402
+import os  # noqa: E402
+
 
 class MCPClient:
     """Communicates with a single MCP server over stdio using JSON-RPC 2.0."""
@@ -101,7 +104,14 @@ class MCPClient:
         if self._health:
             self._health.register(self.config.name)
 
-        env = os.environ.copy()
+        # Filter secrets from the inherited environment to avoid leaking API keys
+        # to MCP server subprocesses. Only pass through non-sensitive vars.
+        secret_patterns = {"API_KEY", "SECRET", "TOKEN", "PASSWORD", "CREDENTIAL"}
+        env = {
+            k: v for k, v in os.environ.items()
+            if not any(pat in k.upper() for pat in secret_patterns)
+        }
+        # Explicitly merge any env vars declared in the MCP server config
         if self.config.env:
             env.update(self.config.env)
 
@@ -113,15 +123,18 @@ class MCPClient:
             stderr=asyncio.subprocess.PIPE,
             env=env,
         )
-        
+
         self._reader_task = asyncio.create_task(self._read_pump())
         self._stderr_task = asyncio.create_task(self._stderr_pump())
 
-        result = await self._send_request("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "hephaestus", "version": "0.1.0"},
-        })
+        result = await self._send_request(
+            "initialize",
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "hephaestus", "version": "0.1.0"},
+            },
+        )
 
         # Negotiate version if server provides one
         server_version = result.get("protocolVersion", "2024-11-05")
@@ -142,22 +155,27 @@ class MCPClient:
         result = await self._send_request("tools/list", {})
         tools: list[MCPTool] = []
         for entry in result.get("tools", []):
-            tools.append(MCPTool(
-                server_name=self.config.name,
-                tool_name=entry["name"],
-                description=entry.get("description", ""),
-                input_schema=entry.get("inputSchema", {}),
-            ))
+            tools.append(
+                MCPTool(
+                    server_name=self.config.name,
+                    tool_name=entry["name"],
+                    description=entry.get("description", ""),
+                    input_schema=entry.get("inputSchema", {}),
+                )
+            )
         return tools
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Invoke a tool on the server and return the text result."""
         start = time.monotonic()
         try:
-            result = await self._send_request("tools/call", {
-                "name": tool_name,
-                "arguments": arguments,
-            })
+            result = await self._send_request(
+                "tools/call",
+                {
+                    "name": tool_name,
+                    "arguments": arguments,
+                },
+            )
             latency_ms = (time.monotonic() - start) * 1000
             if self._health:
                 self._health.record_success(self.config.name, latency_ms)
@@ -184,25 +202,23 @@ class MCPClient:
         try:
             if self.is_running:
                 await self._send_request("shutdown", {})
-        except (MCPError, asyncio.TimeoutError, OSError, RuntimeError):
+        except (TimeoutError, MCPError, OSError, RuntimeError):
             pass
         finally:
             if self._reader_task:
                 self._reader_task.cancel()
             if self._stderr_task:
                 self._stderr_task.cancel()
-            
+
             if self._process.stdin:
                 self._process.stdin.close()
-                
+
             try:
                 self._process.terminate()
                 await asyncio.wait_for(self._process.wait(), timeout=5)
-            except (asyncio.TimeoutError, ProcessLookupError, OSError):
-                try:
+            except (TimeoutError, ProcessLookupError, OSError):
+                with contextlib.suppress(OSError):
                     self._process.kill()
-                except OSError:
-                    pass
             self._process = None
 
             if self._health:
@@ -220,7 +236,7 @@ class MCPClient:
     def _next_id(self) -> int:
         self._request_id += 1
         return self._request_id
-        
+
     async def _stderr_pump(self) -> None:
         """Drain stderr to prevent blocking."""
         if not self._process or not self._process.stderr:
@@ -237,7 +253,7 @@ class MCPClient:
         """Continuously read stdout and route JSON-RPC frames via the protocol engine."""
         if not self._process or not self._process.stdout:
             return
-            
+
         try:
             while True:
                 line = await self._process.stdout.readline()
@@ -251,6 +267,7 @@ class MCPClient:
                 # Notifications are auto-dispatched by the protocol engine.
                 # Responses need to be correlated to pending futures.
                 from hephaestus.tools.mcp.protocol import JSONRPCResponse
+
                 if isinstance(frame, JSONRPCResponse) and frame.id is not None:
                     req_id = frame.id
                     if req_id in self._pending_requests:
@@ -284,18 +301,18 @@ class MCPClient:
             "method": method,
             "params": params,
         }
-        
+
         loop = asyncio.get_running_loop()
         future = loop.create_future()
         self._pending_requests[req_id] = future
-        
+
         try:
             line = json.dumps(request) + "\n"
             self._process.stdin.write(line.encode())
             await self._process.stdin.drain()
 
             response = await asyncio.wait_for(future, timeout=self.config.timeout_seconds)
-            
+
             if "error" in response:
                 err = response["error"]
                 raise MCPError(err.get("code", -1), err.get("message", "Unknown error"))
@@ -310,7 +327,9 @@ class MCPClient:
             try:
                 await asyncio.sleep(self._heartbeat_interval)
                 if not self.is_running:
-                    logger.warning("MCP server %s process died, stopping heartbeat", self.config.name)
+                    logger.warning(
+                        "MCP server %s process died, stopping heartbeat", self.config.name
+                    )
                     self._state = MCPClientState.STOPPED
                     if self._health:
                         self._health.mark_stopped(self.config.name)
@@ -320,7 +339,7 @@ class MCPClient:
                         self._send_request("ping", {}),
                         timeout=min(10.0, self._heartbeat_interval / 2),
                     )
-                except (MCPError, asyncio.TimeoutError):
+                except (TimeoutError, MCPError):
                     self._state = MCPClientState.DEGRADED
                     logger.warning("MCP server %s heartbeat failed", self.config.name)
             except asyncio.CancelledError:

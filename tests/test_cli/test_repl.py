@@ -10,10 +10,7 @@ Tests cover:
 
 from __future__ import annotations
 
-import asyncio
 import json
-import os
-import time
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -124,8 +121,12 @@ def _make_cost_breakdown() -> MagicMock:
     cb.verification_cost = 0.15
     cb.total = 0.92
     cb.to_dict = lambda: {
-        "decomposition": 0.15, "search": 0.12, "scoring": 0.05,
-        "translation": 0.45, "verification": 0.15, "total": 0.92,
+        "decomposition": 0.15,
+        "search": 0.12,
+        "scoring": 0.05,
+        "translation": 0.45,
+        "verification": 0.15,
+        "total": 0.92,
     }
     return cb
 
@@ -212,6 +213,7 @@ def _lens_engine_state() -> LensEngineState:
 
 def _make_config(**overrides: Any) -> Any:
     from hephaestus.cli.config import HephaestusConfig
+
     defaults = {
         "backend": "api",
         "default_model": "claude-sonnet-4-6",
@@ -228,6 +230,7 @@ def _make_config(**overrides: Any) -> Any:
 
 def _make_session(**overrides: Any) -> Any:
     from hephaestus.cli.repl import SessionState
+
     cfg = _make_config(**overrides)
     return SessionState(config=cfg)
 
@@ -251,20 +254,15 @@ def _make_workspace_context(tmp_path: Path) -> Any:
     (package / "cli" / "__init__.py").write_text("", encoding="utf-8")
     (package / "core" / "__init__.py").write_text("", encoding="utf-8")
     (package / "cli" / "main.py").write_text(
-        "from demo.core.engine import run_engine\n\n"
-        "def main() -> str:\n"
-        "    return run_engine()\n",
+        "from demo.core.engine import run_engine\n\ndef main() -> str:\n    return run_engine()\n",
         encoding="utf-8",
     )
     (package / "core" / "engine.py").write_text(
-        "def run_engine() -> str:\n"
-        "    return 'ok'\n",
+        "def run_engine() -> str:\n    return 'ok'\n",
         encoding="utf-8",
     )
     (tmp_path / "tests" / "test_cli" / "test_main.py").write_text(
-        "from demo.cli.main import main\n\n"
-        "def test_main() -> None:\n"
-        "    assert main() == 'ok'\n",
+        "from demo.cli.main import main\n\ndef test_main() -> None:\n    assert main() == 'ok'\n",
         encoding="utf-8",
     )
     (tmp_path / "README.md").write_text("# Demo\n", encoding="utf-8")
@@ -290,6 +288,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_help(self) -> None:
         from hephaestus.cli.repl import _cmd_help
+
         console = _console()
         state = _make_session()
         await _cmd_help(console, state, "")
@@ -302,6 +301,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_status(self) -> None:
         from hephaestus.cli.repl import _cmd_status
+
         console = _console()
         state = _make_session()
         await _cmd_status(console, state, "")
@@ -342,6 +342,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_model_show(self) -> None:
         from hephaestus.cli.repl import _cmd_model
+
         console = _console()
         state = _make_session()
         await _cmd_model(console, state, "")
@@ -350,6 +351,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_model_set(self) -> None:
         from hephaestus.cli.repl import _cmd_model
+
         console = _console()
         state = _make_session()
         await _cmd_model(console, state, "claude-opus-4-6")
@@ -358,6 +360,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_backend_show(self) -> None:
         from hephaestus.cli.repl import _cmd_backend
+
         console = _console()
         state = _make_session()
         await _cmd_backend(console, state, "")
@@ -366,6 +369,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_backend_set_valid(self) -> None:
         from hephaestus.cli.repl import _cmd_backend
+
         console = _console()
         state = _make_session()
         await _cmd_backend(console, state, "claude-max")
@@ -374,6 +378,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_backend_set_invalid(self) -> None:
         from hephaestus.cli.repl import _cmd_backend
+
         console = _console()
         state = _make_session()
         await _cmd_backend(console, state, "nonexistent")
@@ -382,6 +387,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_cost_no_report(self) -> None:
         from hephaestus.cli.repl import _cmd_cost
+
         console = _console()
         state = _make_session()
         await _cmd_cost(console, state, "")
@@ -390,6 +396,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_clear(self) -> None:
         from hephaestus.cli.repl import _cmd_clear
+
         console = _console()
         state = _make_session()
         state.context_items = ["some context"]
@@ -401,6 +408,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_candidates_show(self) -> None:
         from hephaestus.cli.repl import _cmd_candidates
+
         console = _console()
         state = _make_session()
         await _cmd_candidates(console, state, "")
@@ -409,6 +417,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_candidates_set(self) -> None:
         from hephaestus.cli.repl import _cmd_candidates
+
         console = _console()
         state = _make_session()
         await _cmd_candidates(console, state, "12")
@@ -417,6 +426,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_candidates_invalid(self) -> None:
         from hephaestus.cli.repl import _cmd_candidates
+
         console = _console()
         state = _make_session()
         await _cmd_candidates(console, state, "99")
@@ -425,6 +435,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_context_add(self) -> None:
         from hephaestus.cli.repl import _cmd_context
+
         console = _console()
         state = _make_session()
         await _cmd_context(console, state, "add must work offline")
@@ -434,6 +445,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_context_clear(self) -> None:
         from hephaestus.cli.repl import _cmd_context
+
         console = _console()
         state = _make_session()
         state.context_items = ["item1", "item2"]
@@ -443,6 +455,7 @@ class TestCoreCommands:
     @pytest.mark.asyncio
     async def test_cmd_context_show(self) -> None:
         from hephaestus.cli.repl import _cmd_context
+
         console = _console()
         state = _make_session()
         state.context_items = ["domain knowledge here"]
@@ -473,7 +486,8 @@ class TestCoreCommands:
 
 class TestInventionCommands:
     def _state_with_invention(self) -> Any:
-        from hephaestus.cli.repl import SessionState, InventionEntry
+        from hephaestus.cli.repl import InventionEntry
+
         state = _make_session()
         report = _make_report()
         entry = InventionEntry(problem="test problem", report=report)
@@ -484,6 +498,7 @@ class TestInventionCommands:
     @pytest.mark.asyncio
     async def test_cmd_alternatives(self) -> None:
         from hephaestus.cli.repl import _cmd_alternatives
+
         console = _console()
         state = self._state_with_invention()
         await _cmd_alternatives(console, state, "")
@@ -493,6 +508,7 @@ class TestInventionCommands:
     @pytest.mark.asyncio
     async def test_cmd_alternatives_no_report(self) -> None:
         from hephaestus.cli.repl import _cmd_alternatives
+
         console = _console()
         state = _make_session()
         await _cmd_alternatives(console, state, "")
@@ -501,6 +517,7 @@ class TestInventionCommands:
     @pytest.mark.asyncio
     async def test_cmd_trace(self) -> None:
         from hephaestus.cli.repl import _cmd_trace
+
         console = _console()
         state = self._state_with_invention()
         await _cmd_trace(console, state, "")
@@ -509,6 +526,7 @@ class TestInventionCommands:
     @pytest.mark.asyncio
     async def test_cmd_usage_with_invention(self) -> None:
         from hephaestus.cli.repl import _cmd_usage
+
         console = _console()
         state = self._state_with_invention()
         state.total_cost_usd = 0.92
@@ -541,7 +559,8 @@ class TestWorkspaceCommands:
 
 class TestPersistence:
     def _state_with_invention(self, auto_save: bool = False) -> Any:
-        from hephaestus.cli.repl import SessionState, InventionEntry
+        from hephaestus.cli.repl import InventionEntry
+
         state = _make_session(auto_save=auto_save)
         report = _make_report()
         entry = InventionEntry(problem="test trust problem", report=report)
@@ -551,8 +570,8 @@ class TestPersistence:
 
     @pytest.mark.asyncio
     async def test_cmd_save(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _cmd_save
         from hephaestus.cli import config as config_mod
+        from hephaestus.cli.repl import _cmd_save
 
         monkeypatch.setattr(config_mod, "INVENTIONS_DIR", tmp_path / "inventions")
         monkeypatch.setattr(config_mod, "SESSIONS_DIR", tmp_path / "sessions")
@@ -560,6 +579,7 @@ class TestPersistence:
 
         # Also patch in repl module
         from hephaestus.cli import repl as repl_mod
+
         monkeypatch.setattr(repl_mod, "INVENTIONS_DIR", tmp_path / "inventions")
         monkeypatch.setattr(repl_mod, "SESSIONS_DIR", tmp_path / "sessions")
 
@@ -585,6 +605,7 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_save_no_invention(self) -> None:
         from hephaestus.cli.repl import _cmd_save
+
         console = _console()
         state = _make_session()
         await _cmd_save(console, state, "")
@@ -593,6 +614,7 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_load_not_found(self) -> None:
         from hephaestus.cli.repl import _cmd_load
+
         console = _console()
         state = _make_session()
         await _cmd_load(console, state, "nonexistent-12345")
@@ -602,16 +624,19 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_load_no_args(self) -> None:
         from hephaestus.cli.repl import _cmd_load
+
         console = _console()
         state = _make_session()
         await _cmd_load(console, state, "")
         assert "Usage" in _get_output(console)
 
     @pytest.mark.asyncio
-    async def test_cmd_load_json_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _cmd_load
+    async def test_cmd_load_json_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import _cmd_load
 
         inv_dir = tmp_path / "inventions"
         inv_dir.mkdir()
@@ -621,8 +646,17 @@ class TestPersistence:
         # Write a test invention file
         test_data = {
             "problem": "loaded problem",
-            "top_invention": {"name": "Loaded Invention", "source_domain": "Biology", "novelty_score": 0.85},
-            "_meta": {"problem": "loaded problem", "timestamp": 1234567890.0, "refined": False, "slug": "loaded"},
+            "top_invention": {
+                "name": "Loaded Invention",
+                "source_domain": "Biology",
+                "novelty_score": 0.85,
+            },
+            "_meta": {
+                "problem": "loaded problem",
+                "timestamp": 1234567890.0,
+                "refined": False,
+                "slug": "loaded",
+            },
         }
         test_file = inv_dir / "2026-03-31-loaded.json"
         test_file.write_text(json.dumps(test_data))
@@ -639,9 +673,9 @@ class TestPersistence:
     async def test_cmd_load_explicit_path_activates_invention(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from hephaestus.cli.repl import _cmd_load
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import _cmd_load
 
         inv_dir = tmp_path / "inventions"
         inv_dir.mkdir()
@@ -652,8 +686,17 @@ class TestPersistence:
             "problem": "loaded via path",
             "native_domain": "biology",
             "mathematical_shape": "feedback loop",
-            "top_invention": {"name": "Path Load", "source_domain": "Biology", "novelty_score": 0.81},
-            "_meta": {"problem": "loaded via path", "timestamp": 1234567890.0, "refined": False, "slug": "path-load"},
+            "top_invention": {
+                "name": "Path Load",
+                "source_domain": "Biology",
+                "novelty_score": 0.81,
+            },
+            "_meta": {
+                "problem": "loaded via path",
+                "timestamp": 1234567890.0,
+                "refined": False,
+                "slug": "path-load",
+            },
         }
         test_file = inv_dir / "2026-03-31-path-load.json"
         test_file.write_text(json.dumps(test_data))
@@ -673,7 +716,11 @@ class TestPersistence:
             "problem": "loaded via helper",
             "native_domain": "biology",
             "mathematical_shape": "feedback loop",
-            "top_invention": {"name": "Helper Load", "source_domain": "Biology", "novelty_score": 0.81},
+            "top_invention": {
+                "name": "Helper Load",
+                "source_domain": "Biology",
+                "novelty_score": 0.81,
+            },
             "lens_engine": _lens_engine_state().to_dict(),
             "pantheon": {
                 "mode": "pantheon",
@@ -691,10 +738,12 @@ class TestPersistence:
         assert report.pantheon_state.final_verdict == "NOVEL"
 
     @pytest.mark.asyncio
-    async def test_cmd_load_session_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _cmd_load
+    async def test_cmd_load_session_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import _cmd_load
 
         sess_dir = tmp_path / "sessions"
         sess_dir.mkdir()
@@ -735,6 +784,7 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_history_empty(self) -> None:
         from hephaestus.cli.repl import _cmd_history_v2
+
         console = _console()
         state = _make_session()
         await _cmd_history_v2(console, state, "")
@@ -744,6 +794,7 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_history_with_inventions(self) -> None:
         from hephaestus.cli.repl import _cmd_history_v2
+
         console = _console()
         state = self._state_with_invention()
         await _cmd_history_v2(console, state, "")
@@ -753,6 +804,7 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_history_search(self) -> None:
         from hephaestus.cli.repl import _cmd_history_v2
+
         console = _console()
         state = self._state_with_invention()
         await _cmd_history_v2(console, state, "trust")
@@ -762,6 +814,7 @@ class TestPersistence:
     @pytest.mark.asyncio
     async def test_cmd_history_search_no_match(self) -> None:
         from hephaestus.cli.repl import _cmd_history_v2
+
         console = _console()
         state = self._state_with_invention()
         await _cmd_history_v2(console, state, "zzzznotfound")
@@ -771,7 +824,8 @@ class TestPersistence:
 class TestCompare:
     @pytest.mark.asyncio
     async def test_compare_needs_two(self) -> None:
-        from hephaestus.cli.repl import _cmd_compare, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _cmd_compare
+
         console = _console()
         state = _make_session()
         # Only one invention
@@ -783,7 +837,8 @@ class TestCompare:
 
     @pytest.mark.asyncio
     async def test_compare_two_inventions(self) -> None:
-        from hephaestus.cli.repl import _cmd_compare, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _cmd_compare
+
         console = _console()
         state = _make_session()
 
@@ -803,7 +858,7 @@ class TestCompare:
 class TestExportAndMenu:
     @pytest.mark.asyncio
     async def test_cmd_export_invalid_format(self) -> None:
-        from hephaestus.cli.repl import _cmd_export_v2, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _cmd_export_v2
 
         console = _console()
         state = _make_session()
@@ -818,7 +873,7 @@ class TestExportAndMenu:
     @pytest.mark.asyncio
     async def test_handle_menu_choice_chat(self) -> None:
         from hephaestus.cli import repl as repl_mod
-        from hephaestus.cli.repl import _handle_menu_choice, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _handle_menu_choice
 
         console = _console()
         state = _make_session()
@@ -843,9 +898,9 @@ class TestExportAndMenu:
 
 class TestAutoSave:
     def test_auto_save_creates_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _auto_save_invention, InventionEntry
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import InventionEntry, _auto_save_invention
 
         inv_dir = tmp_path / "inventions"
         monkeypatch.setattr(config_mod, "INVENTIONS_DIR", inv_dir)
@@ -877,10 +932,12 @@ class TestAutoSave:
         md_content = md_path.read_text()
         assert "Immune Trust Protocol" in md_content
 
-    def test_auto_save_unique_filenames(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _auto_save_invention, InventionEntry
+    def test_auto_save_unique_filenames(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import InventionEntry, _auto_save_invention
 
         inv_dir = tmp_path / "inventions"
         monkeypatch.setattr(config_mod, "INVENTIONS_DIR", inv_dir)
@@ -903,9 +960,9 @@ class TestAutoSave:
 
 class TestSessionReplay:
     def test_save_session_replay(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _save_session_replay, InventionEntry
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import InventionEntry, _save_session_replay
 
         sess_dir = tmp_path / "sessions"
         monkeypatch.setattr(config_mod, "SESSIONS_DIR", sess_dir)
@@ -941,16 +998,17 @@ class TestSessionReplay:
 
 class TestOnboarding:
     def test_detect_backends(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        from hephaestus.cli.config import _detect_claude_max, _detect_claude_cli
         import json
+
+        from hephaestus.cli.config import _detect_claude_max
 
         # Test with a fake auth-profiles store containing an OAT token
         store_path = tmp_path / ".openclaw" / "agents" / "main" / "agent"
         store_path.mkdir(parents=True)
         store_file = store_path / "auth-profiles.json"
-        store_file.write_text(json.dumps({
-            "profiles": {"anthropic:default": {"token": "sk-ant-oat01-test"}}
-        }))
+        store_file.write_text(
+            json.dumps({"profiles": {"anthropic:default": {"token": "sk-ant-oat01-test"}}})
+        )
         monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
         assert _detect_claude_max() is True
 
@@ -959,16 +1017,16 @@ class TestOnboarding:
         assert _detect_claude_max() is False
 
     def test_load_config_missing(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.config import load_config
         from hephaestus.cli import config as config_mod
+        from hephaestus.cli.config import load_config
 
         monkeypatch.setattr(config_mod, "CONFIG_PATH", tmp_path / "nonexistent.yaml")
         result = load_config()
         assert result is None
 
     def test_load_config_existing(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.config import load_config, save_config, HephaestusConfig
         from hephaestus.cli import config as config_mod
+        from hephaestus.cli.config import HephaestusConfig, load_config, save_config
 
         config_path = tmp_path / "config.yaml"
         monkeypatch.setattr(config_mod, "CONFIG_PATH", config_path)
@@ -995,6 +1053,7 @@ class TestOnboarding:
 class TestTabCompletion:
     def test_command_completer(self) -> None:
         from hephaestus.cli.repl import _CommandCompleter
+
         completer = _CommandCompleter(["/help", "/history", "/save", "/status"])
 
         # Completing "/h" should match /help and /history
@@ -1008,6 +1067,7 @@ class TestTabCompletion:
 
     def test_command_completer_exact(self) -> None:
         from hephaestus.cli.repl import _CommandCompleter
+
         completer = _CommandCompleter(["/help", "/history", "/save"])
 
         assert completer.complete("/s", 0) == "/save"
@@ -1015,6 +1075,7 @@ class TestTabCompletion:
 
     def test_command_completer_no_slash(self) -> None:
         from hephaestus.cli.repl import _CommandCompleter
+
         completer = _CommandCompleter(["/help", "/save"])
         assert completer.complete("hello", 0) is None
 
@@ -1022,9 +1083,9 @@ class TestTabCompletion:
 class TestExportPdf:
     @pytest.mark.asyncio
     async def test_export_markdown(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _cmd_export_v2, InventionEntry
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import InventionEntry, _cmd_export_v2
 
         inv_dir = tmp_path / "inventions"
         monkeypatch.setattr(config_mod, "INVENTIONS_DIR", inv_dir)
@@ -1045,9 +1106,9 @@ class TestExportPdf:
 
     @pytest.mark.asyncio
     async def test_export_json(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _cmd_export_v2, InventionEntry
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import InventionEntry, _cmd_export_v2
 
         inv_dir = tmp_path / "inventions"
         monkeypatch.setattr(config_mod, "INVENTIONS_DIR", inv_dir)
@@ -1067,11 +1128,13 @@ class TestExportPdf:
         assert len(json_files) >= 1
 
     @pytest.mark.asyncio
-    async def test_export_pdf_fallback(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_export_pdf_fallback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """PDF export falls back to markdown if weasyprint not installed."""
-        from hephaestus.cli.repl import _cmd_export_v2, InventionEntry
         from hephaestus.cli import config as config_mod
         from hephaestus.cli import repl as repl_mod
+        from hephaestus.cli.repl import InventionEntry, _cmd_export_v2
 
         inv_dir = tmp_path / "inventions"
         monkeypatch.setattr(config_mod, "INVENTIONS_DIR", inv_dir)
@@ -1094,6 +1157,7 @@ class TestExportPdf:
     @pytest.mark.asyncio
     async def test_export_no_invention(self) -> None:
         from hephaestus.cli.repl import _cmd_export_v2
+
         console = _console()
         state = _make_session()
         await _cmd_export_v2(console, state, "markdown")
@@ -1101,6 +1165,7 @@ class TestExportPdf:
 
     def test_md_to_simple_html(self) -> None:
         from hephaestus.cli.repl import _md_to_simple_html
+
         md = "# Title\n\n## Section\n\n- item 1\n- item 2\n\nParagraph.\n\n```\ncode block\n```"
         html = _md_to_simple_html(md)
         assert "<h1>Title</h1>" in html
@@ -1117,7 +1182,8 @@ class TestExportPdf:
 
 class TestInventionMarkdown:
     def test_invention_to_markdown(self) -> None:
-        from hephaestus.cli.repl import _invention_to_markdown, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _invention_to_markdown
+
         report = _make_report()
         entry = InventionEntry(problem="md test problem", report=report)
         md = _invention_to_markdown(entry, report)
@@ -1136,7 +1202,6 @@ class TestInventionMarkdown:
 
 class TestSessionState:
     def test_add_invention(self) -> None:
-        from hephaestus.cli.repl import SessionState, InventionEntry
         state = _make_session()
         report = _make_report()
         state.add_invention("test", report)
@@ -1159,6 +1224,7 @@ class TestSessionState:
 
     def test_slug_generation(self) -> None:
         from hephaestus.cli.repl import InventionEntry
+
         entry = InventionEntry(problem="I need a load balancer for traffic", report=MagicMock())
         slug = entry.slug
         assert slug
@@ -1175,17 +1241,36 @@ class TestSessionState:
 class TestCommandRegistry:
     def test_all_commands_registered(self) -> None:
         from hephaestus.cli.repl import COMMANDS
+
         required = [
-            "help", "status", "history", "model", "backend", "usage",
-            "cost", "clear", "quit", "exit", "alternatives", "trace",
-            "export", "candidates", "refine", "domain", "deeper", "context",
-            "save", "load", "compare",
+            "help",
+            "status",
+            "history",
+            "model",
+            "backend",
+            "usage",
+            "cost",
+            "clear",
+            "quit",
+            "exit",
+            "alternatives",
+            "trace",
+            "export",
+            "candidates",
+            "refine",
+            "domain",
+            "deeper",
+            "context",
+            "save",
+            "load",
+            "compare",
         ]
         for cmd in required:
             assert cmd in COMMANDS, f"/{cmd} not registered"
 
     def test_all_command_list_for_tab_completion(self) -> None:
         from hephaestus.cli.repl import ALL_COMMANDS
+
         assert "/save" in ALL_COMMANDS
         assert "/load" in ALL_COMMANDS
         assert "/compare" in ALL_COMMANDS
@@ -1203,6 +1288,7 @@ class TestReplLoop:
     async def test_quit_command(self) -> None:
         """Sending /quit should raise SystemExit."""
         from hephaestus.cli.repl import _cmd_quit
+
         console = _console()
         state = _make_session()
         with pytest.raises(SystemExit):
@@ -1211,7 +1297,8 @@ class TestReplLoop:
     @pytest.mark.asyncio
     async def test_menu_choice_1(self) -> None:
         """Menu choice 1 shows full report."""
-        from hephaestus.cli.repl import _handle_menu_choice, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _handle_menu_choice
+
         console = _console()
         state = _make_session()
         report = _make_report()
@@ -1224,7 +1311,8 @@ class TestReplLoop:
     @pytest.mark.asyncio
     async def test_menu_choice_4_resets(self) -> None:
         """Menu choice 4 resets for new problem."""
-        from hephaestus.cli.repl import _handle_menu_choice, InventionEntry
+        from hephaestus.cli.repl import InventionEntry, _handle_menu_choice
+
         console = _console()
         state = _make_session()
         state.context_items = ["old context"]
@@ -1239,8 +1327,8 @@ class TestReplLoop:
 
     @pytest.mark.asyncio
     async def test_menu_choice_7_launches_agent_chat(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from hephaestus.cli.repl import _handle_menu_choice, InventionEntry
         import hephaestus.cli.repl as repl_module
+        from hephaestus.cli.repl import InventionEntry, _handle_menu_choice
 
         called = {"chat": False}
 
@@ -1262,6 +1350,7 @@ class TestReplLoop:
     @pytest.mark.asyncio
     async def test_unknown_menu_not_handled(self) -> None:
         from hephaestus.cli.repl import _handle_menu_choice
+
         console = _console()
         state = _make_session()
         handled = await _handle_menu_choice(console, state, "9")
@@ -1270,7 +1359,9 @@ class TestReplLoop:
 
 class TestWorkspaceAwarePipeline:
     @pytest.mark.asyncio
-    async def test_run_pipeline_injects_workspace_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_run_pipeline_injects_workspace_context(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import hephaestus.cli.main as main_module
         import hephaestus.cli.repl as repl_module
         import hephaestus.core.genesis as genesis_module
@@ -1289,16 +1380,22 @@ class TestWorkspaceAwarePipeline:
                     data=_make_report(problem=problem),
                 )
 
-        monkeypatch.setattr(repl_module, "_build_genesis_config_from_session", lambda state: object())
+        monkeypatch.setattr(
+            repl_module, "_build_genesis_config_from_session", lambda state: object()
+        )
         monkeypatch.setattr(genesis_module, "Genesis", _FakeGenesis)
-        monkeypatch.setattr(main_module, "_handle_pipeline_update", lambda update, stage_progress: None)
+        monkeypatch.setattr(
+            main_module, "_handle_pipeline_update", lambda update, stage_progress: None
+        )
         monkeypatch.setattr(repl_module, "_display_invention_result", lambda console, state: None)
 
         console = _console()
         state = _make_session(auto_save=False)
         state.workspace_root = Path("/tmp/example-repo")
         state.workspace_context = SimpleNamespace(
-            to_prompt_text=lambda: "=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+            to_prompt_text=lambda: (
+                "=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+            )
         )
 
         await repl_module._run_pipeline(console, state, "reinvent this system")
@@ -1313,7 +1410,9 @@ class TestWorkspaceAwarePipeline:
 
         state = _make_session(auto_save=False)
         state.workspace_context = SimpleNamespace(
-            to_prompt_text=lambda: "=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+            to_prompt_text=lambda: (
+                "=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
+            )
         )
         problem = "reinvent this system\n\n=== WORKSPACE CONTEXT ===\nrepo summary here\n=== END WORKSPACE CONTEXT ==="
 

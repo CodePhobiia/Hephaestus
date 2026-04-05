@@ -16,7 +16,6 @@ from hephaestus.config.layered import (
     find_project_root,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
@@ -178,9 +177,7 @@ class TestLocalOverride:
 
 
 class TestEnvVars:
-    def test_env_overrides_all_files(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_env_overrides_all_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("HEPHAESTUS_BACKEND", "api")
         lc = _make_lc(
             tmp_path,
@@ -189,30 +186,22 @@ class TestEnvVars:
         )
         assert lc.resolve().backend == "api"
 
-    def test_env_source_tracked(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_env_source_tracked(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("HEPHAESTUS_DEPTH", "7")
         lc = _make_lc(tmp_path)
         assert lc.config_sources()["depth"] == "<env>"
 
-    def test_env_bool_coercion(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_env_bool_coercion(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("HEPHAESTUS_AUTO_SAVE", "false")
         lc = _make_lc(tmp_path)
         assert lc.resolve().auto_save is False
 
-    def test_env_int_coercion(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_env_int_coercion(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("HEPHAESTUS_CANDIDATES", "15")
         lc = _make_lc(tmp_path)
         assert lc.resolve().candidates == 15
 
-    def test_env_research_overrides(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_env_research_overrides(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("HEPHAESTUS_USE_PERPLEXITY_RESEARCH", "false")
         monkeypatch.setenv("HEPHAESTUS_PERPLEXITY_MODEL", "sonar-deep-research")
         lc = _make_lc(tmp_path)
@@ -268,9 +257,7 @@ class TestEnvVars:
 
 
 class TestPrecedence:
-    def test_full_stack(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_full_stack(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """env > local > project > user > defaults."""
         monkeypatch.setenv("HEPHAESTUS_THEME", "rich")
         lc = _make_lc(

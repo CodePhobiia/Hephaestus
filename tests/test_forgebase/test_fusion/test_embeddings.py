@@ -1,9 +1,8 @@
 """Tests for EmbeddingIndex — persistent, version-pinned embedding cache."""
+
 from __future__ import annotations
 
 import hashlib
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
@@ -11,10 +10,10 @@ import pytest
 from hephaestus.forgebase.domain.values import EntityId, Version
 from hephaestus.forgebase.fusion.embeddings import EmbeddingIndex
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _deterministic_embedding(text: str) -> bytes:
     """Produce a deterministic 384-dim normalised float32 embedding from *text*."""
@@ -38,6 +37,7 @@ def _make_version(n: int = 1) -> Version:
 # In-memory embedding cache repository (test double)
 # ---------------------------------------------------------------------------
 
+
 class InMemoryEmbeddingCacheRepo:
     """Minimal in-memory implementation of EmbeddingCacheRepository for tests."""
 
@@ -49,7 +49,11 @@ class InMemoryEmbeddingCacheRepo:
         return entry[0] if entry is not None else None
 
     async def put(
-        self, entity_id: str, version: int, embedding_blob: bytes, computed_at: str,
+        self,
+        entity_id: str,
+        version: int,
+        embedding_blob: bytes,
+        computed_at: str,
     ) -> None:
         self._store[(entity_id, version)] = (embedding_blob, computed_at)
 
@@ -59,7 +63,8 @@ class InMemoryEmbeddingCacheRepo:
             del self._store[k]
 
     async def batch_get(
-        self, items: list[tuple[str, int]],
+        self,
+        items: list[tuple[str, int]],
     ) -> dict[tuple[str, int], bytes]:
         results: dict[tuple[str, int], bytes] = {}
         for entity_id, version in items:
@@ -72,6 +77,7 @@ class InMemoryEmbeddingCacheRepo:
 # ---------------------------------------------------------------------------
 # Fake UoW
 # ---------------------------------------------------------------------------
+
 
 class FakeUnitOfWork:
     """Minimal UoW test double exposing only embedding_cache."""
@@ -90,7 +96,7 @@ class FakeUnitOfWork:
     async def rollback(self) -> None:
         self._rolled_back = True
 
-    async def __aenter__(self) -> "FakeUnitOfWork":
+    async def __aenter__(self) -> FakeUnitOfWork:
         await self.begin()
         return self
 
@@ -103,6 +109,7 @@ class FakeUnitOfWork:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def cache_repo() -> InMemoryEmbeddingCacheRepo:
     return InMemoryEmbeddingCacheRepo()
@@ -111,8 +118,10 @@ def cache_repo() -> InMemoryEmbeddingCacheRepo:
 @pytest.fixture
 def uow_factory(cache_repo: InMemoryEmbeddingCacheRepo):
     """Factory that always returns a fresh FakeUnitOfWork backed by the same cache."""
+
     def _factory():
         return FakeUnitOfWork(cache_repo)
+
     return _factory
 
 
@@ -128,11 +137,14 @@ def embedding_index(uow_factory) -> EmbeddingIndex:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestCacheMissComputesAndStores:
     """test_cache_miss_computes_and_stores — first call computes, second returns cached."""
 
     async def test_first_call_computes_and_caches(
-        self, embedding_index: EmbeddingIndex, cache_repo: InMemoryEmbeddingCacheRepo,
+        self,
+        embedding_index: EmbeddingIndex,
+        cache_repo: InMemoryEmbeddingCacheRepo,
     ):
         eid = _make_entity_id("pg", 1)
         ver = _make_version(1)
@@ -153,7 +165,8 @@ class TestCacheMissComputesAndStores:
         assert arr.shape == (384,)
 
     async def test_second_call_returns_cached(
-        self, embedding_index: EmbeddingIndex,
+        self,
+        embedding_index: EmbeddingIndex,
     ):
         eid = _make_entity_id("pg", 2)
         ver = _make_version(1)
@@ -169,7 +182,9 @@ class TestCacheHitReturnsStored:
     """test_cache_hit_returns_stored — preload cache, verify no recompute."""
 
     async def test_preloaded_cache_skips_compute(
-        self, uow_factory, cache_repo: InMemoryEmbeddingCacheRepo,
+        self,
+        uow_factory,
+        cache_repo: InMemoryEmbeddingCacheRepo,
     ):
         eid = _make_entity_id("pg", 3)
         ver = _make_version(1)
@@ -200,7 +215,9 @@ class TestVersionChangeRecomputes:
     """test_version_change_recomputes — different version triggers new embedding."""
 
     async def test_new_version_triggers_compute(
-        self, embedding_index: EmbeddingIndex, cache_repo: InMemoryEmbeddingCacheRepo,
+        self,
+        embedding_index: EmbeddingIndex,
+        cache_repo: InMemoryEmbeddingCacheRepo,
     ):
         eid = _make_entity_id("pg", 4)
         ver1 = _make_version(1)
@@ -225,7 +242,9 @@ class TestInvalidateRemovesCache:
     """test_invalidate_removes_cache — invalidate then next call recomputes."""
 
     async def test_invalidate_clears_all_versions(
-        self, embedding_index: EmbeddingIndex, cache_repo: InMemoryEmbeddingCacheRepo,
+        self,
+        embedding_index: EmbeddingIndex,
+        cache_repo: InMemoryEmbeddingCacheRepo,
     ):
         eid = _make_entity_id("pg", 5)
         ver1 = _make_version(1)
@@ -246,7 +265,8 @@ class TestInvalidateRemovesCache:
         assert await cache_repo.get(str(eid), ver2.number) is None
 
     async def test_recomputes_after_invalidation(
-        self, embedding_index: EmbeddingIndex,
+        self,
+        embedding_index: EmbeddingIndex,
     ):
         eid = _make_entity_id("pg", 6)
         ver = _make_version(1)
@@ -264,7 +284,9 @@ class TestBatchGetOrCompute:
     """test_batch_get_or_compute — batch of items, mix of cached and new."""
 
     async def test_batch_mixed_cached_and_new(
-        self, embedding_index: EmbeddingIndex, cache_repo: InMemoryEmbeddingCacheRepo,
+        self,
+        embedding_index: EmbeddingIndex,
+        cache_repo: InMemoryEmbeddingCacheRepo,
     ):
         eid1 = _make_entity_id("pg", 10)
         eid2 = _make_entity_id("pg", 11)
@@ -325,23 +347,29 @@ class TestDifferentTextDifferentEmbeddings:
     """test_different_text_different_embeddings — different text yields different bytes."""
 
     async def test_different_text_produces_different_embeddings(
-        self, embedding_index: EmbeddingIndex,
+        self,
+        embedding_index: EmbeddingIndex,
     ):
         eid1 = _make_entity_id("pg", 30)
         eid2 = _make_entity_id("pg", 31)
         ver = _make_version(1)
 
         result1 = await embedding_index.get_or_compute(
-            eid1, ver, "Lithium-ion battery chemistry",
+            eid1,
+            ver,
+            "Lithium-ion battery chemistry",
         )
         result2 = await embedding_index.get_or_compute(
-            eid2, ver, "Hub-and-spoke logistics network",
+            eid2,
+            ver,
+            "Hub-and-spoke logistics network",
         )
 
         assert result1 != result2
 
     async def test_different_text_cosine_distance_nonzero(
-        self, embedding_index: EmbeddingIndex,
+        self,
+        embedding_index: EmbeddingIndex,
     ):
         eid1 = _make_entity_id("pg", 32)
         eid2 = _make_entity_id("pg", 33)

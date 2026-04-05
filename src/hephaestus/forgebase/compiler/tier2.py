@@ -3,10 +3,11 @@
 Reads active concept candidates, clusters them, synthesizes
 canonical knowledge pages, and consumes dirty markers.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.compiler.backend import CompilerBackend
 from hephaestus.forgebase.compiler.dirty import DirtyTracker
@@ -96,15 +97,19 @@ class VaultSynthesizer:
 
             # ----- 2. Read state -----
             candidates = await uow.concept_candidates.list_active(
-                vault_id, workbook_id,
+                vault_id,
+                workbook_id,
             )
 
             # ----- 3. Read dirty markers -----
             dirty_tracker = DirtyTracker(
-                uow.dirty_markers, uow.id_generator, uow.clock.now,
+                uow.dirty_markers,
+                uow.id_generator,
+                uow.clock.now,
             )
             dirty_markers = await dirty_tracker.get_dirty_targets(
-                vault_id, workbook_id,
+                vault_id,
+                workbook_id,
             )
 
             # ----- 4. Cluster candidates by normalized_name -----
@@ -124,7 +129,8 @@ class VaultSynthesizer:
                 if job_raw not in seen_jobs:
                     seen_jobs.add(job_raw)
                     src_manifest = await uow.compile_manifests.get_source_manifest_for(
-                        c.source_id, c.source_version,
+                        c.source_id,
+                        c.source_version,
                     )
                     if src_manifest is not None:
                         included_source_manifest_ids.append(src_manifest.manifest_id)
@@ -141,9 +147,9 @@ class VaultSynthesizer:
                 evidence = await self._gather_evidence(cluster, uow)
 
                 # 5b. Determine related concepts (other cluster names)
-                related_concepts = [
-                    n for n in all_concept_names if n != normalized_name
-                ][:self._policy.max_related_concepts]
+                related_concepts = [n for n in all_concept_names if n != normalized_name][
+                    : self._policy.max_related_concepts
+                ]
 
                 # Gather existing claims for this concept (if page exists)
                 concept_page_key = f"concepts/{normalized_name}"
@@ -241,11 +247,13 @@ class VaultSynthesizer:
 
             # ----- 7. Write VaultSynthesisManifest -----
             vault_obj = await uow.vaults.get(vault_id)
-            base_revision = vault_obj.head_revision_id if vault_obj else EntityId("rev_00000000000000000000000000")
+            base_revision = (
+                vault_obj.head_revision_id
+                if vault_obj
+                else EntityId("rev_00000000000000000000000000")
+            )
 
-            prompt_versions = {
-                cr.prompt_id: cr.prompt_version for cr in all_call_records
-            }
+            prompt_versions = {cr.prompt_id: cr.prompt_version for cr in all_call_records}
 
             manifest = VaultSynthesisManifest(
                 manifest_id=uow.id_generator.generate("mfst"),
@@ -268,19 +276,23 @@ class VaultSynthesizer:
                 if src_manifest_id._raw not in seen_src_manifests:
                     seen_src_manifests.add(src_manifest_id._raw)
                     await uow.compile_manifests.add_synthesis_source_manifest(
-                        manifest.manifest_id, src_manifest_id,
+                        manifest.manifest_id,
+                        src_manifest_id,
                     )
             for page_id in pages_created:
                 await uow.compile_manifests.add_synthesis_page_created(
-                    manifest.manifest_id, page_id,
+                    manifest.manifest_id,
+                    page_id,
                 )
             for page_id in pages_updated:
                 await uow.compile_manifests.add_synthesis_page_updated(
-                    manifest.manifest_id, page_id,
+                    manifest.manifest_id,
+                    page_id,
                 )
             for marker_id in consumed_marker_ids:
                 await uow.compile_manifests.add_synthesis_dirty_consumed(
-                    manifest.manifest_id, marker_id,
+                    manifest.manifest_id,
+                    marker_id,
                 )
 
             # ----- 8. Emit events + commit -----
@@ -327,7 +339,8 @@ class VaultSynthesizer:
             seen_sources.add(src_raw)
 
             source_ver = await uow.sources.get_version(
-                candidate.source_id, candidate.source_version,
+                candidate.source_id,
+                candidate.source_version,
             )
             if source_ver is None:
                 continue
@@ -413,7 +426,9 @@ class VaultSynthesizer:
                 )
             else:
                 await uow.vaults.set_canonical_page_head(
-                    vault_id, existing_page.page_id, new_ver_num.number,
+                    vault_id,
+                    existing_page.page_id,
+                    new_ver_num.number,
                 )
 
             pages_updated.append(existing_page.page_id)

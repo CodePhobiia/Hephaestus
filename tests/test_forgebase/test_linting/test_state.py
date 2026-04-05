@@ -3,6 +3,7 @@
 Creates a seeded vault with known state via the factory, then verifies
 each lazy-cached selector returns the correct data.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -17,7 +18,6 @@ from hephaestus.forgebase.domain.enums import (
     FindingCategory,
     FindingSeverity,
     FindingStatus,
-    LinkKind,
     PageType,
     SourceFormat,
     SourceTrustTier,
@@ -28,23 +28,20 @@ from hephaestus.forgebase.domain.models import (
     Claim,
     ClaimVersion,
     ConceptCandidate,
-    LintFinding,
     Link,
     LinkVersion,
+    LintFinding,
     Page,
     PageVersion,
 )
 from hephaestus.forgebase.domain.values import (
     ActorRef,
-    BlobRef,
     ContentHash,
-    EntityId,
     Version,
 )
 from hephaestus.forgebase.factory import ForgeBaseConfig, create_forgebase
 from hephaestus.forgebase.linting.state import VaultLintState
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Helpers

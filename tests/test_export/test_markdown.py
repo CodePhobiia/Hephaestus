@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
-
 from hephaestus.export.markdown import ExportConfig, export_markdown, export_to_file
 from hephaestus.output.formatter import AlternativeInvention, InventionReport
 
@@ -105,32 +103,44 @@ class TestExportConfig:
         assert "2026-01-15" in md
 
     def test_alternatives_shown(self):
-        report = _make_report(alternatives=[
-            AlternativeInvention(
-                rank=2,
-                invention_name="Ant-Colony Router",
-                source_domain="Biology",
-                novelty_score=0.75,
-                summary="Pheromone-based path optimization",
-            )
-        ])
+        report = _make_report(
+            alternatives=[
+                AlternativeInvention(
+                    rank=2,
+                    invention_name="Ant-Colony Router",
+                    source_domain="Biology",
+                    novelty_score=0.75,
+                    summary="Pheromone-based path optimization",
+                )
+            ]
+        )
         md = export_markdown(report)
         assert "Alternative Approaches" in md
         assert "Ant-Colony Router" in md
 
     def test_alternatives_hidden(self):
         cfg = ExportConfig(include_alternatives=False)
-        report = _make_report(alternatives=[
-            AlternativeInvention(rank=2, invention_name="X", source_domain="Y", novelty_score=0.5)
-        ])
+        report = _make_report(
+            alternatives=[
+                AlternativeInvention(
+                    rank=2, invention_name="X", source_domain="Y", novelty_score=0.5
+                )
+            ]
+        )
         md = export_markdown(report, cfg)
         assert "Alternative Approaches" not in md
 
     def test_research_sections_render(self):
         report = _make_report(
-            baseline_dossier=SimpleNamespace(summary="Token buckets are common.", keywords_to_avoid=["retry with backoff"]),
-            external_grounding_report=SimpleNamespace(summary="Adaptive routing systems are adjacent.", closest_related_work=["Project X"]),
-            implementation_risk_review=SimpleNamespace(summary="Feedback oscillation is the main risk.", major_risks=["oscillation"]),
+            baseline_dossier=SimpleNamespace(
+                summary="Token buckets are common.", keywords_to_avoid=["retry with backoff"]
+            ),
+            external_grounding_report=SimpleNamespace(
+                summary="Adaptive routing systems are adjacent.", closest_related_work=["Project X"]
+            ),
+            implementation_risk_review=SimpleNamespace(
+                summary="Feedback oscillation is the main risk.", major_risks=["oscillation"]
+            ),
         )
         md = export_markdown(report)
         assert "State of the Art Recon" in md
@@ -156,7 +166,14 @@ class TestExportConfig:
                         summary="Apollo cleared candidate for council.",
                     )
                 ],
-                rounds=[SimpleNamespace(round_index=1, candidate_id="candidate-1:biology_immune", consensus=True, revision_summary="Council assented.")],
+                rounds=[
+                    SimpleNamespace(
+                        round_index=1,
+                        candidate_id="candidate-1:biology_immune",
+                        consensus=True,
+                        revision_summary="Council assented.",
+                    )
+                ],
                 caveats=["Track rollout oscillation in the first cohort."],
                 objection_ledger=[
                     SimpleNamespace(

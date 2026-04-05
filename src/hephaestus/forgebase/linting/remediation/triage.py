@@ -1,4 +1,5 @@
 """Triage: assign remediation routes to findings."""
+
 from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import (

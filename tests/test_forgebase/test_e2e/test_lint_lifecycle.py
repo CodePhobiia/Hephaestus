@@ -4,6 +4,7 @@ This is the integration proof for ForgeBase Sub-project 3 (Linting).
 It uses create_forgebase() with deterministic fixtures and exercises
 the full lint -> triage -> research -> repair -> verify pipeline.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -12,7 +13,6 @@ import pytest
 
 from hephaestus.forgebase.domain.enums import (
     ClaimStatus,
-    FindingCategory,
     MergeVerdict,
     RemediationRoute,
     RemediationStatus,
@@ -46,11 +46,7 @@ async def test_full_lint_lifecycle():
         vault = await fb.vaults.create_vault(name="lint-test")
 
         # Source 1: contains a TODO marker (triggers UnresolvedTodoDetector)
-        source1_content = (
-            b"# Research\n\n"
-            b"SEI degrades during cycling.\n\n"
-            b"TODO: add more data"
-        )
+        source1_content = b"# Research\n\nSEI degrades during cycling.\n\nTODO: add more data"
         s1, sv1 = await fb.ingest.ingest_source(
             vault_id=vault.vault_id,
             raw_content=source1_content,
@@ -60,18 +56,20 @@ async def test_full_lint_lifecycle():
         )
         n1 = await fb.normalization.normalize(source1_content, SourceFormat.MARKDOWN)
         nsv1 = await fb.ingest.normalize_source(
-            s1.source_id, n1, sv1.version, idempotency_key="n1",
+            s1.source_id,
+            n1,
+            sv1.version,
+            idempotency_key="n1",
         )
         clock.tick(1)
         await fb.source_compiler.compile_source(
-            s1.source_id, nsv1.version, vault.vault_id,
+            s1.source_id,
+            nsv1.version,
+            vault.vault_id,
         )
 
         # Source 2: contradicts source 1 (SEI "does not degrade" vs "degrades")
-        source2_content = (
-            b"# More Research\n\n"
-            b"SEI is stable and does not degrade."
-        )
+        source2_content = b"# More Research\n\nSEI is stable and does not degrade."
         s2, sv2 = await fb.ingest.ingest_source(
             vault_id=vault.vault_id,
             raw_content=source2_content,
@@ -81,11 +79,16 @@ async def test_full_lint_lifecycle():
         )
         n2 = await fb.normalization.normalize(source2_content, SourceFormat.MARKDOWN)
         nsv2 = await fb.ingest.normalize_source(
-            s2.source_id, n2, sv2.version, idempotency_key="n2",
+            s2.source_id,
+            n2,
+            sv2.version,
+            idempotency_key="n2",
         )
         clock.tick(1)
         await fb.source_compiler.compile_source(
-            s2.source_id, nsv2.version, vault.vault_id,
+            s2.source_id,
+            nsv2.version,
+            vault.vault_id,
         )
 
         # Run Tier 2 synthesis to produce concept pages
@@ -119,7 +122,9 @@ async def test_full_lint_lifecycle():
                 )
                 await uow.claims.create(claim, cv)
                 await uow.vaults.set_canonical_claim_head(
-                    vault.vault_id, claim_id, 1,
+                    vault.vault_id,
+                    claim_id,
+                    1,
                 )
                 await uow.commit()
 
@@ -137,10 +142,7 @@ async def test_full_lint_lifecycle():
         uow2 = fb.uow_factory()
         async with uow2:
             findings = await uow2.findings.list_by_vault(vault.vault_id)
-            triaged = [
-                f for f in findings
-                if f.remediation_status == RemediationStatus.TRIAGED
-            ]
+            triaged = [f for f in findings if f.remediation_status == RemediationStatus.TRIAGED]
             assert len(triaged) > 0, "Expected triaged findings"
             await uow2.rollback()
 
@@ -169,8 +171,10 @@ async def test_full_lint_lifecycle():
         # Flow 5: Repair workbook for structural findings
         # ==============================================================
         repairable = [
-            f for f in findings
-            if f.remediation_route in (
+            f
+            for f in findings
+            if f.remediation_route
+            in (
                 RemediationRoute.REPAIR_ONLY,
                 RemediationRoute.RESEARCH_THEN_REPAIR,
             )
@@ -179,7 +183,9 @@ async def test_full_lint_lifecycle():
         merged_workbook = False
         if repairable:
             batches = batch_findings(
-                repairable, vault.vault_id, id_generator=id_gen,
+                repairable,
+                vault.vault_id,
+                id_generator=id_gen,
             )
             if batches:
                 clock.tick(1)

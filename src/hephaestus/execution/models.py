@@ -6,12 +6,12 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     """Lifecycle status of a pipeline run."""
 
     QUEUED = "queued"
@@ -21,12 +21,12 @@ class RunStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class ExecutionClass(str, Enum):
+class ExecutionClass(StrEnum):
     """Execution tier determining timeout and resource allocation."""
 
     INTERACTIVE = "interactive"  # depth ≤ 3, timeout 120s
-    DEEP = "deep"               # any depth, timeout 600s
-    RESEARCH = "research"       # research-heavy, timeout 900s
+    DEEP = "deep"  # any depth, timeout 600s
+    RESEARCH = "research"  # research-heavy, timeout 900s
 
     @classmethod
     def from_config(cls, depth: int, *, research: bool = False) -> ExecutionClass:
@@ -118,10 +118,18 @@ class RunRecord:
             run_id=str(data.get("run_id", uuid4().hex)),
             status=RunStatus(data.get("status", "queued")),
             execution_class=ExecutionClass(data.get("execution_class", "interactive")),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else _utc_now(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else _utc_now(),
-            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None,
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
+            created_at=datetime.fromisoformat(data["created_at"])
+            if data.get("created_at")
+            else _utc_now(),
+            updated_at=datetime.fromisoformat(data["updated_at"])
+            if data.get("updated_at")
+            else _utc_now(),
+            started_at=datetime.fromisoformat(data["started_at"])
+            if data.get("started_at")
+            else None,
+            completed_at=datetime.fromisoformat(data["completed_at"])
+            if data.get("completed_at")
+            else None,
             problem=str(data.get("problem", "")),
             config_snapshot=dict(data.get("config_snapshot", {})),
             dedup_key=str(data.get("dedup_key", "")),

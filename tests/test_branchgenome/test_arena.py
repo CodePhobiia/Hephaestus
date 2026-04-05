@@ -40,7 +40,9 @@ def _make_scored_candidate(index: int = 0) -> ScoredCandidate:
         domain="biology",
         subdomain="immune",
         axioms=["Distributed memory persists."],
-        structural_patterns=[StructuralPattern("allocation", "Allocate under pressure", ["allocation"])],
+        structural_patterns=[
+            StructuralPattern("allocation", "Allocate under pressure", ["allocation"])
+        ],
         injection_prompt="Reason biologically.",
     )
     lens_score = LensScore(
@@ -137,7 +139,9 @@ def _make_branch(
             archive_cell=archive_cell,
             island_key=island_key,
             score_survival=score,
-            score_promotion=promotion if promotion is not None else score + 0.15 * option_preservation,
+            score_promotion=promotion
+            if promotion is not None
+            else score + 0.15 * option_preservation,
             perturbations_run=4,
             perturbations_passed=4,
             specialization_pressure=0.2,
@@ -214,7 +218,9 @@ def test_prune_over_budget_removes_weaker_duplicate_and_token_overrun() -> None:
 def test_prune_over_budget_removes_high_fatigue_branch() -> None:
     strategy = strategy_for_mode("STANDARD")
     arena = BranchArena()
-    resilient = _make_branch("resilient", 0.70, "Preserve retained response paths under later load.")
+    resilient = _make_branch(
+        "resilient", 0.70, "Preserve retained response paths under later load."
+    )
     fatigued = _make_branch(
         "fatigued",
         0.41,

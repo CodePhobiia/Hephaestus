@@ -5,15 +5,14 @@ and briefing packs from vault content. The reporter creates
 pages of type CONCEPT containing the generated reports.
 All work happens on the task's workbook branch.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from hephaestus.forgebase.contracts.agent import AgentTask, TaskStatus
 from hephaestus.forgebase.domain.enums import PageType
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hephaestus.forgebase.factory import ForgeBase

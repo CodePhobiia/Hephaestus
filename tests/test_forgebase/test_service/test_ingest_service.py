@@ -1,10 +1,11 @@
 """Tests for IngestService."""
+
 from __future__ import annotations
 
 import pytest
 
-from hephaestus.forgebase.domain.enums import SourceFormat, SourceStatus, SourceTrustTier
-from hephaestus.forgebase.domain.values import ContentHash, Version
+from hephaestus.forgebase.domain.enums import SourceFormat, SourceStatus
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.service.exceptions import ConflictError
 from hephaestus.forgebase.service.ingest_service import IngestService
 from hephaestus.forgebase.service.vault_service import VaultService

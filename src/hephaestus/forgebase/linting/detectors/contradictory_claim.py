@@ -1,4 +1,5 @@
 """ContradictoryClaimDetector — detects contradicting claims on the same page."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -68,11 +69,13 @@ class ContradictoryClaimDetector(LintDetector):
             return []
 
         # Send text pairs to analyzer
-        text_pairs = [(cv_a.statement, cv_b.statement) for (_id_a, cv_a), (_id_b, cv_b) in pairs_to_check]
+        text_pairs = [
+            (cv_a.statement, cv_b.statement) for (_id_a, cv_a), (_id_b, cv_b) in pairs_to_check
+        ]
         results = await self._analyzer.detect_contradictions(text_pairs)
 
         findings: list[RawFinding] = []
-        for pair, result in zip(pairs_to_check, results):
+        for pair, result in zip(pairs_to_check, results, strict=True):
             if result.is_contradictory:
                 (cid_a, cv_a), (cid_b, cv_b) = pair
                 findings.append(
@@ -80,8 +83,7 @@ class ContradictoryClaimDetector(LintDetector):
                         category=FindingCategory.CONTRADICTORY_CLAIM,
                         severity=FindingSeverity.WARNING,
                         description=(
-                            f"Contradiction: '{cv_a.statement[:50]}' "
-                            f"vs '{cv_b.statement[:50]}'"
+                            f"Contradiction: '{cv_a.statement[:50]}' vs '{cv_b.statement[:50]}'"
                         ),
                         affected_entity_ids=[cid_a, cid_b],
                         normalized_subject=f"{cv_a.statement}|{cv_b.statement}",

@@ -42,10 +42,9 @@ import json
 import logging
 import os
 import re
-import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -55,8 +54,8 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
+from hephaestus.cli.commands import default_registry
 from hephaestus.cli.config import (
     INVENTIONS_DIR,
     SESSIONS_DIR,
@@ -64,17 +63,15 @@ from hephaestus.cli.config import (
     ensure_dirs,
     load_config,
     run_onboarding,
-    save_config,
 )
-from hephaestus.cli.commands import default_registry
 from hephaestus.cli.display import (
     AMBER,
-    CYAN,
-    CYAN_BOLD,
     DIM,
+    EMBER,
     GOLD,
     GREEN,
     RED,
+    WHITE_HOT,
     StageProgress,
     print_banner,
     print_cost_table,
@@ -95,7 +92,6 @@ from hephaestus.session.schema import (
     Role,
     Session,
     SessionMeta,
-    TranscriptEntry,
 )
 from hephaestus.session.todos import TodoList
 
@@ -146,25 +142,27 @@ class SessionState:
     exit_reported: bool = False
 
     # Per-stage counters  {stage_name: (calls, input_tokens, output_tokens)}
-    stage_usage: dict[str, list[int]] = field(default_factory=lambda: {
-        "Decompose": [0, 0, 0],
-        "Search": [0, 0, 0],
-        "Score": [0, 0, 0],
-        "Translate": [0, 0, 0],
-        "Verify": [0, 0, 0],
-        "Refine": [0, 0, 0],
-    })
+    stage_usage: dict[str, list[int]] = field(
+        default_factory=lambda: {
+            "Decompose": [0, 0, 0],
+            "Search": [0, 0, 0],
+            "Score": [0, 0, 0],
+            "Translate": [0, 0, 0],
+            "Verify": [0, 0, 0],
+            "Refine": [0, 0, 0],
+        }
+    )
 
     # Integration fields — typed session, todo list, layered config
-    session: Any = field(default=None)         # Session from session.schema
-    todo_list: Any = field(default=None)       # TodoList from session.todos
+    session: Any = field(default=None)  # Session from session.schema
+    todo_list: Any = field(default=None)  # TodoList from session.todos
     layered_config: Any = field(default=None)  # LayeredConfig instance
     workspace_root: Any = field(default=None)  # Path if workspace mode active
     workspace_context: Any = field(default=None)  # WorkspaceContext
 
     # ForgeBase session state
-    forgebase: Any = field(default=None)          # ForgeBase instance (lazy)
-    current_vault_id: Any = field(default=None)   # EntityId | None
+    forgebase: Any = field(default=None)  # ForgeBase instance (lazy)
+    current_vault_id: Any = field(default=None)  # EntityId | None
     current_workbook_id: Any = field(default=None)  # EntityId | None
 
     @property
@@ -193,7 +191,6 @@ class SessionState:
         if trace is not None:
             self.total_input_tokens += int(getattr(trace, "total_input_tokens", 0) or 0)
             self.total_output_tokens += int(getattr(trace, "total_output_tokens", 0) or 0)
-
 
 
 # ---------------------------------------------------------------------------
@@ -263,31 +260,41 @@ def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
         ready = _detect_agent_sdk_available()
         return (
             "ready" if ready else "not ready",
-            "Claude Agent SDK + Claude CLI detected." if ready else "Install: pip install claude-agent-sdk",
+            "Claude Agent SDK + Claude CLI detected."
+            if ready
+            else "Install: pip install claude-agent-sdk",
         )
     if backend == "claude-max":
         ready = _detect_claude_max_available()
         return (
             "ready" if ready else "not ready",
-            "Uses your Claude Max login from ~/.openclaw." if ready else "Run Claude Max login on this machine first.",
+            "Uses your Claude Max login from ~/.openclaw."
+            if ready
+            else "Run Claude Max login on this machine first.",
         )
     if backend == "claude-cli":
         ready = _detect_claude_cli_available()
         return (
             "ready" if ready else "not ready",
-            "`claude` is on PATH." if ready else "Install the Claude CLI or switch to /backend api.",
+            "`claude` is on PATH."
+            if ready
+            else "Install the Claude CLI or switch to /backend api.",
         )
     if backend == "codex-cli":
         ready = _detect_codex_cli_available()
         return (
             "ready" if ready else "not ready",
-            "Uses your Codex/ChatGPT OAuth from ~/.codex." if ready else "Run `codex login` on this machine first.",
+            "Uses your Codex/ChatGPT OAuth from ~/.codex."
+            if ready
+            else "Run `codex login` on this machine first.",
         )
     if backend == "openrouter":
         ready = bool(getattr(config, "openrouter_api_key", None))
         return (
             "ready" if ready else "not ready",
-            "OPENROUTER_API_KEY detected." if ready else "Set OPENROUTER_API_KEY before running inventions.",
+            "OPENROUTER_API_KEY detected."
+            if ready
+            else "Set OPENROUTER_API_KEY before running inventions.",
         )
 
     anthropic = bool(getattr(config, "anthropic_api_key", None))
@@ -315,7 +322,10 @@ def _backend_status(config: HephaestusConfig) -> tuple[str, str]:
         if openai:
             providers.append("OpenAI")
         return "ready", f"API keys detected: {', '.join(providers)}."
-    return "not ready", "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or switch to /backend claude-max or /backend codex-cli."
+    return (
+        "not ready",
+        "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or switch to /backend claude-max or /backend codex-cli.",
+    )
 
 
 def _detect_agent_sdk_available() -> bool:
@@ -356,57 +366,57 @@ def _safe_error_message(exc: Exception) -> str:
 HELP_TEXT = """\
 [bold yellow]Quick Start[/]
   Type a problem in plain English to run the invention pipeline.
-  After each result, type [cyan]1-7[/] to use the menu or enter another problem immediately.
-  Use [cyan]Ctrl+D[/] or [cyan]/quit[/] to leave the session. [cyan]Tab[/] completes slash commands.
+  After each result, type [dark_orange]1-7[/] to use the menu or enter another problem immediately.
+  Use [dark_orange]Ctrl+D[/] or [dark_orange]/quit[/] to leave the session. [dark_orange]Tab[/] completes slash commands.
 
 [bold yellow]Session[/]
-  [cyan]/help[/]              Show this help
-  [cyan]/status[/]            Session info, backend readiness, and current defaults
-  [cyan]/history[/] [search]  List session and saved inventions
-  [cyan]/load[/] <name|path>  Load a saved invention or session replay
-  [cyan]/save[/] [name]       Save the current invention now
-  [cyan]/compare[/]           Compare recent inventions side by side
-  [cyan]/model[/] [name]      Show or switch the active model for interactive runs
-  [cyan]/backend[/] [name]    Show or switch backend (agent-sdk, claude-max, claude-cli, api, openrouter)
-  [cyan]/usage[/]             Session runs, tokens, and cost summary
-  [cyan]/cost[/]              Cost breakdown for the current invention
-  [cyan]/clear[/]             Clear current context and prompt state
-  [cyan]/quit[/] or [cyan]/exit[/]    Exit interactive mode
+  [dark_orange]/help[/]              Show this help
+  [dark_orange]/status[/]            Session info, backend readiness, and current defaults
+  [dark_orange]/history[/] [search]  List session and saved inventions
+  [dark_orange]/load[/] <name|path>  Load a saved invention or session replay
+  [dark_orange]/save[/] [name]       Save the current invention now
+  [dark_orange]/compare[/]           Compare recent inventions side by side
+  [dark_orange]/model[/] [name]      Show or switch the active model for interactive runs
+  [dark_orange]/backend[/] [name]    Show or switch backend (agent-sdk, claude-max, claude-cli, api, openrouter)
+  [dark_orange]/usage[/]             Session runs, tokens, and cost summary
+  [dark_orange]/cost[/]              Cost breakdown for the current invention
+  [dark_orange]/clear[/]             Clear current context and prompt state
+  [dark_orange]/quit[/] or [dark_orange]/exit[/]    Exit interactive mode
 
 [bold yellow]Iteration[/]
-  [cyan]/refine[/] [constraint]  Re-run the current invention with a constraint
-  [cyan]/alternatives[/]         Show runner-up inventions from the last run
-  [cyan]/deeper[/] [n]           Increase depth and retry the current problem
-  [cyan]/domain[/] <hint>        Re-run with a source-domain hint
-  [cyan]/candidates[/] [n]       Show or change candidate count (1-20)
-  [cyan]/trace[/]                Show trace details from the last run
-  [cyan]/export[/] [format]      Export as markdown, json, text, or pdf
+  [dark_orange]/refine[/] [constraint]  Re-run the current invention with a constraint
+  [dark_orange]/alternatives[/]         Show runner-up inventions from the last run
+  [dark_orange]/deeper[/] [n]           Increase depth and retry the current problem
+  [dark_orange]/domain[/] <hint>        Re-run with a source-domain hint
+  [dark_orange]/candidates[/] [n]       Show or change candidate count (1-20)
+  [dark_orange]/trace[/]                Show trace details from the last run
+  [dark_orange]/export[/] [format]      Export as markdown, json, text, or pdf
 
 [bold yellow]Context[/]
-  [cyan]/context[/]              Show context carried into the next run
-  [cyan]/context add[/] <text>   Add domain knowledge or constraints
-  [cyan]/context clear[/]        Remove all added context
+  [dark_orange]/context[/]              Show context carried into the next run
+  [dark_orange]/context add[/] <text>   Add domain knowledge or constraints
+  [dark_orange]/context clear[/]        Remove all added context
 
 [bold yellow]Working Memory[/]
-  [cyan]/todo[/]                Show current todo items
-  [cyan]/todo add[/] <text>     Add a new todo
-  [cyan]/todo start[/] <id>     Start working on a todo
-  [cyan]/todo done[/] <id>      Mark a todo complete
-  [cyan]/plan[/]                Alias for /todo
+  [dark_orange]/todo[/]                Show current todo items
+  [dark_orange]/todo add[/] <text>     Add a new todo
+  [dark_orange]/todo start[/] <id>     Start working on a todo
+  [dark_orange]/todo done[/] <id>      Mark a todo complete
+  [dark_orange]/plan[/]                Alias for /todo
 
 [bold yellow]Creativity Controls[/]
-  [cyan]/intensity[/] [level]    STANDARD, AGGRESSIVE, or MAXIMUM
-  [cyan]/mode[/] [mode]          MECHANISM, FRAMEWORK, NARRATIVE, SYSTEM, PROTOCOL, TAXONOMY, or INTERFACE
+  [dark_orange]/intensity[/] [level]    STANDARD, AGGRESSIVE, or MAXIMUM
+  [dark_orange]/mode[/] [mode]          MECHANISM, FRAMEWORK, NARRATIVE, SYSTEM, PROTOCOL, TAXONOMY, or INTERFACE
 
 [bold yellow]ForgeBase[/]
-  [cyan]/vault[/] [sub]           Manage vaults: create, list, use, info, compile, lint
-  [cyan]/ask[/] <query>           Query within current vault context
-  [cyan]/fuse[/] <id1> <id2>     Cross-vault fusion
-  [cyan]/ingest[/] <path_or_url> Ingest source into current vault
-  [cyan]/fb-lint[/]              Lint current vault
-  [cyan]/fb-compile[/]           Compile current vault
-  [cyan]/workbook[/] [sub]       Manage workbooks: open, list, diff, merge, abandon
-  [cyan]/fb-export[/] [format]   Export current vault (markdown or obsidian)
+  [dark_orange]/vault[/] [sub]           Manage vaults: create, list, use, info, compile, lint
+  [dark_orange]/ask[/] <query>           Query within current vault context
+  [dark_orange]/fuse[/] <id1> <id2>     Cross-vault fusion
+  [dark_orange]/ingest[/] <path_or_url> Ingest source into current vault
+  [dark_orange]/fb-lint[/]              Lint current vault
+  [dark_orange]/fb-compile[/]           Compile current vault
+  [dark_orange]/workbook[/] [sub]       Manage workbooks: open, list, diff, merge, abandon
+  [dark_orange]/fb-export[/] [format]   Export current vault (markdown or obsidian)
 """
 
 VALID_EXPORT_FORMATS = ("markdown", "json", "text", "pdf")
@@ -414,7 +424,9 @@ VALID_EXPORT_FORMATS = ("markdown", "json", "text", "pdf")
 
 async def _cmd_help(console: Console, state: SessionState, args: str) -> None:
     console.print()
-    console.print(Panel(HELP_TEXT, title="[bold yellow]Help[/]", border_style="yellow", padding=(0, 1)))
+    console.print(
+        Panel(HELP_TEXT, title="[bold yellow]Help[/]", border_style="yellow", padding=(0, 1))
+    )
 
 
 async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
@@ -431,32 +443,40 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
     table.add_column("Key", style=DIM, no_wrap=True)
     table.add_column("Value", style="white")
 
-    table.add_row("Backend", f"[cyan]{state.config.backend}[/]")
-    table.add_row("Backend status", f"[green]{backend_ready}[/]" if backend_ready == "ready" else f"[yellow]{backend_ready}[/]")
-    table.add_row("Model", f"[cyan]{state.config.default_model}[/]")
-    table.add_row("Session duration", f"[cyan]{dur_str}[/]")
-    table.add_row("Inventions", f"[cyan]{num_inv} generated, {num_refined} refined[/]")
+    table.add_row("Backend", f"[dark_orange]{state.config.backend}[/]")
+    table.add_row(
+        "Backend status",
+        f"[green]{backend_ready}[/]" if backend_ready == "ready" else f"[yellow]{backend_ready}[/]",
+    )
+    table.add_row("Model", f"[dark_orange]{state.config.default_model}[/]")
+    table.add_row("Session duration", f"[dark_orange]{dur_str}[/]")
+    table.add_row("Inventions", f"[dark_orange]{num_inv} generated, {num_refined} refined[/]")
     table.add_row("Cost (session)", f"[green]${state.total_cost_usd:.4f}[/]")
-    table.add_row("Tokens (session)", f"[cyan]{state.total_input_tokens:,} in / {state.total_output_tokens:,} out[/]")
-    table.add_row("Depth", f"[cyan]{state.config.depth}[/]")
-    table.add_row("Search candidates", f"[cyan]{state.config.candidates}[/]")
-    table.add_row("Intensity", f"[cyan]{getattr(state.config, 'divergence_intensity', 'STANDARD')}[/]")
-    table.add_row("Output mode", f"[cyan]{getattr(state.config, 'output_mode', 'MECHANISM')}[/]")
-    table.add_row("Context additions", f"[cyan]{len(state.context_items)} items[/]")
-    table.add_row("Auto-save", f"[cyan]{'ON' if state.config.auto_save else 'OFF'}[/]")
+    table.add_row(
+        "Tokens (session)",
+        f"[dark_orange]{state.total_input_tokens:,} in / {state.total_output_tokens:,} out[/]",
+    )
+    table.add_row("Depth", f"[dark_orange]{state.config.depth}[/]")
+    table.add_row("Search candidates", f"[dark_orange]{state.config.candidates}[/]")
+    table.add_row(
+        "Intensity", f"[dark_orange]{getattr(state.config, 'divergence_intensity', 'STANDARD')}[/]"
+    )
+    table.add_row("Output mode", f"[dark_orange]{getattr(state.config, 'output_mode', 'MECHANISM')}[/]")
+    table.add_row("Context additions", f"[dark_orange]{len(state.context_items)} items[/]")
+    table.add_row("Auto-save", f"[dark_orange]{'ON' if state.config.auto_save else 'OFF'}[/]")
     repo_dossier = _repo_dossier_from_state(state)
     if state.workspace_root:
-        table.add_row("Workspace", f"[cyan]{state.workspace_root}[/]")
+        table.add_row("Workspace", f"[dark_orange]{state.workspace_root}[/]")
     if repo_dossier is not None:
         table.add_row(
             "Repo awareness",
-            f"[cyan]{repo_dossier.component_count} components[/], "
-            f"[cyan]{len(repo_dossier.commands)} commands[/], "
-            f"[cyan]{len(repo_dossier.hotspots)} hotspots[/]",
+            f"[dark_orange]{repo_dossier.component_count} components[/], "
+            f"[dark_orange]{len(repo_dossier.commands)} commands[/], "
+            f"[dark_orange]{len(repo_dossier.hotspots)} hotspots[/]",
         )
     if state.session is not None and getattr(state.session, "lens_engine_state", None) is not None:
         lens_state = state.session.lens_engine_state
-        table.add_row("Lens engine", f"[cyan]{lens_state.summary()}[/]")
+        table.add_row("Lens engine", f"[dark_orange]{lens_state.summary()}[/]")
 
     console.print(Panel(table, title="[bold yellow]Session Status[/]", border_style="yellow"))
     console.print(f"  [dim]{backend_hint}[/]")
@@ -464,9 +484,7 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
     # Memory transparency section
     config_ns = None
     if state.layered_config is not None:
-        config_ns = SimpleNamespace(
-            config_sources=state.layered_config.config_sources()
-        )
+        config_ns = SimpleNamespace(config_sources=state.layered_config.config_sources())
     mem_report = build_memory_report(state, config=config_ns)
     console.print()
     console.print(
@@ -489,35 +507,58 @@ async def _cmd_status(console: Console, state: SessionState, args: str) -> None:
 
 
 VALID_MODELS = {
-    "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5",
-    "claude-sonnet-4-5", "claude-opus-4-5",
-    "gpt-4o", "gpt-4o-mini", "o3", "o4-mini", "gpt-5.4", "gpt-5.4-mini",
-    "opus", "gpt5", "codex", "both",
+    "claude-sonnet-4-6",
+    "claude-opus-4-6",
+    "claude-haiku-4-5",
+    "claude-sonnet-4-5",
+    "claude-opus-4-5",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o3",
+    "o4-mini",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "opus",
+    "gpt5",
+    "codex",
+    "both",
 }
+
 
 async def _cmd_model(console: Console, state: SessionState, args: str) -> None:
     if not args:
-        console.print(f"  [dim]Current model:[/] [{CYAN}]{state.config.default_model}[/]")
-        console.print(f"  [dim]Use an exact model name or a preset like opus, gpt5, codex, or both.[/]")
+        console.print(f"  [dim]Current model:[/] [{EMBER}]{state.config.default_model}[/]")
+        console.print(
+            "  [dim]Use an exact model name or a preset like opus, gpt5, codex, or both.[/]"
+        )
         console.print(f"  [dim]Available:[/] {', '.join(sorted(VALID_MODELS))}\n")
         return
     name = args.strip().lower()
     if name not in VALID_MODELS:
-        console.print(f"  [{RED}]Unknown model '{args.strip()}'.[/] Available: {', '.join(sorted(VALID_MODELS))}\n")
+        console.print(
+            f"  [{RED}]Unknown model '{args.strip()}'.[/] Available: {', '.join(sorted(VALID_MODELS))}\n"
+        )
         return
-    if name in {"opus", "gpt5", "codex", "both"} and state.config.backend in {"claude-max", "claude-cli", "codex-cli"}:
+    if name in {"opus", "gpt5", "codex", "both"} and state.config.backend in {
+        "claude-max",
+        "claude-cli",
+        "codex-cli",
+    }:
         state.config.backend = "api"
-        console.print(f"  [dim]Switched backend to [cyan]api[/] so the preset can use provider-specific stage models.[/]")
+        console.print(
+            "  [dim]Switched backend to [dark_orange]api[/] so the preset can use provider-specific stage models.[/]"
+        )
     state.config.default_model = name
-    console.print(f"  [{GREEN}]\u2713[/] Model set to [{CYAN}]{name}[/]")
-    console.print(f"  [dim]Applies to the next invention run in this session.[/]\n")
+    console.print(f"  [{GREEN}]\u2713[/] Model set to [{EMBER}]{name}[/]")
+    console.print("  [dim]Applies to the next invention run in this session.[/]\n")
 
 
 async def _cmd_backend(console: Console, state: SessionState, args: str) -> None:
     from hephaestus.cli.config import VALID_BACKENDS
+
     if not args:
         readiness, hint = _backend_status(state.config)
-        console.print(f"  [dim]Current backend:[/] [{CYAN}]{state.config.backend}[/]")
+        console.print(f"  [dim]Current backend:[/] [{EMBER}]{state.config.backend}[/]")
         console.print(f"  [dim]Status:[/] {readiness}")
         console.print(f"  [dim]{hint}[/]\n")
         return
@@ -526,11 +567,20 @@ async def _cmd_backend(console: Console, state: SessionState, args: str) -> None
         console.print(f"  [{RED}]Invalid backend.[/] Choose from: {', '.join(VALID_BACKENDS)}\n")
         return
     state.config.backend = name
-    if name in {"claude-max", "claude-cli"} and state.config.default_model in {"opus", "gpt5", "both"}:
-        state.config.default_model = "claude-opus-4-5"
-        console.print(f"  [dim]Using [cyan]claude-opus-4-5[/] because Claude backends require an explicit model name.[/]")
+    if name in {"agent-sdk", "claude-max", "claude-cli"} and state.config.default_model in {
+        "opus",
+        "gpt5",
+        "both",
+    }:
+        state.config.default_model = "claude-opus-4-6"
+        console.print(
+            "  [dim]Using [dark_orange]claude-opus-4-6[/] for subscription backends.[/]"
+        )
+    # Persist to disk so it survives restart
+    from hephaestus.cli.config import save_config
+    save_config(state.config)
     readiness, hint = _backend_status(state.config)
-    console.print(f"  [{GREEN}]\u2713[/] Backend set to [{CYAN}]{name}[/]")
+    console.print(f"  [{GREEN}]\u2713[/] Backend set to [{EMBER}]{name}[/] (saved)")
     console.print(f"  [dim]Status:[/] {readiness}")
     console.print(f"  [dim]{hint}[/]\n")
 
@@ -539,7 +589,9 @@ async def _cmd_usage(console: Console, state: SessionState, args: str) -> None:
     console.print()
     if state.total_calls == 0 and state.current_report is None:
         console.print("  [dim]No runs yet. Describe a problem to start the pipeline.[/]")
-        console.print("  [dim]Tip:[/] use [cyan]/context add <text>[/] to inject requirements before the next run.\n")
+        console.print(
+            "  [dim]Tip:[/] use [dark_orange]/context add <text>[/] to inject requirements before the next run.\n"
+        )
         return
 
     summary = Table(
@@ -583,7 +635,9 @@ async def _cmd_usage(console: Console, state: SessionState, args: str) -> None:
             table.add_row(stage_name, f"${value:.4f}")
 
     table.add_section()
-    table.add_row("[bold]TOTAL[/]", f"[bold green]${getattr(cost, 'total', state.total_cost_usd):.4f}[/]")
+    table.add_row(
+        "[bold]TOTAL[/]", f"[bold green]${getattr(cost, 'total', state.total_cost_usd):.4f}[/]"
+    )
 
     console.print()
     console.print(table)
@@ -597,7 +651,7 @@ async def _cmd_cost(console: Console, state: SessionState, args: str) -> None:
     elif state.total_cost_usd > 0:
         console.print(f"  [dim]Session cost so far:[/] [{GREEN}]${state.total_cost_usd:.4f}[/]\n")
     else:
-        console.print(f"  [dim]No cost yet. Describe a problem to start inventing.[/]\n")
+        console.print("  [dim]No cost yet. Describe a problem to start inventing.[/]\n")
 
 
 async def _cmd_clear(console: Console, state: SessionState, args: str) -> None:
@@ -605,7 +659,7 @@ async def _cmd_clear(console: Console, state: SessionState, args: str) -> None:
     state.context_items.clear()
     state.pinned.clear()
     console.print(f"  [{GREEN}]\u2713[/] Cleared the active prompt state.")
-    console.print(f"  [dim]History is still available via /history.[/]\n")
+    console.print("  [dim]History is still available via /history.[/]\n")
 
 
 async def _cmd_quit(console: Console, state: SessionState, args: str) -> None:
@@ -618,12 +672,10 @@ async def _cmd_quit(console: Console, state: SessionState, args: str) -> None:
         if state.config.auto_save and not state.last_auto_save_error:
             save_note = (
                 f"  [{GREEN}]\u2713[/] Auto-save is enabled. Saved inventions live in "
-                f"[cyan]~/.hephaestus/inventions/[/]"
+                f"[dark_orange]~/.hephaestus/inventions/[/]"
             )
         elif state.config.auto_save:
-            save_note = (
-                f"  [{AMBER}]\u26a0[/] Auto-save failed for at least one run. Use [cyan]/save[/] if you need another copy."
-            )
+            save_note = f"  [{AMBER}]\u26a0[/] Auto-save failed for at least one run. Use [dark_orange]/save[/] if you need another copy."
         else:
             save_note = f"  [{AMBER}]\u26a0[/] {num} invention{'s' if num != 1 else ''} NOT saved (auto-save is off). Use /save before quitting."
         console.print(save_note)
@@ -650,12 +702,8 @@ async def _cmd_alternatives(console: Console, state: SessionState, args: str) ->
         src = getattr(alt, "source_domain", "?")
         novelty = getattr(alt, "novelty_score", 0.0)
         feas = getattr(alt, "feasibility_rating", "?")
-        console.print(
-            f"  [{AMBER}]{i}.[/] [{CYAN_BOLD}]{name}[/]  [dim](from {src})[/]"
-        )
-        console.print(
-            f"     Novelty: [{GOLD}]{novelty:.2f}[/]  Feasibility: [{CYAN}]{feas}[/]"
-        )
+        console.print(f"  [{AMBER}]{i}.[/] [{WHITE_HOT}]{name}[/]  [dim](from {src})[/]")
+        console.print(f"     Novelty: [{GOLD}]{novelty:.2f}[/]  Feasibility: [{EMBER}]{feas}[/]")
         console.print()
 
 
@@ -669,8 +717,8 @@ async def _cmd_trace(console: Console, state: SessionState, args: str) -> None:
 
 async def _cmd_candidates(console: Console, state: SessionState, args: str) -> None:
     if not args:
-        console.print(f"  [dim]Search candidates:[/] [{CYAN}]{state.config.candidates}[/]")
-        console.print(f"  [dim]Higher values search more domains but cost more.[/]\n")
+        console.print(f"  [dim]Search candidates:[/] [{EMBER}]{state.config.candidates}[/]")
+        console.print("  [dim]Higher values search more domains but cost more.[/]\n")
         return
     try:
         n = int(args.strip())
@@ -680,8 +728,8 @@ async def _cmd_candidates(console: Console, state: SessionState, args: str) -> N
         console.print(f"  [{RED}]Candidates must be 1\u201320.[/]\n")
         return
     state.config.candidates = n
-    console.print(f"  [{GREEN}]\u2713[/] Candidates set to [{CYAN}]{n}[/]")
-    console.print(f"  [dim]Applies to the next invention run in this session.[/]\n")
+    console.print(f"  [{GREEN}]\u2713[/] Candidates set to [{EMBER}]{n}[/]")
+    console.print("  [dim]Applies to the next invention run in this session.[/]\n")
 
 
 VALID_INTENSITIES = ("STANDARD", "AGGRESSIVE", "MAXIMUM")
@@ -691,16 +739,18 @@ async def _cmd_intensity(console: Console, state: SessionState, args: str) -> No
     """Show or set divergence intensity."""
     current = getattr(state.config, "divergence_intensity", "STANDARD")
     if not args:
-        console.print(f"  [dim]Divergence intensity:[/] [{CYAN}]{current}[/]")
+        console.print(f"  [dim]Divergence intensity:[/] [{EMBER}]{current}[/]")
         console.print(f"  [dim]Options:[/] {', '.join(VALID_INTENSITIES)}\n")
         return
     val = args.strip().upper()
     if val not in VALID_INTENSITIES:
-        console.print(f"  [{RED}]Invalid intensity '{args.strip()}'.[/] Options: {', '.join(VALID_INTENSITIES)}\n")
+        console.print(
+            f"  [{RED}]Invalid intensity '{args.strip()}'.[/] Options: {', '.join(VALID_INTENSITIES)}\n"
+        )
         return
-    state.config.divergence_intensity = val  # type: ignore[attr-defined]
-    console.print(f"  [{GREEN}]\u2713[/] Divergence intensity set to [{CYAN}]{val}[/]")
-    console.print(f"  [dim]Applies to the next invention run in this session.[/]\n")
+    state.config.divergence_intensity = val
+    console.print(f"  [{GREEN}]\u2713[/] Divergence intensity set to [{EMBER}]{val}[/]")
+    console.print("  [dim]Applies to the next invention run in this session.[/]\n")
 
 
 VALID_MODES = ("MECHANISM", "FRAMEWORK", "NARRATIVE", "SYSTEM", "PROTOCOL", "TAXONOMY", "INTERFACE")
@@ -710,16 +760,18 @@ async def _cmd_mode(console: Console, state: SessionState, args: str) -> None:
     """Show or set output mode."""
     current = getattr(state.config, "output_mode", "MECHANISM")
     if not args:
-        console.print(f"  [dim]Output mode:[/] [{CYAN}]{current}[/]")
+        console.print(f"  [dim]Output mode:[/] [{EMBER}]{current}[/]")
         console.print(f"  [dim]Options:[/] {', '.join(VALID_MODES)}\n")
         return
     val = args.strip().upper()
     if val not in VALID_MODES:
-        console.print(f"  [{RED}]Invalid mode '{args.strip()}'.[/] Options: {', '.join(VALID_MODES)}\n")
+        console.print(
+            f"  [{RED}]Invalid mode '{args.strip()}'.[/] Options: {', '.join(VALID_MODES)}\n"
+        )
         return
-    state.config.output_mode = val  # type: ignore[attr-defined]
-    console.print(f"  [{GREEN}]\u2713[/] Output mode set to [{CYAN}]{val}[/]")
-    console.print(f"  [dim]Applies to the next invention run in this session.[/]\n")
+    state.config.output_mode = val
+    console.print(f"  [{GREEN}]\u2713[/] Output mode set to [{EMBER}]{val}[/]")
+    console.print("  [dim]Applies to the next invention run in this session.[/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -736,9 +788,7 @@ def _resolve_todo_id(todo_list: TodoList, prefix: str) -> str:
     if len(matches) == 1:
         return matches[0].id
     if len(matches) > 1:
-        raise KeyError(
-            f"Ambiguous prefix {prefix!r} — matches {len(matches)} items"
-        )
+        raise KeyError(f"Ambiguous prefix {prefix!r} — matches {len(matches)} items")
     raise KeyError(f"No todo item with id prefix {prefix!r}")
 
 
@@ -774,7 +824,7 @@ async def _cmd_todo(console: Console, state: SessionState, args: str) -> None:
         console.print(state.todo_list.summary())
         console.print()
     else:
-        console.print(f"  [dim]Usage: /todo [add <text> | start <id> | done <id>][/]\n")
+        console.print("  [dim]Usage: /todo [add <text> | start <id> | done <id>][/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -792,6 +842,7 @@ async def _cmd_read(console: Console, state: SessionState, args: str) -> None:
         console.print(f"  [{RED}]Usage: /read <file_path>[/]\n")
         return
     from hephaestus.tools.file_ops import read_file
+
     full = state.workspace_root / path if not Path(path).is_absolute() else Path(path)
     content = read_file(str(full))
     console.print()
@@ -811,6 +862,7 @@ async def _cmd_tree(console: Console, state: SessionState, args: str) -> None:
         console.print()
     else:
         from hephaestus.tools.file_ops import list_directory
+
         console.print(list_directory(str(state.workspace_root)))
 
 
@@ -824,6 +876,7 @@ async def _cmd_grep(console: Console, state: SessionState, args: str) -> None:
         console.print(f"  [{RED}]Usage: /grep <query>[/]\n")
         return
     from hephaestus.tools.file_ops import grep_search
+
     result = grep_search(query, str(state.workspace_root))
     console.print()
     console.print(result)
@@ -837,6 +890,7 @@ async def _cmd_find(console: Console, state: SessionState, args: str) -> None:
         return
     pattern = args.strip() or "*.py"
     from hephaestus.tools.file_ops import search_files
+
     result = search_files(pattern, str(state.workspace_root))
     console.print()
     console.print(result)
@@ -861,8 +915,10 @@ async def _cmd_invent(console: Console, state: SessionState, args: str) -> None:
     if args.strip().isdigit():
         max_inventions = min(int(args.strip()), 7)
 
-    console.print(f"\n  [bold yellow]⚒️  Workspace Invention Mode[/]")
-    console.print(f"  [dim]Analyzing {state.workspace_root.name}/ and inventing up to {max_inventions} improvements...[/]\n")
+    console.print("\n  [bold yellow]⚒️  Workspace Invention Mode[/]")
+    console.print(
+        f"  [dim]Analyzing {state.workspace_root.name}/ and inventing up to {max_inventions} improvements...[/]\n"
+    )
 
     try:
         from hephaestus.workspace.inventor import WorkspaceInventor
@@ -903,36 +959,44 @@ def _build_adapter_for_analysis(cfg: Any) -> Any:
 
     Prefers Claude Max (OAT token, zero API cost) when available.
     """
-    import os
     backend = cfg.backend
 
     if backend == "codex-cli":
         from hephaestus.deepforge.adapters.codex_oauth import CodexOAuthAdapter
+
         return CodexOAuthAdapter(model=cfg.default_model or "gpt-5.4")
 
     # Always try Claude Max first — it's free (subscription)
     try:
         from hephaestus.deepforge.adapters.claude_max import ClaudeMaxAdapter
+
         return ClaudeMaxAdapter(model=cfg.default_model or "claude-sonnet-4-6")
-    except Exception:
-        pass  # OAT token not available, fall back
+    except Exception as exc:
+        logger.warning("Claude Max adapter not available, trying fallbacks: %s", exc)
 
     if backend == "claude-cli":
         from hephaestus.deepforge.adapters.claude_cli import ClaudeCliAdapter
+
         return ClaudeCliAdapter(model=cfg.default_model or "claude-opus-4-6")
 
     # Fall back to API key adapters
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
     if anthropic_key:
         from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
-        return AnthropicAdapter(model=cfg.default_model or "claude-sonnet-4-20250514", api_key=anthropic_key)
+
+        return AnthropicAdapter(
+            model=cfg.default_model or "claude-sonnet-4-20250514", api_key=anthropic_key
+        )
 
     openai_key = os.environ.get("OPENAI_API_KEY")
     if openai_key:
         from hephaestus.deepforge.adapters.openai import OpenAIAdapter
+
         return OpenAIAdapter(model="gpt-4o", api_key=openai_key)
 
-    raise RuntimeError("No LLM adapter available. Set up Claude Max, ANTHROPIC_API_KEY, or OPENAI_API_KEY.")
+    raise RuntimeError(
+        "No LLM adapter available. Set up Claude Max, ANTHROPIC_API_KEY, or OPENAI_API_KEY."
+    )
 
 
 async def _cmd_ws(console: Console, state: SessionState, args: str) -> None:
@@ -944,12 +1008,18 @@ async def _cmd_ws(console: Console, state: SessionState, args: str) -> None:
         console.print()
         console.print(f"  [{GOLD}]Workspace:[/] {state.workspace_root}")
         s = state.workspace_context.summary
-        console.print(f"  [dim]Files:[/] {s.total_files} | [dim]Lines:[/] {s.total_lines:,} | [dim]Language:[/] {s.primary_language}")
+        console.print(
+            f"  [dim]Files:[/] {s.total_files} | [dim]Lines:[/] {s.total_lines:,} | [dim]Language:[/] {s.primary_language}"
+        )
         if s.git:
-            console.print(f"  [dim]Git:[/] {s.git.branch} {'(dirty)' if s.git.has_changes else '(clean)'}")
+            console.print(
+                f"  [dim]Git:[/] {s.git.branch} {'(dirty)' if s.git.has_changes else '(clean)'}"
+            )
         repo_dossier = _repo_dossier_from_state(state)
         if repo_dossier is not None:
-            console.print(f"  [dim]Repo cache:[/] {repo_dossier.cache_state} @ {repo_dossier.cache_path}")
+            console.print(
+                f"  [dim]Repo cache:[/] {repo_dossier.cache_state} @ {repo_dossier.cache_path}"
+            )
             for note in repo_dossier.architecture_notes[:3]:
                 console.print(f"  [dim]-[/] {note}")
             if repo_dossier.components:
@@ -985,7 +1055,7 @@ async def _cmd_refine(console: Console, state: SessionState, args: str) -> None:
 
     console.print()
     console.print(
-        f"  [dim]Refining:[/] [{CYAN_BOLD}]{top.invention_name}[/]\n"
+        f"  [dim]Refining:[/] [{WHITE_HOT}]{top.invention_name}[/]\n"
         f"  [dim]Add constraints, shift domain, narrow scope, or challenge weaknesses.[/]\n"
     )
 
@@ -1010,9 +1080,11 @@ async def _cmd_refine(console: Console, state: SessionState, args: str) -> None:
         f"PREVIOUS INVENTION (refine this): {top.invention_name} from {top.source_domain}"
     )
     if state.context_items:
-        refined_problem += "\n\nADDITIONAL CONTEXT:\n" + "\n".join(f"- {c}" for c in state.context_items)
+        refined_problem += "\n\nADDITIONAL CONTEXT:\n" + "\n".join(
+            f"- {c}" for c in state.context_items
+        )
 
-    console.print(f"  [dim]Re-running pipeline with refinement constraint...[/]\n")
+    console.print("  [dim]Re-running pipeline with refinement constraint...[/]\n")
     await _run_pipeline(console, state, refined_problem, is_refinement=True)
 
 
@@ -1071,7 +1143,9 @@ async def _cmd_context(console: Console, state: SessionState, args: str) -> None
     if sub == "add" and len(parts) > 1 and parts[1].strip():
         text = parts[1].strip()
         state.context_items.append(text)
-        console.print(f"  [{GREEN}]\u2713[/] Context added ({len(state.context_items)} items total)\n")
+        console.print(
+            f"  [{GREEN}]\u2713[/] Context added ({len(state.context_items)} items total)\n"
+        )
         return
     elif sub == "add":
         console.print(f"  [{RED}]Usage: /context add <text>[/]\n")
@@ -1082,19 +1156,19 @@ async def _cmd_context(console: Console, state: SessionState, args: str) -> None
     else:
         if not state.context_items:
             console.print("  [dim]No context items yet.[/]")
-            console.print("  [dim]Example:[/] [cyan]/context add must work offline and tolerate node churn[/]\n")
+            console.print(
+                "  [dim]Example:[/] [dark_orange]/context add must work offline and tolerate node churn[/]\n"
+            )
         else:
             console.print()
             for i, item in enumerate(state.context_items, 1):
-                console.print(f"  [{CYAN}]{i}.[/] {item}")
+                console.print(f"  [{EMBER}]{i}.[/] {item}")
             console.print()
 
         # Context transparency report
         config_ns = None
         if state.layered_config is not None:
-            config_ns = SimpleNamespace(
-                config_sources=state.layered_config.config_sources()
-            )
+            config_ns = SimpleNamespace(config_sources=state.layered_config.config_sources())
         mem_report = build_memory_report(state, config=config_ns)
         ctx_text = format_context_report(mem_report)
         console.print(
@@ -1133,7 +1207,7 @@ async def _cmd_save(console: Console, state: SessionState, args: str) -> None:
     name = args.strip() if args.strip() else entry.slug
     # Sanitize name
     name = re.sub(r"[^a-z0-9_-]", "-", name.lower().strip())[:50].strip("-") or "invention"
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
     base = f"{date_str}-{name}"
 
     # Find unique filename
@@ -1157,8 +1231,8 @@ async def _cmd_save(console: Console, state: SessionState, args: str) -> None:
         md_path = json_path.with_suffix(".md")
         md_path.write_text(_invention_to_markdown(entry, report), encoding="utf-8")
 
-        console.print(f"  [{GREEN}]\u2713[/] Saved to [cyan]{json_path}[/]")
-        console.print(f"  [{GREEN}]\u2713[/] Markdown: [cyan]{md_path}[/]")
+        console.print(f"  [{GREEN}]\u2713[/] Saved to [dark_orange]{json_path}[/]")
+        console.print(f"  [{GREEN}]\u2713[/] Markdown: [dark_orange]{md_path}[/]")
     except Exception:
         print_error(
             console,
@@ -1170,23 +1244,23 @@ async def _cmd_save(console: Console, state: SessionState, args: str) -> None:
     # Save full session replay JSON
     session_path = _save_session_replay(state)
     if session_path:
-        console.print(f"  [{GREEN}]\u2713[/] Session replay: [cyan]{session_path}[/]")
+        console.print(f"  [{GREEN}]\u2713[/] Session replay: [dark_orange]{session_path}[/]")
 
     # Save typed session transcript
     if state.session is not None:
         try:
             transcript_path = SESSIONS_DIR / f"{base}-transcript.json"
             state.session.save(transcript_path)
-            console.print(f"  [{GREEN}]\u2713[/] Session transcript: [cyan]{transcript_path}[/]")
-        except Exception:
-            pass
+            console.print(f"  [{GREEN}]\u2713[/] Session transcript: [dark_orange]{transcript_path}[/]")
+        except Exception as exc:
+            logger.warning("Failed to save session transcript: %s", exc)
     console.print()
 
 
 def _save_session_replay(state: SessionState) -> Path | None:
     """Save full session state as a replay JSON."""
     ensure_dirs()
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
     first_slug = state.inventions[0].slug if state.inventions else "session"
     session_path = SESSIONS_DIR / f"{date_str}-{first_slug}-session.json"
     counter = 1
@@ -1197,13 +1271,15 @@ def _save_session_replay(state: SessionState) -> Path | None:
     try:
         entries = []
         for inv in state.inventions:
-            entries.append({
-                "problem": inv.problem,
-                "timestamp": inv.timestamp,
-                "refined": inv.refined,
-                "slug": inv.slug,
-                "report": inv.report.to_dict(),
-            })
+            entries.append(
+                {
+                    "problem": inv.problem,
+                    "timestamp": inv.timestamp,
+                    "refined": inv.refined,
+                    "slug": inv.slug,
+                    "report": inv.report.to_dict(),
+                }
+            )
 
         data = {
             "session_start": state.start_time,
@@ -1218,7 +1294,8 @@ def _save_session_replay(state: SessionState) -> Path | None:
         }
         session_path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
         return session_path
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to save session replay: %s", exc)
         return None
 
 
@@ -1247,7 +1324,9 @@ def _loaded_cost_breakdown(cost_data: dict[str, Any] | None) -> Any:
     score = float(payload.get("scoring", 0.0) or 0.0)
     translation = float(payload.get("translation", 0.0) or 0.0)
     verification = float(payload.get("verification", 0.0) or 0.0)
-    total = float(payload.get("total", decomposition + search + score + translation + verification) or 0.0)
+    total = float(
+        payload.get("total", decomposition + search + score + translation + verification) or 0.0
+    )
     return SimpleNamespace(
         decomposition_cost=decomposition,
         search_cost=search,
@@ -1275,7 +1354,9 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
             implementation_notes=data.get("implementation_notes", ""),
             mapping=_loaded_mapping_items(data.get("mapping")),
             source_candidate=SimpleNamespace(
-                domain_distance=float(data.get("domain_distance", data.get("novelty_score", 0.0) or 0.0) or 0.0),
+                domain_distance=float(
+                    data.get("domain_distance", data.get("novelty_score", 0.0) or 0.0) or 0.0
+                ),
                 structural_fidelity=float(data.get("structural_fidelity", 0.0) or 0.0),
             ),
         )
@@ -1317,7 +1398,9 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
         )
 
     report = SimpleNamespace(
-        problem=meta.get("problem", payload.get("problem", "")) if meta else payload.get("problem", ""),
+        problem=meta.get("problem", payload.get("problem", ""))
+        if meta
+        else payload.get("problem", ""),
         structure=SimpleNamespace(
             native_domain=payload.get("native_domain", "N/A"),
             mathematical_shape=payload.get("mathematical_shape", "Not available"),
@@ -1330,14 +1413,16 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
         model_config=payload.get("models", {}) or {},
         total_cost_usd=cost_breakdown.total,
         lens_engine_state=(
-            __import__("hephaestus.lenses.state", fromlist=["LensEngineState"])
-            .LensEngineState.from_dict(lens_engine_payload)
+            __import__(
+                "hephaestus.lenses.state", fromlist=["LensEngineState"]
+            ).LensEngineState.from_dict(lens_engine_payload)
             if isinstance(lens_engine_payload, dict)
             else None
         ),
         pantheon_state=(
-            __import__("hephaestus.pantheon.models", fromlist=["PantheonState"])
-            .PantheonState.from_dict(pantheon_payload)
+            __import__(
+                "hephaestus.pantheon.models", fromlist=["PantheonState"]
+            ).PantheonState.from_dict(pantheon_payload)
             if isinstance(pantheon_payload, dict)
             else None
         ),
@@ -1346,7 +1431,9 @@ def _loaded_report(report_data: dict[str, Any], meta: dict[str, Any] | None = No
     return report
 
 
-def _loaded_entry(report_data: dict[str, Any], meta: dict[str, Any] | None = None) -> InventionEntry:
+def _loaded_entry(
+    report_data: dict[str, Any], meta: dict[str, Any] | None = None
+) -> InventionEntry:
     """Create an InventionEntry from saved JSON."""
     meta = meta or {}
     report = _loaded_report(report_data, meta=meta)
@@ -1363,28 +1450,32 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
     """Load a previously saved invention or session from disk."""
     if not args.strip():
         console.print(f"  [{AMBER}]Usage:[/] /load <name or path>\n")
-        console.print(f"  [dim]Tip: use /history to see saved inventions.[/]\n")
+        console.print("  [dim]Tip: use /history to see saved inventions.[/]\n")
         return
 
     query = args.strip()
     target = _find_saved_file(query)
 
     if not target:
-        print_error(console, f"No saved invention matching '{query}'.", hint="Use /history to browse saved files.")
+        print_error(
+            console,
+            f"No saved invention matching '{query}'.",
+            hint="Use /history to browse saved files.",
+        )
         return
 
     try:
         data = json.loads(target.read_text(encoding="utf-8"))
     except Exception:
-        print_error(console, f"Could not read {target.name}.", hint="Make sure the file contains valid JSON.")
+        print_error(
+            console,
+            f"Could not read {target.name}.",
+            hint="Make sure the file contains valid JSON.",
+        )
         return
 
     # Detect typed Session transcript (has "meta" with "id" and "transcript")
-    if (
-        "meta" in data
-        and "transcript" in data
-        and "id" in data.get("meta", {})
-    ):
+    if "meta" in data and "transcript" in data and "id" in data.get("meta", {}):
         loaded_session = Session.from_dict(data)
         state.session = loaded_session
         state.context_items = list(loaded_session.pinned_context)
@@ -1393,7 +1484,10 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
         n_inv = len(loaded_session.inventions)
         gate_summary = None
         if loaded_session.reference_lots:
-            from hephaestus.session.reference_lots import default_probe_factory, evaluate_resume_gate
+            from hephaestus.session.reference_lots import (
+                default_probe_factory,
+                evaluate_resume_gate,
+            )
 
             probe = default_probe_factory(
                 workspace_root=str(state.workspace_root) if state.workspace_root else None,
@@ -1405,12 +1499,10 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
             gate_summary = gate.summary()
         console.print(
             f"  [{GREEN}]\u2713[/] Loaded session transcript"
-            f" ({n_entries} entries) from [cyan]{target.name}[/]"
+            f" ({n_entries} entries) from [dark_orange]{target.name}[/]"
         )
         if n_inv:
-            console.print(
-                f"  [dim]{n_inv} invention snapshot(s) in session.[/]"
-            )
+            console.print(f"  [dim]{n_inv} invention snapshot(s) in session.[/]")
         if gate_summary:
             console.print(f"  [dim]{gate_summary}[/]")
         console.print()
@@ -1420,12 +1512,15 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
     if "inventions" in data and isinstance(data["inventions"], list):
         count = len(data["inventions"])
         loaded_entries = [
-            _loaded_entry(inv.get("report", {}), meta={
-                "problem": inv.get("problem", ""),
-                "timestamp": inv.get("timestamp", time.time()),
-                "refined": inv.get("refined", False),
-                "slug": inv.get("slug", ""),
-            })
+            _loaded_entry(
+                inv.get("report", {}),
+                meta={
+                    "problem": inv.get("problem", ""),
+                    "timestamp": inv.get("timestamp", time.time()),
+                    "refined": inv.get("refined", False),
+                    "slug": inv.get("slug", ""),
+                },
+            )
             for inv in data["inventions"]
         ]
 
@@ -1443,11 +1538,15 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
         state.total_output_tokens = 0
         state.last_loaded_path = target
 
-        console.print(f"  [{GREEN}]\u2713[/] Loaded session with {count} inventions from [cyan]{target.name}[/]")
+        console.print(
+            f"  [{GREEN}]\u2713[/] Loaded session with {count} inventions from [dark_orange]{target.name}[/]"
+        )
         if state.current and state.current.report.top_invention:
             name = state.current.report.top_invention.invention_name
             console.print(f"  [dim]Current invention:[/] [{AMBER}]{name}[/]")
-        console.print("  [dim]Use /history to browse, [cyan]1[/] for the active report, or /compare to review recent work.[/]")
+        console.print(
+            "  [dim]Use /history to browse, [dark_orange]1[/] for the active report, or /compare to review recent work.[/]"
+        )
         console.print()
     else:
         meta = data.get("_meta", {})
@@ -1460,11 +1559,15 @@ async def _cmd_load(console: Console, state: SessionState, args: str) -> None:
         name = top.invention_name if top else "N/A"
         source = top.source_domain if top else "N/A"
         novelty = top.novelty_score if top else 0
-        console.print(f"  [{GREEN}]\u2713[/] Loaded from [cyan]{target.name}[/]")
+        console.print(f"  [{GREEN}]\u2713[/] Loaded from [dark_orange]{target.name}[/]")
         console.print(f"  [{AMBER}]Invention:[/] {name}")
-        console.print(f"  [dim]Source:[/] [{CYAN}]{source}[/]  [dim]Novelty:[/] [{GREEN}]{novelty}[/]")
+        console.print(
+            f"  [dim]Source:[/] [{EMBER}]{source}[/]  [dim]Novelty:[/] [{GREEN}]{novelty}[/]"
+        )
         console.print(f"  [dim]Problem:[/] {entry.problem[:80]}")
-        console.print("  [dim]It is now the active invention. Type [cyan]1[/] for the full report or /export to save a new copy.[/]")
+        console.print(
+            "  [dim]It is now the active invention. Type [dark_orange]1[/] for the full report or /export to save a new copy.[/]"
+        )
         console.print()
 
 
@@ -1508,18 +1611,20 @@ async def _cmd_history_v2(console: Console, state: SessionState, args: str) -> N
     entries: list[dict[str, Any]] = []
     for i, inv in enumerate(state.inventions):
         top = inv.report.top_invention
-        entries.append({
-            "idx": i + 1,
-            "source": "session",
-            "name": top.invention_name if top else "(no invention)",
-            "domain": top.source_domain if top else "N/A",
-            "novelty": top.novelty_score if top else 0.0,
-            "cost": inv.report.total_cost_usd,
-            "problem": inv.problem,
-            "refined": inv.refined,
-            "date": datetime.fromtimestamp(inv.timestamp, tz=timezone.utc).strftime("%Y-%m-%d"),
-            "active": i == state.current_idx,
-        })
+        entries.append(
+            {
+                "idx": i + 1,
+                "source": "session",
+                "name": top.invention_name if top else "(no invention)",
+                "domain": top.source_domain if top else "N/A",
+                "novelty": top.novelty_score if top else 0.0,
+                "cost": inv.report.total_cost_usd,
+                "problem": inv.problem,
+                "refined": inv.refined,
+                "date": datetime.fromtimestamp(inv.timestamp, tz=UTC).strftime("%Y-%m-%d"),
+                "active": i == state.current_idx,
+            }
+        )
 
     # Collect saved inventions from disk (only if no session inventions or searching)
     if INVENTIONS_DIR.exists():
@@ -1532,26 +1637,30 @@ async def _cmd_history_v2(console: Console, state: SessionState, args: str) -> N
                 # Skip if already in session (by name match)
                 if any(e["name"] == name and e["source"] == "session" for e in entries):
                     continue
-                entries.append({
-                    "idx": None,
-                    "source": "disk",
-                    "name": name,
-                    "domain": top_inv.get("source_domain", "N/A") if top_inv else "N/A",
-                    "novelty": top_inv.get("novelty_score", 0) if top_inv else 0,
-                    "cost": data.get("cost_breakdown", {}).get("total", 0),
-                    "problem": meta.get("problem", data.get("problem", "")),
-                    "refined": meta.get("refined", False),
-                    "date": f.stem[:10],
-                    "active": False,
-                    "filename": f.name,
-                })
-            except Exception:
+                entries.append(
+                    {
+                        "idx": None,
+                        "source": "disk",
+                        "name": name,
+                        "domain": top_inv.get("source_domain", "N/A") if top_inv else "N/A",
+                        "novelty": top_inv.get("novelty_score", 0) if top_inv else 0,
+                        "cost": data.get("cost_breakdown", {}).get("total", 0),
+                        "problem": meta.get("problem", data.get("problem", "")),
+                        "refined": meta.get("refined", False),
+                        "date": f.stem[:10],
+                        "active": False,
+                        "filename": f.name,
+                    }
+                )
+            except (json.JSONDecodeError, OSError, KeyError) as exc:
+                logger.warning("Skipping unreadable invention file %s: %s", f.name, exc)
                 continue
 
     # Filter by search term
     if search_term:
         entries = [
-            e for e in entries
+            e
+            for e in entries
             if search_term in e.get("name", "").lower()
             or search_term in e.get("domain", "").lower()
             or search_term in e.get("problem", "").lower()
@@ -1560,18 +1669,26 @@ async def _cmd_history_v2(console: Console, state: SessionState, args: str) -> N
     if not entries:
         if search_term:
             console.print(f"  [dim]No inventions matching '{search_term}'.[/]")
-            console.print("  [dim]Run [cyan]/history[/][dim] with no filter to browse everything.[/]\n")
+            console.print(
+                "  [dim]Run [dark_orange]/history[/][dim] with no filter to browse everything.[/]\n"
+            )
         else:
             console.print("  [dim]No inventions yet in this session or on disk.[/]")
-            console.print("  [dim]Type a problem to start, or use [cyan]/load <name|path>[/] to restore saved work.[/]\n")
+            console.print(
+                "  [dim]Type a problem to start, or use [dark_orange]/load <name|path>[/] to restore saved work.[/]\n"
+            )
         return
 
-    session_names = [str(entry["name"]) for entry in entries if entry["source"] == "session" and entry.get("name")]
+    session_names = [
+        str(entry["name"])
+        for entry in entries
+        if entry["source"] == "session" and entry.get("name")
+    ]
     if session_names:
         console.print(f"  [dim]Session inventions:[/] {', '.join(session_names[:4])}")
 
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 2), show_header=True)
-    table.add_column("#", style=CYAN, width=4)
+    table.add_column("#", style=EMBER, width=4)
     table.add_column("Invention", style=AMBER, max_width=35)
     table.add_column("Source Domain", style=DIM, max_width=20)
     table.add_column("Novelty", style=GREEN, justify="right", width=8)
@@ -1609,10 +1726,16 @@ async def _cmd_compare(console: Console, state: SessionState, args: str) -> None
     if len(state.inventions) < 2:
         n = len(state.inventions)
         if n == 0:
-            console.print("  [dim]No inventions yet. Describe a problem to generate your first one.[/]")
-            console.print("  [dim]You can also restore saved work with [cyan]/load <name|path>[/][dim].[/]\n")
+            console.print(
+                "  [dim]No inventions yet. Describe a problem to generate your first one.[/]"
+            )
+            console.print(
+                "  [dim]You can also restore saved work with [dark_orange]/load <name|path>[/][dim].[/]\n"
+            )
         else:
-            console.print("  [dim]Only 1 invention so far. Describe another problem to unlock comparison.[/]\n")
+            console.print(
+                "  [dim]Only 1 invention so far. Describe another problem to unlock comparison.[/]\n"
+            )
         return
 
     # Compare last 4 inventions max
@@ -1644,7 +1767,7 @@ async def _cmd_compare(console: Console, state: SessionState, args: str) -> None
     row = ["Source Domain"]
     for inv in recent:
         top = inv.report.top_invention
-        row.append(f"[{CYAN}]{top.source_domain}[/]" if top else "N/A")
+        row.append(f"[{EMBER}]{top.source_domain}[/]" if top else "N/A")
     rows.append(tuple(row))
 
     # Novelty
@@ -1660,7 +1783,7 @@ async def _cmd_compare(console: Console, state: SessionState, args: str) -> None
     for inv in recent:
         top = inv.report.top_invention
         feas = top.feasibility_rating if top else "N/A"
-        row.append(f"[{CYAN}]{feas}[/]")
+        row.append(f"[{EMBER}]{feas}[/]")
     rows.append(tuple(row))
 
     # Verdict
@@ -1716,7 +1839,7 @@ async def _cmd_export_v2(console: Console, state: SessionState, args: str) -> No
         console.print("  [dim]No current invention to export.[/]\n")
         return
 
-    fmt = (args.strip().lower() or "markdown")
+    fmt = args.strip().lower() or "markdown"
     if fmt not in VALID_EXPORT_FORMATS:
         console.print(f"  [{RED}]Unknown export format '{fmt}'.[/]")
         console.print(f"  [dim]Choose one of:[/] {', '.join(VALID_EXPORT_FORMATS)}\n")
@@ -1727,11 +1850,11 @@ async def _cmd_export_v2(console: Console, state: SessionState, args: str) -> No
         return
 
     ensure_dirs()
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
     slug = entry.slug
 
-    from hephaestus.output.formatter import OutputFormatter
     from hephaestus.cli.main import _bridge_report
+    from hephaestus.output.formatter import OutputFormatter
 
     fmt_report = _bridge_report(report)
     formatter = OutputFormatter()
@@ -1749,7 +1872,8 @@ async def _cmd_export_v2(console: Console, state: SessionState, args: str) -> No
             md_content = formatter.to_markdown(fmt_report)
             path = INVENTIONS_DIR / f"{date_str}-{slug}.pdf"
             try:
-                from weasyprint import HTML  # type: ignore[import-untyped]
+                from weasyprint import HTML
+
                 html_body = _md_to_simple_html(md_content)
                 html_str = (
                     "<html><head><style>"
@@ -1765,16 +1889,21 @@ async def _cmd_export_v2(console: Console, state: SessionState, args: str) -> No
             except ImportError:
                 path = INVENTIONS_DIR / f"{date_str}-{slug}-export.md"
                 path.write_text(md_content, encoding="utf-8")
-                print_warning(console, "weasyprint not installed. Saved as markdown instead. Install with: pip install weasyprint")
+                print_warning(
+                    console,
+                    "weasyprint not installed. Saved as markdown instead. Install with: pip install weasyprint",
+                )
         else:
             content = formatter.to_markdown(fmt_report)
             path = INVENTIONS_DIR / f"{date_str}-{slug}.md"
             path.write_text(content, encoding="utf-8")
     except OSError:
-        print_error(console, "Export failed.", hint="Check write permissions for ~/.hephaestus/inventions.")
+        print_error(
+            console, "Export failed.", hint="Check write permissions for ~/.hephaestus/inventions."
+        )
         return
 
-    print_success(console, f"Exported to [cyan]{path}[/]")
+    print_success(console, f"Exported to [dark_orange]{path}[/]")
 
 
 def _md_to_simple_html(md: str) -> str:
@@ -1841,17 +1970,40 @@ def _md_to_simple_html(md: str) -> str:
 # ---------------------------------------------------------------------------
 
 ALL_COMMANDS = [
-    "/help", "/status", "/quit", "/exit", "/clear",
-    "/model", "/backend", "/usage", "/cost",
-    "/refine", "/alternatives", "/deeper", "/domain",
-    "/candidates", "/trace", "/export",
+    "/help",
+    "/status",
+    "/quit",
+    "/exit",
+    "/clear",
+    "/model",
+    "/backend",
+    "/usage",
+    "/cost",
+    "/refine",
+    "/alternatives",
+    "/deeper",
+    "/domain",
+    "/candidates",
+    "/trace",
+    "/export",
     "/context",
-    "/save", "/load", "/history", "/compare",
-    "/intensity", "/mode",
-    "/todo", "/plan",
+    "/save",
+    "/load",
+    "/history",
+    "/compare",
+    "/intensity",
+    "/mode",
+    "/todo",
+    "/plan",
     # ForgeBase
-    "/vault", "/ask", "/fuse", "/ingest",
-    "/fb-lint", "/fb-compile", "/workbook", "/fb-export",
+    "/vault",
+    "/ask",
+    "/fuse",
+    "/ingest",
+    "/fb-lint",
+    "/fb-compile",
+    "/workbook",
+    "/fb-export",
 ]
 
 
@@ -1886,6 +2038,7 @@ def _setup_readline() -> None:
 # ---------------------------------------------------------------------------
 # Command registry
 # ---------------------------------------------------------------------------
+
 
 def _closest_command(name: str) -> str | None:
     """Return the closest command name by edit distance, or None if too distant."""
@@ -1948,6 +2101,7 @@ COMMANDS: dict[str, Any] = {
     "fb-export": None,
 }
 
+
 # Wire ForgeBase handlers — lazy import to avoid pulling ForgeBase at REPL startup
 def _init_forgebase_handlers() -> None:
     from hephaestus.cli.forgebase_commands import (
@@ -1960,6 +2114,7 @@ def _init_forgebase_handlers() -> None:
         _cmd_vault,
         _cmd_workbook,
     )
+
     COMMANDS["vault"] = _cmd_vault
     COMMANDS["ask"] = _cmd_ask
     COMMANDS["fuse"] = _cmd_fuse
@@ -1971,6 +2126,7 @@ def _init_forgebase_handlers() -> None:
     # Aliases
     COMMANDS["v"] = _cmd_vault
     COMMANDS["wb"] = _cmd_workbook
+
 
 _init_forgebase_handlers()
 
@@ -1991,8 +2147,8 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
     backend = cfg.backend
     selected_model = cfg.default_model  # User's /model choice
 
-    # For claude-max, claude-cli, and codex-cli: use the selected model for ALL stages
-    if backend in ("claude-max", "claude-cli", "codex-cli"):
+    # For subscription backends: use the selected model for ALL stages
+    if backend in ("agent-sdk", "claude-max", "claude-cli", "codex-cli"):
         return GenesisConfig(
             decompose_model=selected_model,
             search_model=selected_model,
@@ -2026,6 +2182,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
             pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
             pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
+            transliminality_enabled=getattr(cfg, "transliminality_enabled", False),
         )
 
     if selected_model in {"opus", "gpt5", "codex", "both"}:
@@ -2036,7 +2193,9 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         return GenesisConfig(
             anthropic_api_key=getattr(cfg, "anthropic_api_key", None),
             openai_api_key=getattr(cfg, "openai_api_key", None),
-            openrouter_api_key=getattr(cfg, "openrouter_api_key", None) if backend == "openrouter" else None,
+            openrouter_api_key=getattr(cfg, "openrouter_api_key", None)
+            if backend == "openrouter"
+            else None,
             decompose_model=models["decompose"],
             search_model=models["search"],
             score_model=models["score"],
@@ -2065,12 +2224,15 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
             pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
             pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
             pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
+            transliminality_enabled=getattr(cfg, "transliminality_enabled", False),
         )
 
     return GenesisConfig(
         anthropic_api_key=getattr(cfg, "anthropic_api_key", None),
         openai_api_key=getattr(cfg, "openai_api_key", None),
-        openrouter_api_key=getattr(cfg, "openrouter_api_key", None) if backend == "openrouter" else None,
+        openrouter_api_key=getattr(cfg, "openrouter_api_key", None)
+        if backend == "openrouter"
+        else None,
         decompose_model=selected_model,
         search_model=selected_model,
         score_model=selected_model,
@@ -2099,6 +2261,7 @@ def _build_genesis_config_from_session(state: SessionState) -> Any:
         pantheon_athena_model=getattr(cfg, "pantheon_athena_model", None),
         pantheon_hermes_model=getattr(cfg, "pantheon_hermes_model", None),
         pantheon_apollo_model=getattr(cfg, "pantheon_apollo_model", None),
+        transliminality_enabled=getattr(cfg, "transliminality_enabled", False),
     )
 
 
@@ -2116,7 +2279,20 @@ async def _run_pipeline(
 
     try:
         genesis_config = _build_genesis_config_from_session(state)
-        genesis = Genesis(genesis_config)
+
+        # Initialize ForgeBase for transliminality + knowledge features
+        _fb = getattr(state, "forgebase", None)
+        if _fb is None and genesis_config.transliminality_enabled:
+            try:
+                from hephaestus.cli.forgebase_commands import _ensure_forgebase
+
+                _fb = await _ensure_forgebase(state)
+            except Exception as fb_exc:
+                import logging as _log
+
+                _log.getLogger(__name__).warning("ForgeBase init skipped: %s", fb_exc)
+
+        genesis = Genesis(genesis_config, forgebase=_fb)
     except Exception as exc:
         msg = str(exc).lower()
         hint = "Check /status to verify your backend and model settings."
@@ -2150,7 +2326,8 @@ async def _run_pipeline(
         print_error(
             console,
             "The pipeline stopped before completion.",
-            hint=_error_hint(_safe_error_message(exc)) or "Check /status, your backend credentials, and network access.",
+            hint=_error_hint(_safe_error_message(exc))
+            or "Check /status, your backend credentials, and network access.",
         )
         return
 
@@ -2171,7 +2348,9 @@ async def _run_pipeline(
         state.last_auto_save_path = path
         state.last_auto_save_error = None if path else "Auto-save failed."
         if path is None:
-            print_warning(console, "Auto-save failed. You can still keep working and use /save to retry.")
+            print_warning(
+                console, "Auto-save failed. You can still keep working and use /save to retry."
+            )
     else:
         state.last_auto_save_path = None
         state.last_auto_save_error = None
@@ -2200,11 +2379,7 @@ async def _run_pipeline(
             except Exception as exc:
                 logger.warning("Could not attach deliberation graph to session: %s", exc)
 
-        inv_name = (
-            report.top_invention.invention_name
-            if report.top_invention
-            else "N/A"
-        )
+        inv_name = report.top_invention.invention_name if report.top_invention else "N/A"
         pantheon_state = getattr(report, "pantheon_state", None)
         pantheon_payload = (
             pantheon_state.to_dict()
@@ -2216,9 +2391,7 @@ async def _run_pipeline(
         state.session.add_invention(
             invention_name=inv_name,
             source_domain=(
-                report.top_invention.source_domain
-                if report.top_invention is not None
-                else ""
+                report.top_invention.source_domain if report.top_invention is not None else ""
             ),
             architecture=(
                 getattr(getattr(report.top_invention, "translation", None), "architecture", "")
@@ -2233,7 +2406,9 @@ async def _run_pipeline(
             mapping_summary=(
                 "\n".join(
                     f"{m.source_element} -> {m.target_element}"
-                    for m in getattr(getattr(report.top_invention, "translation", None), "mapping", [])[:6]
+                    for m in getattr(
+                        getattr(report.top_invention, "translation", None), "mapping", []
+                    )[:6]
                 )
                 if report.top_invention is not None
                 else ""
@@ -2245,7 +2420,9 @@ async def _run_pipeline(
             pantheon_outcome_tier=str(getattr(pantheon_state, "outcome_tier", "") or ""),
             pantheon_resolution_mode=str(getattr(pantheon_state, "resolution_mode", "") or ""),
             pantheon_rounds=len(getattr(pantheon_state, "rounds", []) or []),
-            pantheon_winning_candidate_id=str(getattr(pantheon_state, "winning_candidate_id", "") or ""),
+            pantheon_winning_candidate_id=str(
+                getattr(pantheon_state, "winning_candidate_id", "") or ""
+            ),
             deliberation_graph_id=str(getattr(deliberation_graph, "graph_id", "") or ""),
             runtime_accounting=(
                 deliberation_graph.accounting.to_dict()
@@ -2260,10 +2437,16 @@ async def _run_pipeline(
             entry_type=EntryType.INVENTION.value,
             metadata=(
                 {
-                    "pantheon_consensus_achieved": bool(getattr(pantheon_state, "consensus_achieved", False)),
-                    "pantheon_final_verdict": str(getattr(pantheon_state, "final_verdict", "") or ""),
+                    "pantheon_consensus_achieved": bool(
+                        getattr(pantheon_state, "consensus_achieved", False)
+                    ),
+                    "pantheon_final_verdict": str(
+                        getattr(pantheon_state, "final_verdict", "") or ""
+                    ),
                     "pantheon_outcome_tier": str(getattr(pantheon_state, "outcome_tier", "") or ""),
-                    "pantheon_resolution_mode": str(getattr(pantheon_state, "resolution_mode", "") or ""),
+                    "pantheon_resolution_mode": str(
+                        getattr(pantheon_state, "resolution_mode", "") or ""
+                    ),
                     "pantheon_rounds": len(getattr(pantheon_state, "rounds", []) or []),
                 }
                 if pantheon_state is not None
@@ -2285,7 +2468,7 @@ def _auto_save_invention(state: SessionState) -> Path | None:
     if not entry:
         return None
     ensure_dirs()
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
     slug = entry.slug
 
     # Find a unique filename
@@ -2313,7 +2496,8 @@ def _auto_save_invention(state: SessionState) -> Path | None:
         md_path.write_text(md_content, encoding="utf-8")
 
         return json_path
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to save invention: %s", exc)
         return None
 
 
@@ -2329,29 +2513,34 @@ def _invention_to_markdown(entry: InventionEntry, report: Any) -> str:
         f"**Feasibility:** {top.feasibility_rating if top else 'N/A'}",
         f"**Cost:** ${report.total_cost_usd:.4f}",
         f"**Duration:** {report.total_duration_seconds:.1f}s",
-        f"**Date:** {datetime.fromtimestamp(entry.timestamp, tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"**Date:** {datetime.fromtimestamp(entry.timestamp, tz=UTC).strftime('%Y-%m-%d %H:%M UTC')}",
         "",
     ]
     if top and hasattr(top.translation, "key_insight") and top.translation.key_insight:
-        lines.extend([
-            "## Key Insight",
-            "",
-            top.translation.key_insight,
-            "",
-        ])
+        lines.extend(
+            [
+                "## Key Insight",
+                "",
+                top.translation.key_insight,
+                "",
+            ]
+        )
     if top and hasattr(top.translation, "architecture") and top.translation.architecture:
         _arch = top.translation.architecture
         if isinstance(_arch, dict):
             import json as _j
+
             _arch = _j.dumps(_arch, indent=2)
         elif not isinstance(_arch, str):
             _arch = str(_arch)
-        lines.extend([
-            "## Architecture",
-            "",
-            _arch,
-            "",
-        ])
+        lines.extend(
+            [
+                "## Architecture",
+                "",
+                _arch,
+                "",
+            ]
+        )
     if top and hasattr(top.translation, "limitations") and top.translation.limitations:
         lines.extend(["## Limitations", ""])
         for lim in top.translation.limitations:
@@ -2404,9 +2593,7 @@ def _invention_to_markdown(entry: InventionEntry, report: Any) -> str:
         winning_candidate_id = _maybe_attr(pantheon_state, "winning_candidate_id", "")
         if winning_candidate_id:
             lines.append(f"- Winning candidate: {winning_candidate_id}")
-        lines.append(
-            f"- Council rounds: {len(_maybe_attr(pantheon_state, 'rounds', []) or [])}"
-        )
+        lines.append(f"- Council rounds: {len(_maybe_attr(pantheon_state, 'rounds', []) or [])}")
         for screening in _maybe_attr(pantheon_state, "screenings", [])[:4]:
             lines.append(
                 f"- Pre-council screening: {screening.candidate_id} "
@@ -2436,7 +2623,7 @@ def _display_invention_result(console: Console, state: SessionState) -> None:
     # Header summary
     console.print()
     console.print(f"  \u2692\ufe0f  [{GOLD}]{top.invention_name}[/]")
-    console.print(f"  [dim]Source:[/] [{CYAN}]{top.source_domain}[/]")
+    console.print(f"  [dim]Source:[/] [{EMBER}]{top.source_domain}[/]")
 
     feas = getattr(top, "feasibility_rating", "?")
     cost = report.total_cost_usd
@@ -2444,30 +2631,36 @@ def _display_invention_result(console: Console, state: SessionState) -> None:
 
     console.print(
         f"  [dim]Novelty:[/] [{GOLD}]{top.novelty_score:.2f}[/]  "
-        f"[dim]Feasibility:[/] [{CYAN}]{feas}[/]  "
+        f"[dim]Feasibility:[/] [{EMBER}]{feas}[/]  "
         f"[dim]Cost:[/] [{GREEN}]${cost:.4f}[/]  "
-        f"[dim]Time:[/] [{CYAN}]{dur:.0f}s[/]"
+        f"[dim]Time:[/] [{EMBER}]{dur:.0f}s[/]"
     )
     lens_state = _maybe_attr(report, "lens_engine_state", None)
     if lens_state is not None:
-        console.print(f"  [dim]Lens engine:[/] [cyan]{lens_state.summary()}[/]")
+        console.print(f"  [dim]Lens engine:[/] [dark_orange]{lens_state.summary()}[/]")
     pantheon_state = _maybe_attr(report, "pantheon_state", None)
     if pantheon_state is not None:
         console.print(
-            f"  [dim]Pantheon:[/] [cyan]tier={_maybe_attr(pantheon_state, 'outcome_tier', 'PENDING')} "
+            f"  [dim]Pantheon:[/] [dark_orange]tier={_maybe_attr(pantheon_state, 'outcome_tier', 'PENDING')} "
             f"consensus={bool(_maybe_attr(pantheon_state, 'consensus_achieved', False))} "
             f"verdict={_maybe_attr(pantheon_state, 'final_verdict', 'UNKNOWN')} "
             f"rounds={len(_maybe_attr(pantheon_state, 'rounds', []) or [])}[/]"
         )
     if state.last_auto_save_path is not None:
-        console.print(f"  [dim]Saved snapshot:[/] [cyan]{state.last_auto_save_path.name}[/]")
+        console.print(f"  [dim]Saved snapshot:[/] [dark_orange]{state.last_auto_save_path.name}[/]")
     console.print()
 
     # Post-invention menu
     console.print(f"  [{DIM}]What next?[/]")
-    console.print(f"  [{AMBER}][1][/] View full report          [{AMBER}][4][/] Try different problem")
-    console.print(f"  [{AMBER}][2][/] Explore alternatives      [{AMBER}][5][/] Export (markdown/json/text/pdf)")
-    console.print(f"  [{AMBER}][3][/] Refine this invention     [{AMBER}][6][/] Re-run from this source domain")
+    console.print(
+        f"  [{AMBER}][1][/] View full report          [{AMBER}][4][/] Try different problem"
+    )
+    console.print(
+        f"  [{AMBER}][2][/] Explore alternatives      [{AMBER}][5][/] Export (markdown/json/text/pdf)"
+    )
+    console.print(
+        f"  [{AMBER}][3][/] Refine this invention     [{AMBER}][6][/] Re-run from this source domain"
+    )
     console.print(f"  [{AMBER}][7][/] Agent chat about this invention")
     console.print(f"  [{DIM}]Or type a new problem to invent something else.[/]")
     console.print()
@@ -2495,10 +2688,12 @@ async def _handle_menu_choice(
         state.current_idx = -1
         state.context_items.clear()
         console.print(f"  [{GREEN}]\u2713[/] Ready for a new problem.")
-        console.print(f"  [dim]Session history is still available via /history.[/]\n")
+        console.print("  [dim]Session history is still available via /history.[/]\n")
         return True
     elif choice == "5":
-        console.print(f"  [{DIM}]Format:[/] [cyan]markdown[/] | [cyan]json[/] | [cyan]text[/] | [cyan]pdf[/]  [{DIM}](default: markdown)[/]")
+        console.print(
+            f"  [{DIM}]Format:[/] [dark_orange]markdown[/] | [dark_orange]json[/] | [dark_orange]text[/] | [dark_orange]pdf[/]  [{DIM}](default: markdown)[/]"
+        )
         try:
             fmt = console.input(f"  [{AMBER}]export>[/] ").strip().lower() or "markdown"
         except (EOFError, KeyboardInterrupt):
@@ -2534,17 +2729,23 @@ async def _chat_about_invention(console: Console, state: SessionState) -> None:
 
 async def _repl_loop(console: Console, state: SessionState) -> None:
     """The core read-eval-print loop."""
-    backend_str = f"[cyan]{state.config.backend}[/]"
-    model_str = f"[cyan]{state.config.default_model}[/]"
+    backend_str = f"[dark_orange]{state.config.backend}[/]"
+    model_str = f"[dark_orange]{state.config.default_model}[/]"
     console.print(f"  [dim]Backend:[/] {backend_str}  [dim]Model:[/] {model_str}")
     readiness, hint = _backend_status(state.config)
     if readiness != "ready":
         console.print(f"  [yellow]Backend not ready:[/] {hint}")
     console.print()
-    console.print("  [dim]Type a problem, and Hephaestus will search distant domains for a transferable mechanism.[/]")
+    console.print(
+        "  [dim]Type a problem, and Hephaestus will search distant domains for a transferable mechanism.[/]"
+    )
     console.print()
-    console.print("  [dim]Example:[/] [white]I need a load balancer that handles unpredictable traffic spikes[/]")
-    console.print("  [dim]Shortcuts:[/] [cyan]/help[/] [dim]|[/] [cyan]/status[/] [dim]|[/] [cyan]/history[/] [dim]|[/] [cyan]/quit[/]")
+    console.print(
+        "  [dim]Example:[/] [white]I need a load balancer that handles unpredictable traffic spikes[/]"
+    )
+    console.print(
+        "  [dim]Shortcuts:[/] [dark_orange]/help[/] [dim]|[/] [dark_orange]/status[/] [dim]|[/] [dark_orange]/history[/] [dim]|[/] [dark_orange]/quit[/]"
+    )
     console.print("  [dim]Use Ctrl+C to cancel a running request and Ctrl+D to leave the REPL.[/]")
     console.print()
 
@@ -2581,7 +2782,11 @@ async def _repl_loop(console: Console, state: SessionState) -> None:
                 parts = raw[1:].split(None, 1)
                 cmd_name = parts[0].lower() if parts else ""
                 suggestion = _closest_command(cmd_name)
-                hint = f"  [dim]Did you mean[/] [cyan]/{suggestion}[/][dim]?[/]" if suggestion else "  [dim]Try /help for commands.[/]"
+                hint = (
+                    f"  [dim]Did you mean[/] [dark_orange]/{suggestion}[/][dim]?[/]"
+                    if suggestion
+                    else "  [dim]Try /help for commands.[/]"
+                )
                 console.print(f"  [{RED}]Unknown command:[/] /{cmd_name}")
                 console.print(f"{hint}\n")
             continue
@@ -2595,13 +2800,15 @@ async def _repl_loop(console: Console, state: SessionState) -> None:
         # ── Problem description ────────────────────────────────────────
         problem = raw
         if state.context_items:
-            problem += "\n\nADDITIONAL CONTEXT:\n" + "\n".join(f"- {c}" for c in state.context_items)
+            problem += "\n\nADDITIONAL CONTEXT:\n" + "\n".join(
+                f"- {c}" for c in state.context_items
+            )
 
         console.print()
         try:
             await _run_pipeline(console, state, problem)
         except KeyboardInterrupt:
-            console.print(f"\n  [dim]Interrupted.[/]\n")
+            console.print("\n  [dim]Interrupted.[/]\n")
         except Exception as exc:
             print_error(console, "The REPL run failed.", hint=_safe_error_message(exc))
 
@@ -2611,17 +2818,17 @@ def _auto_save_session_on_exit(state: SessionState) -> None:
     if state.inventions:
         try:
             _save_session_replay(state)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Auto-save session replay failed on exit: %s", exc)
     if state.session is not None:
         try:
             ensure_dirs()
-            date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_str = datetime.now(UTC).strftime("%Y-%m-%d")
             sid = state.session.meta.id[:8]
             session_path = SESSIONS_DIR / f"{date_str}-session-{sid}.json"
             state.session.save(session_path)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Auto-save session transcript failed on exit: %s", exc)
 
 
 def run_interactive(
@@ -2647,6 +2854,13 @@ def run_interactive(
     """
     print_banner(console)
 
+    # Show agent activity during pipeline runs
+    import logging as _logging
+
+    _logging.basicConfig(level=_logging.WARNING, format="  %(message)s")
+    _logging.getLogger("hephaestus.deepforge.adapters.agent_sdk").setLevel(_logging.INFO)
+    _logging.getLogger("hephaestus.core.genesis").setLevel(_logging.INFO)
+
     # Load config via LayeredConfig (if provided) or fallback
     from hephaestus.cli.config import CONFIG_PATH, _resolve_keys
 
@@ -2663,7 +2877,9 @@ def run_interactive(
     # Apply CLI overrides (only real model names, not backend keywords)
     if model:
         model = model.lower()
-        if model == "claude-max":
+        if model == "agent-sdk":
+            cfg.backend = "agent-sdk"
+        elif model == "claude-max":
             cfg.backend = "claude-max"
         elif model == "claude-cli":
             cfg.backend = "claude-cli"
@@ -2695,8 +2911,9 @@ def run_interactive(
     if workspace_root:
         try:
             from hephaestus.workspace.context import WorkspaceContext
+
             ws_context = WorkspaceContext.from_directory(workspace_root)
-            console.print(f"  [dim]Workspace tools enabled: read, write, edit, search, grep[/]")
+            console.print("  [dim]Workspace tools enabled: read, write, edit, search, grep[/]")
             console.print()
         except Exception as exc:
             console.print(f"  [dim yellow]⚠ Could not load workspace context: {exc}[/]")
@@ -2736,9 +2953,13 @@ def _print_session_footer(console: Console, state: SessionState) -> None:
     console.print()
     if num > 0 and state.config.auto_save:
         if state.last_auto_save_error:
-            console.print(f"  [{AMBER}]\u26a0[/] Auto-save failed for at least one run. Use [cyan]/save[/] if you need another copy.")
+            console.print(
+                f"  [{AMBER}]\u26a0[/] Auto-save failed for at least one run. Use [dark_orange]/save[/] if you need another copy."
+            )
         else:
-            console.print(f"  [{GREEN}]\u2713[/] Auto-save is enabled. Saved inventions live in [cyan]~/.hephaestus/inventions/[/]")
+            console.print(
+                f"  [{GREEN}]\u2713[/] Auto-save is enabled. Saved inventions live in [dark_orange]~/.hephaestus/inventions/[/]"
+            )
     console.print(
         f"  [dim]Session:[/] "
         f"[dim]{num} inventions | "

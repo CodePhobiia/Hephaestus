@@ -152,12 +152,8 @@ class TestOverlapScoring:
 
     def test_overlap_supports_partial_multi_label_matches(self) -> None:
         score = shape_overlap_score(
-            [
-                "Three-stage pipeline that ingests data and computes a graph ranking over nodes."
-            ],
-            [
-                "A PageRank-style graph ranker scores nodes by link structure."
-            ],
+            ["Three-stage pipeline that ingests data and computes a graph ranking over nodes."],
+            ["A PageRank-style graph ranker scores nodes by link structure."],
         )
 
         assert 0.2 < score < 0.8

@@ -28,9 +28,9 @@ from hephaestus.deepforge.adapters.base import (
     StreamChunk,
 )
 from hephaestus.deepforge.exceptions import (
+    AdapterError,
     APIConnectionError,
     APITimeoutError,
-    AdapterError,
     AuthenticationError,
     GenerationKilled,
     ModelNotFoundError,
@@ -180,8 +180,7 @@ class OpenAIAdapter(BaseAdapter):
         if isinstance(model, str):
             if model not in OPENAI_MODELS:
                 raise ModelNotFoundError(
-                    f"Unknown OpenAI model {model!r}. "
-                    f"Available: {list(OPENAI_MODELS)}"
+                    f"Unknown OpenAI model {model!r}. Available: {list(OPENAI_MODELS)}"
                 )
             config = OPENAI_MODELS[model]
         else:
@@ -368,7 +367,7 @@ class OpenAIAdapter(BaseAdapter):
 
             output_text = accumulated
             if prefill and output_text.startswith(prefill):
-                output_text = output_text[len(prefill):]
+                output_text = output_text[len(prefill) :]
 
             return GenerationResult(
                 text=output_text,
@@ -419,7 +418,7 @@ class OpenAIAdapter(BaseAdapter):
 
         # Strip simulated prefill from start of response
         if prefill and text.startswith(prefill):
-            text = text[len(prefill):]
+            text = text[len(prefill) :]
 
         return GenerationResult(
             text=text,

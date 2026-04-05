@@ -6,10 +6,10 @@ import pytest
 
 from hephaestus.cli.commands import Command, CommandRegistry, default_registry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_cmd(**overrides) -> Command:
     defaults = dict(
@@ -31,13 +31,16 @@ def _fresh_registry() -> CommandRegistry:
     reg = CommandRegistry()
     reg.register(_make_cmd(name="alpha", aliases=["a"], category="session", usage="/alpha"))
     reg.register(_make_cmd(name="beta", aliases=["b"], category="invention", usage="/beta [arg]"))
-    reg.register(_make_cmd(name="gamma", aliases=[], category="session", modes=["repl"], usage="/gamma"))
+    reg.register(
+        _make_cmd(name="gamma", aliases=[], category="session", modes=["repl"], usage="/gamma")
+    )
     return reg
 
 
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
+
 
 class TestRegistration:
     def test_register_and_get_by_name(self):
@@ -82,6 +85,7 @@ class TestRegistration:
 # Lookup
 # ---------------------------------------------------------------------------
 
+
 class TestLookup:
     def test_unknown_command_returns_none(self):
         reg = CommandRegistry()
@@ -95,6 +99,7 @@ class TestLookup:
 # ---------------------------------------------------------------------------
 # Listing
 # ---------------------------------------------------------------------------
+
 
 class TestListCommands:
     def test_list_all(self):
@@ -132,6 +137,7 @@ class TestListCommands:
 # Help formatting
 # ---------------------------------------------------------------------------
 
+
 class TestFormatHelp:
     def test_format_help_nonempty(self):
         reg = _fresh_registry()
@@ -148,6 +154,7 @@ class TestFormatHelp:
 # ---------------------------------------------------------------------------
 # Completions
 # ---------------------------------------------------------------------------
+
 
 class TestCompletions:
     def test_completions_prefix(self):
@@ -176,6 +183,7 @@ class TestCompletions:
 # ---------------------------------------------------------------------------
 # parse_command
 # ---------------------------------------------------------------------------
+
 
 class TestParseCommand:
     def test_parse_simple(self):
@@ -226,13 +234,39 @@ class TestParseCommand:
 # ---------------------------------------------------------------------------
 
 EXPECTED_COMMANDS = {
-    "help", "status", "quit", "clear", "history", "compare",
-    "usage", "cost", "refine", "alternatives", "deeper", "domain",
-    "trace", "candidates", "model", "backend", "intensity", "mode",
-    "context", "export", "save", "load", "todo", "plan",
+    "help",
+    "status",
+    "quit",
+    "clear",
+    "history",
+    "compare",
+    "usage",
+    "cost",
+    "refine",
+    "alternatives",
+    "deeper",
+    "domain",
+    "trace",
+    "candidates",
+    "model",
+    "backend",
+    "intensity",
+    "mode",
+    "context",
+    "export",
+    "save",
+    "load",
+    "todo",
+    "plan",
     # ForgeBase
-    "vault", "ask", "fuse", "ingest", "fb-lint", "fb-compile",
-    "workbook", "fb-export",
+    "vault",
+    "ask",
+    "fuse",
+    "ingest",
+    "fb-lint",
+    "fb-compile",
+    "workbook",
+    "fb-export",
 }
 
 

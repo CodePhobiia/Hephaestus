@@ -15,14 +15,6 @@ from hephaestus.lenses.state import (
     ResearchReferenceArtifact,
     ResearchReferenceState,
 )
-from hephaestus.session.schema import (
-    EntryType,
-    InventionSnapshot,
-    Role,
-    Session,
-    SessionMeta,
-    TranscriptEntry,
-)
 from hephaestus.session.compact import (
     CompactionConfig,
     CompactionSummary,
@@ -31,7 +23,12 @@ from hephaestus.session.compact import (
     format_compaction_report,
     should_compact,
 )
-
+from hephaestus.session.schema import (
+    EntryType,
+    Role,
+    Session,
+    SessionMeta,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -331,9 +328,7 @@ class TestCompactSession:
         result = compact_session(s, cfg)
         # Both invention entries from the old region should be preserved
         assert result.preserved_inventions == 2
-        inv_entries = [
-            e for e in s.transcript if e.entry_type == EntryType.INVENTION.value
-        ]
+        inv_entries = [e for e in s.transcript if e.entry_type == EntryType.INVENTION.value]
         assert len(inv_entries) == 2
 
     def test_invention_preservation_disabled(self):
@@ -374,9 +369,7 @@ class TestCompactSession:
             preserve_tool_results=True,
         )
         result = compact_session(s, cfg)
-        tool_entries = [
-            e for e in s.transcript if e.entry_type == EntryType.TOOL_RESULT.value
-        ]
+        tool_entries = [e for e in s.transcript if e.entry_type == EntryType.TOOL_RESULT.value]
         assert len(tool_entries) == 1
 
     def test_summary_text_in_result(self):

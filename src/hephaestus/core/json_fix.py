@@ -3,6 +3,7 @@
 Qwen 3.6 Free outputs invalid escapes like \\s, \\p, \\d inside JSON strings
 that crash standard json.loads(). This module patches them before parsing.
 """
+
 import json
 import logging
 import re
@@ -22,18 +23,18 @@ def _fix_escapes(text: str) -> str:
     Walks the string character by character to avoid mangling
     valid \\uXXXX or \\n escapes.
     """
-    VALID_ESCAPES = set('"\\/bfnrt')
+    VALID_ESCAPES = set('"\\/bfnrt') # noqa: N806
 
     out: list[str] = []
     i = 0
     while i < len(text):
-        if text[i] == '\\' and i + 1 < len(text):
+        if text[i] == "\\" and i + 1 < len(text):
             nxt = text[i + 1]
 
             # Valid \\uXXXX — pass through
-            if nxt == 'u' and i + 5 < len(text):
+            if nxt == "u" and i + 5 < len(text):
                 suffix = text[i + 2 : i + 6]
-                if all(c in '0123456789abcdefABCDEF' for c in suffix):
+                if all(c in "0123456789abcdefABCDEF" for c in suffix):
                     out.append(text[i : i + 6])
                     i += 6
                     continue
@@ -51,7 +52,7 @@ def _fix_escapes(text: str) -> str:
                 continue
 
             # Invalid escape like \\s, \\p, \\d → double it: \\\\s, \\\\p
-            out.append('\\\\')
+            out.append("\\\\")
             out.append(nxt)
             i += 2
             continue
@@ -59,7 +60,7 @@ def _fix_escapes(text: str) -> str:
         out.append(text[i])
         i += 1
 
-    return ''.join(out)
+    return "".join(out)
 
 
 def loads(text: str, *, default: Any = None, label: str = "") -> Any:
@@ -93,7 +94,7 @@ def loads(text: str, *, default: Any = None, label: str = "") -> Any:
             pass
 
     # 3. Extract JSON objects/arrays from surrounding markdown/text
-    for pattern in (r'\{.*\}', r'\[.*\]'):
+    for pattern in (r"\{.*\}", r"\[.*\]"):
         m = re.search(pattern, cleaned, re.DOTALL)
         if m:
             block = m.group()

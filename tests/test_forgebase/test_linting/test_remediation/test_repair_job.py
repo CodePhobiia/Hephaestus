@@ -1,4 +1,5 @@
 """Tests for RepairWorkbookJob — workbook branch repair for findings."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,14 +16,11 @@ from hephaestus.forgebase.domain.enums import (
     LinkKind,
     PageType,
     RemediationStatus,
-    ResearchOutcome,
     SupportType,
 )
 from hephaestus.forgebase.domain.models import (
     RepairBatch,
-    ResearchPacket,
 )
-from hephaestus.forgebase.domain.values import ActorRef, EntityId
 from hephaestus.forgebase.linting.remediation.repair_job import RepairWorkbookJob
 from hephaestus.forgebase.service.branch_service import BranchService
 from hephaestus.forgebase.service.claim_service import ClaimService
@@ -30,7 +28,6 @@ from hephaestus.forgebase.service.link_service import LinkService
 from hephaestus.forgebase.service.lint_service import LintService
 from hephaestus.forgebase.service.page_service import PageService
 from hephaestus.forgebase.service.vault_service import VaultService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -54,9 +51,9 @@ async def _create_finding(lint_svc, vault_id, category, **kwargs):
         category=category,
         severity=kwargs.get("severity", FindingSeverity.WARNING),
         description=kwargs.get("description", "Test finding"),
-        suggested_action=kwargs.get("suggested_action", None),
-        page_id=kwargs.get("page_id", None),
-        claim_id=kwargs.get("claim_id", None),
+        suggested_action=kwargs.get("suggested_action"),
+        page_id=kwargs.get("page_id"),
+        claim_id=kwargs.get("claim_id"),
     )
 
 
@@ -99,16 +96,24 @@ class TestCreatesWorkbookWithLintRepairPurpose:
 
     @pytest.mark.asyncio
     async def test_creates_workbook_with_lint_repair_purpose(
-        self, uow_factory, actor, id_gen,
+        self,
+        uow_factory,
+        actor,
+        id_gen,
     ):
         vault = await _create_vault(uow_factory, actor)
         lint_svc = LintService(uow_factory=uow_factory, default_actor=actor)
 
         finding = await _create_finding(
-            lint_svc, vault.vault_id, FindingCategory.BROKEN_REFERENCE,
+            lint_svc,
+            vault.vault_id,
+            FindingCategory.BROKEN_REFERENCE,
         )
         batch = _make_batch(
-            vault.vault_id, [finding.finding_id], finding.job_id, id_gen,
+            vault.vault_id,
+            [finding.finding_id],
+            finding.job_id,
+            id_gen,
         )
 
         job = _make_repair_job(uow_factory, actor)
@@ -145,7 +150,6 @@ class TestRepairsBrokenReference:
         )
 
         # Create a link to a non-existent target
-        from hephaestus.forgebase.domain.enums import LinkKind
         fake_target = id_gen.page_id()
         link, _ = await link_svc.create_link(
             vault_id=vault.vault_id,
@@ -160,13 +164,12 @@ class TestRepairsBrokenReference:
             idempotency_key="repair-broken-link-test",
         )
 
-        from hephaestus.forgebase.domain.enums import LinkKind
-
         # We need a finding that has affected_entity_ids set
         uow = uow_factory()
         async with uow:
             finding_id = uow.id_generator.finding_id()
             from hephaestus.forgebase.domain.models import LintFinding
+
             finding = LintFinding(
                 finding_id=finding_id,
                 job_id=job.job_id,
@@ -184,7 +187,10 @@ class TestRepairsBrokenReference:
             await uow.commit()
 
         batch = _make_batch(
-            vault.vault_id, [finding_id], job.job_id, id_gen,
+            vault.vault_id,
+            [finding_id],
+            job.job_id,
+            id_gen,
         )
 
         repair_job = _make_repair_job(uow_factory, actor)
@@ -197,7 +203,8 @@ class TestRepairsBrokenReference:
             await uow2.rollback()
 
         link_tombstones = [
-            t for t in tombstones
+            t
+            for t in tombstones
             if t.entity_kind == EntityKind.LINK and t.entity_id == link.link_id
         ]
         assert len(link_tombstones) == 1
@@ -241,6 +248,7 @@ class TestRepairsUnsupportedClaim:
         async with uow:
             finding_id = uow.id_generator.finding_id()
             from hephaestus.forgebase.domain.models import LintFinding
+
             finding = LintFinding(
                 finding_id=finding_id,
                 job_id=job.job_id,
@@ -257,7 +265,10 @@ class TestRepairsUnsupportedClaim:
             await uow.commit()
 
         batch = _make_batch(
-            vault.vault_id, [finding_id], job.job_id, id_gen,
+            vault.vault_id,
+            [finding_id],
+            job.job_id,
+            id_gen,
         )
 
         repair_job = _make_repair_job(uow_factory, actor)
@@ -278,7 +289,8 @@ class TestRepairsUnsupportedClaim:
         uow3 = uow_factory()
         async with uow3:
             cv = await uow3.claims.get_version(
-                claim.claim_id, matching[0].head_version,
+                claim.claim_id,
+                matching[0].head_version,
             )
             await uow3.rollback()
 
@@ -291,20 +303,27 @@ class TestContradictionUnresolvedCreatesOpenQuestion:
 
     @pytest.mark.asyncio
     async def test_contradiction_unresolved_creates_open_question(
-        self, uow_factory, actor, id_gen,
+        self,
+        uow_factory,
+        actor,
+        id_gen,
     ):
         vault = await _create_vault(uow_factory, actor)
         lint_svc = LintService(uow_factory=uow_factory, default_actor=actor)
 
         # Create a CONTRADICTORY_CLAIM finding (no research packet = unresolved)
         finding = await _create_finding(
-            lint_svc, vault.vault_id,
+            lint_svc,
+            vault.vault_id,
             FindingCategory.CONTRADICTORY_CLAIM,
             description="Claim A vs Claim B",
         )
 
         batch = _make_batch(
-            vault.vault_id, [finding.finding_id], finding.job_id, id_gen,
+            vault.vault_id,
+            [finding.finding_id],
+            finding.job_id,
+            id_gen,
         )
 
         repair_job = _make_repair_job(uow_factory, actor)
@@ -343,11 +362,16 @@ class TestFindingStatusUpdatedRepair:
         lint_svc = LintService(uow_factory=uow_factory, default_actor=actor)
 
         finding = await _create_finding(
-            lint_svc, vault.vault_id, FindingCategory.BROKEN_REFERENCE,
+            lint_svc,
+            vault.vault_id,
+            FindingCategory.BROKEN_REFERENCE,
         )
 
         batch = _make_batch(
-            vault.vault_id, [finding.finding_id], finding.job_id, id_gen,
+            vault.vault_id,
+            [finding.finding_id],
+            finding.job_id,
+            id_gen,
         )
 
         repair_job = _make_repair_job(uow_factory, actor)

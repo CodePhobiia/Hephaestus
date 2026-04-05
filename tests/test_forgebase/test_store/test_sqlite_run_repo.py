@@ -1,17 +1,15 @@
 """Tests for SQLite run ref and run artifact repositories."""
-from __future__ import annotations
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import EntityKind
 from hephaestus.forgebase.domain.models import KnowledgeRunArtifact, KnowledgeRunRef
-from hephaestus.forgebase.domain.values import EntityId
-from hephaestus.forgebase.store.sqlite.run_ref_repo import SqliteRunRefRepository
 from hephaestus.forgebase.store.sqlite.run_artifact_repo import (
     SqliteRunArtifactRepository,
 )
+from hephaestus.forgebase.store.sqlite.run_ref_repo import SqliteRunRefRepository
 
 
 @pytest.mark.asyncio

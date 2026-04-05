@@ -48,8 +48,8 @@ from hephaestus.output.formatter import (
     OutputFormatter,
 )
 from hephaestus.output.prior_art import (
-    PatentResult,
     PaperResult,
+    PatentResult,
     PriorArtReport,
     PriorArtSearcher,
 )

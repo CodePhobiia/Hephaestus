@@ -74,7 +74,9 @@ class TestInventionHistory:
 
     def test_malformed_line_skipped(self, tmp_path: Path):
         f = tmp_path / "history.jsonl"
-        f.write_text('{"timestamp":"x","problem":"p","invention_name":"i","source_domain":"d","novelty_score":0.5,"domain_distance":0.5,"structural_fidelity":0.5,"verdict":"OK","cost_usd":0.1,"duration_seconds":1.0,"success":true}\n{bad json}\n')
+        f.write_text(
+            '{"timestamp":"x","problem":"p","invention_name":"i","source_domain":"d","novelty_score":0.5,"domain_distance":0.5,"structural_fidelity":0.5,"verdict":"OK","cost_usd":0.1,"duration_seconds":1.0,"success":true}\n{bad json}\n'
+        )
         h = InventionHistory(f)
         records = h.load()
         assert len(records) == 1
@@ -121,9 +123,13 @@ class TestSummarize:
 class TestFormatAnalytics:
     def test_basic_format(self):
         s = AnalyticsSummary(
-            total_runs=10, successful=8, failed=2,
-            success_rate=0.8, total_cost_usd=15.0,
-            avg_cost_per_run=1.5, avg_novelty=0.82,
+            total_runs=10,
+            successful=8,
+            failed=2,
+            success_rate=0.8,
+            total_cost_usd=15.0,
+            avg_cost_per_run=1.5,
+            avg_novelty=0.82,
             avg_duration=40.0,
             top_domains=[("biology", 5), ("physics", 3)],
             top_verdicts={"NOVEL": 6, "QUESTIONABLE": 2},

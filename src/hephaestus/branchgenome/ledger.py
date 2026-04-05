@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from hephaestus.branchgenome.models import BranchGenome
 
@@ -152,7 +153,11 @@ class RejectionLedger:
         if outcome is None:
             return list(self._records)
         normalized = outcome.strip().lower()
-        return [record for record in self._records if str(record.get("outcome", "")).strip().lower() == normalized]
+        return [
+            record
+            for record in self._records
+            if str(record.get("outcome", "")).strip().lower() == normalized
+        ]
 
     def record(
         self,

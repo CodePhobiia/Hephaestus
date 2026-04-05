@@ -15,7 +15,6 @@ from hephaestus.deepforge.adapters.base import GenerationResult
 from hephaestus.deepforge.exceptions import ConfigurationError
 from hephaestus.deepforge.pressure import AntiTrainingPressure, BlockedPath, PressureTrace
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -141,7 +140,7 @@ class TestAntiTrainingPressure:
         adapter = _make_adapter(responses)
 
         emb_default = _unit_vec(64, 0)
-        emb_novel = _unit_vec(64, 1)   # orthogonal to default → distance 1.0
+        emb_novel = _unit_vec(64, 1)  # orthogonal to default → distance 1.0
 
         # encode is called:
         #   1. embed default text (round 0)
@@ -177,8 +176,8 @@ class TestAntiTrainingPressure:
         adapter = _make_adapter(responses)
 
         emb_default = _unit_vec(64, 0)
-        emb_similar = _unit_vec(64, 0)   # identical → distance 0 → blocked
-        emb_novel = _unit_vec(64, 1)     # orthogonal → distance 1
+        emb_similar = _unit_vec(64, 0)  # identical → distance 0 → blocked
+        emb_novel = _unit_vec(64, 1)  # orthogonal → distance 1
 
         embed_model = _make_embed_model([emb_default, emb_similar, emb_novel])
 

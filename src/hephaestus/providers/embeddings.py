@@ -19,6 +19,7 @@ def _lazy_import_st() -> Any:
         return None
     try:
         from sentence_transformers import SentenceTransformer
+
         return SentenceTransformer
     except ImportError as exc:
         _import_error = str(exc)

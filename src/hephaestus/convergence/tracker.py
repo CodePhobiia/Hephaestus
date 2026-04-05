@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConvergenceSignal:
     """Result of checking for convergence."""
+
     is_converging: bool
     similarity_to_prior: float
     converged_count: int  # how many recent runs are similar
@@ -34,15 +35,19 @@ class ConvergenceTracker:
     similarity_threshold: float = 0.5
     _history: list[dict[str, Any]] = field(default_factory=list)
 
-    def add(self, invention_name: str, source_domain: str, key_insight: str, architecture: str) -> None:
+    def add(
+        self, invention_name: str, source_domain: str, key_insight: str, architecture: str
+    ) -> None:
         """Record an invention for convergence tracking."""
-        self._history.append({
-            "invention_name": invention_name,
-            "source_domain": source_domain,
-            "key_insight": key_insight,
-            "architecture": architecture,
-            "text": f"{invention_name} {source_domain} {key_insight} {architecture}",
-        })
+        self._history.append(
+            {
+                "invention_name": invention_name,
+                "source_domain": source_domain,
+                "key_insight": key_insight,
+                "architecture": architecture,
+                "text": f"{invention_name} {source_domain} {key_insight} {architecture}",
+            }
+        )
 
     def check(self) -> ConvergenceSignal:
         """Check if recent inventions are converging."""
@@ -55,7 +60,7 @@ class ConvergenceTracker:
                 recommendation="",
             )
 
-        window = self._history[-self.window_size:]
+        window = self._history[-self.window_size :]
         latest = window[-1]
 
         # Compare latest to all prior in window

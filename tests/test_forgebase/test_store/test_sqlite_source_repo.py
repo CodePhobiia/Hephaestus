@@ -1,11 +1,12 @@
 """Tests for SQLite source repository."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.enums import SourceFormat, SourceStatus, SourceTrustTier
 from hephaestus.forgebase.domain.models import Source, SourceVersion
-from hephaestus.forgebase.domain.values import BlobRef, ContentHash, EntityId, Version
+from hephaestus.forgebase.domain.values import BlobRef, ContentHash, Version
 from hephaestus.forgebase.store.sqlite.source_repo import SqliteSourceRepository
 
 

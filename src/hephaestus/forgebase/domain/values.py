@@ -1,4 +1,5 @@
 """ForgeBase domain value objects — immutable, no I/O."""
+
 from __future__ import annotations
 
 import hashlib
@@ -22,9 +23,7 @@ class EntityId:
             raise ValueError("EntityId cannot be empty")
         m = _ENTITY_ID_RE.match(self._raw)
         if not m:
-            raise ValueError(
-                f"EntityId must match '{{prefix}}_{{ulid}}', got: {self._raw!r}"
-            )
+            raise ValueError(f"EntityId must match '{{prefix}}_{{ulid}}', got: {self._raw!r}")
 
     @property
     def prefix(self) -> str:

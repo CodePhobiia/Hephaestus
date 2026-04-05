@@ -1,4 +1,5 @@
 """SQLite schema definition and initialization for ForgeBase."""
+
 from __future__ import annotations
 
 import aiosqlite

@@ -1,7 +1,8 @@
 """Extraction pack models — typed internal structures for vault knowledge extraction."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from hephaestus.forgebase.domain.enums import ProvenanceKind

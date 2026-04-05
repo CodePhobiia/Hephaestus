@@ -35,9 +35,15 @@ def _make_lens(lens_id: str, *, maps_to: list[str], domain: str) -> Lens:
 
 def test_bundle_candidates_produce_proof_and_fold_state() -> None:
     lenses = {
-        "biology_immune": _make_lens("biology_immune", maps_to=["trust", "verification"], domain="biology"),
-        "economics_markets": _make_lens("economics_markets", maps_to=["trust", "allocation"], domain="economics"),
-        "military_logistics": _make_lens("military_logistics", maps_to=["allocation", "routing"], domain="military"),
+        "biology_immune": _make_lens(
+            "biology_immune", maps_to=["trust", "verification"], domain="biology"
+        ),
+        "economics_markets": _make_lens(
+            "economics_markets", maps_to=["trust", "allocation"], domain="economics"
+        ),
+        "military_logistics": _make_lens(
+            "military_logistics", maps_to=["allocation", "routing"], domain="military"
+        ),
     }
     cards = {lens_id: compile_lens_card(lens) for lens_id, lens in lenses.items()}
     lineages = {
@@ -74,8 +80,12 @@ def test_bundle_candidates_produce_proof_and_fold_state() -> None:
 
 def test_bundle_proof_detects_reference_context_change() -> None:
     lenses = {
-        "biology_immune": _make_lens("biology_immune", maps_to=["trust", "verification"], domain="biology"),
-        "economics_markets": _make_lens("economics_markets", maps_to=["trust", "allocation"], domain="economics"),
+        "biology_immune": _make_lens(
+            "biology_immune", maps_to=["trust", "verification"], domain="biology"
+        ),
+        "economics_markets": _make_lens(
+            "economics_markets", maps_to=["trust", "allocation"], domain="economics"
+        ),
     }
     cards = {lens_id: compile_lens_card(lens) for lens_id, lens in lenses.items()}
     lineages = {

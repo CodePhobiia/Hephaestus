@@ -6,15 +6,14 @@ from __future__ import annotations
 
 import pytest
 
-from hephaestus.deepforge.exceptions import ConfigurationError, InterferenceError
+from hephaestus.deepforge.exceptions import ConfigurationError
 from hephaestus.deepforge.interference import (
     CognitiveInterferenceEngine,
+    InjectionResult,
     InjectionStrategy,
     Lens,
-    InjectionResult,
     make_lens,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

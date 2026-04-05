@@ -1,4 +1,5 @@
 """HTML normalization — convert HTML to clean markdown text."""
+
 from __future__ import annotations
 
 import re

@@ -42,7 +42,6 @@ from hephaestus.deepforge.exceptions import (
     GenerationKilled,
     HarnessError,
 )
-from hephaestus.deepforge.retry import RetryConfig, with_retry, with_timeout
 from hephaestus.deepforge.interference import (
     CognitiveInterferenceEngine,
     InjectionResult,
@@ -50,7 +49,8 @@ from hephaestus.deepforge.interference import (
     Lens,
 )
 from hephaestus.deepforge.pressure import AntiTrainingPressure, PressureTrace
-from hephaestus.deepforge.pruner import ConvergencePruner, ConvergencePattern, PrunerSession
+from hephaestus.deepforge.pruner import ConvergencePattern, ConvergencePruner, PrunerSession
+from hephaestus.deepforge.retry import RetryConfig, with_retry, with_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -440,7 +440,7 @@ class DeepForgeHarness:
             try:
                 if self._pruner is not None:
                     # Streaming path — pruner monitors in real time
-                    async def _pruner_call() -> Any:
+                    async def _pruner_call(prefill: str | None = prefill) -> Any:
                         stream = self._adapter.generate_stream(
                             prompt,
                             system=system,
@@ -467,7 +467,7 @@ class DeepForgeHarness:
 
                 else:
                     # Non-streaming path
-                    async def _generate_call() -> GenerationResult:
+                    async def _generate_call(prefill: str | None = prefill) -> GenerationResult:
                         coro = self._adapter.generate(
                             prompt,
                             system=system,

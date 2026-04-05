@@ -6,6 +6,7 @@ Pack merging follows strict provenance rules:
 - Context: broadest — union per category, deduped by provenance, capped by policy
 - Dossier: governance-grade — union per category, deduped by provenance
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -30,7 +31,6 @@ from hephaestus.forgebase.fusion.models import (
 )
 from hephaestus.forgebase.fusion.policy import FusionPolicy
 from hephaestus.forgebase.service.id_generator import IdGenerator, UlidIdGenerator
-
 
 # ---------------------------------------------------------------------------
 # Epistemic trust ordering for baseline filtering
@@ -59,6 +59,7 @@ def _meets_baseline_trust(entry: PackEntry, min_status: ClaimStatus) -> bool:
 # ---------------------------------------------------------------------------
 # Provenance-aware dedup
 # ---------------------------------------------------------------------------
+
 
 def _dedup_pack_entries(entries: list[PackEntry]) -> list[PackEntry]:
     """Deduplicate pack entries by provenance fingerprint.
@@ -91,6 +92,7 @@ def _dedup_pack_entries(entries: list[PackEntry]) -> list[PackEntry]:
 # Map ranking and dedup
 # ---------------------------------------------------------------------------
 
+
 def _rank_and_cap_maps(
     maps: list[AnalogicalMap],
     max_maps: int,
@@ -104,8 +106,7 @@ def _rank_and_cap_maps(
     """
     # Remove NO_ANALOGY and INVALID
     valid = [
-        m for m in maps
-        if m.verdict in (AnalogyVerdict.STRONG_ANALOGY, AnalogyVerdict.WEAK_ANALOGY)
+        m for m in maps if m.verdict in (AnalogyVerdict.STRONG_ANALOGY, AnalogyVerdict.WEAK_ANALOGY)
     ]
     # Sort by confidence descending
     valid.sort(key=lambda m: m.confidence, reverse=True)
@@ -125,6 +126,7 @@ def _rank_and_cap_maps(
 # ---------------------------------------------------------------------------
 # Transfer grouping and dedup
 # ---------------------------------------------------------------------------
+
 
 def _group_and_cap_transfers(
     transfers: list[TransferOpportunity],
@@ -153,6 +155,7 @@ def _group_and_cap_transfers(
 # ---------------------------------------------------------------------------
 # Pack merging helpers
 # ---------------------------------------------------------------------------
+
 
 def _merge_baseline_packs(
     packs: list[PriorArtBaselinePack],
@@ -205,7 +208,8 @@ def _merge_context_packs(
     mechanisms = _merge_context_category(all_mechanisms, policy.context_max_mechanisms)
     open_questions = _merge_context_category(all_open_questions, policy.context_max_open_questions)
     explored_directions = _merge_context_category(
-        all_explored_directions, policy.context_max_explored_directions,
+        all_explored_directions,
+        policy.context_max_explored_directions,
     )
 
     return concepts, mechanisms, open_questions, explored_directions
@@ -251,9 +255,12 @@ def _merge_dossier_packs(
 # Main synthesis function
 # ---------------------------------------------------------------------------
 
+
 async def synthesize_fusion_result(
     pair_results: list[PairFusionResult],
-    vault_packs: dict[EntityId, tuple[PriorArtBaselinePack, DomainContextPack, ConstraintDossierPack]],
+    vault_packs: dict[
+        EntityId, tuple[PriorArtBaselinePack, DomainContextPack, ConstraintDossierPack]
+    ],
     policy: FusionPolicy,
     request: FusionRequest,
     manifest_metadata: dict,
@@ -302,7 +309,8 @@ async def synthesize_fusion_result(
     # --- 6. Merge context packs ---
     context_packs = [cp for _, cp, _ in vault_packs.values()]
     concepts, mechanisms, open_questions, explored_directions = _merge_context_packs(
-        context_packs, policy,
+        context_packs,
+        policy,
     )
 
     fused_context = DomainContextPack(

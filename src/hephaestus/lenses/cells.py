@@ -33,7 +33,9 @@ def _normalize_token(value: str) -> str:
 
 
 def _extract_tokens(value: str) -> list[str]:
-    return [_normalize_token(match) for match in re.findall(r"[a-zA-Z0-9][a-zA-Z0-9_\-/ ]{1,40}", value)]
+    return [
+        _normalize_token(match) for match in re.findall(r"[a-zA-Z0-9][a-zA-Z0-9_\-/ ]{1,40}", value)
+    ]
 
 
 def _stable_hash(parts: Sequence[str]) -> str:
@@ -116,8 +118,7 @@ class CohesionCell:
             kind=str(data["kind"]),
             token=str(data["token"]),
             memberships=[
-                LensMembership.from_dict(item)
-                for item in list(data.get("memberships", []) or [])
+                LensMembership.from_dict(item) for item in list(data.get("memberships", []) or [])
             ],
         )
 
@@ -162,7 +163,9 @@ def _normalize_tokens(values: Iterable[str]) -> tuple[str, ...]:
 def _branch_signature(branch: Any | None) -> str:
     if branch is None:
         return ""
-    commitments = [getattr(commitment, "statement", "") for commitment in getattr(branch, "commitments", ())]
+    commitments = [
+        getattr(commitment, "statement", "") for commitment in getattr(branch, "commitments", ())
+    ]
     operators = [operator.summary() for operator in getattr(branch, "recovery_operators", ())]
     payload = {
         "branch_id": getattr(branch, "branch_id", ""),
@@ -238,7 +241,10 @@ class CohesionCellIndex:
 
         version_parts = [
             ref_signature,
-            *[f"{card.lens_id}:{card.fingerprint64}:{card.lineage_token}" for card in cards.values()],
+            *[
+                f"{card.lens_id}:{card.fingerprint64}:{card.lineage_token}"
+                for card in cards.values()
+            ],
         ]
         version_token = _stable_hash(version_parts)
         return cls(
@@ -277,10 +283,14 @@ class CohesionCellIndex:
             ]
             if lineage.reference_digest:
                 lineage_tokens.append(lineage.reference_digest)
-            field_map["lineage"] = sorted({_normalize_token(token) for token in lineage_tokens if token})
+            field_map["lineage"] = sorted(
+                {_normalize_token(token) for token in lineage_tokens if token}
+            )
 
         memberships: list[LensMembership] = []
-        confidence_default = sum(card.confidence) / len(card.confidence) if card.confidence else 0.75
+        confidence_default = (
+            sum(card.confidence) / len(card.confidence) if card.confidence else 0.75
+        )
         for kind, values in field_map.items():
             base_weight = _CELL_KIND_WEIGHT.get(kind, 0.4)
             for raw_value in values:
@@ -331,7 +341,9 @@ class CohesionCellIndex:
         return list(self._lens_memberships.get(lens_id, []))
 
     def relevant_memberships(self, query_terms: Iterable[str]) -> list[LensMembership]:
-        normalized_terms = {_normalize_token(term) for term in query_terms if _normalize_token(term)}
+        normalized_terms = {
+            _normalize_token(term) for term in query_terms if _normalize_token(term)
+        }
         if not normalized_terms:
             return []
         matches: list[LensMembership] = []
@@ -349,7 +361,9 @@ class CohesionCellIndex:
         return scores
 
     def matched_tokens_for_lens(self, lens_id: str, query_terms: Iterable[str]) -> set[str]:
-        normalized_terms = {_normalize_token(term) for term in query_terms if _normalize_token(term)}
+        normalized_terms = {
+            _normalize_token(term) for term in query_terms if _normalize_token(term)
+        }
         return {
             membership.token
             for membership in self._lens_memberships.get(lens_id, [])
@@ -368,14 +382,20 @@ class CohesionCellIndex:
         lens_set = set(lens_ids)
         normalized_terms = None
         if query_terms is not None:
-            normalized_terms = {_normalize_token(term) for term in query_terms if _normalize_token(term)}
+            normalized_terms = {
+                _normalize_token(term) for term in query_terms if _normalize_token(term)
+            }
 
         shared: list[CohesionCell] = []
         for cell in self._cells.values():
             matching_memberships = [m for m in cell.memberships if m.lens_id in lens_set]
             if len(matching_memberships) < min_members:
                 continue
-            if normalized_terms is not None and cell.token not in normalized_terms and cell.kind not in {"lineage", "reference"}:
+            if (
+                normalized_terms is not None
+                and cell.token not in normalized_terms
+                and cell.kind not in {"lineage", "reference"}
+            ):
                 continue
             shared.append(
                 CohesionCell(
@@ -389,7 +409,9 @@ class CohesionCellIndex:
         return shared
 
     def lens_coverage(self, lens_id: str, query_terms: Iterable[str]) -> float:
-        normalized_terms = {_normalize_token(term) for term in query_terms if _normalize_token(term)}
+        normalized_terms = {
+            _normalize_token(term) for term in query_terms if _normalize_token(term)
+        }
         if not normalized_terms:
             return 0.0
         matched = self.matched_tokens_for_lens(lens_id, normalized_terms)
@@ -574,8 +596,14 @@ def build_reference_state(
 ) -> RuntimeReferenceState:
     """Build a normalized reference snapshot from the current runtime state."""
 
-    dossier = baseline_dossier if baseline_dossier is not None else getattr(structure, "baseline_dossier", None)
-    lots = reference_lots if reference_lots is not None else getattr(structure, "reference_lots", None)
+    dossier = (
+        baseline_dossier
+        if baseline_dossier is not None
+        else getattr(structure, "baseline_dossier", None)
+    )
+    lots = (
+        reference_lots if reference_lots is not None else getattr(structure, "reference_lots", None)
+    )
     if lots is None:
         lots = getattr(structure, "session_reference_lots", [])
     lots = list(lots or [])
@@ -590,10 +618,7 @@ def build_reference_state(
         sorted(
             filter(
                 None,
-                (
-                    f"{getattr(lot, 'kind', '')}:{getattr(lot, 'subject_key', '')}"
-                    for lot in lots
-                ),
+                (f"{getattr(lot, 'kind', '')}:{getattr(lot, 'subject_key', '')}" for lot in lots),
             )
         )
     )
@@ -643,12 +668,15 @@ def build_cohesion_cell(
 ) -> RuntimeCohesionCell:
     """Compile a scored lens into a runtime cohesion cell."""
 
-    card = card or compile_lens_card(getattr(lens_score, "lens"))
+    card = card or compile_lens_card(lens_score.lens)
     reference_state = build_reference_state(structure, branch_genome=branch_genome)
     matched_patterns = tuple(
         sorted(
             set(getattr(lens_score, "matched_patterns", []) or ())
-            or (set(card.transfer_shape) & set(getattr(structure, "problem_maps_to", set()) or set()))
+            or (
+                set(card.transfer_shape)
+                & set(getattr(structure, "problem_maps_to", set()) or set())
+            )
         )
     )
     novelty_pressure = max(
@@ -661,9 +689,9 @@ def build_cohesion_cell(
         ),
     )
     return RuntimeCohesionCell(
-        cell_id=f"{getattr(lens_score, 'lens').lens_id}:{card.fingerprint64:016x}",
-        lens_id=getattr(lens_score, "lens").lens_id,
-        domain_family=getattr(lens_score, "lens").domain_family,
+        cell_id=f"{lens_score.lens.lens_id}:{card.fingerprint64:016x}",
+        lens_id=lens_score.lens.lens_id,
+        domain_family=lens_score.lens.domain_family,
         card_fingerprint=card.fingerprint64,
         card_version=card.version,
         mechanism_signature=tuple(card.mechanism_signature),

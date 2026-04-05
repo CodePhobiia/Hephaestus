@@ -1,16 +1,15 @@
 """Tests for DirtyTracker — higher-level dirty marker upsert/consume logic."""
+
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
 from hephaestus.forgebase.compiler.dirty import DirtyTracker
 from hephaestus.forgebase.domain.enums import DirtyTargetKind
-from hephaestus.forgebase.domain.values import EntityId
 from hephaestus.forgebase.service.id_generator import DeterministicIdGenerator
 from hephaestus.forgebase.store.sqlite.dirty_marker_repo import SqliteDirtyMarkerRepository
-
 
 T0 = datetime(2026, 4, 3, 12, 0, 0, tzinfo=UTC)
 T1 = datetime(2026, 4, 3, 13, 0, 0, tzinfo=UTC)
@@ -176,7 +175,8 @@ class TestDirtyTracker:
 
         # Filter by CONCEPT
         concepts = await tracker.get_dirty_targets(
-            vault_id, target_kind=DirtyTargetKind.CONCEPT,
+            vault_id,
+            target_kind=DirtyTargetKind.CONCEPT,
         )
         assert len(concepts) == 2
         keys = {m.target_key for m in concepts}
@@ -184,7 +184,8 @@ class TestDirtyTracker:
 
         # Filter by MECHANISM
         mechanisms = await tracker.get_dirty_targets(
-            vault_id, target_kind=DirtyTargetKind.MECHANISM,
+            vault_id,
+            target_kind=DirtyTargetKind.MECHANISM,
         )
         assert len(mechanisms) == 1
         assert mechanisms[0].target_key == "beta"

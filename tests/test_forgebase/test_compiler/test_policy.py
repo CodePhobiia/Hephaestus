@@ -1,6 +1,6 @@
 from __future__ import annotations
-import pytest
-from hephaestus.forgebase.compiler.policy import SynthesisPolicy, DEFAULT_POLICY
+
+from hephaestus.forgebase.compiler.policy import DEFAULT_POLICY, SynthesisPolicy
 
 
 class TestSynthesisPolicy:

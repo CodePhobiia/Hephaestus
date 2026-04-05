@@ -1,4 +1,5 @@
 """Markdown normalization — clean up raw markdown content."""
+
 from __future__ import annotations
 
 import re
@@ -32,7 +33,7 @@ def normalize_markdown(raw: bytes) -> bytes:
     # We process line by line to handle this correctly.
     lines = text.split("\n")
     result_lines: list[str] = []
-    for i, line in enumerate(lines):
+    for _i, line in enumerate(lines):
         stripped = line.strip()
         is_heading = bool(re.match(r"^#{1,6}\s", stripped))
 

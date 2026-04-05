@@ -9,10 +9,10 @@ Key scenarios:
   3. duplicate invocation -> idempotent
   4. upstream success + ForgeBase failure -> upstream unaffected (bridge swallows)
 """
+
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -25,7 +25,6 @@ from hephaestus.forgebase.integration.bridge import (
 from hephaestus.forgebase.integration.genesis_adapter import GenesisAdapter
 from hephaestus.forgebase.integration.pantheon_adapter import PantheonAdapter
 from hephaestus.forgebase.integration.research_adapter import ResearchAdapter
-
 
 # ---------------------------------------------------------------------------
 # NoOpBridge tests
@@ -150,7 +149,12 @@ class TestDefaultBridgeFailureIsolation:
 @pytest.mark.asyncio
 class TestGenesisAdapter:
     async def test_genesis_attaches_run_and_ingests(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         adapter = GenesisAdapter(run_integration_service, ingest_service, uow_factory)
         report = {
@@ -189,7 +193,12 @@ class TestGenesisAdapter:
         assert row["cnt"] == 2
 
     async def test_genesis_dict_report_with_content_fallback(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         """Report dict without 'artifacts' key should still produce an artifact."""
         adapter = GenesisAdapter(run_integration_service, ingest_service, uow_factory)
@@ -205,7 +214,12 @@ class TestGenesisAdapter:
         assert row["cnt"] == 1
 
     async def test_genesis_object_style_report(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         """Report as an object with .artifacts attribute."""
 
@@ -231,7 +245,12 @@ class TestGenesisAdapter:
         assert row["cnt"] == 1
 
     async def test_genesis_empty_report(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         """An empty report dict should still succeed (run ref created, no sources)."""
         adapter = GenesisAdapter(run_integration_service, ingest_service, uow_factory)
@@ -257,7 +276,12 @@ class TestGenesisAdapter:
 @pytest.mark.asyncio
 class TestPantheonAdapter:
     async def test_pantheon_attaches_run_and_ingests(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         adapter = PantheonAdapter(run_integration_service, ingest_service, uow_factory)
         state = {
@@ -286,7 +310,12 @@ class TestPantheonAdapter:
         assert row["cnt"] == 2
 
     async def test_pantheon_verdict_only(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         adapter = PantheonAdapter(run_integration_service, ingest_service, uow_factory)
         state = {"verdict": "rejected"}
@@ -301,7 +330,12 @@ class TestPantheonAdapter:
         assert row["cnt"] == 1
 
     async def test_pantheon_with_deliberation(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         adapter = PantheonAdapter(run_integration_service, ingest_service, uow_factory)
         state = {
@@ -320,7 +354,12 @@ class TestPantheonAdapter:
         assert row["cnt"] == 2
 
     async def test_pantheon_object_style_state(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         class FakeState:
             def __init__(self):
@@ -348,7 +387,12 @@ class TestPantheonAdapter:
 @pytest.mark.asyncio
 class TestResearchAdapter:
     async def test_research_attaches_run_and_ingests(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         adapter = ResearchAdapter(run_integration_service, ingest_service, uow_factory)
         artifacts = [
@@ -376,7 +420,12 @@ class TestResearchAdapter:
         assert row["cnt"] == 2
 
     async def test_research_string_artifacts(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         """Plain strings should be handled as content."""
         adapter = ResearchAdapter(run_integration_service, ingest_service, uow_factory)
@@ -392,7 +441,12 @@ class TestResearchAdapter:
         assert row["cnt"] == 3
 
     async def test_research_empty_list(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         adapter = ResearchAdapter(run_integration_service, ingest_service, uow_factory)
         await adapter.handle_research_completed(vault.vault_id, "res-empty", [])
@@ -406,7 +460,12 @@ class TestResearchAdapter:
         assert row["sync_status"] == "synced"
 
     async def test_research_object_style_artifacts(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         class FakeResearchArtifact:
             def __init__(self, name: str, content: str, url: str | None = None):
@@ -439,7 +498,10 @@ class TestDefaultBridgeEndToEnd:
     """Full integration through DefaultForgeBaseBridge -> adapter -> services -> SQLite."""
 
     def _make_bridge(
-        self, run_integration_service, ingest_service, uow_factory,
+        self,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
     ) -> DefaultForgeBaseBridge:
         genesis = GenesisAdapter(run_integration_service, ingest_service, uow_factory)
         pantheon = PantheonAdapter(run_integration_service, ingest_service, uow_factory)
@@ -447,7 +509,12 @@ class TestDefaultBridgeEndToEnd:
         return DefaultForgeBaseBridge(genesis, pantheon, research)
 
     async def test_full_genesis_flow(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         bridge = self._make_bridge(run_integration_service, ingest_service, uow_factory)
         report = {"artifacts": [{"name": "e2e_finding", "content": "Some finding"}]}
@@ -462,7 +529,12 @@ class TestDefaultBridgeEndToEnd:
         assert row["sync_status"] == "synced"
 
     async def test_full_pantheon_flow(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         bridge = self._make_bridge(run_integration_service, ingest_service, uow_factory)
         state = {"verdict": "approved", "objections": []}
@@ -477,7 +549,12 @@ class TestDefaultBridgeEndToEnd:
         assert row["sync_status"] == "synced"
 
     async def test_full_research_flow(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         bridge = self._make_bridge(run_integration_service, ingest_service, uow_factory)
         artifacts = [{"name": "e2e_paper", "content": "Paper abstract"}]
@@ -492,7 +569,11 @@ class TestDefaultBridgeEndToEnd:
         assert row["sync_status"] == "synced"
 
     async def test_bridge_null_vault_skips_all(
-        self, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         bridge = self._make_bridge(run_integration_service, ingest_service, uow_factory)
 
@@ -506,7 +587,12 @@ class TestDefaultBridgeEndToEnd:
         assert row["cnt"] == 0
 
     async def test_bridge_swallows_adapter_failure(
-        self, vault, run_integration_service, ingest_service, uow_factory, sqlite_db,
+        self,
+        vault,
+        run_integration_service,
+        ingest_service,
+        uow_factory,
+        sqlite_db,
     ):
         """If the adapter raises, the bridge catches it — upstream is unaffected."""
         bridge = self._make_bridge(run_integration_service, ingest_service, uow_factory)
@@ -520,9 +606,9 @@ class TestDefaultBridgeEndToEnd:
         ingest_service.ingest_source = _failing_ingest
 
         # Should NOT raise
-        await bridge.on_genesis_completed(vault.vault_id, "fail-gen", {
-            "artifacts": [{"name": "bad", "content": "data"}]
-        })
+        await bridge.on_genesis_completed(
+            vault.vault_id, "fail-gen", {"artifacts": [{"name": "bad", "content": "data"}]}
+        )
 
         # The run ref should exist but sync_status should be failed
         cursor = await sqlite_db.execute(

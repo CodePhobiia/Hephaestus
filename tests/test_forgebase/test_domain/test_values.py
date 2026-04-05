@@ -1,18 +1,18 @@
 """Tests for ForgeBase domain value objects."""
+
 from __future__ import annotations
 
 import pytest
 
+from hephaestus.forgebase.domain.enums import ActorType
 from hephaestus.forgebase.domain.values import (
     ActorRef,
     BlobRef,
     ContentHash,
     EntityId,
-    PendingContentRef,
     VaultRevisionId,
     Version,
 )
-from hephaestus.forgebase.domain.enums import ActorType
 
 
 class TestEntityId:
@@ -104,10 +104,13 @@ class TestActorRef:
         assert actor.actor_type == ActorType.SYSTEM
 
 
-from hephaestus.forgebase.domain.values import EvidenceSegmentRef
 from hephaestus.forgebase.domain.enums import (
-    CandidateKind, CandidateStatus, DirtyTargetKind, CompilePhase,
+    CandidateKind,
+    CandidateStatus,
+    CompilePhase,
+    DirtyTargetKind,
 )
+from hephaestus.forgebase.domain.values import EvidenceSegmentRef
 
 
 class TestEvidenceSegmentRef:

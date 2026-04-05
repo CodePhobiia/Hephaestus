@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from hephaestus.core.structural_novelty import StructuralNoveltyScore, compute_structural_novelty
 
 
@@ -44,9 +42,7 @@ class TestStructuralNovelty:
         # composite may be moderate due to vocabulary divergence, but specificity is low
 
     def test_empty_architecture(self):
-        result = compute_structural_novelty(
-            problem="test", architecture="", key_insight="test"
-        )
+        result = compute_structural_novelty(problem="test", architecture="", key_insight="test")
         assert result.concept_density == 0.0
 
     def test_label_novel(self):

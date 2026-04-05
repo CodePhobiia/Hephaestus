@@ -10,14 +10,14 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from hephaestus.lenses.cards import compile_lens_card
 from hephaestus.lenses.loader import classify_domain_family
 from hephaestus.research.perplexity import build_research_reference_state
 
-_UTC = timezone.utc
+_UTC = UTC
 _ENGINE_VERSION = "adaptive-bundle-proof/v1"
 _MAX_HISTORY = 16
 _LENS_ENGINE_LOT_KINDS = {
@@ -117,7 +117,7 @@ class LensBundleMember:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LensBundleMember":
+    def from_dict(cls, data: dict[str, Any]) -> LensBundleMember:
         return cls(
             lens_id=str(data.get("lens_id", "")),
             lens_name=str(data.get("lens_name", "")),
@@ -161,7 +161,7 @@ class ResearchReferenceArtifact:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ResearchReferenceArtifact":
+    def from_dict(cls, data: dict[str, Any]) -> ResearchReferenceArtifact:
         return cls(
             artifact_name=str(data.get("artifact_name", "")),
             provider=str(data.get("provider", "perplexity")),
@@ -210,7 +210,7 @@ class ResearchReferenceState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ResearchReferenceState":
+    def from_dict(cls, data: dict[str, Any]) -> ResearchReferenceState:
         return cls(
             reference_generation=_safe_int(data.get("reference_generation")),
             provider=str(data.get("provider", "perplexity")),
@@ -261,7 +261,7 @@ class LensBundleProof:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LensBundleProof":
+    def from_dict(cls, data: dict[str, Any]) -> LensBundleProof:
         return cls(
             bundle_id=str(data.get("bundle_id", "")),
             bundle_kind=str(data.get("bundle_kind", "singleton")),
@@ -313,7 +313,7 @@ class LensLineage:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LensLineage":
+    def from_dict(cls, data: dict[str, Any]) -> LensLineage:
         return cls(
             lineage_id=str(data.get("lineage_id", "")),
             entity_id=str(data.get("entity_id", "")),
@@ -354,7 +354,7 @@ class FoldState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "FoldState":
+    def from_dict(cls, data: dict[str, Any]) -> FoldState:
         return cls(
             fold_id=str(data.get("fold_id", "")),
             bundle_id=str(data.get("bundle_id", "")),
@@ -388,7 +388,7 @@ class GuardDecision:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "GuardDecision":
+    def from_dict(cls, data: dict[str, Any]) -> GuardDecision:
         return cls(
             guard_id=str(data.get("guard_id", "")),
             kind=str(data.get("kind", "")),
@@ -429,7 +429,7 @@ class InvalidationEvent:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "InvalidationEvent":
+    def from_dict(cls, data: dict[str, Any]) -> InvalidationEvent:
         return cls(
             invalidation_id=str(data.get("invalidation_id", "")),
             target_kind=str(data.get("target_kind", "")),
@@ -438,7 +438,9 @@ class InvalidationEvent:
             status=str(data.get("status", "")),
             from_reference_generation=_safe_int(data.get("from_reference_generation")),
             to_reference_generation=_safe_int(data.get("to_reference_generation")),
-            affected_lineage_ids=[str(x) for x in _safe_list(data.get("affected_lineage_ids")) if x],
+            affected_lineage_ids=[
+                str(x) for x in _safe_list(data.get("affected_lineage_ids")) if x
+            ],
             affected_bundle_ids=[str(x) for x in _safe_list(data.get("affected_bundle_ids")) if x],
             summary=str(data.get("summary", "")),
         )
@@ -472,16 +474,22 @@ class RecompositionEvent:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RecompositionEvent":
+    def from_dict(cls, data: dict[str, Any]) -> RecompositionEvent:
         return cls(
             event_id=str(data.get("event_id", "")),
             trigger=str(data.get("trigger", "")),
             status=str(data.get("status", "")),
             from_reference_generation=_safe_int(data.get("from_reference_generation")),
             to_reference_generation=_safe_int(data.get("to_reference_generation")),
-            invalidated_bundle_ids=[str(x) for x in _safe_list(data.get("invalidated_bundle_ids")) if x],
-            resulting_bundle_ids=[str(x) for x in _safe_list(data.get("resulting_bundle_ids")) if x],
-            resulting_composite_ids=[str(x) for x in _safe_list(data.get("resulting_composite_ids")) if x],
+            invalidated_bundle_ids=[
+                str(x) for x in _safe_list(data.get("invalidated_bundle_ids")) if x
+            ],
+            resulting_bundle_ids=[
+                str(x) for x in _safe_list(data.get("resulting_bundle_ids")) if x
+            ],
+            resulting_composite_ids=[
+                str(x) for x in _safe_list(data.get("resulting_composite_ids")) if x
+            ],
             summary=str(data.get("summary", "")),
         )
 
@@ -516,17 +524,21 @@ class CompositeLens:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CompositeLens":
+    def from_dict(cls, data: dict[str, Any]) -> CompositeLens:
         return cls(
             composite_id=str(data.get("composite_id", "")),
-            component_lineage_ids=[str(x) for x in _safe_list(data.get("component_lineage_ids")) if x],
+            component_lineage_ids=[
+                str(x) for x in _safe_list(data.get("component_lineage_ids")) if x
+            ],
             component_lens_ids=[str(x) for x in _safe_list(data.get("component_lens_ids")) if x],
             derived_from_bundle_id=str(data.get("derived_from_bundle_id", "")),
             version=_safe_int(data.get("version"), 1),
             reference_generation=_safe_int(data.get("reference_generation")),
             status=str(data.get("status", "active")),
             fingerprint=str(data.get("fingerprint", "")),
-            invalidation_reasons=[str(x) for x in _safe_list(data.get("invalidation_reasons")) if x],
+            invalidation_reasons=[
+                str(x) for x in _safe_list(data.get("invalidation_reasons")) if x
+            ],
             summary=str(data.get("summary", "")),
         )
 
@@ -562,7 +574,9 @@ class LensEngineState:
 
     @property
     def pending_invalidations(self) -> list[InvalidationEvent]:
-        return [item for item in self.invalidations if item.status not in {"recomposed", "superseded"}]
+        return [
+            item for item in self.invalidations if item.status not in {"recomposed", "superseded"}
+        ]
 
     def summary(self) -> str:
         bundle = self.active_bundle
@@ -607,7 +621,7 @@ class LensEngineState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LensEngineState":
+    def from_dict(cls, data: dict[str, Any]) -> LensEngineState:
         research_data = data.get("research")
         return cls(
             engine_version=str(data.get("engine_version", _ENGINE_VERSION)),
@@ -721,7 +735,7 @@ class LensEngineState:
         new_research: ResearchReferenceState,
         *,
         cause: str = "research_reference_refresh",
-    ) -> "LensEngineState":
+    ) -> LensEngineState:
         """Return a copy invalidated by a new research/reference generation."""
         state = LensEngineState.from_dict(self.to_dict())
         if isinstance(new_research, dict):
@@ -757,7 +771,9 @@ class LensEngineState:
                 )
             )
             bundle.status = "invalidated"
-            bundle.summary = f"{bundle.summary} [invalidated by reference generation refresh]".strip()
+            bundle.summary = (
+                f"{bundle.summary} [invalidated by reference generation refresh]".strip()
+            )
             bundle.reference_generation = state.session_reference_generation
 
         for composite in state.composites:
@@ -809,18 +825,22 @@ class LensEngineState:
         cls,
         report: Any,
         *,
-        previous_state: "LensEngineState | None" = None,
-    ) -> "LensEngineState":
+        previous_state: LensEngineState | None = None,
+    ) -> LensEngineState:
         """Build lens-engine state from a Genesis report or equivalent object."""
         research = build_research_reference_state(
             baseline_dossier=getattr(report, "baseline_dossier", None),
-            grounding_report=getattr(getattr(report, "top_invention", None), "grounding_report", None),
+            grounding_report=getattr(
+                getattr(report, "top_invention", None), "grounding_report", None
+            ),
             implementation_risk_review=getattr(
                 getattr(report, "top_invention", None),
                 "implementation_risk_review",
                 None,
             ),
-            model=str(getattr(getattr(report, "model_config", {}), "get", lambda *_: "")("search", "")),
+            model=str(
+                getattr(getattr(report, "model_config", {}), "get", lambda *_: "")("search", "")
+            ),
         )
         if isinstance(research, dict):
             research = ResearchReferenceState.from_dict(research)
@@ -920,8 +940,12 @@ class LensEngineState:
                         from_reference_generation=previous_state.session_reference_generation,
                         to_reference_generation=reference_generation,
                         invalidated_bundle_ids=invalidated_bundle_ids,
-                        resulting_bundle_ids=[state.active_bundle_id] if state.active_bundle_id else [],
-                        resulting_composite_ids=[item.composite_id for item in state.active_composites],
+                        resulting_bundle_ids=[state.active_bundle_id]
+                        if state.active_bundle_id
+                        else [],
+                        resulting_composite_ids=[
+                            item.composite_id for item in state.active_composites
+                        ],
                         summary=(
                             f"Research/reference change triggered recomposition from generation "
                             f"{previous_state.session_reference_generation} to {reference_generation}."
@@ -965,7 +989,9 @@ def _collect_members(report: Any) -> list[LensBundleMember]:
             lens_id=str(getattr(lens, "lens_id", "")),
             lens_name=str(getattr(lens, "name", "")),
             domain_name=domain_name,
-            source_domain=str(_explicit_attr(candidate, "source_domain", getattr(lens, "name", ""))),
+            source_domain=str(
+                _explicit_attr(candidate, "source_domain", getattr(lens, "name", ""))
+            ),
             domain_family=str(classify_domain_family(getattr(lens, "domain", ""))),
             domain_distance=_safe_float(
                 _explicit_attr(
@@ -978,7 +1004,9 @@ def _collect_members(report: Any) -> list[LensBundleMember]:
                     ),
                 )
             ),
-            structural_relevance=_safe_float(_explicit_attr(lens_score, "structural_relevance", 0.0)),
+            structural_relevance=_safe_float(
+                _explicit_attr(lens_score, "structural_relevance", 0.0)
+            ),
             retrieval_score=_safe_float(
                 _explicit_attr(
                     item,
@@ -987,7 +1015,9 @@ def _collect_members(report: Any) -> list[LensBundleMember]:
                 )
             ),
             fidelity_score=_safe_float(
-                _explicit_attr(item, "structural_fidelity", _explicit_attr(candidate, "confidence", 0.0))
+                _explicit_attr(
+                    item, "structural_fidelity", _explicit_attr(candidate, "confidence", 0.0)
+                )
             ),
             confidence=_safe_float(_explicit_attr(candidate, "confidence", 0.0)),
             matched_patterns=[
@@ -1124,7 +1154,9 @@ def _select_adaptive_bundle_members(
         if member.rank_score < top_score * 0.72:
             continue
         new_patterns = set(member.matched_patterns) - covered_patterns
-        family_bonus = member.domain_family not in used_families and member.domain_family != "general"
+        family_bonus = (
+            member.domain_family not in used_families and member.domain_family != "general"
+        )
         if not new_patterns and not family_bonus:
             continue
         selected.append(member)
@@ -1143,12 +1175,10 @@ def _cohesion_score(
     avg_distance = sum(member.domain_distance for member in selected) / len(selected)
     all_patterns = {pattern for member in all_members for pattern in member.matched_patterns}
     selected_patterns = {pattern for member in selected for pattern in member.matched_patterns}
-    coverage = (
-        len(selected_patterns) / len(all_patterns)
-        if all_patterns
-        else 0.6
+    coverage = len(selected_patterns) / len(all_patterns) if all_patterns else 0.6
+    diversity = len({member.domain_family for member in selected if member.domain_family}) / max(
+        len(selected), 1
     )
-    diversity = len({member.domain_family for member in selected if member.domain_family}) / max(len(selected), 1)
     return round(
         min(
             1.0,
@@ -1166,12 +1196,16 @@ def _higher_order_score(selected: list[LensBundleMember]) -> float:
     overlap_penalty = 0.0
     pattern_sets = [set(member.matched_patterns) for member in selected]
     for idx, left in enumerate(pattern_sets):
-        for right in pattern_sets[idx + 1:]:
+        for right in pattern_sets[idx + 1 :]:
             if left and right:
                 overlap_penalty += len(left & right) / len(left | right)
     if len(selected) > 1:
         overlap_penalty /= len(selected) - 1
-    score = 0.45 * min(1.0, unique_patterns / 4.0) + 0.45 * min(1.0, families / len(selected)) + 0.10 * (1.0 - min(overlap_penalty, 1.0))
+    score = (
+        0.45 * min(1.0, unique_patterns / 4.0)
+        + 0.45 * min(1.0, families / len(selected))
+        + 0.10 * (1.0 - min(overlap_penalty, 1.0))
+    )
     return round(min(max(score, 0.0), 1.0), 4)
 
 
@@ -1236,9 +1270,7 @@ def _build_composites(
         return composites
 
     component_lineages = [
-        lineage.lineage_id
-        for lineage in lineages
-        if lineage.entity_id in active_bundle.member_ids
+        lineage.lineage_id for lineage in lineages if lineage.entity_id in active_bundle.member_ids
     ]
     fingerprint = _hash_text(
         json.dumps(
@@ -1285,10 +1317,7 @@ def _build_guards(
                 kind="bundle_cohesion_floor",
                 status=cohesion_status,
                 target_id=active_bundle.bundle_id,
-                summary=(
-                    f"Cohesion floor {cohesion_status} "
-                    f"({active_bundle.cohesion_score:.2f})."
-                ),
+                summary=(f"Cohesion floor {cohesion_status} ({active_bundle.cohesion_score:.2f})."),
                 details=list(active_bundle.clauses),
             )
         )
@@ -1313,7 +1342,9 @@ def _build_guards(
                     summary=(
                         f"Higher-order bundle support={active_bundle.higher_order_score:.2f}."
                     ),
-                    details=[f"Complementary axes: {', '.join(active_bundle.complementary_axes) or 'none'}"],
+                    details=[
+                        f"Complementary axes: {', '.join(active_bundle.complementary_axes) or 'none'}"
+                    ],
                 )
             )
     guards.append(
@@ -1373,9 +1404,7 @@ def _build_fold_states(
             status = "invalidated"
 
         lineage_ids = [
-            lineage.lineage_id
-            for lineage in lineages
-            if lineage.entity_id in bundle.member_ids
+            lineage.lineage_id for lineage in lineages if lineage.entity_id in bundle.member_ids
         ]
         states.append(
             FoldState(

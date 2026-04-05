@@ -1,7 +1,6 @@
 """Tests for SQLite workbook repository."""
-from __future__ import annotations
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
@@ -20,7 +19,7 @@ from hephaestus.forgebase.domain.models import (
     BranchTombstone,
     Workbook,
 )
-from hephaestus.forgebase.domain.values import EntityId, Version, VaultRevisionId
+from hephaestus.forgebase.domain.values import Version
 from hephaestus.forgebase.store.sqlite.workbook_repo import SqliteWorkbookRepository
 
 
@@ -95,8 +94,12 @@ class TestSqliteWorkbookRepo:
         repo = SqliteWorkbookRepository(sqlite_db)
         vault_id = id_gen.vault_id()
 
-        wb_open = self._make_workbook(id_gen, clock, actor, vault_id=vault_id, status=WorkbookStatus.OPEN)
-        wb_merged = self._make_workbook(id_gen, clock, actor, vault_id=vault_id, status=WorkbookStatus.MERGED)
+        wb_open = self._make_workbook(
+            id_gen, clock, actor, vault_id=vault_id, status=WorkbookStatus.OPEN
+        )
+        wb_merged = self._make_workbook(
+            id_gen, clock, actor, vault_id=vault_id, status=WorkbookStatus.MERGED
+        )
 
         await repo.create(wb_open)
         await repo.create(wb_merged)
@@ -388,7 +391,10 @@ class TestSqliteWorkbookRepo:
         repo = SqliteWorkbookRepository(sqlite_db)
         wb_id = id_gen.workbook_id()
 
-        for kind, gen_fn in [(EntityKind.PAGE, id_gen.page_id), (EntityKind.CLAIM, id_gen.claim_id)]:
+        for kind, gen_fn in [
+            (EntityKind.PAGE, id_gen.page_id),
+            (EntityKind.CLAIM, id_gen.claim_id),
+        ]:
             await repo.add_tombstone(BranchTombstone(wb_id, kind, gen_fn(), clock.now()))
 
         await sqlite_db.commit()

@@ -12,9 +12,8 @@ Key scenarios:
   7. Handles minimal/sparse state
   8. Dossier stored as ingested source
 """
-from __future__ import annotations
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
@@ -26,12 +25,10 @@ from hephaestus.forgebase.domain.enums import (
     SupportType,
 )
 from hephaestus.forgebase.domain.models import InventionPageMeta
-from hephaestus.forgebase.domain.values import EntityId
 from hephaestus.forgebase.integration.pantheon_ingester import PantheonIngester
 from hephaestus.forgebase.service.claim_service import ClaimService
 from hephaestus.forgebase.service.link_service import LinkService
 from hephaestus.forgebase.service.page_service import PageService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -174,9 +171,12 @@ MOCK_MINIMAL_STATE = {
 
 @pytest.mark.asyncio
 class TestPantheonIngester:
-
     async def test_ingest_updates_invention_state_reviewed(
-        self, vault, invention_page, pantheon_ingester, uow_factory,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        uow_factory,
     ):
         """UNANIMOUS_CONSENSUS verdict updates invention state to REVIEWED."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -193,7 +193,11 @@ class TestPantheonIngester:
             assert meta.invention_state == InventionEpistemicState.REVIEWED
 
     async def test_ingest_fail_closed_rejects(
-        self, vault, invention_page, pantheon_ingester, uow_factory,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        uow_factory,
     ):
         """FAIL_CLOSED_REJECTION verdict updates invention state to REJECTED."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -210,7 +214,11 @@ class TestPantheonIngester:
             assert meta.invention_state == InventionEpistemicState.REJECTED
 
     async def test_ingest_creates_constraint_claims(
-        self, vault, invention_page, pantheon_ingester, sqlite_db,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        sqlite_db,
     ):
         """Canon mandatory_constraints produce HYPOTHESIS claims with GENERATED support."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -241,7 +249,11 @@ class TestPantheonIngester:
         assert "Sub-ms latency" in statements
 
     async def test_ingest_creates_constrained_by_links(
-        self, vault, invention_page, pantheon_ingester, sqlite_db,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        sqlite_db,
     ):
         """CONSTRAINED_BY links are created from invention page to constraint claims."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -270,7 +282,11 @@ class TestPantheonIngester:
             assert row["source_entity"] == str(invention_page.page_id)
 
     async def test_ingest_marks_contested_from_objections(
-        self, vault, invention_page, pantheon_ingester, sqlite_db,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        sqlite_db,
     ):
         """Open objections create HYPOTHESIS claims and CHALLENGED_BY links."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -308,7 +324,11 @@ class TestPantheonIngester:
         assert row["cnt"] >= 1
 
     async def test_ingest_records_verdict_on_meta(
-        self, vault, invention_page, pantheon_ingester, uow_factory,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        uow_factory,
     ):
         """Pantheon verdict, outcome_tier, and consensus are recorded on meta."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -329,7 +349,10 @@ class TestPantheonIngester:
             assert meta.objection_count_resolved == 0
 
     async def test_ingest_handles_no_invention_page(
-        self, vault, pantheon_ingester, sqlite_db,
+        self,
+        vault,
+        pantheon_ingester,
+        sqlite_db,
     ):
         """Ingestion works without an invention_page_id — standalone Pantheon run."""
         # Should not raise, even without an invention page
@@ -365,7 +388,11 @@ class TestPantheonIngester:
         assert row["cnt"] >= 2
 
     async def test_ingest_handles_minimal_state(
-        self, vault, invention_page, pantheon_ingester, sqlite_db,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        sqlite_db,
     ):
         """State with missing fields should not crash."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -398,7 +425,11 @@ class TestPantheonIngester:
         assert row["invention_state"] == InventionEpistemicState.PROPOSED.value
 
     async def test_ingest_qualified_consensus_reviews(
-        self, vault, invention_page, pantheon_ingester, uow_factory,
+        self,
+        vault,
+        invention_page,
+        pantheon_ingester,
+        uow_factory,
     ):
         """QUALIFIED_CONSENSUS also maps to REVIEWED state."""
         await pantheon_ingester.ingest_pantheon_state(
@@ -415,7 +446,10 @@ class TestPantheonIngester:
             assert meta.invention_state == InventionEpistemicState.REVIEWED
 
     async def test_ingest_stores_dossier_as_source(
-        self, vault, pantheon_ingester, sqlite_db,
+        self,
+        vault,
+        pantheon_ingester,
+        sqlite_db,
     ):
         """HermesDossier is stored as an ingested source for later compilation."""
         await pantheon_ingester.ingest_pantheon_state(

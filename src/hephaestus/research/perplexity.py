@@ -24,7 +24,6 @@ from typing import Any
 
 import httpx
 
-
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "sonar-pro"
@@ -246,7 +245,11 @@ class PerplexityClient:
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self.api_key = api_key if api_key is not None else os.environ.get("PERPLEXITY_API_KEY")
-        self.enabled = enabled if enabled is not None else _env_bool("HEPHAESTUS_USE_PERPLEXITY_RESEARCH", True)
+        self.enabled = (
+            enabled
+            if enabled is not None
+            else _env_bool("HEPHAESTUS_USE_PERPLEXITY_RESEARCH", True)
+        )
         self.model = model or os.environ.get("HEPHAESTUS_PERPLEXITY_MODEL", _DEFAULT_MODEL)
         self.timeout = timeout
         self.max_retries = max(0, int(max_retries))
@@ -279,7 +282,7 @@ class PerplexityClient:
             )
         return self._client
 
-    async def __aenter__(self) -> "PerplexityClient":
+    async def __aenter__(self) -> PerplexityClient:
         await self._get_client()
         return self
 
@@ -338,7 +341,9 @@ class PerplexityClient:
             if response.status_code != 200:
                 detail = response.text[:300].strip() or "empty response"
                 if response.status_code in _RETRIABLE_STATUS_CODES and attempt < self.max_retries:
-                    delay = self._retry_delay(attempt, retry_after=response.headers.get("Retry-After"))
+                    delay = self._retry_delay(
+                        attempt, retry_after=response.headers.get("Retry-After")
+                    )
                     logger.warning(
                         "Perplexity returned HTTP %d on attempt %d/%d; retrying in %.1fs",
                         response.status_code,
@@ -354,7 +359,9 @@ class PerplexityClient:
                 payload = response.json()
             except ValueError as exc:
                 if attempt >= self.max_retries:
-                    raise ResearchError("Perplexity returned an invalid JSON response payload") from exc
+                    raise ResearchError(
+                        "Perplexity returned an invalid JSON response payload"
+                    ) from exc
                 delay = self._retry_delay(attempt)
                 logger.warning(
                     "Perplexity returned invalid JSON payload on attempt %d/%d; retrying in %.1fs",
@@ -365,11 +372,7 @@ class PerplexityClient:
                 await asyncio.sleep(delay)
                 continue
 
-            raw = (
-                payload.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
+            raw = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
             citations = _extract_citations(payload)
             try:
                 data = _extract_json(raw)
@@ -387,7 +390,9 @@ class PerplexityClient:
                 continue
             return data, citations, raw
 
-        raise ResearchError("Perplexity request exhausted retries without returning a usable response")
+        raise ResearchError(
+            "Perplexity request exhausted retries without returning a usable response"
+        )
 
     def _retry_delay(self, attempt: int, *, retry_after: str | None = None) -> float:
         if retry_after:
@@ -397,7 +402,7 @@ class PerplexityClient:
                 retry_after_seconds = 0.0
             if retry_after_seconds > 0:
                 return min(retry_after_seconds, self.max_retry_delay)
-        return min(self.retry_base_delay * (2 ** attempt), self.max_retry_delay)
+        return min(self.retry_base_delay * (2**attempt), self.max_retry_delay)
 
     async def build_baseline_dossier(
         self,
@@ -429,10 +434,10 @@ Problem:
 {problem}
 
 Native domain:
-{native_domain or 'unknown'}
+{native_domain or "unknown"}
 
 Mathematical shape:
-{mathematical_shape or 'not specified'}
+{mathematical_shape or "not specified"}
 """.strip()
         data, citations, raw = await self._chat_json(system=system, user=user)
         return BaselineDossier(
@@ -483,8 +488,8 @@ Return JSON with this schema:
 
 Invention name: {invention_name}
 Target problem: {problem}
-Target domain: {native_domain or 'unknown'}
-Source domain: {source_domain or 'unknown'}
+Target domain: {native_domain or "unknown"}
+Source domain: {source_domain or "unknown"}
 Key insight: {key_insight}
 Architecture:
 {architecture[:3000]}
@@ -650,8 +655,10 @@ Workspace context:
             return BenchmarkCorpus(topic=topic)
 
         system = (
-            "You are building an evaluation corpus for an invention engine. Select real engineering problems with strong baselines, "
-            "clear failure modes, and measurable evaluation axes. Return ONLY valid JSON."
+            "You are building an evaluation corpus for an invention engine. "
+            "Select real engineering problems with strong baselines, "
+            "clear failure modes, and measurable evaluation axes. "
+            "Return ONLY valid JSON."
         )
         user = f"""
 Return JSON with this schema:
@@ -707,6 +714,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
     try:
         from hephaestus.core.json_utils import loads_lenient
+
         payload = loads_lenient(match.group(), default={}, label="perplexity")
     except json.JSONDecodeError as exc:
         raise ResearchError(f"Could not parse Perplexity JSON: {exc}") from exc
@@ -818,8 +826,12 @@ def build_research_reference_state(
 ) -> dict[str, Any] | None:
     """Build a stable reference-generation surface from attached research artifacts."""
     artifacts = [
-        snapshot_research_artifact("baseline_dossier", baseline_dossier, provider=provider, model=model),
-        snapshot_research_artifact("grounding_report", grounding_report, provider=provider, model=model),
+        snapshot_research_artifact(
+            "baseline_dossier", baseline_dossier, provider=provider, model=model
+        ),
+        snapshot_research_artifact(
+            "grounding_report", grounding_report, provider=provider, model=model
+        ),
         snapshot_research_artifact(
             "implementation_risk_review",
             implementation_risk_review,
@@ -831,9 +843,7 @@ def build_research_reference_state(
     if not compact:
         return None
 
-    reference_signature = _text_digest(
-        json.dumps(compact, sort_keys=True, ensure_ascii=False)
-    )
+    reference_signature = _text_digest(json.dumps(compact, sort_keys=True, ensure_ascii=False))
     return {
         "reference_generation": 1,
         "provider": provider,

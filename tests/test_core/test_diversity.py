@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from hephaestus.core.diversity import (
-    DiversityScore,
     apply_diversity_rerank,
     compute_diversity,
     compute_text_similarity,
@@ -43,20 +40,24 @@ class TestComputeDiversity:
         assert result.diversity_bonus == 0.0
 
     def test_diverse_candidates(self):
-        result = compute_diversity([
-            "Immune system memory cells persist responses",
-            "Volcanic eruption pressure release dynamics",
-            "Musical counterpoint harmonic resolution",
-        ])
+        result = compute_diversity(
+            [
+                "Immune system memory cells persist responses",
+                "Volcanic eruption pressure release dynamics",
+                "Musical counterpoint harmonic resolution",
+            ]
+        )
         assert result.diversity_bonus > 0.5
         assert len(result.penalty_applied) == 0  # all different enough
 
     def test_penalty_for_similar(self):
-        result = compute_diversity([
-            "Load balancing with immune memory cells and rapid recall",
-            "Load balancing with immune response and memory recall patterns",
-            "Volcanic pressure dynamics for queue management",
-        ])
+        result = compute_diversity(
+            [
+                "Load balancing with immune memory cells and rapid recall",
+                "Load balancing with immune response and memory recall patterns",
+                "Volcanic pressure dynamics for queue management",
+            ]
+        )
         # First two are similar, third is different
         assert len(result.penalty_applied) >= 1
 

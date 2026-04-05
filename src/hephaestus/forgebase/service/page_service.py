@@ -1,7 +1,8 @@
 """PageService — page creation, update, and deletion."""
+
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from hephaestus.forgebase.domain.enums import EntityKind, PageType
 from hephaestus.forgebase.domain.models import (
@@ -95,7 +96,9 @@ class PageService:
                 )
             else:
                 await uow.vaults.set_canonical_page_head(
-                    vault_id, page_id, 1,
+                    vault_id,
+                    page_id,
+                    1,
                 )
 
             # 4. Emit event
@@ -200,7 +203,9 @@ class PageService:
                 )
             else:
                 await uow.vaults.set_canonical_page_head(
-                    page.vault_id, page_id, new_version_num.number,
+                    page.vault_id,
+                    page_id,
+                    new_version_num.number,
                 )
 
             # 5. Emit event

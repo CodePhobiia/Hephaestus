@@ -111,7 +111,9 @@ class BundleProof:
     def from_dict(cls, data: Mapping[str, Any]) -> BundleProof:
         return cls(
             bundle_id=str(data["bundle_id"]),
-            member_lens_ids=tuple(str(item) for item in list(data.get("member_lens_ids", []) or [])),
+            member_lens_ids=tuple(
+                str(item) for item in list(data.get("member_lens_ids", []) or [])
+            ),
             member_card_fingerprints={
                 str(key): int(value)
                 for key, value in dict(data.get("member_card_fingerprints", {}) or {}).items()
@@ -189,7 +191,9 @@ class BundleCandidate:
     novelty_axes: tuple[str, ...]
 
 
-def _pairwise_overlap(index: CohesionCellIndex, lens_ids: Sequence[str], query_terms: Sequence[str]) -> float:
+def _pairwise_overlap(
+    index: CohesionCellIndex, lens_ids: Sequence[str], query_terms: Sequence[str]
+) -> float:
     if len(lens_ids) < 2:
         return 0.0
     overlaps: list[float] = []
@@ -204,7 +208,9 @@ def _pairwise_overlap(index: CohesionCellIndex, lens_ids: Sequence[str], query_t
     return sum(overlaps) / len(overlaps)
 
 
-def _max_pair_coverage(index: CohesionCellIndex, lens_ids: Sequence[str], query_terms: Sequence[str]) -> float:
+def _max_pair_coverage(
+    index: CohesionCellIndex, lens_ids: Sequence[str], query_terms: Sequence[str]
+) -> float:
     if len(lens_ids) < 3:
         return 0.0
     max_coverage = 0.0
@@ -228,9 +234,7 @@ def build_fold_state(
     bundle_tokens = cell_index.bundle_union_tokens(lens_ids, query_terms)
     coverage_ratio = len(bundle_tokens) / max(1, len(query_terms))
     cohesion_mass = (
-        sum(cell.total_weight for cell in shared) / max(1.0, len(lens_ids))
-        if shared
-        else 0.0
+        sum(cell.total_weight for cell in shared) / max(1.0, len(lens_ids)) if shared else 0.0
     )
     member_contributions: dict[str, float] = {}
     novelty_axes: set[str] = set()
@@ -255,7 +259,9 @@ def build_fold_state(
     complementarity /= max(1, len(lens_ids))
 
     redundancy_penalty = _pairwise_overlap(cell_index, lens_ids, query_terms)
-    conditional_lift = max(0.0, coverage_ratio - _max_pair_coverage(cell_index, lens_ids, query_terms))
+    conditional_lift = max(
+        0.0, coverage_ratio - _max_pair_coverage(cell_index, lens_ids, query_terms)
+    )
     family_diversity = len(families) / max(1, len(lens_ids))
     novelty_span = len(novelty_axes) / max(
         1,
@@ -312,9 +318,7 @@ def _make_bundle_proof(
         "member_card_fingerprints": {
             lens_id: cards[lens_id].fingerprint64 for lens_id in member_lens_ids
         },
-        "lineage_tokens": {
-            lens_id: lineages[lens_id].proof_token for lens_id in member_lens_ids
-        },
+        "lineage_tokens": {lens_id: lineages[lens_id].proof_token for lens_id in member_lens_ids},
         "fold_signature": fold_signature,
         "query_signature": query_signature,
         "reference_signature": reference_signature,
@@ -370,21 +374,12 @@ def build_bundle_candidates(
             if (
                 fold_state.coverage_ratio < 0.25
                 or fold_state.proof_strength < 0.4
-                or (
-                    fold_state.cohesion_mass < 0.1
-                    and fold_state.conditional_lift < 0.1
-                )
+                or (fold_state.cohesion_mass < 0.1 and fold_state.conditional_lift < 0.1)
             ):
                 continue
 
             novelty_axes = tuple(
-                sorted(
-                    {
-                        axis
-                        for lens_id in lens_ids
-                        for axis in cards[lens_id].novelty_axes
-                    }
-                )
+                sorted({axis for lens_id in lens_ids for axis in cards[lens_id].novelty_axes})
             )
             families = tuple(sorted({cards[lens_id].domain_family for lens_id in lens_ids}))
             proof = _make_bundle_proof(
@@ -573,8 +568,12 @@ class BundleSelectionResult:
             "retrieval_mode": self.retrieval_mode,
             "selected_lenses": [score.lens.lens_id for score in self.selected_lenses],
             "fallback_lenses": [score.lens.lens_id for score in self.fallback_lenses],
-            "primary_bundle": self.primary_bundle.to_dict() if self.primary_bundle is not None else None,
-            "active_bundle": self.active_bundle.to_dict() if self.active_bundle is not None else None,
+            "primary_bundle": self.primary_bundle.to_dict()
+            if self.primary_bundle is not None
+            else None,
+            "active_bundle": self.active_bundle.to_dict()
+            if self.active_bundle is not None
+            else None,
             "exclusion_snapshot": dict(self.exclusion_snapshot),
         }
 
@@ -625,7 +624,9 @@ class BundleComposer:
         structure: Any,
     ) -> BundleSelectionResult:
         if not lens_scores:
-            return BundleSelectionResult(retrieval_mode="singleton", selected_lenses=(), fallback_lenses=())
+            return BundleSelectionResult(
+                retrieval_mode="singleton", selected_lenses=(), fallback_lenses=()
+            )
 
         fallback_score = float(getattr(lens_scores[0], "composite_score", 0.0))
         ranked = lens_scores[: self._candidate_pool_size]
@@ -642,7 +643,6 @@ class BundleComposer:
                     fatigue_penalty=self._exclusion_ledger.penalty_for_cell(raw_cell),
                 )
             )
-        cell_by_lens = {cell.lens_id: cell for cell in cells}
         score_by_lens = {score.lens.lens_id: score for score in ranked}
 
         best_proof: RuntimeBundleProof | None = None
@@ -656,21 +656,17 @@ class BundleComposer:
         if best_proof is None:
             return self._singleton_result(lens_scores)
 
-        should_use_bundle = (
-            best_proof.proof_confidence >= self._min_bundle_strength
-            and (
-                best_proof.proof_confidence >= fallback_score + self._min_bundle_gain
-                or (
-                    best_proof.conditional_score >= 0.55
-                    and best_proof.higher_order_score >= 0.25
-                )
-            )
+        should_use_bundle = best_proof.proof_confidence >= self._min_bundle_strength and (
+            best_proof.proof_confidence >= fallback_score + self._min_bundle_gain
+            or (best_proof.conditional_score >= 0.55 and best_proof.higher_order_score >= 0.25)
         )
         if not should_use_bundle and self._allow_singleton_fallback:
             return self._singleton_result(lens_scores)
 
         order = list(best_proof.translation_order)
-        selected_lenses = tuple(score_by_lens[lens_id] for lens_id in order if lens_id in score_by_lens)
+        selected_lenses = tuple(
+            score_by_lens[lens_id] for lens_id in order if lens_id in score_by_lens
+        )
         fallback_lenses = tuple(
             score
             for score in lens_scores
@@ -695,7 +691,9 @@ class BundleComposer:
         reason: str,
     ) -> BundleRecomposition:
         invalidated = tuple(sorted(set((*bundle.invalidated_lens_ids, *invalidated_lens_ids))))
-        remaining_cells = tuple(cell for cell in bundle.cells if cell.lens_id not in set(invalidated))
+        remaining_cells = tuple(
+            cell for cell in bundle.cells if cell.lens_id not in set(invalidated)
+        )
         if len(remaining_cells) < 2:
             self._exclusion_ledger.record_outcome(
                 lens_ids=bundle.lens_ids,
@@ -717,7 +715,9 @@ class BundleComposer:
                 composite_score=bundle.member_scores[lens_id],
                 domain_distance=bundle.member_distances[lens_id],
                 structural_relevance=bundle.member_relevance[lens_id],
-                domain_family=next(cell.domain_family for cell in remaining_cells if cell.lens_id == lens_id),
+                domain_family=next(
+                    cell.domain_family for cell in remaining_cells if cell.lens_id == lens_id
+                ),
             )
             for lens_id in bundle.active_lens_ids
             if lens_id not in set(invalidated)
@@ -734,7 +734,10 @@ class BundleComposer:
             recomposition_count=bundle.recomposition_count + 1,
             invalidation_reasons=tuple(dict.fromkeys((*bundle.invalidation_reasons, reason))),
         )
-        fallback_required = self._allow_singleton_fallback and new_proof.proof_confidence < self._min_bundle_strength
+        fallback_required = (
+            self._allow_singleton_fallback
+            and new_proof.proof_confidence < self._min_bundle_strength
+        )
         if fallback_required:
             self._exclusion_ledger.record_outcome(
                 lens_ids=bundle.lens_ids,
@@ -789,7 +792,9 @@ class BundleComposer:
         recomposition_count: int = 0,
         invalidation_reasons: tuple[str, ...] = (),
     ) -> RuntimeBundleProof:
-        problem_maps = {item.lower() for item in (getattr(structure, "problem_maps_to", set()) or set())}
+        problem_maps = {
+            item.lower() for item in (getattr(structure, "problem_maps_to", set()) or set())
+        }
         constraints = list(getattr(structure, "constraints", []) or [])
 
         pairwise_scores: dict[str, float] = {}
@@ -824,7 +829,9 @@ class BundleComposer:
             )
 
         coverage_score = self._coverage_score(cells, problem_maps)
-        higher_order_score, critical_lens_ids = self._higher_order_score(cells, problem_maps, constraints)
+        higher_order_score, critical_lens_ids = self._higher_order_score(
+            cells, problem_maps, constraints
+        )
         if higher_order_score > 0.0:
             evidence.append(
                 CompatibilityEvidence(
@@ -944,11 +951,19 @@ class BundleComposer:
     ) -> float:
         left_shapes = set(left.transfer_shape)
         right_shapes = set(right.transfer_shape)
-        coverage = len((left_shapes | right_shapes) & problem_maps) / len(problem_maps) if problem_maps else 0.5
-        mechanism_diversity = 1.0 - _jaccard(set(left.mechanism_signature), set(right.mechanism_signature))
+        coverage = (
+            len((left_shapes | right_shapes) & problem_maps) / len(problem_maps)
+            if problem_maps
+            else 0.5
+        )
+        mechanism_diversity = 1.0 - _jaccard(
+            set(left.mechanism_signature), set(right.mechanism_signature)
+        )
         family_separation = 1.0 if left.domain_family != right.domain_family else 0.55
         baseline_overlap = _jaccard(set(left.disallowed_baselines), set(right.disallowed_baselines))
-        constraint_support = 0.5 * left.constraint_support(constraints) + 0.5 * right.constraint_support(constraints)
+        constraint_support = 0.5 * left.constraint_support(
+            constraints
+        ) + 0.5 * right.constraint_support(constraints)
         return _clamp01(
             0.35 * coverage
             + 0.30 * mechanism_diversity
@@ -1020,8 +1035,13 @@ class BundleComposer:
                 if remaining
                 else 0.0
             )
-            full_constraint = sum(item.constraint_support(constraints) for item in cells) / len(cells)
-            if remaining_coverage + 0.10 < full_coverage or remaining_constraint + 0.12 < full_constraint:
+            full_constraint = sum(item.constraint_support(constraints) for item in cells) / len(
+                cells
+            )
+            if (
+                remaining_coverage + 0.10 < full_coverage
+                or remaining_constraint + 0.12 < full_constraint
+            ):
                 critical.append(cell.lens_id)
 
         triad_bonus = 0.0

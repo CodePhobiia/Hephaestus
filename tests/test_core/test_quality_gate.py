@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from hephaestus.core.quality_gate import QualityAssessment, assess_invention_quality
+from hephaestus.core.quality_gate import assess_invention_quality
 
 
 class TestAssessInventionQuality:

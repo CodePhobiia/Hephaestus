@@ -32,10 +32,9 @@ from hephaestus.output.formatter import (
     _structural_fidelity_interpretation,
     _unicode_bar,
 )
-from hephaestus.output.prior_art import PriorArtReport, PatentResult, PaperResult
-from hephaestus.output.proof import NoveltyProof, NoveltyProofGenerator
+from hephaestus.output.prior_art import PatentResult, PriorArtReport
+from hephaestus.output.proof import NoveltyProofGenerator
 from hephaestus.session.deliberation import DeliberationGraph
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -203,7 +202,9 @@ def _pantheon_state() -> SimpleNamespace:
         failure_reason=None,
         canon=SimpleNamespace(structural_form="feedback loop"),
         dossier=SimpleNamespace(repo_reality_summary="fits production constraints"),
-        rounds=[SimpleNamespace(round_index=1, candidate_id="candidate-1:Pheromone", consensus=True)],
+        rounds=[
+            SimpleNamespace(round_index=1, candidate_id="candidate-1:Pheromone", consensus=True)
+        ],
         objection_ledger=[
             SimpleNamespace(
                 objection_id="obj-athena-1",
@@ -422,7 +423,10 @@ class TestMarkdownOutput:
 
     def test_includes_research_sections(self) -> None:
         report = _make_report(
-            baseline_dossier=SimpleNamespace(summary="Queues and token buckets dominate today.", keywords_to_avoid=["retry with backoff"]),
+            baseline_dossier=SimpleNamespace(
+                summary="Queues and token buckets dominate today.",
+                keywords_to_avoid=["retry with backoff"],
+            ),
             external_grounding_report=SimpleNamespace(
                 summary="Closest public systems use adaptive routing.",
                 closest_related_work=["System A"],
@@ -473,9 +477,7 @@ class TestMarkdownOutput:
         assert "`pantheon`=$0.1234" in md
 
     def test_includes_runtime_orchestration_section(self) -> None:
-        md = OutputFormatter().to_markdown(
-            _make_report(deliberation_graph=_deliberation_graph())
-        )
+        md = OutputFormatter().to_markdown(_make_report(deliberation_graph=_deliberation_graph()))
         assert "RUNTIME ORCHESTRATION" in md
         assert "Budget policy" in md or "Workflow" in md
         assert "candidate-1:Pheromone" in md
@@ -518,7 +520,9 @@ class TestJsonOutput:
         assert meta["cost_breakdown"] is None
 
     def test_lens_engine_in_json(self) -> None:
-        data = json.loads(OutputFormatter().to_json(_make_report(lens_engine_state=_lens_engine_state())))
+        data = json.loads(
+            OutputFormatter().to_json(_make_report(lens_engine_state=_lens_engine_state()))
+        )
         lens = data["hephaestus_invention_report"]["lens_engine"]
         assert lens["active_bundle_id"] == "bundle:adaptive:fmt"
         assert lens["research"]["reference_generation"] == 5
@@ -571,11 +575,21 @@ class TestJsonOutput:
         assert "novelty_score" in proof_json
 
     def test_research_sections_in_json(self) -> None:
-        data = json.loads(OutputFormatter().to_json(_make_report(
-            baseline_dossier=SimpleNamespace(summary="Baseline summary", keywords_to_avoid=["queue + backoff"]),
-            external_grounding_report=SimpleNamespace(summary="Grounding summary", closest_related_work=["Project X"]),
-            implementation_risk_review=SimpleNamespace(summary="Risk summary", major_risks=["oscillation"]),
-        )))
+        data = json.loads(
+            OutputFormatter().to_json(
+                _make_report(
+                    baseline_dossier=SimpleNamespace(
+                        summary="Baseline summary", keywords_to_avoid=["queue + backoff"]
+                    ),
+                    external_grounding_report=SimpleNamespace(
+                        summary="Grounding summary", closest_related_work=["Project X"]
+                    ),
+                    implementation_risk_review=SimpleNamespace(
+                        summary="Risk summary", major_risks=["oscillation"]
+                    ),
+                )
+            )
+        )
         report = data["hephaestus_invention_report"]
         assert report["state_of_the_art"]["summary"] == "Baseline summary"
         assert report["external_grounding"]["summary"] == "Grounding summary"
@@ -606,9 +620,7 @@ class TestJsonOutput:
 
     def test_deliberation_graph_in_json(self) -> None:
         data = json.loads(
-            OutputFormatter().to_json(
-                _make_report(deliberation_graph=_deliberation_graph())
-            )
+            OutputFormatter().to_json(_make_report(deliberation_graph=_deliberation_graph()))
         )
         graph = data["hephaestus_invention_report"]["deliberation_graph"]
         assert graph["workflow_kind"] == "genesis"
@@ -697,9 +709,7 @@ class TestPlainOutput:
         assert "pantheon=$0.1234" in plain
 
     def test_includes_runtime_orchestration_in_plain_output(self) -> None:
-        plain = OutputFormatter().to_plain(
-            _make_report(deliberation_graph=_deliberation_graph())
-        )
+        plain = OutputFormatter().to_plain(_make_report(deliberation_graph=_deliberation_graph()))
         assert "RUNTIME ORCHESTRATION" in plain
         assert "candidate-1:Pheromone" in plain
 

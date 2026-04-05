@@ -15,7 +15,6 @@ Key features:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import shutil
 import time
@@ -86,8 +85,7 @@ def _find_claude_cli() -> str:
     path = shutil.which("claude")
     if not path:
         raise AuthenticationError(
-            "Claude CLI (claude) not found on PATH. "
-            "Install it from https://claude.ai/claude-code"
+            "Claude CLI (claude) not found on PATH. Install it from https://claude.ai/claude-code"
         )
     return path
 
@@ -183,7 +181,8 @@ class ClaudeCliAdapter(BaseAdapter):
         cmd = [
             self._claude_bin,
             "--print",
-            "--permission-mode", "bypassPermissions",
+            "--permission-mode",
+            "bypassPermissions",
             "-p",
             full_prompt,
         ]
@@ -203,14 +202,10 @@ class ClaudeCliAdapter(BaseAdapter):
                 proc.communicate(),
                 timeout=self._timeout,
             )
-        except asyncio.TimeoutError:
-            raise AdapterError(
-                f"Claude CLI timed out after {self._timeout}s"
-            )
-        except FileNotFoundError:
-            raise AuthenticationError(
-                f"Claude CLI binary not found at {self._claude_bin}"
-            )
+        except TimeoutError as err:
+            raise AdapterError(f"Claude CLI timed out after {self._timeout}s") from err
+        except FileNotFoundError as err:
+            raise AuthenticationError(f"Claude CLI binary not found at {self._claude_bin}") from err
 
         elapsed = time.monotonic() - t_start
         stdout = stdout_bytes.decode("utf-8", errors="replace").strip()
@@ -223,9 +218,7 @@ class ClaudeCliAdapter(BaseAdapter):
                 elapsed,
                 stderr[:200],
             )
-            raise AdapterError(
-                f"Claude CLI failed (exit {proc.returncode}): {stderr[:500]}"
-            )
+            raise AdapterError(f"Claude CLI failed (exit {proc.returncode}): {stderr[:500]}")
 
         self._logger.debug(
             "Claude CLI completed in %.2fs, %d chars output",
@@ -257,7 +250,7 @@ class ClaudeCliAdapter(BaseAdapter):
 
         # Strip prefill echo if present
         if prefill and text.startswith(prefill):
-            text = text[len(prefill):]
+            text = text[len(prefill) :]
 
         # Rough token estimates (4 chars ≈ 1 token)
         in_tokens = len(full_prompt) // 4

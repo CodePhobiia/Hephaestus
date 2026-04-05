@@ -1,4 +1,5 @@
 """Tests for ForgeBase knowledge graph API endpoint."""
+
 from __future__ import annotations
 
 import pytest

@@ -1,7 +1,6 @@
 """Tests for remediation policy engine — route resolution and precedence."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from hephaestus.forgebase.domain.enums import (
     FindingCategory,
@@ -15,12 +14,14 @@ from hephaestus.forgebase.linting.remediation.policy import (
     resolve_route,
 )
 
-
 # ---------------------------------------------------------------------------
 # Custom policy for precedence tests
 # ---------------------------------------------------------------------------
 
-def _make_policy(*rules: RemediationRule, default: RemediationRoute = RemediationRoute.REPORT_ONLY) -> RemediationPolicy:
+
+def _make_policy(
+    *rules: RemediationRule, default: RemediationRoute = RemediationRoute.REPORT_ONLY
+) -> RemediationPolicy:
     return RemediationPolicy(rules=list(rules), default_route=default)
 
 
@@ -31,9 +32,16 @@ class TestResolveRoute:
         """An exact (category + severity) match beats a category-only match."""
         policy = _make_policy(
             # Category-only rule: any severity for UNSUPPORTED_CLAIM -> RESEARCH_ONLY
-            RemediationRule(FindingCategory.UNSUPPORTED_CLAIM, None, RemediationRoute.RESEARCH_ONLY, priority=10),
+            RemediationRule(
+                FindingCategory.UNSUPPORTED_CLAIM, None, RemediationRoute.RESEARCH_ONLY, priority=10
+            ),
             # Exact rule: UNSUPPORTED_CLAIM + CRITICAL -> RESEARCH_THEN_REPAIR
-            RemediationRule(FindingCategory.UNSUPPORTED_CLAIM, FindingSeverity.CRITICAL, RemediationRoute.RESEARCH_THEN_REPAIR, priority=5),
+            RemediationRule(
+                FindingCategory.UNSUPPORTED_CLAIM,
+                FindingSeverity.CRITICAL,
+                RemediationRoute.RESEARCH_THEN_REPAIR,
+                priority=5,
+            ),
         )
         route = resolve_route(
             FindingCategory.UNSUPPORTED_CLAIM,
@@ -46,7 +54,9 @@ class TestResolveRoute:
     def test_category_only_match(self) -> None:
         """A category-only rule matches when no exact rule exists."""
         policy = _make_policy(
-            RemediationRule(FindingCategory.SOURCE_GAP, None, RemediationRoute.RESEARCH_ONLY, priority=5),
+            RemediationRule(
+                FindingCategory.SOURCE_GAP, None, RemediationRoute.RESEARCH_ONLY, priority=5
+            ),
         )
         route = resolve_route(
             FindingCategory.SOURCE_GAP,
@@ -58,7 +68,9 @@ class TestResolveRoute:
     def test_severity_only_match(self) -> None:
         """A severity-only rule (category=None) matches when no category rule exists."""
         policy = _make_policy(
-            RemediationRule(None, FindingSeverity.CRITICAL, RemediationRoute.RESEARCH_THEN_REPAIR, priority=5),
+            RemediationRule(
+                None, FindingSeverity.CRITICAL, RemediationRoute.RESEARCH_THEN_REPAIR, priority=5
+            ),
         )
         route = resolve_route(
             FindingCategory.ORPHANED_PAGE,
@@ -70,7 +82,12 @@ class TestResolveRoute:
     def test_default_route_when_no_match(self) -> None:
         """Falls back to default_route when no rules match."""
         policy = _make_policy(
-            RemediationRule(FindingCategory.STALE_EVIDENCE, FindingSeverity.CRITICAL, RemediationRoute.RESEARCH_THEN_REPAIR, priority=10),
+            RemediationRule(
+                FindingCategory.STALE_EVIDENCE,
+                FindingSeverity.CRITICAL,
+                RemediationRoute.RESEARCH_THEN_REPAIR,
+                priority=10,
+            ),
             default=RemediationRoute.REPORT_ONLY,
         )
         route = resolve_route(
@@ -83,8 +100,12 @@ class TestResolveRoute:
     def test_higher_priority_wins(self) -> None:
         """Among rules with the same specificity, higher priority wins."""
         policy = _make_policy(
-            RemediationRule(FindingCategory.DUPLICATE_PAGE, None, RemediationRoute.REPORT_ONLY, priority=3),
-            RemediationRule(FindingCategory.DUPLICATE_PAGE, None, RemediationRoute.REPAIR_ONLY, priority=8),
+            RemediationRule(
+                FindingCategory.DUPLICATE_PAGE, None, RemediationRoute.REPORT_ONLY, priority=3
+            ),
+            RemediationRule(
+                FindingCategory.DUPLICATE_PAGE, None, RemediationRoute.REPAIR_ONLY, priority=8
+            ),
         )
         route = resolve_route(
             FindingCategory.DUPLICATE_PAGE,
@@ -97,8 +118,12 @@ class TestResolveRoute:
         """Category-only (specificity=1, cat) and severity-only (specificity=1, sev) are
         both specificity 1. The one with higher priority should win."""
         policy = _make_policy(
-            RemediationRule(None, FindingSeverity.WARNING, RemediationRoute.RESEARCH_ONLY, priority=3),
-            RemediationRule(FindingCategory.STALE_EVIDENCE, None, RemediationRoute.REPAIR_ONLY, priority=5),
+            RemediationRule(
+                None, FindingSeverity.WARNING, RemediationRoute.RESEARCH_ONLY, priority=3
+            ),
+            RemediationRule(
+                FindingCategory.STALE_EVIDENCE, None, RemediationRoute.REPAIR_ONLY, priority=5
+            ),
         )
         route = resolve_route(
             FindingCategory.STALE_EVIDENCE,
@@ -112,8 +137,15 @@ class TestResolveRoute:
         """Exact match (specificity=2) beats severity-only (specificity=1)
         even when severity-only has a higher priority number."""
         policy = _make_policy(
-            RemediationRule(None, FindingSeverity.CRITICAL, RemediationRoute.REPORT_ONLY, priority=100),
-            RemediationRule(FindingCategory.STALE_EVIDENCE, FindingSeverity.CRITICAL, RemediationRoute.RESEARCH_THEN_REPAIR, priority=1),
+            RemediationRule(
+                None, FindingSeverity.CRITICAL, RemediationRoute.REPORT_ONLY, priority=100
+            ),
+            RemediationRule(
+                FindingCategory.STALE_EVIDENCE,
+                FindingSeverity.CRITICAL,
+                RemediationRoute.RESEARCH_THEN_REPAIR,
+                priority=1,
+            ),
         )
         route = resolve_route(
             FindingCategory.STALE_EVIDENCE,

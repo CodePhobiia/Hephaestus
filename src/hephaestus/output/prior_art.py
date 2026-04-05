@@ -40,7 +40,7 @@ import asyncio
 import logging
 import urllib.parse
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -174,7 +174,7 @@ class PriorArtReport:
     search_available: bool = True
     search_errors: list[str] = field(default_factory=list)
     searched_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        default_factory=lambda: datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     )
 
     @property
@@ -231,9 +231,7 @@ class PriorArtReport:
             parts.append(f"  • {len(self.papers)} academic paper(s)")
             for p in self.papers[:3]:
                 parts.append(f"    - {p.title} ({p.year or 'n.d.'})")
-        parts.append(
-            "Note: Review required to confirm these are not direct precedents."
-        )
+        parts.append("Note: Review required to confirm these are not direct precedents.")
         return "\n".join(parts)
 
 
@@ -294,7 +292,7 @@ class PriorArtSearcher:
             await self._http_client.aclose()
             self._http_client = None
 
-    async def __aenter__(self) -> "PriorArtSearcher":
+    async def __aenter__(self) -> PriorArtSearcher:
         await self._get_client()
         return self
 
@@ -402,11 +400,16 @@ class PriorArtSearcher:
             return {}
 
         try:
-            summary, overlap_verdict, overlap_confidence, findings, citations, _raw = (
-                await client.assess_prior_art(
-                    invention_name=invention_name or query[:80],
-                    problem=query,
-                )
+            (
+                summary,
+                overlap_verdict,
+                overlap_confidence,
+                findings,
+                citations,
+                _raw,
+            ) = await client.assess_prior_art(
+                invention_name=invention_name or query[:80],
+                problem=query,
             )
             return {
                 "summary": summary,
@@ -446,7 +449,7 @@ class PriorArtSearcher:
                 )
 
                 if response.status_code == 429:
-                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    delay = _RETRY_BASE_DELAY * (2**attempt)
                     logger.warning(
                         "Google Patents rate limited (attempt %d/%d), waiting %.1fs",
                         attempt + 1,
@@ -460,9 +463,7 @@ class PriorArtSearcher:
                     return self._parse_google_patents_response(response.json())
 
                 # Non-retriable error
-                logger.warning(
-                    "Google Patents returned status %d", response.status_code
-                )
+                logger.warning("Google Patents returned status %d", response.status_code)
                 return []
 
             except httpx.TimeoutException:
@@ -472,7 +473,7 @@ class PriorArtSearcher:
                     self._max_retries,
                 )
                 if attempt < self._max_retries - 1:
-                    await asyncio.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
+                    await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
                     continue
                 raise
 
@@ -555,7 +556,7 @@ class PriorArtSearcher:
                 )
 
                 if response.status_code == 429:
-                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    delay = _RETRY_BASE_DELAY * (2**attempt)
                     logger.warning(
                         "Semantic Scholar rate limited (attempt %d/%d), waiting %.1fs",
                         attempt + 1,
@@ -568,9 +569,7 @@ class PriorArtSearcher:
                 if response.status_code == 200:
                     return self._parse_semantic_scholar_response(response.json())
 
-                logger.warning(
-                    "Semantic Scholar returned status %d", response.status_code
-                )
+                logger.warning("Semantic Scholar returned status %d", response.status_code)
                 return []
 
             except httpx.TimeoutException:
@@ -580,7 +579,7 @@ class PriorArtSearcher:
                     self._max_retries,
                 )
                 if attempt < self._max_retries - 1:
-                    await asyncio.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
+                    await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
                     continue
                 raise
 
@@ -608,9 +607,7 @@ class PriorArtSearcher:
                 citation_count = paper.get("citationCount", 0) or 0
 
                 authors_raw = paper.get("authors", [])
-                authors = [
-                    a.get("name", "") for a in authors_raw if isinstance(a, dict)
-                ]
+                authors = [a.get("name", "") for a in authors_raw if isinstance(a, dict)]
 
                 # Build URL
                 url = f"https://www.semanticscholar.org/paper/{paper_id}" if paper_id else ""

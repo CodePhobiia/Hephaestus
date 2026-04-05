@@ -11,10 +11,10 @@ from hephaestus.tools.mcp.manager import MCPManager
 from hephaestus.tools.permissions import PermissionMode, PermissionPolicy
 from hephaestus.tools.registry import ToolRegistry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_config(name: str = "test-server") -> MCPServerConfig:
     return MCPServerConfig(name=name, command="/usr/bin/echo")
@@ -49,6 +49,7 @@ def _patch_client(tools: list[MCPTool] | None = None, call_result: str = "ok"):
 # ---------------------------------------------------------------------------
 # MCPManager — add / remove servers
 # ---------------------------------------------------------------------------
+
 
 class TestAddRemoveServer:
     @pytest.mark.asyncio
@@ -105,6 +106,7 @@ class TestAddRemoveServer:
 # MCPManager — listing
 # ---------------------------------------------------------------------------
 
+
 class TestListing:
     @pytest.mark.asyncio
     async def test_list_servers(self):
@@ -145,6 +147,7 @@ class TestListing:
 # MCPManager — call routing
 # ---------------------------------------------------------------------------
 
+
 class TestCallRouting:
     @pytest.mark.asyncio
     async def test_call_routes_to_correct_server(self):
@@ -177,6 +180,7 @@ class TestCallRouting:
 # MCPManager — shutdown
 # ---------------------------------------------------------------------------
 
+
 class TestShutdown:
     @pytest.mark.asyncio
     async def test_shutdown_all(self):
@@ -201,6 +205,7 @@ class TestShutdown:
 # ---------------------------------------------------------------------------
 # MCPManager — permission policy
 # ---------------------------------------------------------------------------
+
 
 class TestPermissionIntegration:
     @pytest.mark.asyncio

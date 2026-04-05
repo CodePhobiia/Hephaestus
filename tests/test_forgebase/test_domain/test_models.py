@@ -1,4 +1,5 @@
 """Tests for ForgeBase domain models."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -14,48 +15,28 @@ from hephaestus.forgebase.domain.enums import (
     FindingStatus,
     JobKind,
     JobStatus,
-    LinkKind,
-    MergeResolution,
     MergeVerdict,
-    PageType,
     RemediationRoute,
     RemediationStatus,
     ResearchOutcome,
     RouteSource,
-    SourceFormat,
     SourceStatus,
     SourceTrustTier,
     SupportType,
     WorkbookStatus,
 )
 from hephaestus.forgebase.domain.models import (
-    BranchClaimDerivationHead,
-    BranchClaimHead,
-    BranchClaimSupportHead,
-    BranchLinkHead,
     BranchPageHead,
-    BranchSourceHead,
     BranchTombstone,
-    Claim,
-    ClaimDerivation,
     ClaimSupport,
     ClaimVersion,
     DomainEvent,
-    EventDelivery,
     Job,
-    KnowledgeRunArtifact,
-    KnowledgeRunRef,
-    Link,
-    LinkVersion,
     LintFinding,
-    MergeConflict,
     MergeProposal,
-    Page,
     PageVersion,
-    Source,
     SourceVersion,
     Vault,
-    VaultRevision,
     Workbook,
 )
 from hephaestus.forgebase.domain.values import (
@@ -85,7 +66,9 @@ def _now() -> datetime:
 
 
 def _blob() -> BlobRef:
-    return BlobRef(content_hash=ContentHash(sha256="a" * 64), size_bytes=100, mime_type="text/plain")
+    return BlobRef(
+        content_hash=ContentHash(sha256="a" * 64), size_bytes=100, mime_type="text/plain"
+    )
 
 
 class TestVault:
@@ -276,7 +259,9 @@ class TestDomainEvent:
 
 
 from hephaestus.forgebase.domain.enums import (
-    CandidateKind, CandidateStatus, DirtyTargetKind,
+    CandidateKind,
+    CandidateStatus,
+    DirtyTargetKind,
 )
 from hephaestus.forgebase.domain.models import (
     BackendCallRecord,

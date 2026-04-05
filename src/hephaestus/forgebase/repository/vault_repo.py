@@ -1,4 +1,5 @@
 """Vault repository contract."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -34,22 +35,36 @@ class VaultRepository(ABC):
         """Return current canonical version number for a page, or None."""
 
     @abstractmethod
-    async def set_canonical_page_head(self, vault_id: EntityId, page_id: EntityId, version: int) -> None: ...
+    async def set_canonical_page_head(
+        self, vault_id: EntityId, page_id: EntityId, version: int
+    ) -> None: ...
 
     @abstractmethod
-    async def get_canonical_claim_head(self, vault_id: EntityId, claim_id: EntityId) -> int | None: ...
+    async def get_canonical_claim_head(
+        self, vault_id: EntityId, claim_id: EntityId
+    ) -> int | None: ...
 
     @abstractmethod
-    async def set_canonical_claim_head(self, vault_id: EntityId, claim_id: EntityId, version: int) -> None: ...
+    async def set_canonical_claim_head(
+        self, vault_id: EntityId, claim_id: EntityId, version: int
+    ) -> None: ...
 
     @abstractmethod
-    async def get_canonical_link_head(self, vault_id: EntityId, link_id: EntityId) -> int | None: ...
+    async def get_canonical_link_head(
+        self, vault_id: EntityId, link_id: EntityId
+    ) -> int | None: ...
 
     @abstractmethod
-    async def set_canonical_link_head(self, vault_id: EntityId, link_id: EntityId, version: int) -> None: ...
+    async def set_canonical_link_head(
+        self, vault_id: EntityId, link_id: EntityId, version: int
+    ) -> None: ...
 
     @abstractmethod
-    async def get_canonical_source_head(self, vault_id: EntityId, source_id: EntityId) -> int | None: ...
+    async def get_canonical_source_head(
+        self, vault_id: EntityId, source_id: EntityId
+    ) -> int | None: ...
 
     @abstractmethod
-    async def set_canonical_source_head(self, vault_id: EntityId, source_id: EntityId, version: int) -> None: ...
+    async def set_canonical_source_head(
+        self, vault_id: EntityId, source_id: EntityId, version: int
+    ) -> None: ...

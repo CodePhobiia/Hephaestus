@@ -1,4 +1,5 @@
 """Job repository contract."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -20,7 +21,16 @@ class JobRepository(ABC):
     async def find_by_idempotency_key(self, key: str) -> Job | None: ...
 
     @abstractmethod
-    async def update_status(self, job_id: EntityId, status: JobStatus, *, error: str | None = None, completed_at: datetime | None = None) -> None: ...
+    async def update_status(
+        self,
+        job_id: EntityId,
+        status: JobStatus,
+        *,
+        error: str | None = None,
+        completed_at: datetime | None = None,
+    ) -> None: ...
 
     @abstractmethod
-    async def increment_attempt(self, job_id: EntityId, next_attempt_at: datetime | None = None) -> None: ...
+    async def increment_attempt(
+        self, job_id: EntityId, next_attempt_at: datetime | None = None
+    ) -> None: ...

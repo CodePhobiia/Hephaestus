@@ -89,7 +89,7 @@ def ingest_content(
         truncated = False
         if size > cfg.max_size_bytes:
             # Truncate to limit
-            text = text[:cfg.max_size_bytes]
+            text = text[: cfg.max_size_bytes]
             truncated = True
             logger.debug("Content from %s truncated: %d > %d bytes", url, size, cfg.max_size_bytes)
 
@@ -123,6 +123,7 @@ def ingest_content(
 def _strip_html_tags(html: str) -> str:
     """Basic HTML tag stripping — removes tags and normalizes whitespace."""
     import re
+
     # Remove script and style blocks
     text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)

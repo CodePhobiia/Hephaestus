@@ -9,7 +9,7 @@ losing critical state.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from hephaestus.session.schema import (
     EntryType,
@@ -32,8 +32,9 @@ __all__ = [
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _total_chars(entries: list[TranscriptEntry]) -> int:
@@ -180,9 +181,7 @@ def build_continuation_summary(
             )
         guards = getattr(lens_engine_state, "guards", [])
         for guard in guards[:4]:
-            lens_lines.append(
-                f"  - guard[{guard.kind}] {guard.status}: {guard.summary}"
-            )
+            lens_lines.append(f"  - guard[{guard.kind}] {guard.status}: {guard.summary}")
         invalidations = getattr(lens_engine_state, "pending_invalidations", [])
         for item in invalidations[:4]:
             lens_lines.append(
@@ -190,9 +189,7 @@ def build_continuation_summary(
             )
         recompositions = getattr(lens_engine_state, "recompositions", [])
         for item in recompositions[-3:]:
-            lens_lines.append(
-                f"  - recomposition {item.status}: {item.summary}"
-            )
+            lens_lines.append(f"  - recomposition {item.status}: {item.summary}")
         sections.append("## Lens Engine State\n" + "\n".join(lens_lines))
 
     # -- Entry statistics ----------------------------------------------------
@@ -276,9 +273,12 @@ def compact_session(
     to_compact: list[TranscriptEntry] = []
 
     for entry in old_entries:
-        if cfg.preserve_inventions and entry.entry_type == EntryType.INVENTION.value:
-            preserved.append(entry)
-        elif cfg.preserve_tool_results and entry.entry_type == EntryType.TOOL_RESULT.value:
+        if (
+            cfg.preserve_inventions
+            and entry.entry_type == EntryType.INVENTION.value
+            or cfg.preserve_tool_results
+            and entry.entry_type == EntryType.TOOL_RESULT.value
+        ):
             preserved.append(entry)
         else:
             to_compact.append(entry)

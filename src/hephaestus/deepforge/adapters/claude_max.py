@@ -32,9 +32,9 @@ from hephaestus.deepforge.adapters.base import (
     StreamChunk,
 )
 from hephaestus.deepforge.exceptions import (
+    AdapterError,
     APIConnectionError,
     APITimeoutError,
-    AdapterError,
     AuthenticationError,
     ModelNotFoundError,
     RateLimitError,
@@ -129,8 +129,7 @@ def _load_oat_token() -> str:
     profile = store.get("profiles", {}).get("anthropic:default")
     if not profile or not profile.get("token"):
         raise AuthenticationError(
-            "No Anthropic token in auth-profiles. "
-            "Run 'openclaw models auth setup-token' first."
+            "No Anthropic token in auth-profiles. Run 'openclaw models auth setup-token' first."
         )
     token = profile["token"]
     if not token.startswith("sk-ant-oat"):
@@ -160,9 +159,12 @@ class ClaudeMaxAdapter(BaseAdapter):
             config = CLAUDE_MAX_MODELS.get(model)
             if config is None:
                 config = ModelConfig(
-                    name=model, provider="claude-max",
-                    context_window=200_000, max_output_tokens=16_000,
-                    input_cost_per_million=0.0, output_cost_per_million=0.0,
+                    name=model,
+                    provider="claude-max",
+                    context_window=200_000,
+                    max_output_tokens=16_000,
+                    input_cost_per_million=0.0,
+                    output_cost_per_million=0.0,
                     capabilities={
                         ModelCapability.PREFILL,
                         ModelCapability.STREAMING,
@@ -196,7 +198,9 @@ class ClaudeMaxAdapter(BaseAdapter):
         return blocks
 
     def _build_messages(
-        self, prompt: str, prefill: str | None,
+        self,
+        prompt: str,
+        prefill: str | None,
     ) -> list[dict[str, Any]]:
         # OAT tokens don't support assistant prefill — inject it into user prompt instead
         if prefill:
@@ -322,11 +326,7 @@ class ClaudeMaxAdapter(BaseAdapter):
         elapsed = time.monotonic() - t_start
 
         content_blocks = self._extract_content_blocks(response.content)
-        text = "".join(
-            block["text"]
-            for block in content_blocks
-            if block.get("type") == "text"
-        )
+        text = "".join(block["text"] for block in content_blocks if block.get("type") == "text")
         tool_calls = [
             ClaudeToolCall(
                 id=str(block.get("id", "")),
@@ -390,14 +390,12 @@ class ClaudeMaxAdapter(BaseAdapter):
         text = "".join(text_parts)
 
         if prefill and text.startswith(prefill):
-            text = text[len(prefill):]
+            text = text[len(prefill) :]
 
         in_tok = response.usage.input_tokens
         out_tok = response.usage.output_tokens
 
-        self._logger.debug(
-            "Claude Max generate: %.2fs | in=%d out=%d", elapsed, in_tok, out_tok
-        )
+        self._logger.debug("Claude Max generate: %.2fs | in=%d out=%d", elapsed, in_tok, out_tok)
 
         return GenerationResult(
             text=text,

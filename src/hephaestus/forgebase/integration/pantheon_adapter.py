@@ -8,12 +8,14 @@ deep structured ingestion (constraint claims, CHALLENGED_BY links, verdict
 recording on InventionPageMeta).  Otherwise, it falls back to the legacy
 shallow ingestion path.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from hephaestus.forgebase.domain.enums import EntityKind, SourceFormat
 from hephaestus.forgebase.domain.values import EntityId
@@ -139,9 +141,7 @@ class PantheonAdapter:
             await self._update_sync_status(ref.ref_id, "failed")
             raise
 
-    async def _update_sync_status(
-        self, ref_id: EntityId, status: str
-    ) -> None:
+    async def _update_sync_status(self, ref_id: EntityId, status: str) -> None:
         """Update sync_status on the KnowledgeRunRef via a fresh UoW."""
         try:
             uow = self._uow_factory()
@@ -150,7 +150,9 @@ class PantheonAdapter:
                 await uow.commit()
         except Exception:
             logger.exception(
-                "Failed to update sync_status to %r for ref_id=%s", status, ref_id,
+                "Failed to update sync_status to %r for ref_id=%s",
+                status,
+                ref_id,
             )
 
 

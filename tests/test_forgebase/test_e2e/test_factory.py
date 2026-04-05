@@ -1,4 +1,5 @@
 """Test ForgeBase factory bootstrap."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

@@ -28,7 +28,6 @@ from hephaestus.session.schema import (
     TranscriptEntry,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
@@ -246,7 +245,11 @@ class TestInventionSnapshot:
             invention_name="BioLens",
             source_domain="optics",
             score=9.1,
-            pantheon_state={"mode": "pantheon", "final_verdict": "NOVEL", "outcome_tier": "QUALIFIED_CONSENSUS"},
+            pantheon_state={
+                "mode": "pantheon",
+                "final_verdict": "NOVEL",
+                "outcome_tier": "QUALIFIED_CONSENSUS",
+            },
             pantheon_consensus_achieved=True,
             pantheon_final_verdict="NOVEL",
             pantheon_outcome_tier="QUALIFIED_CONSENSUS",
@@ -257,7 +260,11 @@ class TestInventionSnapshot:
         snap2 = InventionSnapshot.from_dict(snap.to_dict())
         assert snap2.invention_name == "BioLens"
         assert snap2.score == pytest.approx(9.1)
-        assert snap2.pantheon_state == {"mode": "pantheon", "final_verdict": "NOVEL", "outcome_tier": "QUALIFIED_CONSENSUS"}
+        assert snap2.pantheon_state == {
+            "mode": "pantheon",
+            "final_verdict": "NOVEL",
+            "outcome_tier": "QUALIFIED_CONSENSUS",
+        }
         assert snap2.pantheon_consensus_achieved is True
         assert snap2.pantheon_outcome_tier == "QUALIFIED_CONSENSUS"
         assert snap2.pantheon_resolution_mode == "TASK_SENSITIVE"
@@ -323,7 +330,9 @@ class TestSessionSerialization:
         from unittest.mock import MagicMock
 
         report = MagicMock()
-        report.baseline_dossier = MagicMock(summary="Queues dominate", raw_text="baseline raw", citations=[])
+        report.baseline_dossier = MagicMock(
+            summary="Queues dominate", raw_text="baseline raw", citations=[]
+        )
         report.top_invention = None
         report.model_config = {"search": "sonar-pro"}
         report.scored_candidates = []
@@ -427,7 +436,11 @@ class TestSessionMutation:
         s = Session()
         snap = s.add_invention(
             invention_name="Council Widget",
-            pantheon_state={"mode": "pantheon", "final_verdict": "NOVEL", "outcome_tier": "UNANIMOUS_CONSENSUS"},
+            pantheon_state={
+                "mode": "pantheon",
+                "final_verdict": "NOVEL",
+                "outcome_tier": "UNANIMOUS_CONSENSUS",
+            },
             pantheon_consensus_achieved=True,
             pantheon_final_verdict="NOVEL",
             pantheon_outcome_tier="UNANIMOUS_CONSENSUS",

@@ -28,7 +28,6 @@ Usage::
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import time
@@ -36,10 +35,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hephaestus.core.decomposer import ProblemStructure
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.core.translator import Translation
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.cells import build_reference_state
-from hephaestus.core.json_utils import loads_lenient
 from hephaestus.session.deliberation import DeliberationGraph
 
 logger = logging.getLogger(__name__)
@@ -340,6 +339,7 @@ class NoveltyVerifier:
         """Lazily initialise the prior art searcher with graceful fallback."""
         try:
             from hephaestus.output.prior_art import PriorArtSearcher
+
             self._prior_art_searcher = PriorArtSearcher(
                 use_perplexity_review=self._use_perplexity_research,
                 perplexity_model=self._perplexity_model,
@@ -354,6 +354,7 @@ class NoveltyVerifier:
         """Initialise the Perplexity research client if configured."""
         try:
             from hephaestus.research.perplexity import PerplexityClient
+
             client = PerplexityClient(
                 enabled=self._use_perplexity_research,
                 model=self._perplexity_model,
@@ -400,7 +401,7 @@ class NoveltyVerifier:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         inventions: list[VerifiedInvention] = []
-        for translation, result in zip(translations, results):
+        for translation, result in zip(translations, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning(
                     "Verification failed for %s: %s",
@@ -408,9 +409,7 @@ class NoveltyVerifier:
                     result,
                 )
                 # Include with low scores rather than dropping entirely
-                inventions.append(
-                    self._make_fallback_verified(translation)
-                )
+                inventions.append(self._make_fallback_verified(translation))
             else:
                 if result is not None:
                     inventions.append(result)
@@ -462,7 +461,10 @@ class NoveltyVerifier:
             else:
                 claim = deliberation_graph.add_claim(
                     candidate_id,
-                    str(getattr(translation, "key_insight", "") or getattr(translation, "architecture", "")[:200]),
+                    str(
+                        getattr(translation, "key_insight", "")
+                        or getattr(translation, "architecture", "")[:200]
+                    ),
                     kind="mechanism",
                     stage="verify",
                 )
@@ -505,29 +507,36 @@ class NoveltyVerifier:
             task_names.append("prior_art")
 
         if self._perplexity_client is not None:
-            research_tasks.extend([
-                self._perplexity_client.ground_invention_report(
-                    problem=structure.original_problem,
-                    invention_name=translation.invention_name,
-                    source_domain=translation.source_domain,
-                    key_insight=translation.key_insight,
-                    architecture=translation.architecture,
-                ),
-                self._perplexity_client.review_implementation_risks(
-                    problem=structure.original_problem,
-                    invention_name=translation.invention_name,
-                    architecture=translation.architecture,
-                    key_insight=translation.key_insight,
-                ),
-            ])
+            research_tasks.extend(
+                [
+                    self._perplexity_client.ground_invention_report(
+                        problem=structure.original_problem,
+                        invention_name=translation.invention_name,
+                        source_domain=translation.source_domain,
+                        key_insight=translation.key_insight,
+                        architecture=translation.architecture,
+                    ),
+                    self._perplexity_client.review_implementation_risks(
+                        problem=structure.original_problem,
+                        invention_name=translation.invention_name,
+                        architecture=translation.architecture,
+                        key_insight=translation.key_insight,
+                    ),
+                ]
+            )
             task_names.extend(["grounding", "risk_review"])
 
         if research_tasks:
             try:
                 research_results = await asyncio.gather(*research_tasks, return_exceptions=True)
-                for name, result in zip(task_names, research_results):
+                for name, result in zip(task_names, research_results, strict=True):
                     if isinstance(result, Exception):
-                        logger.warning("%s research failed for %s: %s", name, translation.invention_name, result)
+                        logger.warning(
+                            "%s research failed for %s: %s",
+                            name,
+                            translation.invention_name,
+                            result,
+                        )
                         continue
                     if name == "prior_art":
                         prior_art_report = result
@@ -564,6 +573,7 @@ class NoveltyVerifier:
         load_bearing_notes = ""
         try:
             from hephaestus.core.load_bearing_check import check_load_bearing_domains
+
             lb_result = await check_load_bearing_domains(translation)
             load_bearing_passed = lb_result.passed
             load_bearing_notes = lb_result.summary()
@@ -579,6 +589,7 @@ class NoveltyVerifier:
 
         # Step 3.6: Structural novelty score (model-free)
         from hephaestus.core.structural_novelty import compute_structural_novelty
+
         source_words = translation.source_domain.lower().replace("—", " ").replace("-", " ").split()
         structural_novelty = compute_structural_novelty(
             problem=structure.original_problem,
@@ -601,6 +612,7 @@ class NoveltyVerifier:
 
         # Step 3.7: Quality gate assessment (rule-based, not model-based)
         from hephaestus.core.quality_gate import assess_invention_quality
+
         quality = assess_invention_quality(
             architecture=translation.architecture,
             key_insight=translation.key_insight,
@@ -610,7 +622,9 @@ class NoveltyVerifier:
         )
         reference_state = build_reference_state(
             structure,
-            branch_genome=getattr(getattr(translation, "source_candidate", None), "branch_genome", None),
+            branch_genome=getattr(
+                getattr(translation, "source_candidate", None), "branch_genome", None
+            ),
         )
         guard_failures = [
             check.detail
@@ -619,11 +633,29 @@ class NoveltyVerifier:
             if not getattr(check, "passed", True)
         ]
         lineage = getattr(translation, "bundle_lineage", None)
-        lineage_stale = bool(lineage is not None and hasattr(lineage, "is_continuous") and not lineage.is_continuous(reference_state))
-        orchestration_mode = str(getattr(translation, "selection_mode", "bundle" if getattr(translation, "bundle_proof", None) else "singleton"))
-        bundle_acceptance_status = "bundle_accepted" if getattr(translation, "bundle_proof", None) is not None else "singleton"
+        lineage_stale = bool(
+            lineage is not None
+            and hasattr(lineage, "is_continuous")
+            and not lineage.is_continuous(reference_state)
+        )
+        orchestration_mode = str(
+            getattr(
+                translation,
+                "selection_mode",
+                "bundle" if getattr(translation, "bundle_proof", None) else "singleton",
+            )
+        )
+        bundle_acceptance_status = (
+            "bundle_accepted"
+            if getattr(translation, "bundle_proof", None) is not None
+            else "singleton"
+        )
         if guard_failures:
-            bundle_acceptance_status = "bundle_recomposed" if getattr(translation, "recomposition_events", []) else "bundle_guarded"
+            bundle_acceptance_status = (
+                "bundle_recomposed"
+                if getattr(translation, "recomposition_events", [])
+                else "bundle_guarded"
+            )
         if lineage_stale:
             bundle_acceptance_status = "bundle_invalidated"
 
@@ -643,7 +675,8 @@ class NoveltyVerifier:
             novelty_score *= 0.5  # 50% penalty for decorative domain transfer
             logger.info(
                 "Novelty score penalized (load-bearing failed): %.2f for %s",
-                novelty_score, translation.invention_name,
+                novelty_score,
+                translation.invention_name,
             )
 
         # Self-reported decorative transfer penalty
@@ -652,7 +685,8 @@ class NoveltyVerifier:
             logger.info(
                 "Novelty score penalized (self-reported decorative): %.2f for %s. "
                 "Known pattern: %s",
-                novelty_score, translation.invention_name,
+                novelty_score,
+                translation.invention_name,
                 getattr(translation, "known_pattern_if_decorative", "unknown"),
             )
 
@@ -674,7 +708,9 @@ class NoveltyVerifier:
             notes_parts.append("Lineage continuity failed against current reference state.")
         if grounding_report is not None and getattr(grounding_report, "summary", ""):
             notes_parts.append(f"Grounding: {grounding_report.summary}")
-        if implementation_risk_review is not None and getattr(implementation_risk_review, "summary", ""):
+        if implementation_risk_review is not None and getattr(
+            implementation_risk_review, "summary", ""
+        ):
             notes_parts.append(f"Risk review: {implementation_risk_review.summary}")
         if attack_result.strongest_objection:
             notes_parts.append(f"Main challenge: {attack_result.strongest_objection}")
@@ -717,8 +753,12 @@ class NoveltyVerifier:
             )
             card = deliberation_graph.ensure_candidate(candidate_id)
             card.compute_spent_usd += total_cost
-            card.structural_validity = float(validity.get("structural_validity", card.structural_validity) or 0.0)
-            card.feasibility = float(validity.get("implementation_feasibility", card.feasibility) or 0.0)
+            card.structural_validity = float(
+                validity.get("structural_validity", card.structural_validity) or 0.0
+            )
+            card.feasibility = float(
+                validity.get("implementation_feasibility", card.feasibility) or 0.0
+            )
             card.status = "verified" if not attack_result.fatal_flaws else "needs_revision"
             deliberation_graph.refresh_candidate(candidate_id)
 
@@ -763,7 +803,7 @@ class NoveltyVerifier:
             f"  {m.source_element} → {m.target_element}: {m.mechanism}"
             for m in translation.mapping[:8]
         )
-        limitations_text = "\n".join(f"• {l}" for l in translation.limitations[:5])
+        limitations_text = "\n".join(f"• {lim}" for lim in translation.limitations[:5])
 
         prompt = _ATTACK_PROMPT_TEMPLATE.format(
             invention_name=translation.invention_name,
@@ -775,7 +815,9 @@ class NoveltyVerifier:
             original_problem=structure.original_problem,
         )
 
-        attack_system = self._system_override if self._system_override is not None else _ATTACK_SYSTEM
+        attack_system = (
+            self._system_override if self._system_override is not None else _ATTACK_SYSTEM
+        )
         result = await self._attack_harness.forge(
             prompt,
             system=attack_system,
@@ -802,7 +844,7 @@ class NoveltyVerifier:
         attack: AdversarialResult,
     ) -> tuple[dict[str, Any], ForgeTrace]:
         """Assess structural validity and feasibility post-attack."""
-        limitations_text = "\n".join(f"• {l}" for l in translation.limitations[:5])
+        limitations_text = "\n".join(f"• {lim}" for lim in translation.limitations[:5])
         fatal_flaws_text = "\n".join(f"• {f}" for f in attack.fatal_flaws[:3])
 
         target_desc = f"{structure.native_domain}: {structure.mathematical_shape[:80]}"
@@ -819,7 +861,9 @@ class NoveltyVerifier:
             limitations=limitations_text or "• (none stated)",
         )
 
-        validity_system = self._system_override if self._system_override is not None else _VALIDITY_SYSTEM
+        validity_system = (
+            self._system_override if self._system_override is not None else _VALIDITY_SYSTEM
+        )
         result = await self._defend_harness.forge(
             prompt,
             system=validity_system,
@@ -876,7 +920,11 @@ class NoveltyVerifier:
         else:
             fatal_penalty = 0.55
         # If quality gate passed cleanly, halve the fatal penalty effect
-        if quality_gate is not None and quality_gate.passed and quality_gate.decorative_signal_count == 0:
+        if (
+            quality_gate is not None
+            and quality_gate.passed
+            and quality_gate.decorative_signal_count == 0
+        ):
             fatal_penalty = 1.0 - (1.0 - fatal_penalty) * 0.5
 
         # Distance bonus — CAPPED. Distance helps but doesn't dominate.
@@ -888,13 +936,14 @@ class NoveltyVerifier:
         # because they just generated it and it feels familiar to them.
         # We reduce this signal's weight to avoid self-referential bias.
         surprise_multipliers = {
-            "SURPRISING": 1.15,   # Modest boost — if even the model is surprised, that's meaningful
-            "INTERESTING": 1.0,   # Neutral
-            "CONVENTIONAL": 0.85, # Mild penalty — model bias makes this unreliable
-            "OBVIOUS": 0.5,       # Significant penalty — only when model is very confident
+            "SURPRISING": 1.15,  # Modest boost — if even the model is surprised, that's meaningful
+            "INTERESTING": 1.0,  # Neutral
+            "CONVENTIONAL": 0.85,  # Mild penalty — model bias makes this unreliable
+            "OBVIOUS": 0.5,  # Significant penalty — only when model is very confident
         }
         surprise_mult = surprise_multipliers.get(
-            mechanism_surprise.upper(), 0.9  # default: slight benefit of doubt
+            mechanism_surprise.upper(),
+            0.9,  # default: slight benefit of doubt
         )
 
         # Quality gate bonus — rule-based signal that counterbalances
@@ -926,6 +975,7 @@ class NoveltyVerifier:
         )
 
         import numpy as np
+
         return float(np.clip(raw, 0.0, 1.0))
 
     @staticmethod
@@ -990,7 +1040,9 @@ class NoveltyVerifier:
             citations = list(getattr(grounding_report, "citations", []) or [])
             evidence = graph.add_evidence(
                 kind="grounding",
-                summary=str(getattr(grounding_report, "summary", "") or "Grounding report attached."),
+                summary=str(
+                    getattr(grounding_report, "summary", "") or "Grounding report attached."
+                ),
                 source_url=str(citations[0]) if citations else "",
                 claim_summary="External grounding for adjacent work and related systems.",
                 trust_tier="secondary",
@@ -1003,7 +1055,10 @@ class NoveltyVerifier:
             citations = list(getattr(implementation_risk_review, "citations", []) or [])
             evidence = graph.add_evidence(
                 kind="risk_review",
-                summary=str(getattr(implementation_risk_review, "summary", "") or "Implementation risk review attached."),
+                summary=str(
+                    getattr(implementation_risk_review, "summary", "")
+                    or "Implementation risk review attached."
+                ),
                 source_url=str(citations[0]) if citations else "",
                 claim_summary="Operational and implementation risks attached to the candidate.",
                 trust_tier="secondary",
@@ -1084,7 +1139,13 @@ class NoveltyVerifier:
             evidence_refs=evidence_refs,
             objection_refs=objection_refs,
         )
-        prior_art_score = 1.0 if prior_art_status == "NO_PRIOR_ART_FOUND" else 0.0 if prior_art_status == "PRIOR_ART_FOUND" else 0.5
+        prior_art_score = (
+            1.0
+            if prior_art_status == "NO_PRIOR_ART_FOUND"
+            else 0.0
+            if prior_art_status == "PRIOR_ART_FOUND"
+            else 0.5
+        )
         graph.add_verifier_check(
             candidate_id,
             layer="retrieval",
@@ -1103,7 +1164,9 @@ class NoveltyVerifier:
             detail="Load-bearing domain transfer check.",
             objection_refs=objection_refs,
         )
-        baseline_overlap = 1.0 if any("BASELINE_MATCH" in flag for flag in getattr(quality, "flags", [])) else 0.0
+        baseline_overlap = (
+            1.0 if any("BASELINE_MATCH" in flag for flag in getattr(quality, "flags", [])) else 0.0
+        )
         if getattr(quality, "known_pattern_matches", []):
             baseline_overlap = max(baseline_overlap, 0.75)
         graph.add_verifier_check(
@@ -1112,7 +1175,10 @@ class NoveltyVerifier:
             name="quality_gate",
             status="passed" if bool(getattr(quality, "passed", False)) else "failed",
             score=max(0.0, 1.0 + float(getattr(quality, "score_adjustment", 0.0) or 0.0)),
-            detail=str(getattr(quality, "recommendation", "") or "; ".join(getattr(quality, "flags", []) or [])),
+            detail=str(
+                getattr(quality, "recommendation", "")
+                or "; ".join(getattr(quality, "flags", []) or [])
+            ),
             metadata={"baseline_overlap": baseline_overlap},
             objection_refs=objection_refs,
         )
@@ -1120,7 +1186,9 @@ class NoveltyVerifier:
             candidate_id,
             layer="deterministic",
             name="structural_novelty",
-            status="passed" if float(getattr(structural_novelty, "composite", 0.0) or 0.0) >= 0.55 else "failed",
+            status="passed"
+            if float(getattr(structural_novelty, "composite", 0.0) or 0.0) >= 0.55
+            else "failed",
             score=float(getattr(structural_novelty, "composite", 0.0) or 0.0),
             detail=str(getattr(structural_novelty, "label", "") or "structural novelty"),
         )
@@ -1131,7 +1199,10 @@ class NoveltyVerifier:
                 name="implementation_risk_review",
                 status="passed",
                 score=feasibility,
-                detail=str(getattr(implementation_risk_review, "summary", "") or "Implementation risk review attached."),
+                detail=str(
+                    getattr(implementation_risk_review, "summary", "")
+                    or "Implementation risk review attached."
+                ),
                 evidence_refs=evidence_refs,
             )
 
@@ -1178,7 +1249,9 @@ class NoveltyVerifier:
 
     def _parse_attack(self, raw: str) -> dict[str, Any]:
         """Parse adversarial attack JSON."""
-        return self._parse_json(raw, default={"attack_valid": False, "verdict": "QUESTIONABLE"}, label="attack")
+        return self._parse_json(
+            raw, default={"attack_valid": False, "verdict": "QUESTIONABLE"}, label="attack"
+        )
 
     def _parse_validity(self, raw: str) -> dict[str, Any]:
         """Parse validity assessment JSON."""
@@ -1193,7 +1266,9 @@ class NoveltyVerifier:
         )
 
     @staticmethod
-    def _parse_json(raw: str, default: dict[str, Any], *, label: str = "verifier") -> dict[str, Any]:
+    def _parse_json(
+        raw: str, default: dict[str, Any], *, label: str = "verifier"
+    ) -> dict[str, Any]:
         """Generic JSON extraction with fallback to defaults."""
         cleaned = raw.strip()
         if cleaned.startswith("```"):

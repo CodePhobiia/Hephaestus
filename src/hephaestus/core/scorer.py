@@ -28,20 +28,25 @@ Usage::
 from __future__ import annotations
 
 import json
-from hephaestus.core.json_utils import loads_lenient
 import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any
-
-import numpy as np
+from typing import TYPE_CHECKING, Any
 
 from hephaestus.core.decomposer import ProblemStructure
+from hephaestus.core.json_utils import loads_lenient
 from hephaestus.core.searcher import SearchCandidate
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.selector import EmbeddingModel, _cosine_distance
 from hephaestus.novelty import NoveltyVector
+
+if TYPE_CHECKING:
+    pass
+
+def _lazy_np():
+    import numpy as np
+    return np
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +206,7 @@ class ScoredCandidate:
         return self.candidate.lens_id
 
     @property
-    def lens_used(self):  # type: ignore[return]
+    def lens_used(self):
         return self.candidate.lens_used
 
     @property
@@ -220,6 +225,7 @@ class ScoredCandidate:
     def bundle_role(self) -> str:
         return str(getattr(self.candidate, "bundle_role", ""))
 
+    @property
     def total_cost_usd(self) -> float:
         """Combined cost of search + scoring."""
         return self.candidate.cost_usd + self.scoring_cost_usd
@@ -306,10 +312,7 @@ class CandidateScorer:
         distances = self._compute_domain_distances(candidates, structure)
 
         # Step 2: Filter out adjacent domains first (saves LLM calls)
-        pre_filtered = [
-            c for c in candidates
-            if distances.get(id(c), 0.0) >= self._min_distance
-        ]
+        pre_filtered = [c for c in candidates if distances.get(id(c), 0.0) >= self._min_distance]
         filtered_out = len(candidates) - len(pre_filtered)
         if filtered_out > 0:
             logger.info(
@@ -326,16 +329,13 @@ class CandidateScorer:
         import asyncio
 
         scored = await asyncio.gather(
-            *[
-                self._score_candidate(c, structure, distances.get(id(c), 0.5))
-                for c in pre_filtered
-            ],
+            *[self._score_candidate(c, structure, distances.get(id(c), 0.5)) for c in pre_filtered],
             return_exceptions=True,
         )
 
         # Step 4: Collect results
         results: list[ScoredCandidate] = []
-        for candidate, result in zip(pre_filtered, scored):
+        for candidate, result in zip(pre_filtered, scored, strict=True):
             if isinstance(result, Exception):
                 logger.warning(
                     "Scoring failed for %s: %s",
@@ -354,7 +354,7 @@ class CandidateScorer:
                 creativity_score = novelty_vector.creativity_score()
                 combined = (
                     candidate.confidence
-                    * (dist ** self._alpha)
+                    * (dist**self._alpha)
                     * self._novelty_multiplier(creativity_score, True)
                     * self._bundle_score_multiplier(candidate)
                 )
@@ -412,7 +412,7 @@ class CandidateScorer:
         domain_embs = embeddings[1:]
 
         distances: dict[int, float] = {}
-        for candidate, domain_emb in zip(candidates, domain_embs):
+        for candidate, domain_emb in zip(candidates, domain_embs, strict=True):
             dist = _cosine_distance(problem_emb, domain_emb)
 
             # Blend with lens distance if available for better signal
@@ -423,7 +423,7 @@ class CandidateScorer:
             else:
                 blended = dist
 
-            distances[id(candidate)] = float(np.clip(blended, 0.0, 1.0))
+            distances[id(candidate)] = float(_lazy_np().clip(blended, 0.0, 1.0))
 
         return distances
 
@@ -468,10 +468,14 @@ class CandidateScorer:
 
         parsed = self._parse_fidelity(fidelity_result.output)
         fidelity = float(parsed.get("structural_fidelity", 0.5))
-        fidelity = float(np.clip(fidelity, 0.0, 1.0))
+        fidelity = float(_lazy_np().clip(fidelity, 0.0, 1.0))
         novelty_parsed = self._parse_mechanism_novelty(novelty_result.output)
-        mechanism_novelty = float(np.clip(float(novelty_parsed.get("mechanism_novelty", 0.5)), 0.0, 1.0))
-        would_engineer_reach_for_this = bool(novelty_parsed.get("would_engineer_reach_for_this", True))
+        mechanism_novelty = float(
+            _lazy_np().clip(float(novelty_parsed.get("mechanism_novelty", 0.5)), 0.0, 1.0)
+        )
+        would_engineer_reach_for_this = bool(
+            novelty_parsed.get("would_engineer_reach_for_this", True)
+        )
         novelty_vector = self._build_novelty_vector(
             fidelity=fidelity,
             domain_distance=domain_distance,
@@ -483,11 +487,13 @@ class CandidateScorer:
         creativity_score = novelty_vector.creativity_score()
         combined = (
             fidelity
-            * (domain_distance ** self._alpha)
+            * (domain_distance**self._alpha)
             * self._novelty_multiplier(creativity_score, would_engineer_reach_for_this)
             * self._bundle_score_multiplier(candidate)
         )
-        total_scoring_cost = fidelity_result.trace.total_cost_usd + novelty_result.trace.total_cost_usd
+        total_scoring_cost = (
+            fidelity_result.trace.total_cost_usd + novelty_result.trace.total_cost_usd
+        )
 
         return ScoredCandidate(
             candidate=candidate,
@@ -506,7 +512,12 @@ class CandidateScorer:
             novelty_vector=novelty_vector,
             creativity_score=creativity_score,
             retrieval_expansion_headroom=float(
-                np.clip(max(0.0, fidelity - mechanism_novelty) + 0.25 * float(would_engineer_reach_for_this), 0.0, 1.0)
+                _lazy_np().clip(
+                    max(0.0, fidelity - mechanism_novelty)
+                    + 0.25 * float(would_engineer_reach_for_this),
+                    0.0,
+                    1.0,
+                )
             ),
         )
 
@@ -517,12 +528,12 @@ class CandidateScorer:
             return 1.0
         confidence = float(getattr(proof, "proof_confidence", 0.5))
         role_bonus = 0.03 if getattr(candidate, "bundle_role", "") == "critical" else 0.0
-        return float(np.clip(0.94 + 0.18 * confidence + role_bonus, 0.9, 1.12))
+        return float(_lazy_np().clip(0.94 + 0.18 * confidence + role_bonus, 0.9, 1.12))
 
     @staticmethod
     def _novelty_multiplier(creativity_score: float, would_engineer_reach_for_this: bool) -> float:
         penalty = 0.10 if would_engineer_reach_for_this else 0.0
-        return float(np.clip(0.84 + 0.34 * creativity_score - penalty, 0.72, 1.16))
+        return float(_lazy_np().clip(0.84 + 0.34 * creativity_score - penalty, 0.72, 1.16))
 
     @staticmethod
     def _build_novelty_vector(
@@ -537,10 +548,14 @@ class CandidateScorer:
         disagreement = 0.0
         if strong_mappings or weak_mappings:
             disagreement = len(weak_mappings) / max(1, len(strong_mappings) + len(weak_mappings))
-        disagreement = float(np.clip(0.55 * disagreement + 0.45 * abs(fidelity - mechanism_novelty), 0.0, 1.0))
-        banality_similarity = float(np.clip(1.0 - mechanism_novelty, 0.0, 1.0))
-        prior_art_similarity = float(np.clip(0.65 if would_engineer_reach_for_this else 0.25, 0.0, 1.0))
-        subtraction_delta = float(np.clip(0.45 * fidelity + 0.55 * mechanism_novelty, 0.0, 1.0))
+        disagreement = float(
+            _lazy_np().clip(0.55 * disagreement + 0.45 * abs(fidelity - mechanism_novelty), 0.0, 1.0)
+        )
+        banality_similarity = float(_lazy_np().clip(1.0 - mechanism_novelty, 0.0, 1.0))
+        prior_art_similarity = float(
+            _lazy_np().clip(0.65 if would_engineer_reach_for_this else 0.25, 0.0, 1.0)
+        )
+        subtraction_delta = float(_lazy_np().clip(0.45 * fidelity + 0.55 * mechanism_novelty, 0.0, 1.0))
         return NoveltyVector(
             banality_similarity=banality_similarity,
             prior_art_similarity=prior_art_similarity,
@@ -564,7 +579,9 @@ class CandidateScorer:
             return {"structural_fidelity": 0.5}
 
         try:
-            data = loads_lenient(json_match.group(), default={"structural_fidelity": 0.5}, label="scorer.fidelity")
+            data = loads_lenient(
+                json_match.group(), default={"structural_fidelity": 0.5}, label="scorer.fidelity"
+            )
         except json.JSONDecodeError:
             return {"structural_fidelity": 0.5}
 
@@ -583,7 +600,11 @@ class CandidateScorer:
             return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
 
         try:
-            data = loads_lenient(json_match.group(), default={"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}, label="scorer.novelty")
+            data = loads_lenient(
+                json_match.group(),
+                default={"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True},
+                label="scorer.novelty",
+            )
         except json.JSONDecodeError:
             return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
 

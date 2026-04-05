@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -83,7 +82,7 @@ async def run_batch(config: BatchConfig, console: Console) -> BatchResult:
     result = BatchResult(total=len(problems))
     start = time.monotonic()
 
-    console.print(f"\n  [bold cyan]Batch run:[/] {len(problems)} problems from {config.input_file}")
+    console.print(f"\n  [bold yellow]Batch run:[/] {len(problems)} problems from {config.input_file}")
     console.print(f"  [dim]Output: {config.output_dir} | Format: {config.format}[/]\n")
 
     for i, problem in enumerate(problems, 1):
@@ -127,10 +126,11 @@ async def run_batch(config: BatchConfig, console: Console) -> BatchResult:
 
 async def _run_single(problem: str, config: BatchConfig) -> Any:
     """Run genesis pipeline for a single problem."""
+    import os
+
     from hephaestus.cli.main import _build_genesis_config
     from hephaestus.core.genesis import Genesis
 
-    import os
     genesis_config = _build_genesis_config(
         model=config.model,
         depth=config.depth,
@@ -148,13 +148,14 @@ async def _run_single(problem: str, config: BatchConfig) -> Any:
 def _export_report(report: Any, path: Path, fmt: str) -> None:
     """Export an invention report to file."""
     from hephaestus.export.markdown import export_to_file
-    from hephaestus.output.formatter import InventionReport
 
     # Bridge genesis report to formatter if needed
     try:
         from hephaestus.cli.main import _bridge_report
+
         fmt_report = _bridge_report(report)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Report bridging failed, using raw report: %s", exc)
         fmt_report = report
 
     export_to_file(fmt_report, path)
@@ -166,7 +167,7 @@ def _print_summary(console: Console, result: BatchResult) -> None:
     console.rule("[bold yellow]Batch Summary[/]", style="yellow")
     console.print()
 
-    table = Table(show_header=True, header_style="bold cyan")
+    table = Table(show_header=True, header_style="bold yellow")
     table.add_column("#", width=4)
     table.add_column("Problem", max_width=50)
     table.add_column("Invention", max_width=30)

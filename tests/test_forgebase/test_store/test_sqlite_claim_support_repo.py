@@ -1,12 +1,12 @@
 """Tests for SQLite claim support and claim derivation repositories."""
+
 from __future__ import annotations
 
 import pytest
 
 from hephaestus.forgebase.domain.models import ClaimDerivation, ClaimSupport
-from hephaestus.forgebase.domain.values import EntityId
-from hephaestus.forgebase.store.sqlite.claim_support_repo import SqliteClaimSupportRepository
 from hephaestus.forgebase.store.sqlite.claim_derivation_repo import SqliteClaimDerivationRepository
+from hephaestus.forgebase.store.sqlite.claim_support_repo import SqliteClaimSupportRepository
 
 
 @pytest.mark.asyncio

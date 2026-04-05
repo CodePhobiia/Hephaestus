@@ -1,0 +1,104 @@
+<h2>Foundation Platform: Updated Layer Architecture</h2>
+<p class="subtitle">Incorporating all 6 adjustments &mdash; UoW, decoupled events, content store, split projection, injectable IDs</p>
+
+<div class="section">
+  <h3>Final Module Layout</h3>
+  <div style="font-family: monospace; font-size: 12.5px; line-height: 1.75; color: #d1d5db; background: rgba(0,0,0,0.3); padding: 16px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+    <div>src/hephaestus/forgebase/</div>
+    <div>&nbsp;&nbsp;<span style="color:#60a5fa; font-weight:600;">domain/</span> <span style="color:#4b5563">&mdash; pure models, zero I/O, zero imports</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;models.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Vault, Source, Page, Claim, Link, Workbook...</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;values.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># EntityId types, Version, Revision (no generation)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fbbf24">event_types.py</span> &nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Domain event schemas &amp; taxonomy</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fbbf24">merge.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Merge rules, version reconciliation</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fbbf24">conflicts.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Conflict detection predicates</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;enums.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># ClaimStatus, PageType, JobStatus...</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;<span style="color:#6ee7b7; font-weight:600;">repository/</span> <span style="color:#4b5563">&mdash; abstract contracts, imports only domain/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;vault_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;source_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;page_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;claim_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;link_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;workbook_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;job_repo.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fbbf24">content_store.py</span> &nbsp;<span style="color:#6b7280"># Abstract blob/artifact content contract</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fbbf24">uow.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># UnitOfWork: repos + outbox + commit/rollback</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;<span style="color:#fdba74; font-weight:600;">store/</span> <span style="color:#4b5563">&mdash; concrete implementations</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;sqlite/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># aiosqlite UoW + repos + content</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;postgres/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># asyncpg UoW + repos + content</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;blobs/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># local FS / S3 content store impls</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;migrations/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Schema migrations (both backends)</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;<span style="color:#f0abfc; font-weight:600;">service/</span> <span style="color:#4b5563">&mdash; business logic, imports domain/ + repository/ only</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;vault_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;ingest_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;branch_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;merge_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;compile_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;lint_service.py</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#fbbf24">id_generator.py</span> &nbsp;&nbsp;<span style="color:#6b7280"># Injectable ULID generation policy</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;<span style="color:#fca5a5; font-weight:600;">events/</span> <span style="color:#4b5563">&mdash; delivery infrastructure, wired by factory</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;dispatcher.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Background outbox poller/deliverer</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;consumers.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Durable consumer registry</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;fanout.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Optional post-commit in-memory fanout</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;<span style="color:#fde68a; font-weight:600;">query/</span> <span style="color:#4b5563">&mdash; read-model logic</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;branch_view.py &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Branch-state read-through (COW overlay)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;diff.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Derived diff/review projection</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;<span style="color:#94a3b8; font-weight:600;">projection/</span> <span style="color:#4b5563">&mdash; external materialized projections</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;git_mirror.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Git workspace projection (side-effecting)</span></div>
+    <div style="margin-top:6px;">&nbsp;&nbsp;factory.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6b7280"># Sole composition root: config &rarr; wired ForgeBase</span></div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>Final Dependency Rules</h3>
+  <table style="width:100%; border-collapse: collapse; font-size: 13px;">
+    <thead>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <th style="text-align:left; padding: 8px 12px; color:#9ca3af;">Layer</th>
+        <th style="text-align:left; padding: 8px 12px; color:#9ca3af;">May Import</th>
+        <th style="text-align:left; padding: 8px 12px; color:#9ca3af;">Key Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#60a5fa; font-weight:600;">domain/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">nothing</td>
+        <td style="padding: 8px 12px; color:#fbbf24;">+ merge.py, conflicts.py, event_types.py</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#6ee7b7; font-weight:600;">repository/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">domain/</td>
+        <td style="padding: 8px 12px; color:#fbbf24;">+ uow.py, content_store.py</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#fdba74; font-weight:600;">store/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">domain/, repository/</td>
+        <td style="padding: 8px 12px; color:#9ca3af;">&mdash;</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#f0abfc; font-weight:600;">service/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">domain/, repository/</td>
+        <td style="padding: 8px 12px; color:#fbbf24;">NO direct events/ import</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#fca5a5; font-weight:600;">events/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">domain/, repository/</td>
+        <td style="padding: 8px 12px; color:#fbbf24;">Wired by factory, not by service</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#fde68a; font-weight:600;">query/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">domain/, repository/</td>
+        <td style="padding: 8px 12px; color:#fbbf24;">NEW: read-model split from projection</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+        <td style="padding: 8px 12px; color:#94a3b8; font-weight:600;">projection/</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">domain/, repository/</td>
+        <td style="padding: 8px 12px; color:#fbbf24;">External side-effects only (Git)</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 12px; color:#cbd5e1; font-weight:600;">factory.py</td>
+        <td style="padding: 8px 12px; color:#d1d5db;">everything</td>
+        <td style="padding: 8px 12px; color:#9ca3af;">Sole composition root</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

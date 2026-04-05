@@ -6,17 +6,15 @@ from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import AsyncMock
 
-import pytest
-
 from hephaestus.agent.runtime import ConversationRuntime, ToolCallRecord, TurnResult
 from hephaestus.session.schema import EntryType, Role, Session
 from hephaestus.tools.permissions import PermissionMode, PermissionPolicy
 from hephaestus.tools.registry import ToolDefinition, ToolRegistry
 
-
 # ---------------------------------------------------------------------------
 # Mock adapter helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MockToolCall:
@@ -60,13 +58,15 @@ def _make_registry(*tools: tuple[str, str]) -> ToolRegistry:
     """Build a registry with named tools."""
     reg = ToolRegistry()
     for name, category in tools:
-        reg.register(ToolDefinition(
-            name=name,
-            description=f"Tool {name}",
-            input_schema={"type": "object", "properties": {}},
-            category=category,
-            handler=lambda **kw: f"result for {kw}",
-        ))
+        reg.register(
+            ToolDefinition(
+                name=name,
+                description=f"Tool {name}",
+                input_schema={"type": "object", "properties": {}},
+                category=category,
+                handler=lambda **kw: f"result for {kw}",
+            )
+        )
     return reg
 
 
@@ -88,6 +88,7 @@ def _make_runtime(
 # TurnResult / ToolCallRecord
 # ---------------------------------------------------------------------------
 
+
 class TestDataclasses:
     def test_turn_result_defaults(self):
         tr = TurnResult(text="hi")
@@ -96,7 +97,10 @@ class TestDataclasses:
 
     def test_tool_call_record(self):
         tcr = ToolCallRecord(
-            tool_use_id="1", name="read_file", input={"path": "/a"}, output="ok",
+            tool_use_id="1",
+            name="read_file",
+            input={"path": "/a"},
+            output="ok",
         )
         assert tcr.is_error is False
 
@@ -104,6 +108,7 @@ class TestDataclasses:
 # ---------------------------------------------------------------------------
 # ConversationRuntime
 # ---------------------------------------------------------------------------
+
 
 class TestRuntimeTextOnly:
     async def test_simple_text_response(self):
@@ -127,18 +132,22 @@ class TestRuntimeTextOnly:
 class TestRuntimeToolLoop:
     async def test_single_tool_call(self):
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
-            _text_result("Done"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
+                _text_result("Done"),
+            ]
+        )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="calculator",
-            description="calc",
-            input_schema={"type": "object", "properties": {}},
-            category="safe",
-            handler=lambda **kw: "42",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="calculator",
+                description="calc",
+                input_schema={"type": "object", "properties": {}},
+                category="safe",
+                handler=lambda **kw: "42",
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg)
         result = await rt.run_turn("calc")
         assert result == "Done"
@@ -146,18 +155,22 @@ class TestRuntimeToolLoop:
 
     async def test_tool_denied_by_permissions(self):
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([MockToolCall(id="t1", name="web_search", input={"query": "test"})]),
-            _text_result("Fallback"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result([MockToolCall(id="t1", name="web_search", input={"query": "test"})]),
+                _text_result("Fallback"),
+            ]
+        )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="web_search",
-            description="search",
-            input_schema={"type": "object", "properties": {}},
-            category="dangerous",
-            handler=lambda **kw: "results",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="web_search",
+                description="search",
+                input_schema={"type": "object", "properties": {}},
+                category="dangerous",
+                handler=lambda **kw: "results",
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg, mode=PermissionMode.READ_ONLY)
         result = await rt.run_turn("search web")
         assert result == "Fallback"
@@ -170,10 +183,12 @@ class TestRuntimeToolLoop:
 
     async def test_missing_handler(self):
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([MockToolCall(id="t1", name="unknown_tool", input={})]),
-            _text_result("OK"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result([MockToolCall(id="t1", name="unknown_tool", input={})]),
+                _text_result("OK"),
+            ]
+        )
         rt = _make_runtime(adapter=adapter)
         result = await rt.run_turn("do thing")
         assert result == "OK"
@@ -183,18 +198,22 @@ class TestRuntimeToolLoop:
             raise RuntimeError("boom")
 
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
-            _text_result("recovered"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
+                _text_result("recovered"),
+            ]
+        )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="calculator",
-            description="calc",
-            input_schema={"type": "object", "properties": {}},
-            category="safe",
-            handler=bad_handler,
-        ))
+        reg.register(
+            ToolDefinition(
+                name="calculator",
+                description="calc",
+                input_schema={"type": "object", "properties": {}},
+                category="safe",
+                handler=bad_handler,
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg)
         result = await rt.run_turn("calc")
         assert result == "recovered"
@@ -211,13 +230,15 @@ class TestRuntimeToolLoop:
             return_value=_tool_result([MockToolCall(id="t1", name="calculator", input={})]),
         )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="calculator",
-            description="calc",
-            input_schema={"type": "object", "properties": {}},
-            category="safe",
-            handler=lambda **kw: "42",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="calculator",
+                description="calc",
+                input_schema={"type": "object", "properties": {}},
+                category="safe",
+                handler=lambda **kw: "42",
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg)
         rt.max_rounds = 3
         result = await rt.run_turn("loop forever")
@@ -229,18 +250,22 @@ class TestRuntimeToolLoop:
             return "async result"
 
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
-            _text_result("Final"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
+                _text_result("Final"),
+            ]
+        )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="calculator",
-            description="calc",
-            input_schema={"type": "object", "properties": {}},
-            category="safe",
-            handler=async_handler,
-        ))
+        reg.register(
+            ToolDefinition(
+                name="calculator",
+                description="calc",
+                input_schema={"type": "object", "properties": {}},
+                category="safe",
+                handler=async_handler,
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg)
         result = await rt.run_turn("async")
         assert result == "Final"
@@ -256,21 +281,27 @@ class TestRuntimeToolLoop:
 
     async def test_multiple_tool_calls_in_one_round(self):
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([
-                MockToolCall(id="t1", name="calculator", input={}),
-                MockToolCall(id="t2", name="calculator", input={}),
-            ]),
-            _text_result("Both done"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result(
+                    [
+                        MockToolCall(id="t1", name="calculator", input={}),
+                        MockToolCall(id="t2", name="calculator", input={}),
+                    ]
+                ),
+                _text_result("Both done"),
+            ]
+        )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="calculator",
-            description="calc",
-            input_schema={"type": "object", "properties": {}},
-            category="safe",
-            handler=lambda **kw: "42",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="calculator",
+                description="calc",
+                input_schema={"type": "object", "properties": {}},
+                category="safe",
+                handler=lambda **kw: "42",
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg)
         result = await rt.run_turn("two tools")
         assert result == "Both done"
@@ -282,18 +313,22 @@ class TestRuntimeToolLoop:
 
     async def test_records_deliberation_graph_for_tool_loop(self):
         adapter = AsyncMock()
-        adapter.generate_with_tools = AsyncMock(side_effect=[
-            _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
-            _text_result("Done"),
-        ])
+        adapter.generate_with_tools = AsyncMock(
+            side_effect=[
+                _tool_result([MockToolCall(id="t1", name="calculator", input={})]),
+                _text_result("Done"),
+            ]
+        )
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="calculator",
-            description="calc",
-            input_schema={"type": "object", "properties": {}},
-            category="safe",
-            handler=lambda **kw: "42",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="calculator",
+                description="calc",
+                input_schema={"type": "object", "properties": {}},
+                category="safe",
+                handler=lambda **kw: "42",
+            )
+        )
         rt = _make_runtime(adapter=adapter, registry=reg)
 
         await rt.run_turn("calc")

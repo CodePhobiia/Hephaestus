@@ -14,6 +14,7 @@ from typing import Any
 @dataclass
 class DiversityScore:
     """Diversity assessment for a set of candidates."""
+
     pairwise_similarities: list[tuple[int, int, float]]
     mean_similarity: float
     diversity_bonus: float  # 0.0 (all same) to 1.0 (all different)
@@ -62,7 +63,7 @@ def compute_diversity(candidates: list[Any], text_fn: Any = None) -> DiversitySc
     # Penalize candidates that are too similar to an earlier, higher-ranked one
     penalty_threshold = 0.6
     penalized: list[int] = []
-    for i, j, sim in pairs:
+    for _i, j, sim in pairs:
         if sim > penalty_threshold and j not in penalized:
             penalized.append(j)
 
@@ -92,16 +93,21 @@ def apply_diversity_rerank(
 
     for idx in diversity.penalty_applied:
         if idx < len(adjusted):
-            adjusted[idx] *= (1.0 - penalty_factor)
+            adjusted[idx] *= 1.0 - penalty_factor
 
-    paired = list(zip(candidates, adjusted))
+    paired = list(zip(candidates, adjusted, strict=True))
     paired.sort(key=lambda x: x[1], reverse=True)
     return paired
 
 
 def _tokenize(text: str) -> list[str]:
     """Extract lowercase word tokens from text."""
-    return [t.lower() for t in re.findall(r'[a-zA-Z]{3,}', text)]
+    return [t.lower() for t in re.findall(r"[a-zA-Z]{3,}", text)]
 
 
-__all__ = ["DiversityScore", "compute_diversity", "compute_text_similarity", "apply_diversity_rerank"]
+__all__ = [
+    "DiversityScore",
+    "compute_diversity",
+    "compute_text_similarity",
+    "apply_diversity_rerank",
+]

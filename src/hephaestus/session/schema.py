@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
-_UTC = timezone.utc
+_UTC = UTC
 
 
 def _now() -> str:
@@ -34,7 +34,7 @@ def _now() -> str:
 # ---------------------------------------------------------------------------
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     """Transcript entry speaker role."""
 
     SYSTEM = "system"
@@ -43,7 +43,7 @@ class Role(str, Enum):
     TOOL = "tool"
 
 
-class EntryType(str, Enum):
+class EntryType(StrEnum):
     """Kind of transcript entry."""
 
     TEXT = "text"
@@ -163,7 +163,9 @@ class InventionSnapshot:
             "lens_bundle_id": self.lens_bundle_id,
             "lens_reference_generation": self.lens_reference_generation,
             "lens_composites": list(self.lens_composites),
-            "pantheon_state": dict(self.pantheon_state) if isinstance(self.pantheon_state, dict) else None,
+            "pantheon_state": dict(self.pantheon_state)
+            if isinstance(self.pantheon_state, dict)
+            else None,
             "pantheon_consensus_achieved": self.pantheon_consensus_achieved,
             "pantheon_final_verdict": self.pantheon_final_verdict,
             "pantheon_outcome_tier": self.pantheon_outcome_tier,
@@ -172,9 +174,7 @@ class InventionSnapshot:
             "pantheon_winning_candidate_id": self.pantheon_winning_candidate_id,
             "deliberation_graph_id": self.deliberation_graph_id,
             "runtime_accounting": (
-                dict(self.runtime_accounting)
-                if isinstance(self.runtime_accounting, dict)
-                else None
+                dict(self.runtime_accounting) if isinstance(self.runtime_accounting, dict) else None
             ),
             "timestamp": self.timestamp,
         }
@@ -242,9 +242,7 @@ class Session:
             "active_tools": list(self.active_tools),
             "reference_lots": [lot.to_dict() for lot in self.reference_lots],
             "lens_engine_state": (
-                self.lens_engine_state.to_dict()
-                if self.lens_engine_state is not None
-                else None
+                self.lens_engine_state.to_dict() if self.lens_engine_state is not None else None
             ),
             "deliberation_graphs": [graph.to_dict() for graph in self.deliberation_graphs],
         }
@@ -254,17 +252,11 @@ class Session:
         """Reconstruct a *Session* from a serialised dictionary."""
         return cls(
             meta=SessionMeta.from_dict(data["meta"]),
-            transcript=[
-                TranscriptEntry.from_dict(e) for e in data.get("transcript", [])
-            ],
-            inventions=[
-                InventionSnapshot.from_dict(i) for i in data.get("inventions", [])
-            ],
+            transcript=[TranscriptEntry.from_dict(e) for e in data.get("transcript", [])],
+            inventions=[InventionSnapshot.from_dict(i) for i in data.get("inventions", [])],
             pinned_context=list(data.get("pinned_context", [])),
             active_tools=list(data.get("active_tools", [])),
-            reference_lots=[
-                ReferenceLot.from_dict(l) for l in data.get("reference_lots", [])
-            ],
+            reference_lots=[ReferenceLot.from_dict(lot) for lot in data.get("reference_lots", [])],
             lens_engine_state=(
                 LensEngineState.from_dict(data["lens_engine_state"])
                 if isinstance(data.get("lens_engine_state"), dict)
@@ -423,7 +415,7 @@ class Session:
         if len(self.transcript) <= keep_last_n:
             return
 
-        old = self.transcript[: -keep_last_n]
+        old = self.transcript[:-keep_last_n]
         kept = self.transcript[-keep_last_n:]
 
         role_counts: dict[str, int] = {}
@@ -431,9 +423,7 @@ class Session:
             role_counts[entry.role] = role_counts.get(entry.role, 0) + 1
 
         breakdown = ", ".join(f"{r}: {c}" for r, c in sorted(role_counts.items()))
-        summary_content = (
-            f"[Compacted {len(old)} earlier entries — {breakdown}]"
-        )
+        summary_content = f"[Compacted {len(old)} earlier entries — {breakdown}]"
 
         summary = TranscriptEntry(
             role=Role.SYSTEM.value,

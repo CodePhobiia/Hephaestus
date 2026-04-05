@@ -6,6 +6,7 @@ All adapters inherit from :class:`~hephaestus.deepforge.adapters.base.BaseAdapte
 and implement the same async interface.
 """
 
+from hephaestus.deepforge.adapters.anthropic import ANTHROPIC_MODELS, AnthropicAdapter
 from hephaestus.deepforge.adapters.base import (
     BaseAdapter,
     GenerationResult,
@@ -13,11 +14,10 @@ from hephaestus.deepforge.adapters.base import (
     ModelConfig,
     StreamChunk,
 )
-from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter, ANTHROPIC_MODELS
-from hephaestus.deepforge.adapters.openai import OpenAIAdapter, OPENAI_MODELS
-from hephaestus.deepforge.adapters.openrouter import OpenRouterAdapter, OPENROUTER_MODELS
-from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter, CODEX_CLI_MODELS
-from hephaestus.deepforge.adapters.codex_oauth import CodexOAuthAdapter, CODEX_OAUTH_MODELS
+from hephaestus.deepforge.adapters.codex_cli import CODEX_CLI_MODELS, CodexCliAdapter
+from hephaestus.deepforge.adapters.codex_oauth import CODEX_OAUTH_MODELS, CodexOAuthAdapter
+from hephaestus.deepforge.adapters.openai import OPENAI_MODELS, OpenAIAdapter
+from hephaestus.deepforge.adapters.openrouter import OPENROUTER_MODELS, OpenRouterAdapter
 
 __all__ = [
     # Base
