@@ -30,6 +30,7 @@ import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -204,16 +205,16 @@ class GenesisConfig:
     openrouter_api_key: str | None = None
     use_agent_sdk: bool = False
     use_claude_cli: bool = False
-    use_claude_max: bool = False
+    use_claude_max: bool = True
     use_codex_cli: bool = False
 
     # Model selection
-    decompose_model: str = "claude-opus-4-5"
-    search_model: str = "gpt-4o"
-    score_model: str = "gpt-4o-mini"
-    translate_model: str = "claude-opus-4-5"
-    attack_model: str = "gpt-4o"
-    defend_model: str = "claude-opus-4-5"
+    decompose_model: str = "claude-opus-4-6"
+    search_model: str = "claude-opus-4-6"
+    score_model: str = "claude-sonnet-4-6"
+    translate_model: str = "claude-opus-4-6"
+    attack_model: str = "claude-opus-4-6"
+    defend_model: str = "claude-opus-4-6"
 
     # Exploration & Domains
     depth: int = 3  # min: 1, max: 10
@@ -252,16 +253,16 @@ class GenesisConfig:
     num_translations: int = 3
 
     # Feature flags
-    use_interference_in_search: bool = False
+    use_interference_in_search: bool = True
     use_interference_in_translate: bool = True
     run_prior_art: bool = True
     use_perplexity_research: bool = True
-    use_branchgenome_v1: bool = False
+    use_branchgenome_v1: bool = True
     branchgenome_rejection_ledger_path: str | None = None
     use_adaptive_lens_engine: bool = True
     allow_lens_bundle_fallback: bool = True
     enable_derived_lens_composites: bool = True
-    use_pantheon_mode: bool = False
+    use_pantheon_mode: bool = True
     pantheon_max_rounds: int = 4
     pantheon_require_unanimity: bool = True
     pantheon_allow_fail_closed: bool = True
@@ -295,8 +296,12 @@ class GenesisConfig:
     # Library override
     lens_library_dir: str | None = None
 
+    # Olympus — Stage 0 repo awareness
+    olympus_enabled: bool = True
+    olympus_max_chars: int = 12000
+
     # Transliminality Engine (Layer 2)
-    transliminality_enabled: bool = False
+    transliminality_enabled: bool = True
 
     def resolved_pantheon_models(self) -> dict[str, str]:
         return {
@@ -315,6 +320,8 @@ class PipelineStage(Enum):
     """Stages of the Genesis pipeline."""
 
     STARTING = auto()
+    OLYMPUS = auto()
+    OLYMPUS_COMPLETE = auto()
     DECOMPOSING = auto()
     DECOMPOSED = auto()
     SEARCHING = auto()
@@ -783,6 +790,54 @@ class Genesis:
             _LensSelector = _genesis_module.LensSelector # noqa: N806
 
             skipped_phases: list[str] = []
+            olympus_injection: str = ""
+
+            # ── Stage 0: Olympus (repo awareness) ─────────────────────────
+            if self._config.olympus_enabled:
+                yield PipelineUpdate(
+                    stage=PipelineStage.OLYMPUS,
+                    message="Stage 0: Olympus — building repo awareness…",
+                    elapsed_seconds=elapsed(),
+                )
+                try:
+                    from hephaestus.core.olympus import build_olympus
+
+                    cwd = Path.cwd()
+                    logger.info("Stage 0: Olympus — building repo context for %s", cwd.name)
+                    olympus_ctx = await build_olympus(
+                        problem=problem,
+                        root=cwd,
+                        adapter=self._harnesses["decompose"],
+                    )
+                    if olympus_ctx is not None:
+                        olympus_injection = olympus_ctx.to_prompt_injection(
+                            max_chars=self._config.olympus_max_chars,
+                        )
+                        logger.info(
+                            "Olympus context built | repo=%s components=%d files=%d chars=%d (%.1fs)",
+                            olympus_ctx.repo_name,
+                            olympus_ctx.components_mapped,
+                            len(olympus_ctx.relevant_files),
+                            len(olympus_injection),
+                            olympus_ctx.elapsed_seconds,
+                        )
+                    else:
+                        logger.info("Olympus: not in a repo or scan returned nothing, skipping")
+                        skipped_phases.append("olympus")
+                    yield PipelineUpdate(
+                        stage=PipelineStage.OLYMPUS_COMPLETE,
+                        message=(
+                            f"Olympus: repo context built ({len(olympus_injection)} chars)"
+                            if olympus_injection
+                            else "Olympus: skipped (not a repo)"
+                        ),
+                        elapsed_seconds=elapsed(),
+                    )
+                except Exception as exc:
+                    logger.warning("Olympus skipped: %s", exc)
+                    skipped_phases.append("olympus")
+            else:
+                skipped_phases.append("olympus")
 
             # ── Phase 0: Burn-Off (generate obvious baselines) ─────────────
             baselines: list[str] = list(self._config.banned_baselines or [])
@@ -843,6 +898,11 @@ class Genesis:
             except Exception as exc:
                 logger.warning("V2 system prompt build failed, using per-stage prompts: %s", exc)
                 skipped_phases.append("v2-system-prompt")
+
+            # ── Olympus injection into V2 system prompt ────────────────────
+            if olympus_injection and v2_system_prompt:
+                v2_system_prompt = olympus_injection + "\n\n" + v2_system_prompt
+                logger.info("Olympus context injected into V2 system prompt")
 
             # ── CrutchFilter injection ─────────────────────────────────────
             try:
@@ -1103,6 +1163,7 @@ class Genesis:
                         allow_fail_closed=self._config.pantheon_allow_fail_closed,
                         resolution_mode=self._config.pantheon_resolution_mode,
                         max_survivors_to_council=self._config.pantheon_max_survivors_to_council,
+                        olympus_context=olympus_injection,
                     )
                     structure, pantheon_state = await pantheon.prepare_pipeline(
                         problem=problem,
@@ -2389,25 +2450,27 @@ class Genesis:
             ),
         )
 
-        # Attack: no interference (adversarial should be objective)
+        # Attack: pressure enabled to force diverse attack angles
         harnesses["attack"] = DeepForgeHarness(
             adapter=get_adapter(cfg.attack_model),
             config=HarnessConfig(
                 use_interference=False,
-                use_pruner=False,
-                use_pressure=False,
+                use_pruner=True,
+                use_pressure=True,
+                max_pressure_rounds=2,
                 max_tokens=cfg.max_tokens_verify,
                 temperature=0.4,
             ),
         )
 
-        # Defend: no interference (validity assessment should be clear-eyed)
+        # Defend: pruner on to catch convergent defenses
         harnesses["defend"] = DeepForgeHarness(
             adapter=get_adapter(cfg.defend_model),
             config=HarnessConfig(
                 use_interference=False,
-                use_pruner=False,
-                use_pressure=False,
+                use_pruner=True,
+                use_pressure=True,
+                max_pressure_rounds=2,
                 max_tokens=cfg.max_tokens_verify,
                 temperature=0.3,
             ),
@@ -2427,8 +2490,9 @@ class Genesis:
                 adapter=get_adapter(pantheon_models["pantheon_athena"]),
                 config=HarnessConfig(
                     use_interference=False,
-                    use_pruner=False,
-                    use_pressure=False,
+                    use_pruner=True,
+                    use_pressure=True,
+                    max_pressure_rounds=2,
                     max_tokens=cfg.max_tokens_decompose,
                     temperature=0.3,
                 ),
@@ -2437,8 +2501,9 @@ class Genesis:
                 adapter=get_adapter(pantheon_models["pantheon_hermes"]),
                 config=HarnessConfig(
                     use_interference=cfg.use_interference_in_search,
-                    use_pruner=False,
-                    use_pressure=False,
+                    use_pruner=True,
+                    use_pressure=True,
+                    max_pressure_rounds=2,
                     max_tokens=cfg.max_tokens_search,
                     temperature=0.5,
                 ),
@@ -2447,8 +2512,9 @@ class Genesis:
                 adapter=get_adapter(pantheon_models["pantheon_apollo"]),
                 config=HarnessConfig(
                     use_interference=False,
-                    use_pruner=False,
-                    use_pressure=False,
+                    use_pruner=True,
+                    use_pressure=True,
+                    max_pressure_rounds=2,
                     max_tokens=cfg.max_tokens_verify,
                     temperature=0.3,
                 ),

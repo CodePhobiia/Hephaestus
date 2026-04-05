@@ -308,6 +308,7 @@ class PantheonCoordinator:
         allow_fail_closed: bool = True,
         max_survivors_to_council: int = 2,
         resolution_mode: str = "TASK_SENSITIVE",
+        olympus_context: str = "",
     ) -> None:
         self._athena = athena_harness
         self._hermes = hermes_harness
@@ -316,6 +317,7 @@ class PantheonCoordinator:
         self._require_unanimity = require_unanimity
         self._allow_fail_closed = allow_fail_closed
         self._max_survivors_to_council = max(1, max_survivors_to_council)
+        self._olympus_context = olympus_context
         normalized_mode = str(resolution_mode or "TASK_SENSITIVE").upper()
         self._resolution_mode = (
             normalized_mode if normalized_mode in {"STRICT", "TASK_SENSITIVE"} else "TASK_SENSITIVE"
@@ -347,6 +349,10 @@ class PantheonCoordinator:
         agent: str,
     ) -> dict[str, Any]:
         import asyncio as _asyncio
+
+        # Inject Olympus repo context into every Pantheon agent's system prompt
+        if self._olympus_context:
+            system = self._olympus_context + "\n\n" + system
 
         t_start = time.monotonic()
         result = await _asyncio.wait_for(
