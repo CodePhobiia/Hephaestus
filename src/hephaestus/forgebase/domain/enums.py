@@ -84,6 +84,10 @@ class BranchPurpose(str, Enum):
     INVENTION = "invention"
     COMPILATION = "compilation"
     MANUAL = "manual"
+    AGENT_MAINTENANCE = "agent_maintenance"
+    AGENT_RESEARCH = "agent_research"
+    AGENT_QUALITY = "agent_quality"
+    AGENT_CUSTOM = "agent_custom"
 
 
 class JobStatus(str, Enum):
@@ -241,3 +245,23 @@ class ProvenanceKind(str, Enum):
     DERIVED = "derived"
     EMPIRICAL = "empirical"
     INHERITED = "inherited"
+
+
+class FusionMode(str, Enum):
+    STRICT = "strict"
+    EXPLORATORY = "exploratory"
+
+
+class BridgeCandidateKind(str, Enum):
+    CONCEPT = "concept"
+    MECHANISM = "mechanism"
+    CLAIM_CLUSTER = "claim_cluster"
+    PAGE_THEME = "page_theme"
+    EXPLORATORY = "exploratory"
+
+
+class AnalogyVerdict(str, Enum):
+    STRONG_ANALOGY = "strong_analogy"
+    WEAK_ANALOGY = "weak_analogy"
+    NO_ANALOGY = "no_analogy"
+    INVALID = "invalid"
