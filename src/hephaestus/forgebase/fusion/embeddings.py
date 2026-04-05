@@ -88,6 +88,7 @@ class EmbeddingIndex:
         async with uow:
             cached = await uow.embedding_cache.get(eid_str, ver_int)
             if cached is not None:
+                await uow.rollback()  # close read-only transaction
                 return cached
 
             embedding_blob = self._compute_embedding(text)

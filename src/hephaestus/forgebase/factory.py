@@ -6,7 +6,10 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+import hashlib
+
 import aiosqlite
+import numpy as np
 
 from hephaestus.forgebase.compiler.backend import CompilerBackend
 from hephaestus.forgebase.compiler.backends.mock_backend import MockCompilerBackend
@@ -18,13 +21,23 @@ from hephaestus.forgebase.domain.values import ActorRef
 from hephaestus.forgebase.events.consumers import ConsumerRegistry
 from hephaestus.forgebase.events.dispatcher import EventDispatcher
 from hephaestus.forgebase.events.fanout import PostCommitFanout
+from hephaestus.forgebase.extraction.assembler import VaultContextAssembler
+from hephaestus.forgebase.extraction.policy import DEFAULT_EXTRACTION_POLICY
+from hephaestus.forgebase.fusion.analyzer import FusionAnalyzer
+from hephaestus.forgebase.fusion.analyzers.mock_analyzer import MockFusionAnalyzer
+from hephaestus.forgebase.fusion.embeddings import EmbeddingIndex
+from hephaestus.forgebase.fusion.orchestrator import FusionOrchestrator
+from hephaestus.forgebase.fusion.policy import DEFAULT_FUSION_POLICY
 from hephaestus.forgebase.ingestion.normalization import NormalizationPipeline
 from hephaestus.forgebase.integration.bridge import (
     DefaultForgeBaseBridge,
     ForgeBaseIntegrationBridge,
 )
 from hephaestus.forgebase.integration.genesis_adapter import GenesisAdapter
+from hephaestus.forgebase.integration.invention_ingester import InventionIngester
 from hephaestus.forgebase.integration.pantheon_adapter import PantheonAdapter
+from hephaestus.forgebase.integration.pantheon_ingester import PantheonIngester
+from hephaestus.forgebase.integration.promotion import PromotionService
 from hephaestus.forgebase.integration.research_adapter import ResearchAdapter
 from hephaestus.forgebase.linting.analyzer import LintAnalyzer
 from hephaestus.forgebase.linting.analyzers.mock_analyzer import MockLintAnalyzer
@@ -64,6 +77,20 @@ from hephaestus.forgebase.store.sqlite.uow import SqliteUnitOfWork
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Deterministic fallback embedding (avoids sentence-transformers dependency
+# and nested-transaction issues with single-connection SQLite).
+# ---------------------------------------------------------------------------
+
+def _fallback_embedding(text: str) -> bytes:
+    """Produce a deterministic 384-dim normalised float32 embedding from text."""
+    h = hashlib.sha256(text.encode()).digest()
+    rng = np.random.RandomState(int.from_bytes(h[:4], "big"))
+    vec = rng.randn(384).astype(np.float32)
+    vec = vec / np.linalg.norm(vec)
+    return vec.tobytes()
+
+
 @dataclass
 class ForgeBaseConfig:
     """Configuration for ForgeBase."""
@@ -101,6 +128,11 @@ class ForgeBase:
         verification_job: FindingVerificationJob,
         dispatcher: EventDispatcher | None = None,
         fanout: PostCommitFanout | None = None,
+        invention_ingester: InventionIngester | None = None,
+        pantheon_ingester: PantheonIngester | None = None,
+        promotion: PromotionService | None = None,
+        context_assembler: VaultContextAssembler | None = None,
+        fusion: FusionOrchestrator | None = None,
     ) -> None:
         self.uow_factory = uow_factory
         self.vaults = vault_service
@@ -123,6 +155,11 @@ class ForgeBase:
         self.verification_job = verification_job
         self.dispatcher = dispatcher
         self.fanout = fanout
+        self.invention_ingester = invention_ingester
+        self.pantheon_ingester = pantheon_ingester
+        self.promotion = promotion
+        self.context_assembler = context_assembler
+        self.fusion = fusion
 
     async def close(self) -> None:
         """Shutdown dispatcher if running."""
@@ -153,7 +190,12 @@ async def create_forgebase(
     # Set up database connection
     if db is None:
         db_path = cfg.sqlite_path or ":memory:"
-        db = await aiosqlite.connect(db_path)
+        # isolation_level=None puts sqlite3 in true autocommit mode so
+        # that only explicit BEGIN/COMMIT/ROLLBACK control transactions.
+        # Without this, Python's sqlite3 auto-starts implicit transactions
+        # for any statement, which prevents nested UoW usage (e.g. the
+        # EmbeddingIndex opening its own UoW inside generate_bridge_candidates).
+        db = await aiosqlite.connect(db_path, isolation_level=None)
         db.row_factory = aiosqlite.Row
         await initialize_schema(db)
 
@@ -187,22 +229,52 @@ async def create_forgebase(
     lint_svc = LintService(uow_factory=uow_factory, default_actor=actor)
     run_int_svc = RunIntegrationService(uow_factory=uow_factory, default_actor=actor)
 
+    # --- Invention loop components ---
+    invention_ingester = InventionIngester(
+        uow_factory=uow_factory,
+        page_service=page_svc,
+        claim_service=claim_svc,
+        link_service=link_svc,
+        ingest_service=ingest_svc,
+        run_integration_service=run_int_svc,
+        default_actor=actor,
+    )
+    pantheon_ingester = PantheonIngester(
+        uow_factory=uow_factory,
+        claim_service=claim_svc,
+        link_service=link_svc,
+        run_integration_service=run_int_svc,
+        ingest_service=ingest_svc,
+        default_actor=actor,
+    )
+    promotion_svc = PromotionService(
+        uow_factory=uow_factory,
+        default_actor=actor,
+    )
+    context_assembler = VaultContextAssembler(
+        uow_factory=uow_factory,
+        policy=DEFAULT_EXTRACTION_POLICY,
+    )
+
     # --- Integration bridge ---
     # Adapters need uow_factory for sync-status updates
     genesis_adapter = GenesisAdapter(
         run_integration_service=run_int_svc,
         ingest_service=ingest_svc,
         uow_factory=uow_factory,
+        invention_ingester=invention_ingester,
     )
     pantheon_adapter = PantheonAdapter(
         run_integration_service=run_int_svc,
         ingest_service=ingest_svc,
         uow_factory=uow_factory,
+        pantheon_ingester=pantheon_ingester,
     )
     research_adapter = ResearchAdapter(
         run_integration_service=run_int_svc,
         ingest_service=ingest_svc,
         uow_factory=uow_factory,
+        compile_service=compile_svc,
     )
     bridge = DefaultForgeBaseBridge(
         genesis_adapter=genesis_adapter,
@@ -309,6 +381,38 @@ async def create_forgebase(
         default_actor=actor,
     )
 
+    # --- Fusion infrastructure ---
+    embedding_index = EmbeddingIndex(uow_factory=uow_factory)
+    # Always use the deterministic fallback embedding in the factory.
+    # The real sentence-transformers model can be swapped in by callers
+    # who need production-quality embeddings (e.g. via a separate process
+    # with its own DB connection to avoid nested-transaction issues).
+    embedding_index._compute_embedding = _fallback_embedding  # type: ignore[assignment]
+
+    fusion_analyzer: FusionAnalyzer  # noqa: F841 — used below
+    if cfg.compiler_backend == "anthropic" or (
+        cfg.compiler_backend == "auto"
+        and os.environ.get("ANTHROPIC_API_KEY")
+    ):
+        try:
+            from hephaestus.forgebase.fusion.analyzers.anthropic_analyzer import (
+                AnthropicFusionAnalyzer,
+            )
+            fusion_analyzer = AnthropicFusionAnalyzer(id_gen=id_gen)
+        except (ImportError, Exception):
+            fusion_analyzer = MockFusionAnalyzer(id_gen=id_gen)
+    else:
+        fusion_analyzer = MockFusionAnalyzer(id_gen=id_gen)
+
+    fusion_orchestrator = FusionOrchestrator(
+        uow_factory=uow_factory,
+        context_assembler=context_assembler,
+        fusion_analyzer=fusion_analyzer,
+        embedding_index=embedding_index,
+        policy=DEFAULT_FUSION_POLICY,
+        default_actor=actor,
+    )
+
     # --- Event infrastructure ---
     dispatcher = EventDispatcher(db=db, consumers=consumer_registry)
     fanout = PostCommitFanout()
@@ -335,4 +439,9 @@ async def create_forgebase(
         verification_job=verification_job,
         dispatcher=dispatcher,
         fanout=fanout,
+        invention_ingester=invention_ingester,
+        pantheon_ingester=pantheon_ingester,
+        promotion=promotion_svc,
+        context_assembler=context_assembler,
+        fusion=fusion_orchestrator,
     )

@@ -36,6 +36,13 @@ async def test_create_forgebase_default():
     assert fb.research_job is not None
     assert fb.repair_job is not None
     assert fb.verification_job is not None
+    # Invention loop components
+    assert fb.invention_ingester is not None
+    assert fb.pantheon_ingester is not None
+    assert fb.promotion is not None
+    assert fb.context_assembler is not None
+    # Fusion pipeline
+    assert fb.fusion is not None
     await fb.close()
 
 
