@@ -381,20 +381,29 @@ async def _call_adapter(adapter: Any, system: str, user: str) -> str:
     - forge(prompt, system=...) — DeepForgeHarness
     - generate(prompt, system_prompt=...) — raw adapters
     """
-    # Try forge first (harness interface)
+    # Try forge first (harness interface — returns ForgeResult with .output)
     if hasattr(adapter, "forge"):
         result = await adapter.forge(user, system=system)
         if isinstance(result, str):
             return result
-        # Some harnesses return objects with .text
-        return getattr(result, "text", str(result))
+        # DeepForgeHarness returns ForgeResult with .output
+        # AgenticHarness also returns ForgeResult
+        if hasattr(result, "output"):
+            return result.output
+        if hasattr(result, "text"):
+            return result.text
+        return str(result)
 
     # Try generate (raw adapter interface)
     if hasattr(adapter, "generate"):
         result = await adapter.generate(user, system_prompt=system)
         if isinstance(result, str):
             return result
-        return getattr(result, "text", str(result))
+        if hasattr(result, "output"):
+            return result.output
+        if hasattr(result, "text"):
+            return result.text
+        return str(result)
 
     # Try __call__ as last resort
     if callable(adapter):
