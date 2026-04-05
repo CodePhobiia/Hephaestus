@@ -2543,9 +2543,12 @@ class Genesis:
                         thinking_budget_tokens=cfg.agentic_thinking_budget,
                         max_tool_rounds=cfg.agentic_max_tool_rounds,
                     )
-                    # Upgrade the stages that benefit most from repo awareness:
-                    # decompose, search, translate, attack, defend
-                    for stage_name in ("decompose", "search", "translate", "attack", "defend"):
+                    # Upgrade only stages that produce free-text output.
+                    # decompose and score return structured JSON — the agentic
+                    # exploration wrapper would corrupt their output format.
+                    # search, translate, attack, defend produce prose and benefit
+                    # most from reading actual code.
+                    for stage_name in ("search", "translate", "attack", "defend"):
                         if stage_name in harnesses:
                             standard = harnesses[stage_name]
                             harnesses[stage_name] = AgenticHarness(
@@ -2553,15 +2556,11 @@ class Genesis:
                                 harness_config=standard.config,
                                 agentic_config=agentic_cfg,
                             )
-                    # Pantheon agents too
-                    for stage_name in ("pantheon_athena", "pantheon_hermes", "pantheon_apollo"):
-                        if stage_name in harnesses:
-                            standard = harnesses[stage_name]
-                            harnesses[stage_name] = AgenticHarness(
-                                adapter=standard.adapter,
-                                harness_config=standard.config,
-                                agentic_config=agentic_cfg,
-                            )
+                    # Pantheon agents stay as standard harnesses.
+                    # They're judges, not explorers — they need to output
+                    # structured JSON, which the agentic exploration wrapper
+                    # would corrupt. They receive repo context via Olympus
+                    # injection in the coordinator instead.
                     logger.info(
                         "Agentic mode: upgraded harnesses with tool-use + extended thinking | "
                         "workspace=%s thinking_budget=%d",
