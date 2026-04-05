@@ -130,7 +130,7 @@ class CommandRegistry:
             by_cat.setdefault(cmd.category, []).append(cmd)
 
         # Deterministic category order
-        cat_order = ["session", "invention", "config", "context", "export"]
+        cat_order = ["session", "invention", "config", "context", "export", "forgebase", "workspace"]
         ordered_cats = [c for c in cat_order if c in by_cat]
         ordered_cats += sorted(set(by_cat) - set(cat_order))
 
@@ -522,6 +522,96 @@ def default_registry() -> CommandRegistry:
         category="workspace",
         handler_name="_cmd_ws",
         modes=["repl"],
+        resume_safe=True,
+        args_required=False,
+    ))
+
+    # ── ForgeBase ───────────────────────────────────────────────────
+    reg.register(Command(
+        name="vault",
+        aliases=["v"],
+        description="Manage ForgeBase vaults (create, list, use, info, compile, lint)",
+        usage="/vault [create <name> | list | use <id> | info | compile | lint]",
+        category="forgebase",
+        handler_name="_cmd_vault",
+        modes=["all"],
+        resume_safe=True,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="ask",
+        aliases=[],
+        description="Query within current vault context",
+        usage="/ask <query>",
+        category="forgebase",
+        handler_name="_cmd_ask",
+        modes=["all"],
+        resume_safe=True,
+        args_required=True,
+    ))
+    reg.register(Command(
+        name="fuse",
+        aliases=[],
+        description="Cross-vault fusion",
+        usage="/fuse <vault_id1> <vault_id2> [--problem TEXT]",
+        category="forgebase",
+        handler_name="_cmd_fuse",
+        modes=["all"],
+        resume_safe=False,
+        args_required=True,
+    ))
+    reg.register(Command(
+        name="ingest",
+        aliases=[],
+        description="Ingest source into current vault",
+        usage="/ingest <path_or_url>",
+        category="forgebase",
+        handler_name="_cmd_ingest",
+        modes=["all"],
+        resume_safe=False,
+        args_required=True,
+    ))
+    reg.register(Command(
+        name="fb-lint",
+        aliases=[],
+        description="Lint current vault",
+        usage="/fb-lint",
+        category="forgebase",
+        handler_name="_cmd_lint",
+        modes=["all"],
+        resume_safe=True,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="fb-compile",
+        aliases=[],
+        description="Compile current vault",
+        usage="/fb-compile",
+        category="forgebase",
+        handler_name="_cmd_compile",
+        modes=["all"],
+        resume_safe=False,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="workbook",
+        aliases=["wb"],
+        description="Manage workbooks (open, list, diff, merge, abandon)",
+        usage="/workbook [open <name> | list | diff | merge | abandon]",
+        category="forgebase",
+        handler_name="_cmd_workbook",
+        modes=["all"],
+        resume_safe=True,
+        args_required=False,
+    ))
+    reg.register(Command(
+        name="fb-export",
+        aliases=[],
+        description="Export current vault as markdown or Obsidian",
+        usage="/fb-export [markdown|obsidian]",
+        category="forgebase",
+        handler_name="_cmd_fb_export",
+        modes=["all"],
         resume_safe=True,
         args_required=False,
     ))

@@ -993,6 +993,45 @@ def _build_genesis_config(
     from hephaestus.core.cross_model import get_model_preset
     from hephaestus.core.genesis import GenesisConfig
 
+    if model == "agent-sdk":
+        models = get_model_preset("opus")
+        return GenesisConfig(
+            anthropic_api_key=anthropic_key,
+            openai_api_key=openai_key,
+            openrouter_api_key=None,
+            use_agent_sdk=True,
+            decompose_model=models["decompose"],
+            search_model=models["search"],
+            score_model=models["score"],
+            translate_model=models["translate"],
+            attack_model=models["attack"],
+            defend_model=models["defend"],
+            depth=depth,
+            domain_hint=domain,
+            exploration_mode=exploration_mode.lower(),
+            pressure_translate_enabled=pressure_translate,
+            pressure_search_mode=pressure_search_mode.lower(),
+            num_candidates=candidates,
+            use_interference_in_translate=True,
+            divergence_intensity=divergence_intensity.upper(),
+            output_mode=output_mode.upper(),
+            use_perplexity_research=use_perplexity_research,
+            perplexity_model=research_model,
+            use_branchgenome_v1=use_branchgenome_v1,
+            use_adaptive_lens_engine=use_adaptive_lens_engine,
+            allow_lens_bundle_fallback=allow_lens_bundle_fallback,
+            enable_derived_lens_composites=enable_derived_lens_composites,
+            use_pantheon_mode=use_pantheon_mode,
+            pantheon_max_rounds=pantheon_max_rounds,
+            pantheon_require_unanimity=pantheon_require_unanimity,
+            pantheon_allow_fail_closed=pantheon_allow_fail_closed,
+            pantheon_resolution_mode=pantheon_resolution_mode,
+            pantheon_max_survivors_to_council=pantheon_max_survivors_to_council,
+            pantheon_athena_model=pantheon_athena_model,
+            pantheon_hermes_model=pantheon_hermes_model,
+            pantheon_apollo_model=pantheon_apollo_model,
+        )
+
     if model == "claude-max":
         models = get_model_preset("opus")
         return GenesisConfig(
@@ -1533,6 +1572,26 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "scan":
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         scan_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "vault":
+        from hephaestus.cli.forgebase_commands import vault_cmd
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        vault_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "ask":
+        from hephaestus.cli.forgebase_commands import ask_cmd
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        ask_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "fuse":
+        from hephaestus.cli.forgebase_commands import fuse_cmd
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        fuse_cmd(standalone_mode=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "fb-export":
+        from hephaestus.cli.forgebase_commands import fb_export_cmd
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        fb_export_cmd(standalone_mode=True)
         return
     cli()
 
