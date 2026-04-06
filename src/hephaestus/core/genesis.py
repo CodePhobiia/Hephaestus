@@ -2542,24 +2542,30 @@ class Genesis:
                     for m in ("pyproject.toml", "package.json", "Cargo.toml", "go.mod")
                 )
                 if is_repo:
-                    agentic_cfg = AgenticConfig(
-                        workspace_root=cwd,
-                        enable_extended_thinking=True,
-                        thinking_budget_tokens=cfg.agentic_thinking_budget,
-                        max_tool_rounds=cfg.agentic_max_tool_rounds,
-                    )
-                    # Upgrade only stages that produce free-text output.
-                    # decompose and score return structured JSON — the agentic
-                    # exploration wrapper would corrupt their output format.
-                    # search, translate, attack, defend produce prose and benefit
-                    # most from reading actual code.
+                    # Per-stage tool budgets: search/translate need more
+                    # exploration, attack/defend need less (they argue about
+                    # specific code, not discover it).
+                    _stage_tool_budgets = {
+                        "search": 5,
+                        "translate": 5,
+                        "attack": 3,
+                        "defend": 3,
+                    }
                     for stage_name in ("search", "translate", "attack", "defend"):
                         if stage_name in harnesses:
                             standard = harnesses[stage_name]
+                            stage_rounds = _stage_tool_budgets.get(
+                                stage_name, cfg.agentic_max_tool_rounds
+                            )
                             harnesses[stage_name] = AgenticHarness(
                                 adapter=standard.adapter,
                                 harness_config=standard.config,
-                                agentic_config=agentic_cfg,
+                                agentic_config=AgenticConfig(
+                                    workspace_root=cwd,
+                                    enable_extended_thinking=True,
+                                    thinking_budget_tokens=cfg.agentic_thinking_budget,
+                                    max_tool_rounds=stage_rounds,
+                                ),
                             )
                     # Pantheon agents stay as standard harnesses.
                     # They're judges, not explorers — they need to output

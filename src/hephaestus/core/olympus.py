@@ -151,7 +151,7 @@ async def build_olympus(
     *,
     force_rebuild: bool = False,
     persist: bool = True,
-    max_tool_rounds: int = 20,
+    max_tool_rounds: int = 25,
     thinking_budget: int = 16_000,
 ) -> OlympusContext | None:
     """Build the Stage 0 Olympus context by having the agent explore the repo.
@@ -241,11 +241,26 @@ async def build_olympus(
     for round_idx in range(max_tool_rounds):
         rounds = round_idx + 1
 
+        # On the last 2 rounds, nudge the model to wrap up
+        round_tools = tools
+        if round_idx >= max_tool_rounds - 2:
+            # Remove tools to force the model to produce text output
+            round_tools = []
+            if round_idx == max_tool_rounds - 2:
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "You've explored enough. Now write the OLYMPUS.md document "
+                        "based on everything you've read. Output the full markdown."
+                    ),
+                })
+                logger.info("Olympus: nudging agent to write output (round %d/%d)", rounds, max_tool_rounds)
+
         try:
             gen = await adapter.generate_with_tools(
                 messages,
                 system=_OLYMPUS_SYSTEM,
-                tools=tools,
+                tools=round_tools,
                 max_tokens=32_000,
                 temperature=1.0,
                 **extra_kwargs,
