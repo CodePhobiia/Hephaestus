@@ -35,7 +35,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from hephaestus.core.decomposer import ProblemStructure
-from hephaestus.core.json_utils import loads_lenient
+from hephaestus.core.json_utils import extract_outermost_json_object, loads_lenient
+from hephaestus.core.parallel import ParallelConfig, gather_with_semaphore
 from hephaestus.core.searcher import SearchCandidate
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.selector import EmbeddingModel, _cosine_distance
@@ -49,6 +50,11 @@ def _lazy_np():
     return np
 
 logger = logging.getLogger(__name__)
+
+
+def _timeout_seconds(harness: Any) -> float:
+    value = getattr(getattr(harness, "config", None), "timeout_seconds", 0.0)
+    return float(value) if isinstance(value, (int, float)) else 0.0
 
 # Superlinear distance exponent — same as the lens selector
 _DISTANCE_EXPONENT = 1.5
@@ -326,21 +332,22 @@ class CandidateScorer:
             return []
 
         # Step 3: Score fidelity via LLM (concurrent)
-        import asyncio
-
-        scored = await asyncio.gather(
-            *[self._score_candidate(c, structure, distances.get(id(c), 0.5)) for c in pre_filtered],
-            return_exceptions=True,
+        scored = await gather_with_semaphore(
+            [self._score_candidate(c, structure, distances.get(id(c), 0.5)) for c in pre_filtered],
+            ParallelConfig(
+                max_concurrent=min(4, len(pre_filtered)),
+                timeout_per_task=_timeout_seconds(self._harness),
+            ),
         )
 
         # Step 4: Collect results
         results: list[ScoredCandidate] = []
         for candidate, result in zip(pre_filtered, scored, strict=True):
-            if isinstance(result, Exception):
+            if not result.success:
                 logger.warning(
                     "Scoring failed for %s: %s",
                     candidate.source_domain,
-                    result,
+                    result.error,
                 )
                 # Fallback: use search confidence as fidelity
                 dist = distances.get(id(candidate), 0.5)
@@ -372,8 +379,8 @@ class CandidateScorer:
                     )
                 )
             else:
-                if result is not None:
-                    results.append(result)
+                if result.value is not None:
+                    results.append(result.value)
 
         # Sort by combined score descending
         results.sort(key=lambda s: s.combined_score, reverse=True)
@@ -455,13 +462,13 @@ class CandidateScorer:
             self._harness.forge(
                 fidelity_prompt,
                 system=_FIDELITY_SYSTEM,
-                max_tokens=16000,
+                max_tokens=self._harness.config.max_tokens,
                 temperature=0.2,
             ),
             self._harness.forge(
                 novelty_prompt,
                 system=_MECHANISM_NOVELTY_SYSTEM,
-                max_tokens=16000,
+                max_tokens=self._harness.config.max_tokens,
                 temperature=0.2,
             ),
         )
@@ -573,14 +580,14 @@ class CandidateScorer:
             cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
             cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
-        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not json_match:
+        json_blob = extract_outermost_json_object(cleaned)
+        if json_blob is None:
             logger.warning("No JSON in fidelity response, using defaults")
             return {"structural_fidelity": 0.5}
 
         try:
             data = loads_lenient(
-                json_match.group(), default={"structural_fidelity": 0.5}, label="scorer.fidelity"
+                json_blob, default={"structural_fidelity": 0.5}, label="scorer.fidelity"
             )
         except json.JSONDecodeError:
             return {"structural_fidelity": 0.5}
@@ -594,14 +601,14 @@ class CandidateScorer:
             cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
             cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
-        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not json_match:
+        json_blob = extract_outermost_json_object(cleaned)
+        if json_blob is None:
             logger.warning("No JSON in mechanism novelty response, using defaults")
             return {"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True}
 
         try:
             data = loads_lenient(
-                json_match.group(),
+                json_blob,
                 default={"mechanism_novelty": 0.5, "would_engineer_reach_for_this": True},
                 label="scorer.novelty",
             )

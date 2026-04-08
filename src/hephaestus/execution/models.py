@@ -82,6 +82,7 @@ class RunRecord:
     token_count: int = 0
     error: str | None = None
     error_stage: str | None = None
+    error_source: str | None = None
 
     # Correlation
     correlation_id: str = field(default_factory=lambda: uuid4().hex)
@@ -107,6 +108,7 @@ class RunRecord:
             "token_count": self.token_count,
             "error": self.error,
             "error_stage": self.error_stage,
+            "error_source": self.error_source,
             "correlation_id": self.correlation_id,
             "user_id": self.user_id,
             "tenant_id": self.tenant_id,
@@ -140,6 +142,7 @@ class RunRecord:
             token_count=int(data.get("token_count", 0)),
             error=data.get("error"),
             error_stage=data.get("error_stage"),
+            error_source=data.get("error_source"),
             correlation_id=str(data.get("correlation_id", uuid4().hex)),
             user_id=data.get("user_id"),
             tenant_id=data.get("tenant_id"),

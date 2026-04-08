@@ -16,18 +16,27 @@ HEPH_LOG_LEVEL:     Log level (default: info).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
+import shutil
 import time
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+
+from hephaestus.execution.models import RunRecord, RunStatus
+from hephaestus.execution.orchestrator import OrchestratorConfig, RunOrchestrator
+from hephaestus.execution.run_store import create_run_store
+from web.forgebase_api import forgebase_router
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +83,11 @@ def _check_auth(request: Request) -> bool:
         return auth[7:].strip() == _HEPH_API_KEY
     return False
 
+
+def _codex_auth_available() -> bool:
+    auth_path = Path.home() / ".codex" / "auth.json"
+    return auth_path.is_file() and shutil.which("node") is not None
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -86,36 +100,68 @@ _STATIC = _HERE / "static"
 # App factory / Orchestrator Initialization
 # ---------------------------------------------------------------------------
 
-from contextlib import asynccontextmanager
-from hephaestus.execution.run_store import create_run_store
-from hephaestus.execution.orchestrator import RunOrchestrator, OrchestratorConfig
-from hephaestus.execution.models import RunRecord
-import os
-
 _pubsub: dict[str, list[asyncio.Queue]] = {}
+_RUN_ARTIFACT_DIR = Path(
+    os.environ.get(
+        "HEPH_RUN_ARTIFACT_DIR",
+        str(Path.home() / ".hephaestus" / "run_artifacts"),
+    )
+)
 
 # Production DB toggle based on env
 if "HEPHAESTUS_DATABASE_URL" in os.environ:
     _store = create_run_store(backend="postgres", dsn=os.environ["HEPHAESTUS_DATABASE_URL"])
 else:
     _store = create_run_store(backend="sqlite", db_path="hephaestus_dev.db")
-    
+
 _orchestrator = RunOrchestrator(_store, OrchestratorConfig())
+
+
+def _artifact_path(run_id: str) -> Path:
+    return _RUN_ARTIFACT_DIR / f"{run_id}.json"
+
+
+def _persist_run_artifact(run_id: str, report: Any) -> str:
+    """Persist a replayable terminal artifact for a completed run."""
+    _RUN_ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "run_id": run_id,
+        "saved_at": datetime.now(UTC).isoformat(),
+        "report": json.loads(json.dumps(report.to_dict(), default=str)),
+        "web_result": _format_report(report),
+        "summary": getattr(report, "summary", lambda: "")(),
+    }
+    path = _artifact_path(run_id)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return str(path)
+
+
+def _load_run_artifact(result_ref: str | None) -> dict[str, Any] | None:
+    if not result_ref:
+        return None
+    path = Path(result_ref)
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
 
 async def _pipeline_fn(record: RunRecord, cancel_event: asyncio.Event) -> str | None:
     """Background worker logic for runs."""
     try:
-        from hephaestus.core.genesis import Genesis, GenesisConfig
         from hephaestus.core.cross_model import get_model_preset
-        
-        cfg_dict = record.config_snapshot
-        model_req = cfg_dict.pop("model", "both")
-        preset_key = {"opus": "opus", "gpt5": "gpt"}.get(model_req, "both")
+        from hephaestus.core.genesis import Genesis, GenesisConfig
+
+        cfg_dict = dict(record.config_snapshot)
+        model_req = str(cfg_dict.pop("model", "both") or "both").lower()
+        preset_key = {"opus": "opus", "gpt5": "gpt", "codex": "codex"}.get(model_req, "both")
         models = get_model_preset(preset_key)
-        
+
         cfg = GenesisConfig(
             anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY"),
             openai_api_key=os.environ.get("OPENAI_API_KEY"),
+            use_codex_cli=(model_req == "codex"),
             num_candidates=cfg_dict.get("candidates", 8),
             num_translations=min(3, cfg_dict.get("candidates", 8)),
             decompose_model=models["decompose"],
@@ -130,38 +176,34 @@ async def _pipeline_fn(record: RunRecord, cancel_event: asyncio.Event) -> str | 
             pressure_translate_enabled=cfg_dict.get("pressure_translate_enabled", True),
             pressure_search_mode=cfg_dict.get("pressure_search_mode", "adaptive").lower(),
         )
-        
+
         genesis = Genesis(cfg)
         result_ref = None
-        
+
         async for update in genesis.invent_stream(record.problem):
             if cancel_event.is_set():
                 break
-                
+
+            await _store.update_stage(record.run_id, update.stage.name)
+
             queues = _pubsub.get(record.run_id, [])
             for q in queues:
-                try:
+                with contextlib.suppress(asyncio.QueueFull):
                     q.put_nowait(update)
-                except asyncio.QueueFull:
-                    pass
-            
+
             if update.stage.name == "COMPLETE" and update.data:
-                result_ref = "completed_artifact"
-                
+                result_ref = _persist_run_artifact(record.run_id, update.data)
+
         for q in _pubsub.get(record.run_id, []):
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 q.put_nowait("EOF")
-            except asyncio.QueueFull:
-                pass
-                
+
         return result_ref
     except Exception as exc:
         logger.exception("Pipeline unhandled error")
         for q in _pubsub.get(record.run_id, []):
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 q.put_nowait(exc)
-            except asyncio.QueueFull:
-                pass
         raise exc
 
 @asynccontextmanager
@@ -202,8 +244,6 @@ app.add_middleware(
 if _STATIC.exists():
     app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
 
-# Mount ForgeBase API router
-from web.forgebase_api import forgebase_router
 app.include_router(forgebase_router)
 
 # ---------------------------------------------------------------------------
@@ -214,8 +254,13 @@ app.include_router(forgebase_router)
 class InventRequest(BaseModel):
     """Request body for the /api/invent endpoint."""
 
-    problem: str = Field(..., min_length=5, max_length=4000, description="Problem to invent a solution for")
-    model: str = Field(default="both", description="Model selection: both | opus | gpt5")
+    problem: str = Field(
+        ...,
+        min_length=5,
+        max_length=4000,
+        description="Problem to invent a solution for",
+    )
+    model: str = Field(default="both", description="Model selection: both | opus | gpt5 | codex")
     candidates: int = Field(default=8, ge=2, le=20, description="Number of search candidates")
     domain_hint: str | None = Field(default=None, description="Soft domain bias constraint")
     depth: int = Field(default=3, ge=1, le=10, description="Exploration bounds and scale")
@@ -297,10 +342,11 @@ def _format_report(report: Any) -> dict[str, Any]:
     # Alternatives
     alternatives = []
     for inv in report.alternative_inventions[:3]:
+        novelty_score = getattr(inv, "novelty_score", None)
         alternatives.append({
             "name": getattr(inv, "invention_name", ""),
             "source_domain": getattr(inv, "source_domain", ""),
-            "novelty_score": round(getattr(inv, "novelty_score", 3) if getattr(inv, "novelty_score", None) is not None else 0.0, 3),
+            "novelty_score": round(float(novelty_score or 0.0), 3),
             "feasibility": getattr(inv, "feasibility_rating", ""),
         })
 
@@ -317,24 +363,32 @@ def _format_report(report: Any) -> dict[str, Any]:
     if hasattr(top, "translation") and hasattr(top.translation, "mathematical_proof"):
         novelty_proof = top.translation.mathematical_proof
 
+    novelty_score = getattr(top, "novelty_score", None)
+    structural_validity = getattr(top, "structural_validity", None)
     return {
         "invention_name": getattr(top, "invention_name", "Unknown"),
         "source_domain": getattr(top, "source_domain", ""),
-        "novelty_score": round(getattr(top, "novelty_score", 3) if getattr(top, "novelty_score", None) is not None else 0.0, 3),
-        "structural_validity": round(getattr(top, "structural_validity", 3) if getattr(top, "structural_validity", None) is not None else 0.0, 3),
+        "novelty_score": round(float(novelty_score or 0.0), 3),
+        "structural_validity": round(float(structural_validity or 0.0), 3),
         "feasibility_rating": getattr(top, "feasibility_rating", ""),
         "verdict": getattr(getattr(top, "adversarial_result", None), "verdict", ""),
         "key_insight": getattr(getattr(top, "translation", None), "key_insight", ""),
         "architecture": getattr(getattr(top, "translation", None), "architecture", ""),
         "limitations": getattr(getattr(top, "translation", None), "limitations", []),
-        "implementation_notes": getattr(getattr(top, "translation", None), "implementation_notes", ""),
+        "implementation_notes": getattr(
+            getattr(top, "translation", None), "implementation_notes", ""
+        ),
         "mapping": mapping_rows,
         "alternatives": alternatives,
         "prior_art": prior_art,
         "novelty_proof": novelty_proof,
-        "adversarial_notes": getattr(getattr(top, "adversarial_result", None), "strongest_objection", ""),
+        "adversarial_notes": getattr(
+            getattr(top, "adversarial_result", None), "strongest_objection", ""
+        ),
         "cost_usd": round(report.total_cost_usd, 4),
-        "cost_breakdown": report.cost_breakdown.to_dict() if hasattr(report.cost_breakdown, "to_dict") else {},
+        "cost_breakdown": (
+            report.cost_breakdown.to_dict() if hasattr(report.cost_breakdown, "to_dict") else {}
+        ),
         "duration_seconds": round(getattr(report, "total_duration_seconds", 0.0), 1),
         "models": getattr(report, "model_config", {}),
         "native_domain": getattr(getattr(report, "structure", None), "native_domain", ""),
@@ -364,6 +418,7 @@ async def readiness() -> JSONResponse:
     checks: dict[str, bool] = {
         "anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "openai_key": bool(os.environ.get("OPENAI_API_KEY")),
+        "codex_auth": _codex_auth_available(),
     }
     try:
         from hephaestus.lenses.loader import LensLoader
@@ -375,7 +430,9 @@ async def readiness() -> JSONResponse:
         checks["lenses_loaded"] = False
 
     ready = checks.get("lenses_loaded", False) and (
-        checks.get("anthropic_key", False) or checks.get("openai_key", False)
+        checks.get("anthropic_key", False)
+        or checks.get("openai_key", False)
+        or checks.get("codex_auth", False)
     )
     return JSONResponse(
         content={"ready": ready, "checks": checks},
@@ -405,16 +462,19 @@ async def create_run(request_body: InventRequest, request: Request) -> JSONRespo
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
     if not _check_spend_limit():
         raise HTTPException(status_code=402, detail="Global spend limit reached.")
-        
+
     try:
         record = await _orchestrator.submit(
             problem=request_body.problem,
             config=request_body.model_dump(),
         )
-        return JSONResponse(content={"run_id": record.run_id, "status": record.status.value}, status_code=202)
+        return JSONResponse(
+            content={"run_id": record.run_id, "status": record.status.value},
+            status_code=202,
+        )
     except ValueError as e:
         if "Queue full" in str(e):
-            raise HTTPException(status_code=429, detail=str(e))
+            raise HTTPException(status_code=429, detail=str(e)) from e
         return JSONResponse(content={"detail": str(e)}, status_code=400)
 
 
@@ -425,13 +485,57 @@ async def stream_run_events(run_id: str, request: Request) -> StreamingResponse:
         async def _auth_error():
             yield _sse_error("Unauthorized", stage="auth")
         return StreamingResponse(_auth_error(), media_type="text/event-stream", status_code=401)
-        
+
     record = await _orchestrator.get_run(run_id)
     if not record:
         async def _not_found():
             yield _sse_error("Run not found", stage="error")
         return StreamingResponse(_not_found(), media_type="text/event-stream", status_code=404)
-        
+    artifact_payload = _load_run_artifact(record.result_ref)
+
+    # Terminal runs can be replayed entirely from durable state without waiting
+    # on the in-memory pubsub fanout.
+    if record.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
+        async def _replay_terminal():
+            for item in record.stage_history:
+                stage_name = str(item.get("stage", "UNKNOWN") or "UNKNOWN")
+                yield _sse_event(
+                    "stage",
+                    _format_stage_event(
+                        stage_name,
+                        f"Replayed stage transition: {stage_name}",
+                        0.0,
+                    ),
+                )
+            if record.status == RunStatus.COMPLETED:
+                yield _sse_event(
+                    "stage",
+                    _format_stage_event("COMPLETE", "Replayed completed run", 0.0),
+                )
+                if artifact_payload is not None:
+                    yield _sse_event("result", artifact_payload.get("web_result", {}))
+            elif record.status == RunStatus.FAILED:
+                yield _sse_event(
+                    "stage",
+                    _format_stage_event("FAILED", record.error or "Run failed", 0.0),
+                )
+                yield _sse_error(record.error or "Run failed", stage=record.error_stage or "FAILED")
+            else:
+                yield _sse_event(
+                    "stage",
+                    _format_stage_event("FAILED", "Run cancelled", 0.0),
+                )
+                yield _sse_error("Run cancelled", stage="CANCELLED")
+        return StreamingResponse(
+            _replay_terminal(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
+        )
+
     q = asyncio.Queue(maxsize=100)
     if run_id not in _pubsub:
         _pubsub[run_id] = []
@@ -439,10 +543,20 @@ async def stream_run_events(run_id: str, request: Request) -> StreamingResponse:
 
     async def event_generator():
         try:
+            for item in record.stage_history:
+                stage_name = str(item.get("stage", "UNKNOWN") or "UNKNOWN")
+                yield _sse_event(
+                    "stage",
+                    _format_stage_event(
+                        stage_name,
+                        f"Replayed stage transition: {stage_name}",
+                        0.0,
+                    ),
+                )
             while True:
                 if await request.is_disconnected():
                     break
-                    
+
                 try:
                     update = await asyncio.wait_for(q.get(), timeout=2.0)
                     if update == "EOF":
@@ -450,10 +564,12 @@ async def stream_run_events(run_id: str, request: Request) -> StreamingResponse:
                     if isinstance(update, Exception):
                         yield _sse_error(str(update), stage="FAILED")
                         break
-                        
+
                     stage_name = update.stage.name
-                    event_data = _format_stage_event(stage_name, update.message, update.elapsed_seconds)
-                    
+                    event_data = _format_stage_event(
+                        stage_name, update.message, update.elapsed_seconds
+                    )
+
                     if stage_name == "COMPLETE":
                         yield _sse_event("stage", event_data)
                         try:
@@ -466,8 +582,8 @@ async def stream_run_events(run_id: str, request: Request) -> StreamingResponse:
                         yield _sse_error(update.message, stage=stage_name)
                     else:
                         yield _sse_event("stage", event_data)
-                        
-                except asyncio.TimeoutError:
+
+                except TimeoutError:
                     yield ": keepalive\\n\\n"
         finally:
             if run_id in _pubsub:
@@ -513,8 +629,8 @@ async def provider_health(request: Request) -> JSONResponse:
     """Return provider availability summary."""
     if not _check_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    from hephaestus.providers.diagnostics import provider_health_summary
     from hephaestus.providers import build_default_registry
+    from hephaestus.providers.diagnostics import provider_health_summary
 
     registry = build_default_registry()
     return JSONResponse(content=provider_health_summary(registry))
@@ -530,8 +646,6 @@ async def list_runs(
     """List pipeline runs with optional status filter."""
     if not _check_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized")
-
-    from hephaestus.execution.models import RunStatus
     status_filter = RunStatus(status) if status else None
     runs = await _orchestrator.list_runs(status=status_filter, limit=limit, offset=offset)
     return JSONResponse(content={

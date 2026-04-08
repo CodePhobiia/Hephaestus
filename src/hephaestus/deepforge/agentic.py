@@ -20,6 +20,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -30,11 +31,20 @@ from hephaestus.deepforge.adapters.base import BaseAdapter, ModelCapability
 from hephaestus.deepforge.harness import (
     DeepForgeHarness,
     ForgeResult,
-    ForgeTrace,
     HarnessConfig,
 )
 
 logger = logging.getLogger(__name__)
+
+_TOOL_EXCLUDED_DIRS = {
+    ".git",
+    ".hephaestus",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "node_modules",
+    ".hg",
+}
 
 # ---------------------------------------------------------------------------
 # Tool definitions for repo exploration
@@ -242,9 +252,7 @@ class RepoToolExecutor:
         entries = []
         try:
             for item in sorted(full.iterdir()):
-                if item.name.startswith(".") and item.name in {
-                    ".git", "__pycache__", ".venv", "node_modules",
-                }:
+                if item.name in _TOOL_EXCLUDED_DIRS:
                     continue
                 rel = item.relative_to(self._root)
                 suffix = "/" if item.is_dir() else ""
@@ -262,7 +270,7 @@ class RepoToolExecutor:
             return f"Error: path '{directory}' is outside the workspace"
 
         results = []
-        skip_dirs = {".git", "__pycache__", "node_modules", ".venv", "venv", ".hg"}
+        skip_dirs = set(_TOOL_EXCLUDED_DIRS)
         binary_exts = {".pyc", ".so", ".dll", ".png", ".jpg", ".zip", ".gz", ".db"}
 
         for file_path in self._walk_files(full, skip_dirs, binary_exts, max_files=5000):
@@ -289,7 +297,7 @@ class RepoToolExecutor:
         matches = []
         try:
             for match in sorted(full.rglob(pattern)):
-                if any(part.startswith(".") or part in {"__pycache__", "node_modules"}
+                if any(part in _TOOL_EXCLUDED_DIRS or part.startswith(".")
                        for part in match.parts):
                     continue
                 rel = match.relative_to(self._root)
@@ -305,12 +313,15 @@ class RepoToolExecutor:
 
     def _safe_path(self, path: str) -> Path | None:
         """Resolve path and verify it's within workspace."""
-        if Path(path).is_absolute():
-            resolved = Path(path).resolve()
-        else:
-            resolved = (self._root / path).resolve()
+        resolved = (
+            Path(path).resolve()
+            if Path(path).is_absolute()
+            else (self._root / path).resolve()
+        )
         try:
-            resolved.relative_to(self._root)
+            rel_parts = resolved.relative_to(self._root).parts
+            if any(part in _TOOL_EXCLUDED_DIRS for part in rel_parts):
+                return None
             return resolved
         except ValueError:
             return None
@@ -423,7 +434,6 @@ class AgenticHarness:
             )
 
         t_start = time.monotonic()
-        cfg = self._agentic_config
         h_cfg = self._harness_config
 
         effective_system = system or h_cfg.system_prompt or ""
@@ -450,15 +460,19 @@ class AgenticHarness:
         # ── Phase 2: Feed exploration into standard harness ───────────
         # The exploration output becomes additional context for the
         # interference/pressure/pruner pipeline
-        enriched_prompt = (
-            f"{prompt}\n\n"
-            f"--- CODEBASE EXPLORATION (from agentic analysis) ---\n"
-            f"{exploration_output}\n"
-            f"--- END EXPLORATION ---\n\n"
-            f"Now produce your final invention, grounded in the actual "
-            f"codebase you just explored. Reference specific files, "
-            f"functions, and patterns."
-        )
+        enriched_prompt = prompt
+        if exploration_output.strip():
+            enriched_prompt = (
+                f"{prompt}\n\n"
+                f"--- CODEBASE EXPLORATION (from agentic analysis) ---\n"
+                f"{exploration_output}\n"
+                f"--- END EXPLORATION ---\n\n"
+                f"Now produce your final invention, grounded in the actual "
+                f"codebase you just explored. Reference specific files, "
+                f"functions, and patterns."
+            )
+        else:
+            logger.warning("Agentic exploration produced no final summary; falling back to raw prompt")
 
         result = await self._standard_harness.forge(
             enriched_prompt,
@@ -537,15 +551,31 @@ class AgenticHarness:
         }
 
         final_text = ""
+        last_tool_signature: tuple[tuple[str, tuple[tuple[str, Any], ...]], ...] | None = None
+        repeated_tool_rounds = 0
 
         for round_idx in range(cfg.max_tool_rounds):
             trace["rounds"] = round_idx + 1
+            round_tools = tools
+            if round_idx >= cfg.max_tool_rounds - 2:
+                round_tools = []
+                if round_idx == cfg.max_tool_rounds - 2:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "You've explored enough. Summarize the codebase context you found. "
+                                "Write a concise grounded analysis with the key files, constraints, "
+                                "and patterns relevant to the prompt."
+                            ),
+                        }
+                    )
 
             # Call the model with tools
             gen = await self._adapter.generate_with_tools(
                 messages,
                 system=system,
-                tools=tools,
+                tools=round_tools,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 **extra_kwargs,
@@ -568,9 +598,44 @@ class AgenticHarness:
 
             # Execute tool calls
             tool_results: list[dict[str, Any]] = []
+            current_tool_signature = tuple(
+                sorted(
+                    (
+                        tc.name,
+                        tuple(sorted((str(k), str(v)) for k, v in tc.input.items())),
+                    )
+                    for tc in gen.tool_calls
+                )
+            )
+            if current_tool_signature == last_tool_signature:
+                repeated_tool_rounds += 1
+            else:
+                repeated_tool_rounds = 0
+            last_tool_signature = current_tool_signature
+
+            if repeated_tool_rounds >= 2:
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "You are repeating the same tool calls. Stop exploring and write your "
+                            "grounded summary now."
+                        ),
+                    }
+                )
+
             for tc in gen.tool_calls:
                 trace["tool_calls"] += 1
-                result_text = self._executor.execute(tc.name, tc.input)
+                try:
+                    result_text = await asyncio.wait_for(
+                        asyncio.to_thread(self._executor.execute, tc.name, tc.input),
+                        timeout=cfg.tool_timeout_seconds,
+                    )
+                except TimeoutError:
+                    result_text = (
+                        f"Tool error ({tc.name}): timed out after "
+                        f"{cfg.tool_timeout_seconds:.1f}s"
+                    )
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": tc.id,

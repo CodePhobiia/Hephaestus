@@ -275,6 +275,25 @@ class TestAntiTrainingPressure:
         assert not is_incompatible
         assert dist == pytest.approx(0.0, abs=1e-5)
 
+    @pytest.mark.asyncio
+    async def test_default_threshold_requires_real_distance(self) -> None:
+        adapter = _make_adapter(["default", "too close"])
+        emb_default = _unit_vec(64, 0)
+        emb_near = np.zeros(64, dtype=np.float32)
+        emb_near[0] = 0.8
+        emb_near[1] = 0.6
+        embed_model = _make_embed_model([emb_default, emb_near])
+
+        pressure = AntiTrainingPressure(
+            adapter,
+            max_rounds=2,
+            structural_distance_threshold=0.75,
+            embed_model=embed_model,
+        )
+        trace = await pressure.apply("Problem.")
+
+        assert trace.success is False
+
     def test_build_prohibition_system_includes_blocked_texts(self) -> None:
         emb = _unit_vec(64, 0)
         blocked = [

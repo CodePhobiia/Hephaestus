@@ -87,6 +87,40 @@ def _fix_json_escapes(text: str) -> str:
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 
 
+def extract_outermost_json_object(raw: str) -> str | None:
+    """Extract the first balanced JSON object from free-form text."""
+    if not raw:
+        return None
+
+    start = raw.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+    for idx in range(start, len(raw)):
+        ch = raw[idx]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return raw[start : idx + 1]
+    return None
+
+
 def loads_lenient(
     raw: str,
     *,
@@ -121,9 +155,8 @@ def loads_lenient(
         pass
 
     # 2. Extract block + direct parse
-    m = _JSON_BLOCK.search(raw)
-    if m:
-        blob = m.group()
+    blob = extract_outermost_json_object(raw)
+    if blob is not None:
         try:
             return json.loads(blob, strict=False)
         except (json.JSONDecodeError, ValueError):
@@ -135,10 +168,10 @@ def loads_lenient(
 
     # 4. Escape-fix the full text, then extract block
     fixed = _fix_json_escapes(raw)
-    m_fixed = _JSON_BLOCK.search(fixed)
-    if m_fixed:
+    blob_fixed = extract_outermost_json_object(fixed)
+    if blob_fixed is not None:
         try:
-            return json.loads(m_fixed.group(), strict=False)
+            return json.loads(blob_fixed, strict=False)
         except (json.JSONDecodeError, ValueError):
             pass
 
@@ -151,4 +184,4 @@ def loads_lenient(
     return default
 
 
-__all__ = ["loads_lenient", "_fix_json_escapes"]
+__all__ = ["extract_outermost_json_object", "loads_lenient", "_fix_json_escapes"]

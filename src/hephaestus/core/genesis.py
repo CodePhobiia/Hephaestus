@@ -46,7 +46,9 @@ if TYPE_CHECKING:
 # These are the stage classes that tests patch via
 # `patch("hephaestus.core.genesis.ProblemDecomposer", ...)` etc.
 # Lazy-loaded on first _ensure_built() call to avoid circular imports.
+from hephaestus.core.cross_model import CROSS_MODEL_DEFAULTS
 from hephaestus.deepforge.adapters.anthropic import AnthropicAdapter
+from hephaestus.deepforge.adapters.base import ModelCapability
 from hephaestus.deepforge.adapters.openai import OpenAIAdapter
 from hephaestus.lenses.loader import LensLoader
 from hephaestus.lenses.selector import LensSelector
@@ -58,6 +60,15 @@ __all__ = [
 from hephaestus.session.deliberation import DeliberationGraph, RuntimeRouter
 
 logger = logging.getLogger(__name__)
+
+
+def _adapter_supports_tool_use(adapter: Any) -> bool:
+    """Return True when an adapter can safely participate in tool-use flows."""
+    generate_with_tools = getattr(adapter, "generate_with_tools", None)
+    config = getattr(adapter, "config", None)
+    return callable(generate_with_tools) and bool(
+        config is not None and config.supports(ModelCapability.FUNCTION_CALLING)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -206,15 +217,15 @@ class GenesisConfig:
     use_agent_sdk: bool = False
     use_claude_cli: bool = False
     use_claude_max: bool = False
-    use_codex_cli: bool = True
+    use_codex_cli: bool = False
 
     # Model selection
-    decompose_model: str = "gpt-5.4"
-    search_model: str = "gpt-5.4"
-    score_model: str = "gpt-5.4"
-    translate_model: str = "gpt-5.4"
-    attack_model: str = "gpt-5.4"
-    defend_model: str = "gpt-5.4"
+    decompose_model: str = CROSS_MODEL_DEFAULTS["decompose"]
+    search_model: str = CROSS_MODEL_DEFAULTS["search"]
+    score_model: str = CROSS_MODEL_DEFAULTS["score"]
+    translate_model: str = CROSS_MODEL_DEFAULTS["translate"]
+    attack_model: str = CROSS_MODEL_DEFAULTS["attack"]
+    defend_model: str = CROSS_MODEL_DEFAULTS["defend"]
 
     # Exploration & Domains
     depth: int = 3  # min: 1, max: 10
@@ -257,7 +268,7 @@ class GenesisConfig:
     use_interference_in_translate: bool = True
     run_prior_art: bool = True
     use_perplexity_research: bool = True
-    use_branchgenome_v1: bool = True
+    use_branchgenome_v1: bool = False
     branchgenome_rejection_ledger_path: str | None = None
     use_adaptive_lens_engine: bool = True
     allow_lens_bundle_fallback: bool = True
@@ -446,6 +457,9 @@ class InventionReport:
     lens_engine_state: LensEngineState | None = None
     pantheon_state: PantheonState | None = None
     pantheon_runtime: Any | None = None
+    pantheon_requested: bool = False
+    pantheon_degraded: bool = False
+    pantheon_degradation_reasons: list[str] = field(default_factory=list)
     deliberation_graph: Any | None = None
     branchgenome_metrics: dict[str, Any] = field(default_factory=dict)
     cost_breakdown: CostBreakdown = field(default_factory=CostBreakdown)
@@ -566,6 +580,9 @@ class InventionReport:
             "lens_engine": self._research_to_dict(self.lens_engine_state),
             "pantheon": self._research_to_dict(self.pantheon_state),
             "pantheon_runtime": self._research_to_dict(self.pantheon_runtime),
+            "pantheon_requested": self.pantheon_requested,
+            "pantheon_degraded": self.pantheon_degraded,
+            "pantheon_degradation_reasons": list(self.pantheon_degradation_reasons),
             "deliberation_graph": self._research_to_dict(self.deliberation_graph),
             "alternatives": [
                 {
@@ -796,6 +813,7 @@ class Genesis:
 
             skipped_phases: list[str] = []
             olympus_injection: str = ""
+            pantheon_degradation_reasons: list[str] = []
 
             # ── Stage 0: Olympus (repo awareness) ─────────────────────────
             if self._config.olympus_enabled:
@@ -812,13 +830,20 @@ class Genesis:
                     # Olympus drives its own tool loop — it needs the raw
                     # adapter with generate_with_tools, not the harness.
                     olympus_adapter = self._harnesses["decompose"].adapter
-                    olympus_ctx = await build_olympus(
-                        problem=problem,
-                        root=cwd,
-                        adapter=olympus_adapter,
-                        max_tool_rounds=self._config.agentic_max_tool_rounds,
-                        thinking_budget=self._config.agentic_thinking_budget,
-                    )
+                    if not _adapter_supports_tool_use(olympus_adapter):
+                        logger.info(
+                            "Olympus skipped: decompose adapter %s does not support tool use",
+                            getattr(olympus_adapter, "model_name", type(olympus_adapter).__name__),
+                        )
+                        olympus_ctx = None
+                    else:
+                        olympus_ctx = await build_olympus(
+                            problem=problem,
+                            root=cwd,
+                            adapter=olympus_adapter,
+                            max_tool_rounds=self._config.agentic_max_tool_rounds,
+                            thinking_budget=self._config.agentic_thinking_budget,
+                        )
                     if olympus_ctx is not None:
                         olympus_injection = olympus_ctx.to_prompt_injection(
                             max_chars=self._config.olympus_max_chars,
@@ -939,7 +964,7 @@ class Genesis:
             logger.info("Stage 1: calling Claude to decompose problem structure…")
             decomposer = _ProblemDecomposer(self._harnesses["decompose"])
             try:
-                structure = await decomposer.decompose(problem)
+                structure = await decomposer.decompose(problem, system=v2_system_prompt)
             except DecompositionError as exc:
                 yield PipelineUpdate(
                     stage=PipelineStage.FAILED,
@@ -1195,6 +1220,7 @@ class Genesis:
                     pantheon_guidance = None
                     logger.warning("Pantheon pipeline preparation skipped: %s", exc)
                     skipped_phases.append("pantheon-prep")
+                    pantheon_degradation_reasons.append(f"prepare_pipeline: {exc}")
 
             # ── Stage 2: Search ─────────────────────────────────────────────
             yield PipelineUpdate(
@@ -1680,6 +1706,7 @@ class Genesis:
                         return
                 except Exception as exc:
                     logger.warning("Pantheon Mode skipped after translation failure: %s", exc)
+                    pantheon_degradation_reasons.append(f"deliberate: {exc}")
 
             if pantheon_runtime is not None:
                 pantheon_rounds = (
@@ -1738,6 +1765,19 @@ class Genesis:
                 if "deliberation_graph" not in str(exc):
                     raise
                 verified = await verifier.verify(translations, structure)
+            if verified and all(
+                bool(getattr(invention, "verification_fallback", False)) for invention in verified
+            ):
+                yield PipelineUpdate(
+                    stage=PipelineStage.FAILED,
+                    message=(
+                        "Verification degraded completely: every verified invention was produced "
+                        "by the fallback path."
+                    ),
+                    data=verified,
+                    elapsed_seconds=elapsed(),
+                )
+                return
             if pantheon is not None and pantheon_state is not None:
                 try:
                     pantheon_state = pantheon.finalize_with_verified(pantheon_state, verified)
@@ -1747,6 +1787,7 @@ class Genesis:
                     self._attach_pantheon_state(deliberation, pantheon_state)
                 except Exception as exc:
                     logger.warning("Pantheon finalization skipped: %s", exc)
+                    pantheon_degradation_reasons.append(f"finalize: {exc}")
             lens_runtime["verification"] = {
                 "count": len(verified),
                 "bundle_acceptance_statuses": [
@@ -1898,6 +1939,9 @@ class Genesis:
                 branchgenome_metrics=branchgenome_metrics,
                 pantheon_state=pantheon_state,
                 pantheon_runtime=pantheon_runtime,
+                pantheon_requested=self._config.use_pantheon_mode,
+                pantheon_degraded=bool(pantheon_degradation_reasons),
+                pantheon_degradation_reasons=list(pantheon_degradation_reasons),
                 deliberation_graph=deliberation,
                 cost_breakdown=cost,
                 total_duration_seconds=elapsed(),
@@ -2433,8 +2477,8 @@ class Genesis:
             config=HarnessConfig(
                 use_interference=cfg.use_interference_in_search,
                 use_pruner=False,
-                use_pressure=getattr(cfg, "pressure_search_mode", "off") in ("always", "adaptive"),
-                max_pressure_rounds=cfg.exploration_budget.get("pressure_max_rounds", 1),
+                # Search is a structured JSON stage; keep it deterministic.
+                use_pressure=False,
                 max_tokens=cfg.max_tokens_search,
                 temperature=0.5,
             ),
@@ -2470,9 +2514,9 @@ class Genesis:
             adapter=get_adapter(cfg.attack_model),
             config=HarnessConfig(
                 use_interference=False,
-                use_pruner=True,
-                use_pressure=True,
-                max_pressure_rounds=2,
+                # Verifier judge stages must remain schema-stable.
+                use_pruner=False,
+                use_pressure=False,
                 max_tokens=cfg.max_tokens_verify,
                 temperature=0.4,
             ),
@@ -2483,9 +2527,9 @@ class Genesis:
             adapter=get_adapter(cfg.defend_model),
             config=HarnessConfig(
                 use_interference=False,
-                use_pruner=True,
-                use_pressure=True,
-                max_pressure_rounds=2,
+                # Verifier judge stages must remain schema-stable.
+                use_pruner=False,
+                use_pressure=False,
                 max_tokens=cfg.max_tokens_verify,
                 temperature=0.3,
             ),
@@ -2505,9 +2549,8 @@ class Genesis:
                 adapter=get_adapter(pantheon_models["pantheon_athena"]),
                 config=HarnessConfig(
                     use_interference=False,
-                    use_pruner=True,
-                    use_pressure=True,
-                    max_pressure_rounds=2,
+                    use_pruner=False,
+                    use_pressure=False,
                     max_tokens=cfg.max_tokens_decompose,
                     temperature=0.3,
                 ),
@@ -2515,10 +2558,9 @@ class Genesis:
             harnesses["pantheon_hermes"] = DeepForgeHarness(
                 adapter=get_adapter(pantheon_models["pantheon_hermes"]),
                 config=HarnessConfig(
-                    use_interference=cfg.use_interference_in_search,
-                    use_pruner=True,
-                    use_pressure=True,
-                    max_pressure_rounds=2,
+                    use_interference=False,
+                    use_pruner=False,
+                    use_pressure=False,
                     max_tokens=cfg.max_tokens_search,
                     temperature=0.5,
                 ),
@@ -2527,9 +2569,8 @@ class Genesis:
                 adapter=get_adapter(pantheon_models["pantheon_apollo"]),
                 config=HarnessConfig(
                     use_interference=False,
-                    use_pruner=True,
-                    use_pressure=True,
-                    max_pressure_rounds=2,
+                    use_pruner=False,
+                    use_pressure=False,
                     max_tokens=cfg.max_tokens_verify,
                     temperature=0.3,
                 ),
@@ -2538,7 +2579,7 @@ class Genesis:
         # ── Agentic upgrade: wrap key harnesses with tool-use + thinking ──
         if cfg.agentic_mode:
             try:
-                from hephaestus.deepforge.agentic import AgenticHarness, AgenticConfig
+                from hephaestus.deepforge.agentic import AgenticConfig, AgenticHarness
 
                 cwd = Path.cwd()
                 # Only upgrade if we're in a repo
@@ -2556,9 +2597,20 @@ class Genesis:
                         "attack": 3,
                         "defend": 3,
                     }
-                    for stage_name in ("search", "translate", "attack", "defend"):
+                    for stage_name in ("search", "translate"):
                         if stage_name in harnesses:
                             standard = harnesses[stage_name]
+                            if not _adapter_supports_tool_use(standard.adapter):
+                                logger.info(
+                                    "Agentic mode: skipping %s because adapter %s lacks tool support",
+                                    stage_name,
+                                    getattr(
+                                        standard.adapter,
+                                        "model_name",
+                                        type(standard.adapter).__name__,
+                                    ),
+                                )
+                                continue
                             stage_rounds = _stage_tool_budgets.get(
                                 stage_name, cfg.agentic_max_tool_rounds
                             )

@@ -10,6 +10,7 @@ using the user's OAuth tokens from ~/.codex/auth.json.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import shutil
@@ -25,7 +26,7 @@ from hephaestus.deepforge.adapters.base import (
     ModelConfig,
     StreamChunk,
 )
-from hephaestus.deepforge.exceptions import AdapterError, AuthenticationError
+from hephaestus.deepforge.exceptions import AdapterError, AuthenticationError, GenerationKilled
 
 logger = logging.getLogger(__name__)
 
@@ -157,13 +158,16 @@ class CodexOAuthAdapter(BaseAdapter):
             )
 
     async def _bridge_call(self, payload: dict[str, Any]) -> dict[str, Any]:
-        proc = await asyncio.create_subprocess_exec(
-            self._node_bin,
-            str(self._bridge),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                self._node_bin,
+                str(self._bridge),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except OSError as exc:
+            raise AdapterError(f"Failed to start Codex OAuth bridge: {exc}") from exc
         data = json.dumps(payload).encode("utf-8")
         try:
             stdout_b, stderr_b = await asyncio.wait_for(
@@ -171,6 +175,8 @@ class CodexOAuthAdapter(BaseAdapter):
             )
         except TimeoutError as exc:
             proc.kill()
+            with contextlib.suppress(ProcessLookupError):
+                await proc.wait()
             raise AdapterError(f"Codex OAuth bridge timed out after {self._timeout}s") from exc
 
         stdout = stdout_b.decode("utf-8", errors="replace").strip()
@@ -319,7 +325,7 @@ class CodexOAuthAdapter(BaseAdapter):
 
     def _reset_cancel(self):
         """Reset cancellation flag from previous call."""
-        self._cancelled = False
+        super()._reset_cancel()
 
     async def generate_stream(
         self,
@@ -331,67 +337,16 @@ class CodexOAuthAdapter(BaseAdapter):
         temperature: float = 1.0,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
-        proc = await asyncio.create_subprocess_exec(
-            self._node_bin,
-            str(self._bridge),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        payload = {
-            "kind": "prompt_stream",
-            "model": self.model_name,
-            "system": system,
-            "prompt": prompt,
-            "prefill": prefill,
-            "max_tokens": max_tokens,
-            "reasoning": kwargs.get("reasoning", self._reasoning),
-            "reasoning_effort": kwargs.get("reasoning_effort", self._reasoning_effort),
-            "reasoning_summary": kwargs.get("reasoning_summary", self._reasoning_summary),
-            "session_id": kwargs.get("session_id"),
-        }
-        assert proc.stdin is not None
-        proc.stdin.write(json.dumps(payload).encode("utf-8"))
-        await proc.stdin.drain()
-        proc.stdin.close()
-
-        accumulated = ""
-        final_result: dict[str, Any] | None = None
-        assert proc.stdout is not None
-        while True:
-            line = await proc.stdout.readline()
-            if not line:
-                break
-            raw = line.decode("utf-8", errors="replace").strip()
-            if not raw:
-                continue
-            try:
-                event = json.loads(raw)
-            except Exception:
-                continue
-            if event.get("type") == "delta":
-                delta = str(event.get("delta", ""))
-                accumulated = str(event.get("accumulated", accumulated + delta))
-                yield StreamChunk(delta=delta, accumulated=accumulated)
-            elif event.get("type") == "final":
-                final_result = dict(event.get("result", {}) or {})
-
-        stderr = ""
-        if proc.stderr is not None:
-            stderr = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
-        rc = await proc.wait()
-        if rc != 0:
-            self._logger.error(
-                "Codex OAuth stream bridge failed | model=%s rc=%s stderr=%s",
-                self.model_name,
-                rc,
-                stderr,
+        self._reset_cancel()
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                self._node_bin,
+                str(self._bridge),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
-            raise AdapterError(f"Codex OAuth stream bridge failed: {stderr or rc}")
-
-        if final_result is None:
-            # fallback to non-streaming if bridge emitted nothing useful
+        except OSError:
             result = await self.generate(
                 prompt,
                 system=system,
@@ -411,17 +366,107 @@ class CodexOAuthAdapter(BaseAdapter):
             )
             return
 
-        final_text = str(final_result.get("text", accumulated))
-        if prefill and final_text.startswith(prefill):
-            final_text = final_text[len(prefill) :]
-        yield StreamChunk(
-            delta="",
-            accumulated=final_text,
-            input_tokens=int(final_result.get("input_tokens", 0) or 0),
-            output_tokens=int(final_result.get("output_tokens", 0) or 0),
-            is_final=True,
-            stop_reason=str(final_result.get("stop_reason", "stop")),
-        )
+        payload = {
+            "kind": "prompt_stream",
+            "model": self.model_name,
+            "system": system,
+            "prompt": prompt,
+            "prefill": prefill,
+            "max_tokens": max_tokens,
+            "reasoning": kwargs.get("reasoning", self._reasoning),
+            "reasoning_effort": kwargs.get("reasoning_effort", self._reasoning_effort),
+            "reasoning_summary": kwargs.get("reasoning_summary", self._reasoning_summary),
+            "session_id": kwargs.get("session_id"),
+        }
+        assert proc.stdin is not None
+        try:
+            proc.stdin.write(json.dumps(payload).encode("utf-8"))
+            await proc.stdin.drain()
+            proc.stdin.close()
+
+            accumulated = ""
+            final_result: dict[str, Any] | None = None
+            assert proc.stdout is not None
+            while True:
+                if self.is_cancelled:
+                    with contextlib.suppress(ProcessLookupError):
+                        proc.kill()
+                    raise GenerationKilled("Codex OAuth stream cancelled", accumulated)
+                try:
+                    line = await asyncio.wait_for(proc.stdout.readline(), timeout=self._timeout)
+                except TimeoutError as exc:
+                    with contextlib.suppress(ProcessLookupError):
+                        proc.kill()
+                    raise AdapterError(
+                        f"Codex OAuth stream stalled for {self._timeout}s"
+                    ) from exc
+                if not line:
+                    break
+                raw = line.decode("utf-8", errors="replace").strip()
+                if not raw:
+                    continue
+                try:
+                    event = json.loads(raw)
+                except Exception:
+                    continue
+                if event.get("type") == "delta":
+                    delta = str(event.get("delta", ""))
+                    accumulated = str(event.get("accumulated", accumulated + delta))
+                    yield StreamChunk(delta=delta, accumulated=accumulated)
+                elif event.get("type") == "final":
+                    final_result = dict(event.get("result", {}) or {})
+
+            stderr = ""
+            if proc.stderr is not None:
+                stderr = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
+            rc = await proc.wait()
+            if rc != 0:
+                self._logger.error(
+                    "Codex OAuth stream bridge failed | model=%s rc=%s stderr=%s",
+                    self.model_name,
+                    rc,
+                    stderr,
+                )
+                raise AdapterError(f"Codex OAuth stream bridge failed: {stderr or rc}")
+
+            if final_result is None:
+                # fallback to non-streaming if bridge emitted nothing useful
+                result = await self.generate(
+                    prompt,
+                    system=system,
+                    prefill=prefill,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    **kwargs,
+                )
+                yield StreamChunk(delta=result.text, accumulated=result.text)
+                yield StreamChunk(
+                    delta="",
+                    accumulated=result.text,
+                    input_tokens=result.input_tokens,
+                    output_tokens=result.output_tokens,
+                    is_final=True,
+                    stop_reason=result.stop_reason,
+                )
+                return
+
+            final_text = str(final_result.get("text", accumulated))
+            if prefill and final_text.startswith(prefill):
+                final_text = final_text[len(prefill) :]
+            yield StreamChunk(
+                delta="",
+                accumulated=final_text,
+                input_tokens=int(final_result.get("input_tokens", 0) or 0),
+                output_tokens=int(final_result.get("output_tokens", 0) or 0),
+                is_final=True,
+                stop_reason=str(final_result.get("stop_reason", "stop")),
+            )
+        finally:
+            if proc.returncode is None:
+                with contextlib.suppress(ProcessLookupError, OSError):
+                    proc.kill()
+                with contextlib.suppress(Exception):
+                    await proc.wait()
 
 
 __all__ = [

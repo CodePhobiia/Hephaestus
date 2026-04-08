@@ -15,7 +15,7 @@ pip install hephaestus-ai
 heph "I need a load balancer that handles unpredictable traffic spikes"
 ```
 
-**Cost:** ~$1.25 per invention. **Time:** ~45 seconds. **Novelty:** Provable.
+**Cost:** varies by backend, depth, and research mode. **Time:** varies by model and workload. **Novelty:** structured and adversarially checked.
 
 ---
 
@@ -39,12 +39,15 @@ Every invention report includes confidence scores for domain distance, structura
 pip install hephaestus-ai
 ```
 
-### Set API keys
+### Set credentials for the backend you actually plan to use
 
 ```bash
-# Both required for default cross-model mode
+# Standard cross-model API mode
 export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...
+
+# Codex OAuth mode uses your ChatGPT/Codex session instead of API keys
+# codex login
 
 # Optional but recommended for grounded research features
 export PERPLEXITY_API_KEY=pplx-...
@@ -74,11 +77,12 @@ heph init
 
 Creates a `.hephaestus/` directory with a `config.yaml` for project-level defaults and an `instructions.md` for domain context that Hephaestus will include in every run.
 
-### Single-model mode (cheaper)
+### Single-model and explicit backend modes
 
 ```bash
 heph --model opus "my problem"       # Claude only
 heph --model gpt5 "my problem"      # OpenAI only
+heph --model codex "my problem"     # Codex OAuth / GPT-5.4 via ChatGPT session
 heph --model claude-max "my problem" # Claude Max (no API key needed)
 ```
 
@@ -167,7 +171,7 @@ Control how far from consensus the engine pushes, with `--intensity`:
 - **Session management** — typed transcripts, session persistence, and compaction with continuation summaries that preserve invention state
 - **Adaptive lens-engine state** — bundle proofs, lineage, fold states, guards, invalidations, recomposition history, and composites
 - **MCP tool integration** — JSON-RPC 2.0 stdio client with multi-server manager and namespaced tool routing
-- **Multiple backends** — Anthropic (Claude), OpenAI (GPT), OpenRouter, Claude Max, and Claude CLI
+- **Multiple backends** — Anthropic (Claude), OpenAI (GPT), Codex OAuth (GPT-5.4), OpenRouter, Claude Max, and Claude CLI
 - **Interactive REPL** — 22+ slash commands with aliases, categories, tab completion, session history, refinement loops, and live cost tracking
 - **Layered configuration** — 5-level precedence: defaults < user (`~/.hephaestus/`) < project < local < environment variables
 - **Prior art search** — automated check against known solutions in both the source and target domains
@@ -263,7 +267,7 @@ ALTERNATIVES:
   2. Mycelium Network Router (score: 0.86, distance: 0.89)
   3. Flocking Murmuration Balancer (score: 0.81, distance: 0.87)
 ───────────────────────────────────────────────────────────────
-Cost: $1.18  |  Models: Claude Opus + GPT  |  45s
+Cost: varies  |  Models: depends on backend  |  runtime varies
 ═══════════════════════════════════════════════════════════════
 ```
 

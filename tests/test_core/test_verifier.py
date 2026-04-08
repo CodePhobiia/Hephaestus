@@ -353,6 +353,7 @@ class TestNoveltyVerifier:
 
         assert len(result) == 1
         assert result[0].novelty_score == 0.3  # fallback score
+        assert result[0].verification_fallback is True
 
     @pytest.mark.asyncio
     async def test_prior_art_check_graceful_fallback(self):

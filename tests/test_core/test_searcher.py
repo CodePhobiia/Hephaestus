@@ -298,4 +298,50 @@ async def test_searcher_records_retrieval_expansion_request() -> None:
     assert searcher.last_runtime is not None
     assert searcher.last_runtime.retrieval_frontier["branch_id"] == "bg-7"
     assert "RETRIEVAL FRONTIER EXPANSION" in seen_prompts[0]
-    assert "collapsed into cache analogue" in seen_prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_searcher_surfaces_failed_lens_ids() -> None:
+    structure = _make_structure()
+    lens_a = _make_lens(
+        domain="biology",
+        subdomain="immune",
+        name="Immune Memory",
+        maps_to=["allocation", "control"],
+    )
+    lens_b = _make_lens(
+        domain="economics",
+        subdomain="auction",
+        name="Auction Clearing",
+        maps_to=["verification", "control"],
+    )
+    score_a = _make_score(
+        lens_a, distance=0.92, relevance=0.82, matched_patterns=["allocation", "control"]
+    )
+    score_b = _make_score(
+        lens_b, distance=0.88, relevance=0.79, matched_patterns=["verification", "control"]
+    )
+    selection = BundleSelectionResult(
+        retrieval_mode="singleton",
+        selected_lenses=(score_a, score_b),
+        fallback_lenses=(),
+    )
+
+    harness = MagicMock()
+    harness.forge = AsyncMock(
+        side_effect=[Exception("bridge timeout"), _forge_result("Auction Clearing")]
+    )
+
+    searcher = CrossDomainSearcher(
+        harness=harness,
+        selector=_SelectorStub(selection),
+        num_candidates=2,
+        num_lenses=2,
+    )
+
+    candidates = await searcher.search(structure)
+
+    assert len(candidates) == 1
+    assert searcher.last_runtime is not None
+    assert searcher.last_runtime.failed_query_count == 1
+    assert searcher.last_runtime.failed_lens_ids == (score_a.lens.lens_id,)

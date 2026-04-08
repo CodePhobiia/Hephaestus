@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -37,6 +37,7 @@ def _make_store() -> MagicMock:
     store.list_runs = AsyncMock(return_value=[])
     store.update_stage = AsyncMock()
     store.complete = AsyncMock()
+    store.touch = AsyncMock()
     store.fail = AsyncMock()
     store.cancel = AsyncMock(return_value=True)
     store.cleanup_stale = AsyncMock(return_value=0)
@@ -101,7 +102,7 @@ class TestExecute:
         async def pipeline(rec: RunRecord, cancel: asyncio.Event) -> str | None:
             return "result-ref"
 
-        result = await orch.execute("run-1", pipeline)
+        await orch.execute("run-1", pipeline)
         store.complete.assert_awaited_once()
         await orch.stop()
 
@@ -115,8 +116,9 @@ class TestExecute:
         async def bad_pipeline(rec: RunRecord, cancel: asyncio.Event) -> str | None:
             raise RuntimeError("boom")
 
-        result = await orch.execute("run-2", bad_pipeline)
+        await orch.execute("run-2", bad_pipeline)
         store.fail.assert_awaited()
+        assert store.fail.await_args.kwargs["source"] == "pipeline"
         await orch.stop()
 
     async def test_execute_returns_none_for_missing_run(self) -> None:
@@ -131,6 +133,37 @@ class TestExecute:
         result = await orch.execute("nonexistent", pipeline)
         assert result is None
         await orch.stop()
+
+    async def test_execute_heartbeats_while_pipeline_runs(self) -> None:
+        store = _make_store()
+        record = _make_record(run_id="run-heartbeat")
+        record.status = RunStatus.RUNNING
+        store.get = AsyncMock(side_effect=lambda run_id: record)
+        orch = RunOrchestrator(
+            store,
+            config=OrchestratorConfig(heartbeat_interval_seconds=0.01),
+        )
+        await orch.start()
+
+        async def pipeline(rec: RunRecord, cancel: asyncio.Event) -> str | None:
+            await asyncio.sleep(0.03)
+            return "result-ref"
+
+        await orch.execute("run-heartbeat", pipeline)
+
+        assert store.touch.await_count >= 1
+        await orch.stop()
+
+    async def test_timeout_resolution_expands_for_long_running_configs(self) -> None:
+        record = _make_record(
+            config_snapshot={
+                "depth": 3,
+                "use_pantheon_mode": True,
+                "agentic_mode": True,
+                "olympus_enabled": True,
+            }
+        )
+        assert RunOrchestrator._timeout_seconds_for_record(record) == 3600
 
 
 @pytest.mark.asyncio
@@ -166,6 +199,6 @@ class TestCancelRun:
         orch = RunOrchestrator(store)
         await orch.start()
 
-        result = await orch.cancel_run("run-1")
+        await orch.cancel_run("run-1")
         store.cancel.assert_awaited_once_with("run-1")
         await orch.stop()

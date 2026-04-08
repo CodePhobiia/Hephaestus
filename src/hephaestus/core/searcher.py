@@ -31,7 +31,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from hephaestus.core.json_utils import loads_lenient
+from hephaestus.core.json_utils import extract_outermost_json_object, loads_lenient
+from hephaestus.core.parallel import ParallelConfig, gather_with_semaphore
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.cards import compile_lens_card
 from hephaestus.lenses.cells import build_reference_state
@@ -41,6 +42,11 @@ from hephaestus.lenses.loader import Lens, LensLoader
 from hephaestus.lenses.selector import LensScore, LensSelector
 
 logger = logging.getLogger(__name__)
+
+
+def _timeout_seconds(harness: Any) -> float:
+    value = getattr(getattr(harness, "config", None), "timeout_seconds", 0.0)
+    return float(value) if isinstance(value, (int, float)) else 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +213,8 @@ class SearchRuntimeResult:
     candidates: list[SearchCandidate] = field(default_factory=list)
     fallback_used: bool = False
     retrieval_frontier: dict[str, Any] = field(default_factory=dict)
+    failed_lens_ids: tuple[str, ...] = ()
+    failed_query_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -218,6 +226,8 @@ class SearchRuntimeResult:
             "exclusion_snapshot": dict(self.exclusion_snapshot),
             "fallback_used": self.fallback_used,
             "retrieval_frontier": dict(self.retrieval_frontier),
+            "failed_lens_ids": list(self.failed_lens_ids),
+            "failed_query_count": self.failed_query_count,
             "candidate_count": len(self.candidates),
         }
 
@@ -361,8 +371,6 @@ class CrossDomainSearcher:
         )
 
         # Step 1: query the primary bundle or singleton set.
-        import asyncio
-
         tasks = [
             self._query_lens(
                 structure,
@@ -375,27 +383,37 @@ class CrossDomainSearcher:
             )
             for index, lens_score in enumerate(selection.selected_lenses)
         ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await gather_with_semaphore(
+            tasks,
+            ParallelConfig(
+                max_concurrent=min(4, len(tasks)),
+                timeout_per_task=_timeout_seconds(self._harness),
+            ),
+        )
 
         # Step 2: collect successful candidates from the primary plan.
         candidates: list[SearchCandidate] = []
+        failed_lens_ids: list[str] = []
         for ls, result in zip(selection.selected_lenses, results, strict=True):
-            if isinstance(result, Exception):
+            if not result.success:
                 logger.warning(
                     "Lens %s search failed: %s",
                     ls.lens.lens_id,
-                    result,
+                    result.error,
                 )
+                failed_lens_ids.append(ls.lens.lens_id)
                 continue
-            if result is None:
+            candidate_result = result.value
+            if candidate_result is None:
+                failed_lens_ids.append(ls.lens.lens_id)
                 continue
-            if result.confidence >= self._min_confidence:
-                candidates.append(result)
+            if candidate_result.confidence >= self._min_confidence:
+                candidates.append(candidate_result)
             else:
                 logger.debug(
                     "Candidate from %s below confidence threshold (%.2f < %.2f)",
                     ls.lens.lens_id,
-                    result.confidence,
+                    candidate_result.confidence,
                     self._min_confidence,
                 )
 
@@ -418,15 +436,22 @@ class CrossDomainSearcher:
                 )
                 for lens_score in selection.fallback_lenses[:needed]
             ]
-            fallback_results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+            fallback_results = await gather_with_semaphore(
+                fallback_tasks,
+                ParallelConfig(
+                    max_concurrent=min(4, len(fallback_tasks)),
+                    timeout_per_task=_timeout_seconds(self._harness),
+                ),
+            )
             fallback_used = True
             for _ls, result in zip(
                 selection.fallback_lenses[:needed], fallback_results, strict=True
             ):
-                if isinstance(result, Exception) or result is None:
+                if not result.success or result.value is None:
+                    failed_lens_ids.append(_ls.lens.lens_id)
                     continue
-                if result.confidence >= self._min_confidence:
-                    candidates.append(result)
+                if result.value.confidence >= self._min_confidence:
+                    candidates.append(result.value)
 
         # Sort bundle-backed candidates ahead of singleton fallbacks.
         candidates.sort(
@@ -447,6 +472,8 @@ class CrossDomainSearcher:
         if self._last_runtime is not None:
             self._last_runtime.candidates = list(candidates)
             self._last_runtime.fallback_used = fallback_used
+            self._last_runtime.failed_lens_ids = tuple(sorted(set(failed_lens_ids)))
+            self._last_runtime.failed_query_count = len(failed_lens_ids)
         logger.info(
             "Search complete | candidates=%d duration=%.1fs total_cost=$%.4f fallback_used=%s",
             len(candidates),
@@ -556,7 +583,7 @@ class CrossDomainSearcher:
             result = await self._harness.forge(
                 prompt,
                 system=_SEARCH_SYSTEM,
-                max_tokens=16000,
+                max_tokens=self._harness.config.max_tokens,
                 temperature=0.5,
             )
             raw = result.output
@@ -687,11 +714,11 @@ class CrossDomainSearcher:
             cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
             cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
-        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not json_match:
+        json_blob = extract_outermost_json_object(cleaned)
+        if json_blob is None:
             raise ValueError(f"No JSON found in model output: {raw[:200]}")
 
-        data = loads_lenient(json_match.group(), default=None, label="searcher")
+        data = loads_lenient(json_blob, default=None, label="searcher")
         if data is None:
             raise ValueError(f"JSON parse failure in candidate: {raw[:200]}")
 

@@ -5,9 +5,10 @@ When ``use_claude_max`` is active, all stages use the same model.
 Cross-model asymmetry activates when API keys for multiple providers
 are configured.
 
-Currently all stages default to ``gpt-5.4`` via Codex OAuth.
-The CROSS_MODEL_DEFAULTS dict defines the *interface* for future
-multi-model runs when multiple providers are available.
+The default staged mapping remains the classic cross-model split
+(``Claude + GPT``) unless the caller explicitly selects Codex OAuth.
+The CROSS_MODEL_DEFAULTS dict defines the default stage interface for
+library, web, and ``from_env()`` callers.
 
 Usage::
 
@@ -29,16 +30,6 @@ if TYPE_CHECKING:
 # Every CLI flag / SDK option / config default must reference these dicts
 # rather than hardcoding model names.
 # ---------------------------------------------------------------------------
-
-# Default repo-wide stage mapping.
-CROSS_MODEL_DEFAULTS: dict[str, str] = {
-    "decompose": "gpt-5.4",
-    "search": "gpt-5.4",
-    "score": "gpt-5.4",
-    "translate": "gpt-5.4",
-    "attack": "gpt-5.4",
-    "defend": "gpt-5.4",
-}
 
 # Named presets for CLI --model flag / SDK model= parameter
 MODEL_PRESETS: dict[str, dict[str, str]] = {
@@ -89,6 +80,11 @@ MODEL_PRESETS: dict[str, dict[str, str]] = {
         "hephaestus": "qwen/qwen3.6-plus:free",
     },
 }
+
+# Default repo-wide stage mapping.
+# Keep this as a copy of the standard cross-model preset so callers do not
+# silently route into Codex OAuth unless they requested it explicitly.
+CROSS_MODEL_DEFAULTS: dict[str, str] = dict(MODEL_PRESETS["both"])
 
 # The default model for interactive / REPL mode
 DEFAULT_MODEL: str = CROSS_MODEL_DEFAULTS["decompose"]

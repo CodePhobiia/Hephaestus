@@ -311,7 +311,7 @@ class AntiTrainingPressure:
                 self._threshold,
             )
 
-            if min_dist >= (1.0 - self._threshold):
+            if min_dist >= self._threshold:
                 # Output is structurally distinct from all blocked paths
                 trace.final_output = result.text
                 trace.success = True
@@ -396,7 +396,7 @@ class AntiTrainingPressure:
         np = _get_numpy()
         sim = float(np.dot(emb_a, emb_b))
         distance = 1.0 - sim
-        return distance >= (1.0 - self._threshold), distance
+        return distance >= self._threshold, distance
 
     # ------------------------------------------------------------------
     # Prohibition construction

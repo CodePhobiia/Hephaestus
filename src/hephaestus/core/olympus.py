@@ -183,6 +183,9 @@ async def build_olympus(
     if not _is_repo(root):
         logger.info("Olympus: not a repo at %s, skipping", root)
         return None
+    if not callable(getattr(adapter, "generate_with_tools", None)):
+        logger.info("Olympus: adapter %s does not support tool use, skipping", adapter)
+        return None
 
     # ── Step 2: Check cache ──────────────────────────────────────────────
     fingerprint = _compute_fingerprint(problem, root)
@@ -209,8 +212,8 @@ async def build_olympus(
             pass  # Cache miss, rebuild
 
     # ── Step 3: Agentic exploration ──────────────────────────────────────
-    from hephaestus.deepforge.agentic import RepoToolExecutor, AGENTIC_TOOLS
     from hephaestus.deepforge.adapters.base import ModelCapability
+    from hephaestus.deepforge.agentic import AGENTIC_TOOLS, RepoToolExecutor
 
     executor = RepoToolExecutor(root)
     tools = [
@@ -288,7 +291,12 @@ async def build_olympus(
                 "tool_use_id": tc.id,
                 "content": result_text[:15000],  # Cap individual results
             })
-            logger.debug("Olympus tool: %s(%s) → %d chars", tc.name, tc.input.get("path", tc.input.get("query", "")), len(result_text))
+            logger.debug(
+                "Olympus tool: %s(%s) → %d chars",
+                tc.name,
+                tc.input.get("path", tc.input.get("query", "")),
+                len(result_text),
+            )
 
         messages.append({"role": "user", "content": tool_results})
 
@@ -355,13 +363,13 @@ def _is_repo(root: Path) -> bool:
 
 
 def _compute_fingerprint(problem: str, root: Path) -> str:
-    """Fingerprint = hash(problem + git HEAD). Changes when either changes."""
+    """Fingerprint = hash(problem + git HEAD + dirty state)."""
     import subprocess
 
     digest = hashlib.sha256()
     digest.update(problem.encode("utf-8"))
 
-    # Use git HEAD as repo state signal
+    # Use git HEAD plus dirty state as the repo state signal.
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -369,6 +377,16 @@ def _compute_fingerprint(problem: str, root: Path) -> str:
         )
         if result.returncode == 0:
             digest.update(result.stdout.strip().encode("utf-8"))
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if status.returncode == 0:
+            digest.update(status.stdout.strip().encode("utf-8"))
     except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
         pass
 

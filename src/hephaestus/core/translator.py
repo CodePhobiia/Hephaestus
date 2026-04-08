@@ -35,7 +35,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hephaestus.core.decomposer import ProblemStructure
-from hephaestus.core.json_utils import loads_lenient
+from hephaestus.core.json_utils import extract_outermost_json_object, loads_lenient
+from hephaestus.core.parallel import ParallelConfig, gather_with_semaphore
 from hephaestus.core.scorer import ScoredCandidate
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace, HarnessConfig
 from hephaestus.deepforge.interference import InjectionStrategy
@@ -45,6 +46,16 @@ from hephaestus.lenses.cells import build_reference_state
 from hephaestus.lenses.guards import evaluate_handoff_guards
 
 logger = logging.getLogger(__name__)
+
+
+def _timeout_seconds(harness: Any) -> float:
+    value = getattr(getattr(harness, "config", None), "timeout_seconds", 0.0)
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
+def _pressure_enabled(harness: Any) -> bool:
+    value = getattr(getattr(harness, "config", None), "use_pressure", False)
+    return value if isinstance(value, bool) else False
 
 
 # ---------------------------------------------------------------------------
@@ -435,25 +446,29 @@ class SolutionTranslator:
             )
             return translations
 
-        import asyncio
-
         tasks = [
             self._translate_candidate(candidate, structure, guidance=guidance)
             for candidate in candidates
         ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await gather_with_semaphore(
+            tasks,
+            ParallelConfig(
+                max_concurrent=min(3, len(tasks)),
+                timeout_per_task=_timeout_seconds(self._harness),
+            ),
+        )
 
         translations: list[Translation] = []
         for candidate, result in zip(candidates, results, strict=True):
-            if isinstance(result, Exception):
+            if not result.success:
                 logger.warning(
                     "Translation failed for %s: %s",
                     candidate.source_domain,
-                    result,
+                    result.error,
                 )
                 continue
-            if result is not None:
-                translations.append(result)
+            if result.value is not None:
+                translations.append(result.value)
 
         # Sort by branch-aware rank when present, otherwise by combined score.
         translations.sort(
@@ -698,10 +713,10 @@ class SolutionTranslator:
             lenses=[forge_lens],
             use_interference=True,
             use_pruner=False,  # Pruner not needed for translation
-            use_pressure=self._harness.config.use_pressure,
+            use_pressure=_pressure_enabled(self._harness),
             max_pressure_rounds=self._harness.config.max_pressure_rounds,
             injection_strategy=InjectionStrategy.FULL,
-            max_tokens=16000,
+            max_tokens=self._harness.config.max_tokens,
             temperature=0.7,  # Higher temperature for creative translation
         )
 
@@ -797,7 +812,7 @@ class SolutionTranslator:
         result = await interference_harness.forge(
             prompt,
             system=translate_system,
-            max_tokens=16000,
+            max_tokens=config.max_tokens,
             temperature=0.7,
         )
 
@@ -841,11 +856,11 @@ class SolutionTranslator:
         result = await self._harness.forge(
             prompt,
             system=system,
-            max_tokens=16000,
+            max_tokens=self._harness.config.max_tokens,
             temperature=0.7,
         )
         parsed_raw = result.output
-        if getattr(self._harness.config, "use_pressure", False):
+        if _pressure_enabled(self._harness):
             parsed_raw = await self._deterministic_schema_pass(parsed_raw, system_override=system)
 
         parsed = self.parse_translation(parsed_raw)
@@ -960,7 +975,10 @@ class SolutionTranslator:
         )
         sys_prompt = system_override if system_override is not None else _TRANSLATE_SYSTEM
         result = await self._harness.adapter.generate(
-            prompt, system=sys_prompt, max_tokens=16000, temperature=0.0
+            prompt,
+            system=sys_prompt,
+            max_tokens=self._harness.config.max_tokens,
+            temperature=0.0,
         )
         return result.text
 
@@ -1076,13 +1094,13 @@ class SolutionTranslator:
             cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
             cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
-        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not json_match:
+        json_blob = extract_outermost_json_object(cleaned)
+        if json_blob is None:
             raise TranslationError(
                 f"No parseable JSON in model output (first 300 chars): {raw[:300]}"
             )
 
-        data = loads_lenient(json_match.group(), default=None, label="translator")
+        data = loads_lenient(json_blob, default=None, label="translator")
         if data is None or not isinstance(data, dict):
             raise TranslationError(
                 f"JSON parse failed on model output (first 300 chars): {raw[:300]}"

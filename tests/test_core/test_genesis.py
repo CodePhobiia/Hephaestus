@@ -477,6 +477,48 @@ class TestGenesis:
         assert harnesses["pantheon_athena"].adapter is adapters["gpt-4o"]
         assert harnesses["pantheon_hermes"].adapter is adapters["claude-opus-4-5"]
         assert harnesses["pantheon_apollo"].adapter is adapters["gpt-4o-mini"]
+        assert harnesses["attack"].config.use_pruner is False
+        assert harnesses["attack"].config.use_pressure is False
+        assert harnesses["defend"].config.use_pruner is False
+        assert harnesses["defend"].config.use_pressure is False
+        assert harnesses["pantheon_athena"].config.use_pruner is False
+        assert harnesses["pantheon_athena"].config.use_pressure is False
+        assert harnesses["pantheon_hermes"].config.use_interference is False
+        assert harnesses["pantheon_apollo"].config.use_pruner is False
+        assert harnesses["pantheon_apollo"].config.use_pressure is False
+
+    def test_build_harnesses_only_wraps_search_and_translate_in_agentic_mode(self):
+        config = self._make_config()
+        adapters = {
+            config.decompose_model: MagicMock(name="decompose"),
+            config.search_model: MagicMock(name="search"),
+            config.score_model: MagicMock(name="score"),
+            config.translate_model: MagicMock(name="translate"),
+            config.attack_model: MagicMock(name="attack"),
+            config.defend_model: MagicMock(name="defend"),
+        }
+
+        class _HarnessStub:
+            def __init__(self, adapter, config):
+                self.adapter = adapter
+                self.config = config
+
+        class _AgenticHarnessStub:
+            def __init__(self, adapter, harness_config, agentic_config):
+                self.adapter = adapter
+                self.config = harness_config
+                self.agentic_config = agentic_config
+
+        with (
+            patch("hephaestus.deepforge.harness.DeepForgeHarness", _HarnessStub),
+            patch("hephaestus.deepforge.agentic.AgenticHarness", _AgenticHarnessStub),
+        ):
+            harnesses = Genesis._build_harnesses(config, adapters)
+
+        assert isinstance(harnesses["search"], _AgenticHarnessStub)
+        assert isinstance(harnesses["translate"], _AgenticHarnessStub)
+        assert isinstance(harnesses["attack"], _HarnessStub)
+        assert isinstance(harnesses["defend"], _HarnessStub)
 
     @pytest.mark.asyncio
     async def test_decomposition_failure_yields_failed(self):
@@ -750,6 +792,71 @@ class TestGenesis:
         stages = [u.stage for u in updates]
         assert PipelineStage.FAILED in stages
 
+    @pytest.mark.asyncio
+    async def test_all_verification_fallbacks_fail_pipeline(self):
+        genesis = Genesis(self._make_config())
+        mocks = self._mock_all_stages()
+        degraded = _make_verified_invention()
+        degraded.verification_fallback = True
+        mocks["verifier"].verify = AsyncMock(return_value=[degraded])
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mocks["decomposer"]),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mocks["searcher"]),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mocks["scorer"]),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=mocks["translator"]),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mocks["verifier"]),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
+            genesis._adapters = {}
+
+            updates = []
+            async for update in genesis.invent_stream("test"):
+                updates.append(update)
+
+        assert updates[-1].stage == PipelineStage.FAILED
+        assert "Verification degraded completely" in updates[-1].message
+
+    @pytest.mark.asyncio
+    async def test_report_surfaces_pantheon_degradation(self):
+        config = self._make_config()
+        config.use_pantheon_mode = True
+        genesis = Genesis(config)
+        mocks = self._mock_all_stages()
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mocks["decomposer"]),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mocks["searcher"]),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mocks["scorer"]),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=mocks["translator"]),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mocks["verifier"]),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+            patch("hephaestus.pantheon.PantheonCoordinator", side_effect=RuntimeError("pantheon down")),
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
+            genesis._adapters = {}
+
+            report = await genesis.invent("test problem")
+
+        assert report.pantheon_requested is True
+        assert report.pantheon_degraded is True
+        assert any("prepare_pipeline" in reason for reason in report.pantheon_degradation_reasons)
+
     def test_genesis_config_defaults(self):
         config = GenesisConfig()
         assert config.num_translations == 3
@@ -772,6 +879,44 @@ class TestGenesis:
         assert genesis is not None
         assert genesis._config.anthropic_api_key == "test-anthropic"
         assert genesis._config.openai_api_key == "test-openai"
+        assert genesis._config.use_codex_cli is False
+
+    @pytest.mark.asyncio
+    async def test_invent_passes_v2_system_prompt_to_decomposer(self):
+        config = self._make_config()
+        config.olympus_enabled = False
+        config.transliminality_enabled = False
+        config.use_pantheon_mode = False
+        genesis = Genesis(config)
+        mocks = self._mock_all_stages()
+
+        with (
+            patch("hephaestus.core.genesis.ProblemDecomposer", return_value=mocks["decomposer"]),
+            patch("hephaestus.core.genesis.CrossDomainSearcher", return_value=mocks["searcher"]),
+            patch("hephaestus.core.genesis.CandidateScorer", return_value=mocks["scorer"]),
+            patch("hephaestus.core.genesis.SolutionTranslator", return_value=mocks["translator"]),
+            patch("hephaestus.core.genesis.NoveltyVerifier", return_value=mocks["verifier"]),
+            patch("hephaestus.prompts.system_prompt.build_system_prompt", return_value="V2 SYSTEM"),
+            patch("hephaestus.core.burn_off.BurnOff.generate_baselines", new=AsyncMock(return_value=[])),
+            patch(
+                "hephaestus.deepforge.crutch_filter.CrutchFilter.get_negative_constraint_for_claude",
+                return_value="",
+            ),
+            patch("hephaestus.core.genesis.AnthropicAdapter"),
+            patch("hephaestus.core.genesis.OpenAIAdapter"),
+            patch("hephaestus.core.genesis.LensLoader"),
+            patch("hephaestus.core.genesis.LensSelector"),
+        ):
+            genesis._stages_built = True
+            genesis._harnesses = {
+                k: MagicMock()
+                for k in ["decompose", "search", "score", "translate", "attack", "defend"]
+            }
+            genesis._adapters = {}
+
+            await genesis.invent("test")
+
+        assert "V2 SYSTEM" in mocks["decomposer"].decompose.await_args.kwargs["system"]
 
     @pytest.mark.asyncio
     async def test_genesis_retries_singleton_fallback_when_bundle_translation_returns_empty(self):

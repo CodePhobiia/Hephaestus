@@ -35,13 +35,19 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hephaestus.core.decomposer import ProblemStructure
-from hephaestus.core.json_utils import loads_lenient
+from hephaestus.core.json_utils import extract_outermost_json_object, loads_lenient
+from hephaestus.core.parallel import ParallelConfig, gather_with_semaphore
 from hephaestus.core.translator import Translation
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 from hephaestus.lenses.cells import build_reference_state
 from hephaestus.session.deliberation import DeliberationGraph
 
 logger = logging.getLogger(__name__)
+
+
+def _timeout_seconds(harness: Any) -> float:
+    value = getattr(getattr(harness, "config", None), "timeout_seconds", 0.0)
+    return float(value) if isinstance(value, (int, float)) else 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +263,7 @@ class VerifiedInvention:
     verification_cost_usd: float = 0.0
     verification_duration_seconds: float = 0.0
     trace: ForgeTrace | None = None
+    verification_fallback: bool = False
 
     @property
     def source_domain(self) -> str:
@@ -392,27 +399,34 @@ class NoveltyVerifier:
         logger.info("Verifying %d translations", len(translations))
         t_start = time.monotonic()
 
-        import asyncio
-
         tasks = [
             self._verify_translation(t, structure, deliberation_graph=deliberation_graph)
             for t in translations
         ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await gather_with_semaphore(
+            tasks,
+            ParallelConfig(
+                max_concurrent=min(3, len(tasks)),
+                timeout_per_task=max(
+                    _timeout_seconds(self._attack_harness),
+                    _timeout_seconds(self._defend_harness),
+                ),
+            ),
+        )
 
         inventions: list[VerifiedInvention] = []
         for translation, result in zip(translations, results, strict=True):
-            if isinstance(result, Exception):
+            if not result.success:
                 logger.warning(
                     "Verification failed for %s: %s",
                     translation.invention_name,
-                    result,
+                    result.error,
                 )
                 # Include with low scores rather than dropping entirely
                 inventions.append(self._make_fallback_verified(translation))
             else:
-                if result is not None:
-                    inventions.append(result)
+                if result.value is not None:
+                    inventions.append(result.value)
 
         # Sort by novelty_score descending
         inventions.sort(key=lambda v: v.novelty_score, reverse=True)
@@ -821,7 +835,7 @@ class NoveltyVerifier:
         result = await self._attack_harness.forge(
             prompt,
             system=attack_system,
-            max_tokens=16000,
+            max_tokens=self._attack_harness.config.max_tokens,
             temperature=0.4,
         )
 
@@ -867,7 +881,7 @@ class NoveltyVerifier:
         result = await self._defend_harness.forge(
             prompt,
             system=validity_system,
-            max_tokens=16000,
+            max_tokens=self._defend_harness.config.max_tokens,
             temperature=0.3,
         )
 
@@ -1275,12 +1289,12 @@ class NoveltyVerifier:
             cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, count=1)
             cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
-        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not json_match:
+        json_blob = extract_outermost_json_object(cleaned)
+        if json_blob is None:
             logger.warning("No JSON found in verifier response, using defaults")
             return dict(default)
 
-        return loads_lenient(json_match.group(), default=dict(default), label=f"verifier.{label}")
+        return loads_lenient(json_blob, default=dict(default), label=f"verifier.{label}")
 
     def _make_fallback_verified(self, translation: Translation) -> VerifiedInvention:
         """Create a low-confidence VerifiedInvention when verification errors out."""
@@ -1302,4 +1316,5 @@ class NoveltyVerifier:
             adversarial_result=fallback_attack,
             prior_art_status="SEARCH_UNAVAILABLE",
             verification_notes="Verification failed; fallback scores applied",
+            verification_fallback=True,
         )

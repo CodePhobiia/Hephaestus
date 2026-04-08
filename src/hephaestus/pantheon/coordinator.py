@@ -361,7 +361,7 @@ class PantheonCoordinator:
                 harness.forge(prompt, system=system),
                 timeout=pantheon_timeout,
             )
-        except _asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise TimeoutError(
                 f"Pantheon {agent} timed out after {pantheon_timeout:.0f}s during _forge_json"
             ) from exc
@@ -1700,6 +1700,12 @@ class PantheonCoordinator:
                         best_score = score
                 if best_match is not None and best_score >= 0.7:
                     result.append(best_match)
+                elif len(all_targeted_set) == 1:
+                    # Some model/tooling paths return ephemeral branch-local IDs
+                    # instead of ledger-canonical objection IDs. When a repair
+                    # branch only targeted a single objection, preserve the
+                    # discharge signal by binding that alias to the sole target.
+                    result.append(next(iter(all_targeted_set)))
                 else:
                     logger.debug(
                         "Reforge returned unrecognized objection ID %r (no canonical match >= 0.7)",
@@ -2391,6 +2397,7 @@ class PantheonCoordinator:
         if not verified_inventions:
             state.final_verdict = "NO_OUTPUT"
             state.consensus_achieved = False
+            state.consensus_without_verification = False
             state.outcome_tier = "FAIL_CLOSED_REJECTION"
             state.verifier_overrode_council = bool(state.winning_candidate_id)
             if state.winning_candidate_id:
@@ -2440,6 +2447,7 @@ class PantheonCoordinator:
         state.final_verdict = str(getattr(top, "verdict", "UNKNOWN"))
         if getattr(top, "verdict", "UNKNOWN") == "INVALID":
             state.consensus_achieved = False
+            state.consensus_without_verification = False
             state.outcome_tier = "FAIL_CLOSED_REJECTION"
             state.resolution = "verifier_rejected_consensus"
             state.failure_reason = (

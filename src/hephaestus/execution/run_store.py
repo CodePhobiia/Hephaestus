@@ -45,7 +45,13 @@ class RunStore(ABC):
         """Mark a run as completed."""
 
     @abstractmethod
-    async def fail(self, run_id: str, *, error: str, stage: str = "") -> None:
+    async def touch(self, run_id: str, *, stage: str | None = None) -> None:
+        """Refresh a run heartbeat without appending a stage-history entry."""
+
+    @abstractmethod
+    async def fail(
+        self, run_id: str, *, error: str, stage: str = "", source: str | None = None
+    ) -> None:
         """Mark a run as failed."""
 
     @abstractmethod
@@ -110,6 +116,7 @@ CREATE TABLE IF NOT EXISTS heph_runs (
     token_count     INTEGER NOT NULL DEFAULT 0,
     error           TEXT,
     error_stage     TEXT,
+    error_source    TEXT,
     correlation_id  TEXT NOT NULL DEFAULT '',
     user_id         TEXT,
     tenant_id       TEXT
@@ -141,6 +148,9 @@ class PostgresRunStore(RunStore):
         self._pool = await asyncpg.create_pool(self._dsn, min_size=2, max_size=10)
         async with self._pool.acquire() as conn:
             await conn.execute(_PG_SCHEMA)
+            await conn.execute(
+                "ALTER TABLE heph_runs ADD COLUMN IF NOT EXISTS error_source TEXT"
+            )
         logger.info("PostgresRunStore initialized")
 
     async def create(self, record: RunRecord) -> RunRecord:
@@ -226,7 +236,9 @@ class PostgresRunStore(RunStore):
                 cost_usd,
             )
 
-    async def fail(self, run_id: str, *, error: str, stage: str = "") -> None:
+    async def fail(
+        self, run_id: str, *, error: str, stage: str = "", source: str | None = None
+    ) -> None:
         assert self._pool is not None
         now = datetime.now(UTC)
         async with self._pool.acquire() as conn:
@@ -234,12 +246,29 @@ class PostgresRunStore(RunStore):
                 """
                 UPDATE heph_runs
                 SET status = 'failed', completed_at = $2, updated_at = $2,
-                    error = $3, error_stage = $4
+                    error = $3, error_stage = $4, error_source = $5
                 WHERE run_id = $1
                 """,
                 run_id,
                 now,
                 error,
+                stage,
+                source,
+            )
+
+    async def touch(self, run_id: str, *, stage: str | None = None) -> None:
+        assert self._pool is not None
+        now = datetime.now(UTC)
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE heph_runs
+                SET updated_at = $2,
+                    current_stage = COALESCE($3, current_stage)
+                WHERE run_id = $1 AND status = 'running'
+                """,
+                run_id,
+                now,
                 stage,
             )
 
@@ -318,7 +347,10 @@ class PostgresRunStore(RunStore):
             result = await conn.execute(
                 """
                 UPDATE heph_runs
-                SET status = 'failed', error = 'Stale run cleaned up', updated_at = NOW()
+                SET status = 'failed',
+                    error = 'Stale run cleaned up',
+                    completed_at = NOW(),
+                    updated_at = NOW()
                 WHERE status = 'running'
                   AND EXTRACT(EPOCH FROM updated_at) < $1
                 """,
@@ -392,6 +424,7 @@ class PostgresRunStore(RunStore):
             token_count=int(row["token_count"]),
             error=row["error"],
             error_stage=row["error_stage"],
+            error_source=row["error_source"],
             correlation_id=row["correlation_id"],
             user_id=row["user_id"],
             tenant_id=row["tenant_id"],
@@ -421,6 +454,7 @@ CREATE TABLE IF NOT EXISTS heph_runs (
     token_count     INTEGER NOT NULL DEFAULT 0,
     error           TEXT,
     error_stage     TEXT,
+    error_source    TEXT,
     correlation_id  TEXT NOT NULL DEFAULT '',
     user_id         TEXT,
     tenant_id       TEXT
@@ -445,6 +479,7 @@ class SQLiteRunStore(RunStore):
         self._db = await aiosqlite.connect(self._db_path)
         self._db.row_factory = aiosqlite.Row
         await self._db.executescript(_SQLITE_SCHEMA)
+        await self._ensure_sqlite_columns()
         await self._db.commit()
         logger.info("SQLiteRunStore initialized at %s", self._db_path)
 
@@ -521,16 +556,36 @@ class SQLiteRunStore(RunStore):
         )
         await self._db.commit()
 
-    async def fail(self, run_id: str, *, error: str, stage: str = "") -> None:
+    async def touch(self, run_id: str, *, stage: str | None = None) -> None:
         assert self._db is not None
         now = datetime.now(UTC).isoformat()
         await self._db.execute(
             """
             UPDATE heph_runs
-            SET status = 'failed', completed_at = ?, updated_at = ?, error = ?, error_stage = ?
+            SET updated_at = ?, current_stage = COALESCE(?, current_stage)
+            WHERE run_id = ? AND status = 'running'
+            """,
+            (now, stage, run_id),
+        )
+        await self._db.commit()
+
+    async def fail(
+        self, run_id: str, *, error: str, stage: str = "", source: str | None = None
+    ) -> None:
+        assert self._db is not None
+        now = datetime.now(UTC).isoformat()
+        await self._db.execute(
+            """
+            UPDATE heph_runs
+            SET status = 'failed',
+                completed_at = ?,
+                updated_at = ?,
+                error = ?,
+                error_stage = ?,
+                error_source = ?
             WHERE run_id = ?
             """,
-            (now, now, error, stage, run_id),
+            (now, now, error, stage, source, run_id),
         )
         await self._db.commit()
 
@@ -583,28 +638,33 @@ class SQLiteRunStore(RunStore):
 
     async def find_duplicate(self, dedup_key: str, *, ttl_seconds: int = 300) -> RunRecord | None:
         assert self._db is not None
+        cutoff = datetime.now(UTC).timestamp() - ttl_seconds
         cursor = await self._db.execute(
             """
             SELECT * FROM heph_runs
             WHERE dedup_key = ?
               AND status IN ('queued', 'running', 'completed')
+              AND CAST(strftime('%s', created_at) AS REAL) > ?
             ORDER BY created_at DESC LIMIT 1
             """,
-            (dedup_key,),
+            (dedup_key, cutoff),
         )
         row = await cursor.fetchone()
         return self._row_to_record(row) if row else None
 
     async def cleanup_stale(self, *, max_age_seconds: int = 3600) -> int:
         assert self._db is not None
-        now = datetime.now(UTC).isoformat()
+        now_dt = datetime.now(UTC)
+        now = now_dt.isoformat()
+        cutoff = now_dt.timestamp() - max_age_seconds
         cursor = await self._db.execute(
             """
             UPDATE heph_runs
-            SET status = 'failed', error = 'Stale run cleaned up', updated_at = ?
+            SET status = 'failed', error = 'Stale run cleaned up', completed_at = ?, updated_at = ?
             WHERE status = 'running'
+              AND CAST(strftime('%s', updated_at) AS REAL) < ?
             """,
-            (now,),
+            (now, now, cutoff),
         )
         await self._db.commit()
         return cursor.rowcount
@@ -651,6 +711,10 @@ class SQLiteRunStore(RunStore):
         history = row["stage_history"]
         if isinstance(history, str):
             history = json.loads(history)
+        try:
+            error_source = row["error_source"]
+        except (KeyError, IndexError):
+            error_source = None
         return RunRecord(
             run_id=row["run_id"],
             status=RunStatus(row["status"]),
@@ -675,10 +739,19 @@ class SQLiteRunStore(RunStore):
             token_count=int(row["token_count"]),
             error=row["error"],
             error_stage=row["error_stage"],
+            error_source=error_source,
             correlation_id=row["correlation_id"],
             user_id=row["user_id"],
             tenant_id=row["tenant_id"],
         )
+
+    async def _ensure_sqlite_columns(self) -> None:
+        assert self._db is not None
+        cursor = await self._db.execute("PRAGMA table_info(heph_runs)")
+        rows = await cursor.fetchall()
+        columns = {row["name"] for row in rows}
+        if "error_source" not in columns:
+            await self._db.execute("ALTER TABLE heph_runs ADD COLUMN error_source TEXT")
 
 
 def create_run_store(

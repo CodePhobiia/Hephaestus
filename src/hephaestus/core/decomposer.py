@@ -39,7 +39,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from hephaestus.core.json_utils import loads_lenient
+from hephaestus.core.json_utils import extract_outermost_json_object, loads_lenient
 from hephaestus.deepforge.harness import DeepForgeHarness, ForgeTrace
 
 logger = logging.getLogger(__name__)
@@ -316,14 +316,14 @@ class ProblemDecomposer:
             cleaned = re.sub(r"\n?```\s*$", "", cleaned)
 
         # Attempt to extract JSON object from the text
-        json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not json_match:
+        json_blob = extract_outermost_json_object(cleaned)
+        if json_blob is None:
             raise DecompositionError(
                 "No JSON object found in model output",
                 raw_output=raw,
             )
 
-        data = loads_lenient(json_match.group(), default=None, label="decomposer")
+        data = loads_lenient(json_blob, default=None, label="decomposer")
         if data is None:
             raise DecompositionError(
                 "JSON parse failure in decomposition",

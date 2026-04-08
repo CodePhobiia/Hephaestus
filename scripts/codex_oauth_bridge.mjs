@@ -13,11 +13,36 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const OPENCLAW_NODE_MODULES = process.env.OPENCLAW_NODE_MODULES
-  || '/home/ubuntu/.npm-global/lib/node_modules/openclaw/node_modules';
+function resolveOpenClawNodeModules() {
+  const explicit = process.env.OPENCLAW_NODE_MODULES;
+  if (explicit) {
+    return explicit;
+  }
+
+  const candidates = [
+    path.join(os.homedir(), '.npm-global', 'lib', 'node_modules', 'openclaw', 'node_modules'),
+    path.join(process.env.APPDATA || '', 'npm', 'node_modules', 'openclaw', 'node_modules'),
+    path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'node_modules', 'openclaw', 'node_modules'),
+    path.resolve(process.cwd(), 'node_modules', 'openclaw', 'node_modules'),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    'Could not locate OpenClaw node_modules. Set OPENCLAW_NODE_MODULES to the openclaw/node_modules path.'
+  );
+}
+
+const OPENCLAW_NODE_MODULES = resolveOpenClawNodeModules();
 
 async function importAbs(rel) {
   const p = path.join(OPENCLAW_NODE_MODULES, rel);
@@ -27,7 +52,7 @@ async function importAbs(rel) {
 const pi = await importAbs('@mariozechner/pi-ai/dist/index.js');
 const oauth = await importAbs('@mariozechner/pi-ai/dist/utils/oauth/index.js');
 
-const AUTH_PATH = path.join(process.env.HOME || '', '.codex', 'auth.json');
+const AUTH_PATH = path.join(os.homedir(), '.codex', 'auth.json');
 
 function decodeJwtPayload(token) {
   const parts = String(token || '').split('.');
@@ -78,7 +103,13 @@ async function loadAndRefreshAuth() {
   };
 }
 
+const MODEL_SPECS = {
+  'gpt-5.4': { contextWindow: 1050000, maxTokens: 128000 },
+  'gpt-5.4-mini': { contextWindow: 200000, maxTokens: 64000 },
+};
+
 function buildModel(modelId = 'gpt-5.4') {
+  const spec = MODEL_SPECS[modelId] || MODEL_SPECS['gpt-5.4-mini'];
   return {
     id: modelId,
     name: modelId,
@@ -88,8 +119,8 @@ function buildModel(modelId = 'gpt-5.4') {
     reasoning: true,
     input: ['text', 'image'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 1050000,
-    maxTokens: 128000,
+    contextWindow: spec.contextWindow,
+    maxTokens: spec.maxTokens,
   };
 }
 

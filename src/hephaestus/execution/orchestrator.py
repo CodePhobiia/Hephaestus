@@ -30,6 +30,8 @@ class OrchestratorConfig:
     max_queue_depth: int = 50
     dedup_ttl_seconds: int = 300
     stale_cleanup_interval_seconds: int = 600
+    stale_run_age_seconds: int = 7200
+    heartbeat_interval_seconds: int = 30
     retry_max_per_stage: int = 2
     retry_backoff_base: float = 1.0
 
@@ -156,6 +158,7 @@ class RunOrchestrator:
         cancel_event = asyncio.Event()
         self._cancel_events[run_id] = cancel_event
         sem = self._semaphores[record.execution_class]
+        heartbeat_task: asyncio.Task[Any] | None = None
 
         current = asyncio.current_task()
         if current is not None:
@@ -164,10 +167,12 @@ class RunOrchestrator:
         try:
             async with sem:
                 await self._store.update_stage(run_id, "STARTING")
+                heartbeat_task = asyncio.create_task(self._heartbeat_loop(run_id))
+                timeout_seconds = self._timeout_seconds_for_record(record)
                 try:
                     result_ref = await asyncio.wait_for(
                         pipeline_fn(record, cancel_event),
-                        timeout=record.execution_class.timeout_seconds,
+                        timeout=timeout_seconds,
                     )
                     if cancel_event.is_set():
                         await self._store.cancel(run_id)
@@ -176,17 +181,25 @@ class RunOrchestrator:
                 except TimeoutError:
                     await self._store.fail(
                         run_id,
-                        error=f"Execution timed out after {record.execution_class.timeout_seconds}s",
+                        error=f"Execution timed out in orchestrator after {timeout_seconds}s",
                         stage=record.current_stage or "unknown",
+                        source="orchestrator",
                     )
                 except asyncio.CancelledError:
                     await self._store.cancel(run_id)
                 except Exception as exc:
                     await self._store.fail(
-                        run_id, error=str(exc), stage=record.current_stage or "unknown"
+                        run_id,
+                        error=str(exc),
+                        stage=record.current_stage or "unknown",
+                        source="pipeline",
                     )
                     logger.exception("Run %s failed", run_id)
         finally:
+            if heartbeat_task is not None:
+                heartbeat_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await heartbeat_task
             self._cancel_events.pop(run_id, None)
             self._active_runs.pop(run_id, None)
 
@@ -234,7 +247,9 @@ class RunOrchestrator:
         while True:
             try:
                 await asyncio.sleep(self._config.stale_cleanup_interval_seconds)
-                cleaned = await self._store.cleanup_stale()
+                cleaned = await self._store.cleanup_stale(
+                    max_age_seconds=self._config.stale_run_age_seconds
+                )
                 if cleaned:
                     logger.info("Cleaned %d stale runs", cleaned)
             except asyncio.CancelledError:
@@ -261,6 +276,34 @@ class RunOrchestrator:
             except Exception:
                 logger.exception("Error in dispatcher loop")
                 await asyncio.sleep(5.0)
+
+    async def _heartbeat_loop(self, run_id: str) -> None:
+        """Refresh the durable heartbeat for an active run."""
+        if self._config.heartbeat_interval_seconds <= 0:
+            return
+        while True:
+            await asyncio.sleep(self._config.heartbeat_interval_seconds)
+            record = await self._store.get(run_id)
+            if record is None or record.status != RunStatus.RUNNING:
+                return
+            await self._store.touch(run_id, stage=record.current_stage or None)
+
+    @staticmethod
+    def _timeout_seconds_for_record(record: RunRecord) -> int:
+        """Resolve the outer execution timeout from durable config."""
+        config = record.config_snapshot or {}
+        base_timeout = record.execution_class.timeout_seconds
+        requested_model = str(config.get("model", "") or "").lower()
+        long_running = (
+            bool(config.get("use_codex_cli"))
+            or requested_model == "codex"
+            or bool(config.get("use_pantheon_mode", True))
+            or bool(config.get("agentic_mode", True))
+            or bool(config.get("olympus_enabled", True))
+        )
+        if long_running:
+            return max(base_timeout, 3600)
+        return base_timeout
 
 
 __all__ = [
