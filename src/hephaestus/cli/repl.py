@@ -964,7 +964,12 @@ def _build_adapter_for_analysis(cfg: Any) -> Any:
     if backend == "codex-cli":
         from hephaestus.deepforge.adapters.codex_oauth import CodexOAuthAdapter
 
-        return CodexOAuthAdapter(model=cfg.default_model or "gpt-5.4")
+        return CodexOAuthAdapter(
+            model=cfg.default_model or "gpt-5.4",
+            reasoning="xhigh",
+            reasoning_effort="xhigh",
+            reasoning_summary="auto",
+        )
 
     # Always try Claude Max first — it's free (subscription)
     try:

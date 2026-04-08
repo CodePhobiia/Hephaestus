@@ -205,16 +205,16 @@ class GenesisConfig:
     openrouter_api_key: str | None = None
     use_agent_sdk: bool = False
     use_claude_cli: bool = False
-    use_claude_max: bool = True
-    use_codex_cli: bool = False
+    use_claude_max: bool = False
+    use_codex_cli: bool = True
 
     # Model selection
-    decompose_model: str = "claude-opus-4-6"
-    search_model: str = "claude-opus-4-6"
-    score_model: str = "claude-sonnet-4-6"
-    translate_model: str = "claude-opus-4-6"
-    attack_model: str = "claude-opus-4-6"
-    defend_model: str = "claude-opus-4-6"
+    decompose_model: str = "gpt-5.4"
+    search_model: str = "gpt-5.4"
+    score_model: str = "gpt-5.4"
+    translate_model: str = "gpt-5.4"
+    attack_model: str = "gpt-5.4"
+    defend_model: str = "gpt-5.4"
 
     # Exploration & Domains
     depth: int = 3  # min: 1, max: 10
@@ -2335,7 +2335,12 @@ class Genesis:
             for model_name in all_models:
                 # Route every stage through Codex; unknown provider model names map to configured Codex model
                 target_model = model_name if model_name.startswith("gpt-") else codex_default
-                adapters[model_name] = CodexOAuthAdapter(model=target_model)
+                adapters[model_name] = CodexOAuthAdapter(
+                    model=target_model,
+                    reasoning="xhigh",
+                    reasoning_effort="xhigh",
+                    reasoning_summary="auto",
+                )
                 if target_model != model_name:
                     logger.info("Codex OAuth: mapped %s -> %s", model_name, target_model)
             return adapters

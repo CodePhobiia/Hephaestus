@@ -107,6 +107,9 @@ class CodexOAuthAdapter(BaseAdapter):
         max_retries: int = 2,
         bridge_script: str | Path | None = None,
         fallback_to_cli: bool = True,
+        reasoning: str = "xhigh",
+        reasoning_effort: str | None = "xhigh",
+        reasoning_summary: str | None = "auto",
     ) -> None:
         if isinstance(model, str):
             config = CODEX_OAUTH_MODELS.get(model)
@@ -141,6 +144,9 @@ class CodexOAuthAdapter(BaseAdapter):
         if not self._bridge.is_file():
             raise AuthenticationError(f"Codex OAuth bridge script not found: {self._bridge}")
         self._fallback_to_cli = fallback_to_cli
+        self._reasoning = reasoning
+        self._reasoning_effort = reasoning_effort
+        self._reasoning_summary = reasoning_summary
         auth_path = Path.home() / ".codex" / "auth.json"
         if not auth_path.exists():
             raise AuthenticationError(
@@ -206,7 +212,9 @@ class CodexOAuthAdapter(BaseAdapter):
                     "tools": tools or [],
                     "max_tokens": max_tokens,
                     "temperature": temperature,
-                    "reasoning": kwargs.get("reasoning", "medium"),
+                    "reasoning": kwargs.get("reasoning", self._reasoning),
+                    "reasoning_effort": kwargs.get("reasoning_effort", self._reasoning_effort),
+                    "reasoning_summary": kwargs.get("reasoning_summary", self._reasoning_summary),
                     "session_id": kwargs.get("session_id"),
                 }
             )
@@ -278,7 +286,9 @@ class CodexOAuthAdapter(BaseAdapter):
                     "prefill": prefill,
                     "max_tokens": max_tokens,
                     "temperature": temperature,
-                    "reasoning": kwargs.get("reasoning", "medium"),
+                    "reasoning": kwargs.get("reasoning", self._reasoning),
+                    "reasoning_effort": kwargs.get("reasoning_effort", self._reasoning_effort),
+                    "reasoning_summary": kwargs.get("reasoning_summary", self._reasoning_summary),
                     "session_id": kwargs.get("session_id"),
                 }
             )
@@ -349,7 +359,9 @@ class CodexOAuthAdapter(BaseAdapter):
             "prompt": prompt,
             "prefill": prefill,
             "max_tokens": max_tokens,
-            "reasoning": kwargs.get("reasoning", "medium"),
+            "reasoning": kwargs.get("reasoning", self._reasoning),
+            "reasoning_effort": kwargs.get("reasoning_effort", self._reasoning_effort),
+            "reasoning_summary": kwargs.get("reasoning_summary", self._reasoning_summary),
             "session_id": kwargs.get("session_id"),
         }
         assert proc.stdin is not None

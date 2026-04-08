@@ -5,10 +5,9 @@ When ``use_claude_max`` is active, all stages use the same model.
 Cross-model asymmetry activates when API keys for multiple providers
 are configured.
 
-Currently all stages default to ``claude-sonnet-4-6`` via claude-max.
+Currently all stages default to ``gpt-5.4`` via Codex OAuth.
 The CROSS_MODEL_DEFAULTS dict defines the *interface* for future
-multi-model runs when OpenAI / OpenRouter keys are available alongside
-Claude Max.
+multi-model runs when multiple providers are available.
 
 Usage::
 
@@ -31,14 +30,14 @@ if TYPE_CHECKING:
 # rather than hardcoding model names.
 # ---------------------------------------------------------------------------
 
-# When use_claude_max is active, all stages use the same model.
+# Default repo-wide stage mapping.
 CROSS_MODEL_DEFAULTS: dict[str, str] = {
-    "decompose": "claude-opus-4-6",
-    "search": "claude-opus-4-6",
-    "score": "claude-opus-4-6",
-    "translate": "claude-opus-4-6",
-    "attack": "claude-opus-4-6",
-    "defend": "claude-opus-4-6",
+    "decompose": "gpt-5.4",
+    "search": "gpt-5.4",
+    "score": "gpt-5.4",
+    "translate": "gpt-5.4",
+    "attack": "gpt-5.4",
+    "defend": "gpt-5.4",
 }
 
 # Named presets for CLI --model flag / SDK model= parameter
