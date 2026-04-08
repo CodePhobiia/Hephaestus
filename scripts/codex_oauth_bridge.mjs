@@ -262,6 +262,7 @@ async function main() {
 
 main().catch((err) => {
   const msg = err instanceof Error ? err.message : String(err);
-  process.stdout.write(JSON.stringify({ ok: false, error: msg }));
+  const stack = err instanceof Error ? (err.stack || '') : '';
+  process.stdout.write(JSON.stringify({ ok: false, error: msg, stack }));
   process.exit(1);
 });

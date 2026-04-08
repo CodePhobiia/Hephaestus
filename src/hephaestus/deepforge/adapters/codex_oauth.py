@@ -106,7 +106,7 @@ class CodexOAuthAdapter(BaseAdapter):
         timeout: float = 300.0,
         max_retries: int = 2,
         bridge_script: str | Path | None = None,
-        fallback_to_cli: bool = True,
+        fallback_to_cli: bool = False,
         reasoning: str = "xhigh",
         reasoning_effort: str | None = "xhigh",
         reasoning_summary: str | None = "auto",
@@ -143,6 +143,9 @@ class CodexOAuthAdapter(BaseAdapter):
         )
         if not self._bridge.is_file():
             raise AuthenticationError(f"Codex OAuth bridge script not found: {self._bridge}")
+        # Strict bridge mode: if OAuth is selected, stay on OAuth.
+        # Keep the flag for backwards compatibility, but do not silently
+        # fall back to a different transport.
         self._fallback_to_cli = fallback_to_cli
         self._reasoning = reasoning
         self._reasoning_effort = reasoning_effort
@@ -178,6 +181,9 @@ class CodexOAuthAdapter(BaseAdapter):
             try:
                 parsed = json.loads(stdout) if stdout else {}
                 error_text = parsed.get("error") or stderr or f"bridge exit {proc.returncode}"
+                stack_text = parsed.get("stack") or ""
+                if stack_text:
+                    error_text = f"{error_text}\n{stack_text}"
             except Exception:
                 error_text = stderr or stdout or f"bridge exit {proc.returncode}"
             raise AdapterError(f"Codex OAuth bridge failed: {error_text}")
@@ -218,23 +224,14 @@ class CodexOAuthAdapter(BaseAdapter):
                     "session_id": kwargs.get("session_id"),
                 }
             )
-        except Exception:
-            if self._fallback_to_cli:
-                from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
-
-                self._logger.warning("Codex OAuth bridge failed, falling back to Codex CLI")
-                fallback = CodexCliAdapter(
-                    model=self.model_name, timeout=self._timeout, max_retries=self._max_retries
-                )
-                return await fallback.generate_with_tools(
-                    messages,
-                    system=system,
-                    tools=tools,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    **kwargs,
-                )
-            raise
+        except Exception as exc:
+            self._logger.exception(
+                "Codex OAuth bridge failed during generate_with_tools | model=%s",
+                self.model_name,
+            )
+            raise AdapterError(
+                f"Codex OAuth bridge failed during tool-use generation: {exc}"
+            ) from exc
 
         tool_calls = [
             CodexOAuthToolCall(
@@ -292,24 +289,14 @@ class CodexOAuthAdapter(BaseAdapter):
                     "session_id": kwargs.get("session_id"),
                 }
             )
-        except Exception:
-            if self._fallback_to_cli:
-                from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
-
-                self._logger.warning("Codex OAuth bridge failed, falling back to Codex CLI")
-                fallback = CodexCliAdapter(
-                    model=self.model_name, timeout=self._timeout, max_retries=self._max_retries
-                )
-                return await fallback.generate(
-                    prompt,
-                    system=system,
-                    prefill=prefill,
-                    stream=stream,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    **kwargs,
-                )
-            raise
+        except Exception as exc:
+            self._logger.exception(
+                "Codex OAuth bridge failed during generate | model=%s",
+                self.model_name,
+            )
+            raise AdapterError(
+                f"Codex OAuth bridge failed during prompt generation: {exc}"
+            ) from exc
 
         self._logger.debug(
             "Codex OAuth generate: %.2fs | in=%d out=%d",
@@ -395,25 +382,12 @@ class CodexOAuthAdapter(BaseAdapter):
             stderr = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
         rc = await proc.wait()
         if rc != 0:
-            if self._fallback_to_cli:
-                from hephaestus.deepforge.adapters.codex_cli import CodexCliAdapter
-
-                self._logger.warning(
-                    "Codex OAuth stream bridge failed, falling back to Codex CLI stream"
-                )
-                fallback = CodexCliAdapter(
-                    model=self.model_name, timeout=self._timeout, max_retries=self._max_retries
-                )
-                async for chunk in fallback.generate_stream(
-                    prompt,
-                    system=system,
-                    prefill=prefill,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    **kwargs,
-                ):
-                    yield chunk
-                return
+            self._logger.error(
+                "Codex OAuth stream bridge failed | model=%s rc=%s stderr=%s",
+                self.model_name,
+                rc,
+                stderr,
+            )
             raise AdapterError(f"Codex OAuth stream bridge failed: {stderr or rc}")
 
         if final_result is None:
