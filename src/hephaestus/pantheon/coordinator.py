@@ -355,10 +355,16 @@ class PantheonCoordinator:
             system = self._olympus_context + "\n\n" + system
 
         t_start = time.monotonic()
-        result = await _asyncio.wait_for(
-            harness.forge(prompt, system=system),
-            timeout=300.0,
-        )
+        pantheon_timeout = 2400.0
+        try:
+            result = await _asyncio.wait_for(
+                harness.forge(prompt, system=system),
+                timeout=pantheon_timeout,
+            )
+        except _asyncio.TimeoutError as exc:
+            raise TimeoutError(
+                f"Pantheon {agent} timed out after {pantheon_timeout:.0f}s during _forge_json"
+            ) from exc
         self._record_accounting(
             accounting,
             agent=agent,
