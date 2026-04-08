@@ -103,7 +103,7 @@ class CodexOAuthAdapter(BaseAdapter):
         self,
         model: str | ModelConfig = "gpt-5.4",
         *,
-        timeout: float = 300.0,
+        timeout: float = 2400.0,
         max_retries: int = 2,
         bridge_script: str | Path | None = None,
         fallback_to_cli: bool = False,
